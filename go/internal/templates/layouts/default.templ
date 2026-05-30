@@ -1,0 +1,29 @@
+package layouts
+
+import (
+	"github.com/a-h/templ"
+
+	"github.com/groobb/groobb/go/internal/templates/components"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// Default is the base HTML layout that wraps page content with the shared
+// <head> and body shell. The lang attribute is hard-coded to "ja" until the
+// i18n middleware (phase 4) provides the request locale.
+//
+// [Ja] Default はページコンテンツを共通の <head> とボディの外枠で包む基本の HTML
+// レイアウトです。lang 属性は、i18n ミドルウェア (フェーズ 4) がリクエストロケールを
+// 提供するまで "ja" でハードコードします。
+templ Default(meta viewmodel.PageMeta, content templ.Component) {
+	<!DOCTYPE html>
+	<html lang="ja">
+		<head>
+			@components.Head(meta)
+		</head>
+		<body>
+			<main>
+				@content
+			</main>
+		</body>
+	</html>
+}

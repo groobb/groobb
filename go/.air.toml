@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Regenerate templ code, then compile. op run is only needed to run the binary
+# (startup pings the database), not to compile, so it wraps full_bin instead of
+# cmd. CI does not use air, so the op run dependency is local-only.
+#
+# [Ja] templ コードを再生成してからコンパイルする。op run はバイナリ実行時 (起動時に
+# データベースへ ping する) にのみ必要でコンパイルには不要なため、cmd ではなく
+# full_bin で包む。CI は air を使わないため、op run 依存はローカル限定。
+cmd = "make templ-generate && go build -o ./tmp/main ./cmd/server"
+bin = "./tmp/main"
+full_bin = "APP_ENV=dev op run --env-file=.env -- ./tmp/main"
+delay = 1000
+exclude_dir = ["bin", "db", "node_modules", "static", "tmp", "vendor", "web"]
+exclude_regex = ["_test.go", "_templ\\.go$"]
+include_ext = ["go", "sql", "templ", "toml"]
+stop_on_error = true
+
+[misc]
+clean_on_exit = false

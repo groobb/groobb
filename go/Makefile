@@ -21,6 +21,11 @@ run: ## Start the HTTP server. [Ja] HTTP サーバーを起動
 build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
 	go build -o bin/server ./cmd/server
 
+.PHONY: templ-generate
+templ-generate: ## Generate Go code from templ files (also runs goimports). [Ja] templ ファイルから Go コードを生成 (goimports も実行)
+	go tool templ generate
+	@$(MAKE) goimports
+
 .PHONY: fmt
 fmt: ## Format Go code (go fmt + goimports). [Ja] Go コードをフォーマット (go fmt + goimports)
 	go fmt ./...
