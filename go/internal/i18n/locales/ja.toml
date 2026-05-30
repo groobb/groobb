@@ -9,3 +9,19 @@ other = "Groobb は掲示板サービスです。"
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
+
+[welcome_show_title]
+description = "トップページのページタイトル (title タグ)"
+other = "Groobb"
+
+[welcome_show_description]
+description = "トップページの meta description"
+other = "Groobb は誰でも自分の掲示板をつくれる掲示板サービスです。"
+
+[welcome_show_heading]
+description = "トップページのヒーロー見出し"
+other = "あなたの掲示板を、つくろう。"
+
+[welcome_show_lead]
+description = "トップページのヒーロー説明文"
+other = "Groobb は、自分だけの掲示板をつくって仲間と交流できる掲示板サービスです。"
