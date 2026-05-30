@@ -1,0 +1,12 @@
+# pnpm reads shared settings from this file (pnpm moved them out of
+# package.json). allowBuilds allowlists the packages whose install scripts may
+# run: esbuild and @parcel/watcher (used by tailwindcss --watch) fetch native
+# binaries via a postinstall script, which pnpm blocks by default.
+#
+# [Ja] pnpm は共有設定をこのファイルから読み込みます (pnpm が package.json から
+# 移動)。allowBuilds はインストールスクリプトの実行を許可するパッケージを列挙します。
+# esbuild と @parcel/watcher (tailwindcss --watch が使用) は postinstall でネイティブ
+# バイナリを取得しますが、pnpm は既定でこれをブロックします。
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
