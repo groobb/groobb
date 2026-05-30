@@ -17,6 +17,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/health"
 )
 
@@ -26,6 +27,23 @@ func main() {
 		slog.Error("failed to load the configuration", "error", err)
 		os.Exit(1)
 	}
+
+	// Connect to PostgreSQL and verify connectivity before serving requests, so
+	// a misconfigured or unreachable database fails fast at startup. The bounded
+	// context only guards the initial connect/ping; the pool itself outlives it.
+	//
+	// [Ja] リクエストを受ける前に PostgreSQL へ接続して疎通を確認し、設定ミスや
+	// 接続不能なデータベースを起動時に早期検知する。タイムアウト付き context は
+	// 最初の接続/ping だけを制御し、プール自体はそれより長く生存する。
+	connectCtx, connectCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pool, err := database.New(connectCtx, cfg.DatabaseURL)
+	connectCancel()
+	if err != nil {
+		slog.Error("failed to connect to the database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	slog.Info("connected to the database")
 
 	healthHandler := health.NewHandler()
 

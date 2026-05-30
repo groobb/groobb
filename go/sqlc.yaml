@@ -1,0 +1,42 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "db/queries/"
+    schema: "db/schema.sql"
+    gen:
+      go:
+        package: "query"
+        out: "internal/query"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        overrides:
+          # Use github.com/google/uuid for uuid columns (UUID base for new
+          # projects, per the architecture guide), instead of pgtype.UUID.
+          #
+          # [Ja] uuid 型カラムには pgtype.UUID ではなく github.com/google/uuid を
+          # 使う (アーキテクチャガイドに従い、新規プロジェクトは UUID ベース)。
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+          # Map timestamptz to time.Time. All timestamps are stored as
+          # TIMESTAMP WITH TIME ZONE in UTC (per the development guide).
+          #
+          # [Ja] timestamptz は time.Time にマップする。すべての時刻は
+          # TIMESTAMP WITH TIME ZONE として UTC で保存する (開発ガイドに従う)。
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
