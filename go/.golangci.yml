@@ -1,0 +1,30 @@
+# golangci-lint v2 configuration (minimal initial setup).
+# https://golangci-lint.run/usage/configuration/
+#
+# [Ja] golangci-lint v2 の設定ファイル (初期は最小構成)。
+# レイヤー依存ルール (depguard) などは Go アプリの構造が育つ後続フェーズで追加します。
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet # Go standard static analysis. [Ja] Go 標準の静的解析
+    - staticcheck # advanced static analysis. [Ja] 高度な静的解析
+    - errcheck # report unchecked errors. [Ja] 未チェックのエラーを検出
+    - ineffassign # detect ineffectual assignments. [Ja] 無効な代入を検出
+    - unused # detect unused code. [Ja] 未使用コードを検出
+    - gosec # security checks. [Ja] セキュリティチェック
+
+formatters:
+  enable:
+    - gofmt # standard Go formatting. [Ja] Go 標準フォーマット
+    - goimports # organize imports. [Ja] import 文の整理
+  settings:
+    goimports:
+      # Group imports of this module separately from third-party packages.
+      # [Ja] 本モジュールの import をサードパーティと分けてグループ化します。
+      local-prefixes:
+        - github.com/groobb/groobb/go
