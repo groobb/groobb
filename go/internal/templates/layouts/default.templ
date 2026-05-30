@@ -3,27 +3,29 @@ package layouts
 import (
 	"github.com/a-h/templ"
 
+	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
 // Default is the base HTML layout that wraps page content with the shared
-// <head> and body shell. The lang attribute is hard-coded to "ja" until the
-// i18n middleware (phase 4) provides the request locale.
+// <head>, a footer, and the body shell. The lang attribute reflects the request
+// locale resolved by the i18n middleware.
 //
-// [Ja] Default はページコンテンツを共通の <head> とボディの外枠で包む基本の HTML
-// レイアウトです。lang 属性は、i18n ミドルウェア (フェーズ 4) がリクエストロケールを
-// 提供するまで "ja" でハードコードします。
+// [Ja] Default はページコンテンツを共通の <head>、フッター、ボディの外枠で包む
+// 基本の HTML レイアウトです。lang 属性は i18n ミドルウェアが解決したリクエストの
+// ロケールを反映します。
 templ Default(meta viewmodel.PageMeta, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="ja">
+	<html lang={ templates.Locale(ctx) }>
 		<head>
 			@components.Head(meta)
 		</head>
-		<body>
-			<main>
+		<body class="flex min-h-screen flex-col">
+			<main class="flex flex-1 flex-col">
 				@content
 			</main>
+			@components.Footer()
 		</body>
 	</html>
 }

@@ -8,15 +8,18 @@ package welcome
 import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
+	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Show renders a minimal placeholder top page. The real welcome page (hero +
-// service description, fully i18n-ized) replaces it in phase 5; until then it
-// exists so that `make dev` renders something through the asset pipeline.
+// Show renders the Groobb top page: a centered hero with the service heading
+// and a short description. The text is sourced from the locale files so it
+// follows the request locale. Sign in / sign up links are intentionally absent
+// until authentication lands in a later plan.
 //
-// [Ja] Show は最小限のプレースホルダートップページを描画します。本物の welcome
-// ページ (ヒーロー + サービス説明、完全に i18n 化) はフェーズ 5 で差し替えます。
-// それまでの間、`make dev` がアセットパイプラインを通して何かを表示できるよう存在します。
+// [Ja] Show は Groobb のトップページを描画します。中央寄せのヒーローにサービスの
+// 見出しと短い説明を表示します。文言はロケールファイルから取得し、リクエストの
+// ロケールに従います。サインイン / サインアップのリンクは、認証が後続の計画で
+// 入るまで意図的に置きません。
 func Show() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -38,7 +41,33 @@ func Show() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center\"><h1 class=\"text-4xl font-bold\">Groobb</h1><p class=\"text-lg text-gray-600\">Groobb is a bulletin board service.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-4 py-16 text-center\"><h1 class=\"text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "welcome_show_heading"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/welcome/show.templ`, Line: 17, Col: 45}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h1><p class=\"text-lg text-gray-600\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "welcome_show_lead"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/welcome/show.templ`, Line: 20, Col: 42}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
