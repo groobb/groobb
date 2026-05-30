@@ -1,0 +1,8 @@
+/* Groobb stylesheet entry point. Tailwind v4 detects content sources (templ
+   files and generated *_templ.go) automatically, so no separate config file is
+   needed. Design tokens and component styles are added as the UI grows.
+
+   [Ja] Groobb のスタイルシートのエントリポイント。Tailwind v4 はコンテンツソース
+   (templ ファイルと生成された *_templ.go) を自動検出するため、別の設定ファイルは
+   不要。デザイントークンやコンポーネントスタイルは UI の成長に合わせて追加する。 */
+@import "tailwindcss";

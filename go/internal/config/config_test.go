@@ -105,3 +105,30 @@ func TestEnvHelpers(t *testing.T) {
 		})
 	}
 }
+
+// TestGetAssetVersion verifies that dev returns a non-empty dynamic value and
+// that other environments return the static AssetVersion fixed at startup.
+//
+// [Ja] TestGetAssetVersion は、開発環境では空でない動的な値を返し、それ以外の
+// 環境では起動時に固定した静的な AssetVersion を返すことを検証します。
+func TestGetAssetVersion(t *testing.T) {
+	t.Parallel()
+
+	t.Run("dev returns a non-empty dynamic value", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Env: "dev"}
+		if got := cfg.GetAssetVersion(); got == "" {
+			t.Error("GetAssetVersion() should not be empty in dev")
+		}
+	})
+
+	t.Run("non-dev returns the static AssetVersion", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &Config{Env: "prod", AssetVersion: "abc123"}
+		if got := cfg.GetAssetVersion(); got != "abc123" {
+			t.Errorf("GetAssetVersion() = %q, want %q", got, "abc123")
+		}
+	})
+}

@@ -1,0 +1,15 @@
+package welcome
+
+// Show renders a minimal placeholder top page. The real welcome page (hero +
+// service description, fully i18n-ized) replaces it in phase 5; until then it
+// exists so that `make dev` renders something through the asset pipeline.
+//
+// [Ja] Show は最小限のプレースホルダートップページを描画します。本物の welcome
+// ページ (ヒーロー + サービス説明、完全に i18n 化) はフェーズ 5 で差し替えます。
+// それまでの間、`make dev` がアセットパイプラインを通して何かを表示できるよう存在します。
+templ Show() {
+	<div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
+		<h1 class="text-4xl font-bold">Groobb</h1>
+		<p class="text-lg text-gray-600">Groobb is a bulletin board service.</p>
+	</div>
+}

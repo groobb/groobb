@@ -1,0 +1,17 @@
+package components
+
+import "github.com/groobb/groobb/go/internal/viewmodel"
+
+// Head renders the shared <head> contents: meta tags and asset references. The
+// "?v=" query string busts the browser cache whenever the asset version changes.
+//
+// [Ja] Head は共通の <head> 内容 (メタタグとアセット参照) を描画します。"?v="
+// クエリ文字列は、アセットのバージョンが変わるたびにブラウザキャッシュを無効化します。
+templ Head(meta viewmodel.PageMeta) {
+	<meta charset="UTF-8"/>
+	<title>{ meta.Title }</title>
+	<meta name="description" content={ meta.Description }/>
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+	<link rel="stylesheet" href={ "/static/css/style.css?v=" + meta.AssetVersion }/>
+	<script type="module" src={ "/static/js/main.js?v=" + meta.AssetVersion }></script>
+}

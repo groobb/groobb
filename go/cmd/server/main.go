@@ -19,6 +19,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/health"
+	"github.com/groobb/groobb/go/internal/handler/welcome"
 )
 
 func main() {
@@ -46,6 +47,7 @@ func main() {
 	slog.Info("connected to the database")
 
 	healthHandler := health.NewHandler()
+	welcomeHandler := welcome.NewHandler(cfg)
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger)
@@ -55,6 +57,15 @@ func main() {
 	// Health check (no authentication required).
 	// [Ja] ヘルスチェック (認証不要)。
 	r.Get("/health", healthHandler.Show)
+
+	// Serve static assets (CSS / JS / images) built into ./static.
+	// [Ja] ./static にビルドされた静的アセット (CSS / JS / 画像) を配信する。
+	fileServer := http.FileServer(http.Dir("./static"))
+	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
+
+	// Top page.
+	// [Ja] トップページ。
+	r.Get("/", welcomeHandler.Show)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)
