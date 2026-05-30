@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    depends_on:
+      - caddy
+      - postgresql
+    volumes:
+      - .:/workspace
+      - op-config:/home/developer/.config/op
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/go/.cache/go-build
+    ports:
+      - "4300:8080" # Go
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    environment:
+      - OP_SERVICE_ACCOUNT_TOKEN=${OP_SERVICE_ACCOUNT_TOKEN:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "4301:8080"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+  postgresql:
+    image: postgres:18.3
+    ports:
+      - "4302:5432"
+    volumes:
+      - postgresql18-data:/var/lib/postgresql/data:delegated
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+
+volumes:
+  op-config:
+  go-build-cache:
+  go-mod-cache:
+  postgresql18-data:

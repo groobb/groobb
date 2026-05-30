@@ -1,0 +1,2 @@
+go-assets: cd go && pnpm watch
+go-server: cd go && air

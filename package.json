@@ -1,0 +1,12 @@
+{
+  "name": "groobb",
+  "private": true,
+  "packageManager": "pnpm@11.5.0",
+  "scripts": {
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.35.0"
+  }
+}
