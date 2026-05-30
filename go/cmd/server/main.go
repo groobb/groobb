@@ -20,6 +20,7 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/health"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
+	"github.com/groobb/groobb/go/internal/i18n"
 )
 
 func main() {
@@ -53,6 +54,13 @@ func main() {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
+
+	// Resolve the request locale from Accept-Language and store it in the
+	// context so handlers and templates can render localized text.
+	//
+	// [Ja] Accept-Language からリクエストのロケールを解決して context に格納し、
+	// ハンドラーとテンプレートがローカライズされたテキストを描画できるようにする。
+	r.Use(i18n.Middleware)
 
 	// Health check (no authentication required).
 	// [Ja] ヘルスチェック (認証不要)。

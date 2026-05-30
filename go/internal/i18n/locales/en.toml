@@ -1,0 +1,12 @@
+[default_title]
+description = "Default page title"
+other = "Groobb"
+
+[default_description]
+description = "Default meta description for the page"
+other = "Groobb is a bulletin board service."
+
+[posts_count]
+description = "Number of posts shown in the UI"
+one = "{{.Count}} post"
+other = "{{.Count}} posts"
