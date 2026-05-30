@@ -10,3 +10,19 @@ other = "Groobb is a bulletin board service."
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
 other = "{{.Count}} posts"
+
+[welcome_show_title]
+description = "Top page title (title tag)"
+other = "Groobb"
+
+[welcome_show_description]
+description = "Top page meta description"
+other = "Groobb is a bulletin board service where anyone can create their own board."
+
+[welcome_show_heading]
+description = "Top page hero heading"
+other = "Create your own bulletin board."
+
+[welcome_show_lead]
+description = "Top page hero lead text"
+other = "Groobb is a bulletin board service where you can create your own board and interact with others."
