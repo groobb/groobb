@@ -3,9 +3,12 @@ module github.com/groobb/groobb/go
 go 1.26.3
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/a-h/templ v0.3.1020
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/nicksnyder/go-i18n/v2 v2.6.1
+	golang.org/x/text v0.37.0
 )
 
 require (
@@ -26,7 +29,6 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
-	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 )
 

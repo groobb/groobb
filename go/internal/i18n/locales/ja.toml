@@ -1,0 +1,11 @@
+[default_title]
+description = "デフォルトのページタイトル"
+other = "Groobb"
+
+[default_description]
+description = "デフォルトのページ説明文 (meta description)"
+other = "Groobb は掲示板サービスです。"
+
+[posts_count]
+description = "UI に表示する投稿数"
+other = "{{.Count}} 件の投稿"
