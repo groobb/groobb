@@ -1,0 +1,59 @@
+# Dependabot configuration for version updates.
+# See: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# [Ja] Dependabot のバージョン更新設定。
+# 参照: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Go module dependencies for the Go app.
+  # [Ja] Go アプリの Go module 依存。
+  - package-ecosystem: "gomod"
+    directory: "/go"
+    schedule:
+      interval: "daily"
+    # Major versions can contain breaking changes and should be reviewed in
+    # their own PRs, so every group below only bundles patch / minor.
+    #
+    # [Ja] メジャーは破壊的変更を含むことがあり個別 PR でレビューしたいため、
+    # 以下のすべてのグループで patch / minor のみを含める。
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+        update-types:
+          - "patch"
+          - "minor"
+      jackc-pgx:
+        patterns:
+          - "github.com/jackc/*"
+        update-types:
+          - "patch"
+          - "minor"
+
+  # npm (pnpm) dependencies for the Go app's asset pipeline.
+  # [Ja] Go アプリのアセットパイプライン用 npm (pnpm) 依存。
+  - package-ecosystem: "npm"
+    directory: "/go"
+    schedule:
+      interval: "daily"
+    # Major versions can contain breaking changes and should be reviewed in
+    # their own PRs, so every group below only bundles patch / minor.
+    #
+    # [Ja] メジャーは破壊的変更を含むことがあり個別 PR でレビューしたいため、
+    # 以下のすべてのグループで patch / minor のみを含める。
+    groups:
+      tailwindcss:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+        update-types:
+          - "patch"
+          - "minor"
+
+  # GitHub Actions used by the CI workflows.
+  # [Ja] CI ワークフローが使う GitHub Actions。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
