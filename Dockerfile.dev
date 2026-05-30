@@ -100,18 +100,6 @@ RUN curl -fsSL -o /tmp/hivemind.gz \
     mv /tmp/hivemind /usr/local/bin/hivemind && \
     chmod +x /usr/local/bin/hivemind
 
-# --- golangci-lint ---
-# [Ja] golangci-lint
-ARG GOLANGCI_LINT_VERSION=2.7.2
-ARG GOLANGCI_LINT_SHA256=ce46a1f1d890e7b667259f70bb236297f5cf8791a9b6b98b41b283d93b5b6e88
-RUN curl -fsSL -o /tmp/golangci-lint.tar.gz \
-      https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64.tar.gz && \
-    echo "${GOLANGCI_LINT_SHA256}  /tmp/golangci-lint.tar.gz" | sha256sum -c - && \
-    tar -xzf /tmp/golangci-lint.tar.gz -C /tmp && \
-    mv /tmp/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64/golangci-lint /usr/local/bin/golangci-lint && \
-    chmod +x /usr/local/bin/golangci-lint && \
-    rm -rf /tmp/golangci-lint.tar.gz /tmp/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64
-
 # --- GitHub CLI ---
 # [Ja] GitHub CLI
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -172,8 +160,22 @@ ENV GOCACHE=/go/.cache/go-build
 ENV GOMODCACHE=/go/pkg/mod
 ENV GOPATH=/go
 ENV PATH="${GOPATH}/bin:${PATH}"
+# Build golangci-lint from source with this image's Go toolchain instead of
+# downloading the prebuilt release binary. golangci-lint refuses to analyze a
+# module whose go directive targets a newer Go than the one golangci-lint was
+# built with, and the published binaries lag behind the latest Go. Building from
+# source pins its language version to the go installed above (1.26.3), so lint
+# works against the go 1.26.3 modules from the start.
+#
+# [Ja] golangci-lint を配布バイナリではなく本イメージの Go ツールチェーンで
+# ソースからビルドする。golangci-lint は自身のビルドに使われた Go より新しい
+# go ディレクティブを持つ module の解析を拒否し、配布バイナリは最新 Go に追従が
+# 遅れる。ソースからビルドすると言語バージョンが上でインストールした Go (1.26.3)
+# に固定されるため、最初から go 1.26.3 の module を lint できる。
+ARG GOLANGCI_LINT_VERSION=v2.7.2
 RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 && \
-    go install github.com/air-verse/air@latest
+    go install github.com/air-verse/air@latest && \
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
 
 # --- Shell setup ---
 # [Ja] シェル設定
