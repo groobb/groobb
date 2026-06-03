@@ -50,6 +50,22 @@ goimports-check: ## Check imports with goimports (fails on diff). [Ja] goimports
 lint: ## Run golangci-lint. [Ja] golangci-lint を実行
 	golangci-lint run --config=.golangci.yml ./...
 
+# koryluslint is the Korylus shared linter from korylus-tools. Its `comment`
+# subcommand checks misuse of the bilingual [Ja] marker in code comments. The
+# version is pinned via the `tool` directive in go.mod and fetched from the
+# public module github.com/korylus/tools; `go tool koryluslint` runs that pinned
+# binary with go/ as the working directory, so it walks the Go and templ sources.
+#
+# [Ja] koryluslint は korylus-tools が提供する Korylus 共通リンタ。その `comment`
+# サブコマンドはコードコメントの英日併記 [Ja] マーカーの誤用を検査する。バージョンは
+# go.mod の tool ディレクティブで固定し、公開モジュール github.com/korylus/tools から
+# 取得する。`go tool koryluslint` がその固定版を go/ を作業ディレクトリとして実行する
+# ことで、Go・templ ソースを走査する。
+
+.PHONY: lint-comment
+lint-comment: ## Check [Ja]-marker misuse in code comments (koryluslint). [Ja] コードコメントの [Ja] マーカー誤用をチェック (koryluslint)
+	@go tool koryluslint comment
+
 .PHONY: test
 test: ## Run tests. [Ja] テストを実行
 	go test -race ./...

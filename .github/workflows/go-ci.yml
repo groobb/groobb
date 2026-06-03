@@ -132,3 +132,43 @@ jobs:
             echo "Build failed: binary not found"
             exit 1
           fi
+
+  # Lint code-comment [Ja] markers with koryluslint's `comment` subcommand.
+  # koryluslint is pinned via the `tool` directive in go.mod and fetched from the
+  # public module github.com/korylus/tools.
+  #
+  # Two steps mirror the subcommand's two modes (following Annict's commentlint
+  # CI): the whole-tree scan runs always (the [Ja]-on-non-Japanese misuse), and
+  # the marker-placement rules run on pull requests only, limited to the lines
+  # added against the PR base (`-base`). fetch-depth: 0 makes the base available.
+  #
+  # [Ja] koryluslint の `comment` サブコマンドでコードコメントの [Ja] マーカーを
+  # 検査する。koryluslint は go.mod の tool ディレクティブで固定し、公開モジュール
+  # github.com/korylus/tools から取得する。
+  #
+  # 2 ステップはサブコマンドの 2 モードに対応する (Annict の commentlint CI に倣う)。
+  # 全体走査 ([Ja] が日本語を含まない行に付く誤用) は常時実行し、マーカー配置の規則は
+  # pull request 時のみ PR のベースに対する追加行 (`-base`) に限定して実行する。
+  # fetch-depth: 0 で差分に必要なベースを取得する。
+  comment-lint:
+    name: Comment lint (koryluslint comment)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check bilingual comments (whole tree)
+        run: go tool koryluslint comment
+
+      - name: Check bilingual comments (added lines)
+        if: github.event_name == 'pull_request'
+        run: go tool koryluslint comment -base=origin/${{ github.base_ref }}
