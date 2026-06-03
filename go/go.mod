@@ -21,6 +21,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/korylus/tools v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
@@ -34,5 +35,6 @@ require (
 
 tool (
 	github.com/a-h/templ/cmd/templ
+	github.com/korylus/tools/cmd/koryluslint
 	golang.org/x/tools/cmd/goimports
 )
