@@ -32,7 +32,17 @@ services:
     ports:
       - "4302:5432"
     volumes:
-      - postgresql18-data:/var/lib/postgresql/data:delegated
+      # Postgres 18+ stores data in a major-version-specific subdirectory and
+      # expects the volume at /var/lib/postgresql, not the pre-18 location
+      # /var/lib/postgresql/data. Mounting the legacy path makes the image treat
+      # the existing cluster as an unused mount and refuse to start.
+      # https://github.com/docker-library/postgres/pull/1259
+      #
+      # [Ja] Postgres 18 以降はデータをメジャーバージョン別のサブディレクトリに
+      # 格納し、ボリュームは /var/lib/postgresql に置くことを前提とする (18 以前の
+      # /var/lib/postgresql/data ではない)。旧パスにマウントすると、イメージは
+      # 既存クラスタを未使用マウントとみなして起動を拒否する。
+      - postgresql18-data:/var/lib/postgresql:delegated
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
 
