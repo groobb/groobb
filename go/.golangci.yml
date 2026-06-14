@@ -18,10 +18,58 @@ linters:
     - unused # detect unused code. [Ja] 未使用コードを検出
     - gosec # security checks. [Ja] セキュリティチェック
 
+  exclusions:
+    rules:
+      # Test files exercise internal seams and fixtures, so skip gosec there.
+      # depguard will join this list once the layer-dependency rules are
+      # introduced in a later phase.
+      #
+      # [Ja] テストファイルは内部の継ぎ目やフィクスチャを扱うため gosec を無効化する。
+      # depguard はレイヤー依存ルールを後続フェーズで導入した時点でこのリストに加える。
+      - path: '(.+)_test\.go'
+        linters:
+          - gosec
+      # templ-generated files are not hand-written, so exclude them from linters.
+      # [Ja] templ 生成ファイルは手書きではないため、リンターの対象から除外する。
+      - path: '(.+)_templ\.go'
+        linters:
+          - govet
+          - staticcheck
+          - gosec
+          - errcheck
+          - ineffassign
+          - unused
+    paths:
+      - bin/.*
+      - vendor/.*
+      - static/.*
+      - node_modules/.*
+
+  settings:
+    gosec:
+      # Raise the gate to medium severity and confidence to match the sister
+      # Korylus projects (Annict / Mewst / Wikino). This drops low-confidence
+      # findings such as G101 on the hardcoded test-database DSN in
+      # internal/testutil, which is a throwaway local/CI credential, not a secret.
+      #
+      # [Ja] severity / confidence をともに medium に上げ、姉妹 Korylus プロジェクト
+      # (Annict / Mewst / Wikino) に揃える。これにより internal/testutil の
+      # テスト用 DB DSN にハードコードされた認証情報に対する G101 のような低信頼度の
+      # 指摘を除外する。これはローカル / CI 用の使い捨て認証情報であり秘密情報ではない。
+      severity: medium
+      confidence: medium
+
 formatters:
   enable:
     - gofmt # standard Go formatting. [Ja] Go 標準フォーマット
     - goimports # organize imports. [Ja] import 文の整理
+  exclusions:
+    paths:
+      - bin/.*
+      - vendor/.*
+      - static/.*
+      - node_modules/.*
+      - '(.+)_templ\.go' # templ-generated files. [Ja] templ 生成ファイル
   settings:
     goimports:
       # Group imports of this module separately from third-party packages.
