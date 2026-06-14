@@ -15,11 +15,6 @@ on:
 
 env:
   GO_VERSION: "1.26.3"
-  # Pin golangci-lint to the version Dockerfile.dev builds, so local and CI lint
-  # with the same rules.
-  # [Ja] golangci-lint を Dockerfile.dev がビルドするバージョンに固定し、ローカルと
-  # CI が同じルールで lint するようにする。
-  GOLANGCI_LINT_VERSION: "v2.7.2"
 
 jobs:
   lint:
@@ -49,21 +44,12 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
-      # Build golangci-lint from source with the CI Go toolchain instead of using
-      # the prebuilt binary. golangci-lint refuses to analyze a module whose go
-      # directive targets a newer Go than the one it was built with, and the
-      # published binaries lag behind go 1.26.3. This mirrors Dockerfile.dev so
-      # local and CI run the same version.
-      #
-      # [Ja] golangci-lint を配布バイナリではなく CI の Go ツールチェーンでソースから
-      # ビルドする。golangci-lint は自身のビルドに使われた Go より新しい go ディレク
-      # ティブを持つ module の解析を拒否し、配布バイナリは go 1.26.3 への追従が遅れる。
-      # Dockerfile.dev に揃え、ローカルと CI で同じバージョンを動かす。
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ env.GOLANGCI_LINT_VERSION }}
-
       - name: Run golangci-lint
-        run: make lint
+        uses: golangci/golangci-lint-action@v9.2.1
+        with:
+          version: v2.11.4
+          working-directory: go
+          args: --config=.golangci.yml ./...
 
   test:
     name: Test
