@@ -1,12 +1,18 @@
 # In CI the environment variables are already exported, so op run is skipped.
 # Locally, op run resolves the op:// references in .env before launching.
+# OP_RUN_TEST runs with APP_ENV=test so op:// resolves to the test database's
+# DATABASE_URL; reusing OP_RUN_DEV would point the test suite at the dev database.
 #
 # [Ja] CI では環境変数が既にエクスポート済みのため op run を介しません。
 # ローカルでは .env 内の op:// 参照を op run が解決してから起動します。
+# OP_RUN_TEST は APP_ENV=test で実行し、op:// がテスト DB の DATABASE_URL に
+# 解決されるようにします。OP_RUN_DEV を使い回すとテストが dev DB を指してしまいます。
 ifeq ($(CI),true)
   OP_RUN_DEV = APP_ENV=dev
+  OP_RUN_TEST = APP_ENV=test
 else
   OP_RUN_DEV = APP_ENV=dev op run --env-file=".env" --
+  OP_RUN_TEST = APP_ENV=test op run --env-file=".env" --
 endif
 
 .PHONY: help
@@ -66,9 +72,20 @@ lint: ## Run golangci-lint. [Ja] golangci-lint を実行
 lint-comment: ## Check [Ja]-marker misuse in code comments (koryluslint). [Ja] コードコメントの [Ja] マーカー誤用をチェック (koryluslint)
 	@go tool koryluslint comment
 
+# db-setup-test resets the test database and applies db/schema.sql before the run,
+# so `make test` is self-contained. tparse formats the -json stream; it ships via
+# the go.mod tool directive, matching how the other dev tools are invoked here.
+# set -o pipefail surfaces a go test failure through the tparse pipe; without it
+# make would only see tparse's exit code and read a failing run as success.
+#
+# [Ja] db-setup-test が実行前にテスト DB をリセットして db/schema.sql を適用するため、
+# `make test` は自己完結する。tparse は -json ストリームを整形するツールで、go.mod の
+# tool ディレクティブ経由で導入し、ここでの他の開発ツールと同じ呼び出し方に揃えている。
+# set -o pipefail は go test の失敗を tparse パイプ越しに伝播させる。これが無いと make は
+# tparse の終了コードしか見ず、失敗した実行を成功と誤認してしまう。
 .PHONY: test
-test: ## Run tests. [Ja] テストを実行
-	go test -race ./...
+test: db-setup-test ## Run tests. [Ja] テストを実行
+	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./... | go tool tparse -all'
 
 # Database commands. db-migrate / db-dump / db-rollback resolve the op:// refs
 # in .env via op run; db-new only writes a file and db-setup-test talks to the
