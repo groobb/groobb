@@ -87,6 +87,33 @@ lint-comment: ## Check [Ja]-marker misuse in code comments (koryluslint). [Ja] �
 test: db-setup-test ## Run tests. [Ja] テストを実行
 	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./... | go tool tparse -all'
 
+.PHONY: test-pkg
+test-pkg: db-setup-test ## Run tests for a single package (usage: make test-pkg PKG=internal/handler/sign_in). [Ja] 特定パッケージのテストを実行
+	@if [ -z "$(PKG)" ]; then \
+		echo "Error: set the PKG variable"; \
+		echo "Usage: make test-pkg PKG=internal/handler/sign_in"; \
+		exit 1; \
+	fi
+	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./$(PKG) | go tool tparse -all'
+
+.PHONY: test-run
+test-run: db-setup-test ## Run a single test (usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate). [Ja] 特定のテストを実行
+	@if [ -z "$(PKG)" ]; then \
+		echo "Error: set the PKG variable"; \
+		echo "Usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate"; \
+		exit 1; \
+	fi
+	@if [ -z "$(RUN)" ]; then \
+		echo "Error: set the RUN variable"; \
+		echo "Usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate"; \
+		exit 1; \
+	fi
+	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./$(PKG) -run $(RUN) | go tool tparse -all'
+
+.PHONY: test-verbose
+test-verbose: db-setup-test ## Run all tests with verbose logs (for debugging). [Ja] 詳細ログ付きで全テストを実行 (デバッグ用)
+	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race -count=1 ./... | go tool tparse -all'
+
 # Database commands. db-migrate / db-dump / db-rollback resolve the op:// refs
 # in .env via op run; db-new only writes a file and db-setup-test talks to the
 # local/CI Postgres directly, so neither needs op.
