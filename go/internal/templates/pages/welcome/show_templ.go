@@ -5,10 +5,11 @@ package welcome
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
-
-import "github.com/groobb/groobb/go/internal/templates"
+import (
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
+	"github.com/groobb/groobb/go/internal/templates"
+)
 
 // Show renders the Groobb top page: a centered hero with the service heading
 // and a short description. The text is sourced from the locale files so it
