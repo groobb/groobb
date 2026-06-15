@@ -58,6 +58,24 @@ linters:
       # 指摘を除外する。これはローカル / CI 用の使い捨て認証情報であり秘密情報ではない。
       severity: medium
       confidence: medium
+      # G120: the unlimited-body-size warning on r.FormValue / r.ParseForm. gosec
+      # detects this per-function, so every form-parsing site (the CSRF and
+      # method-override middleware here, and every form handler in later phases)
+      # stays flagged. A request-body size cap belongs in one place at the server
+      # or middleware level rather than scattered per call site, so it is added
+      # when the HTTP server is wired; excluding G120 globally here matches the
+      # sister Korylus projects (Annict / Mewst / Wikino) and avoids littering
+      # nolint over every form-parsing call.
+      #
+      # [Ja] G120: r.FormValue / r.ParseForm のボディサイズ未制限の指摘。gosec は
+      # 関数単位で検出するため、フォームを解析する箇所 (ここの CSRF / method-override
+      # ミドルウェアや、後続フェーズの各フォームハンドラー) はすべて検出対象に残る。
+      # リクエストボディサイズの上限は呼び出し箇所ごとに散らすのではなくサーバー /
+      # ミドルウェア単位の 1 箇所に置くべきもので、HTTP サーバー配線時に追加する。
+      # ここで G120 を一括除外するのは姉妹 Korylus プロジェクト (Annict / Mewst /
+      # Wikino) に揃える措置で、各フォーム解析箇所に nolint を散在させるのを避ける。
+      excludes:
+        - G120
 
 formatters:
   enable:
