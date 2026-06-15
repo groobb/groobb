@@ -5,11 +5,10 @@ package components
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
-	"github.com/groobb/groobb/go/internal/viewmodel"
-)
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
+
+import "github.com/groobb/groobb/go/internal/viewmodel"
 
 // Head renders the shared <head> contents: meta tags and asset references. The
 // "?v=" query string busts the browser cache whenever the asset version changes.
