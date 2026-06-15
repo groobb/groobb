@@ -8,7 +8,6 @@ services:
       - postgresql
     volumes:
       - .:/workspace
-      - op-config:/home/developer/.config/op
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/go/.cache/go-build
     ports:
@@ -47,7 +46,6 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
 
 volumes:
-  op-config:
   go-build-cache:
   go-mod-cache:
   postgresql18-data:
