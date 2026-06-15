@@ -1,0 +1,36 @@
+package layouts
+
+// Default is the shared HTML email layout. It provides the document scaffold
+// (<!DOCTYPE>, a <head> with charset/viewport/title, and a styled <body>) plus a
+// minimal footer, and wraps the per-email body passed as children. All styling
+// is inlined because email clients ignore external and most <head> stylesheets.
+//
+// The lang attribute is passed explicitly by the per-locale template (e.g. "ja"
+// or "en") rather than read from context: emails render from a stored account
+// locale, outside the request lifecycle that the i18n middleware populates.
+//
+// [Ja] Default は共有の HTML メールレイアウト。ドキュメントの外枠 (<!DOCTYPE>、
+// charset/viewport/title を含む <head>、スタイル付きの <body>) と最小限のフッターを
+// 提供し、children として渡される各メールの本文を包む。メールクライアントは外部
+// および大半の <head> スタイルシートを無視するため、スタイルはすべてインライン化する。
+//
+// lang 属性は context から読まず、各ロケール別テンプレート (例: "ja" / "en") が
+// 明示的に渡す。メールは i18n ミドルウェアが設定するリクエストのライフサイクルの外で、
+// 永続化されたアカウントのロケールから描画されるためである。
+templ Default(lang, title string) {
+	<!DOCTYPE html>
+	<html lang={ lang }>
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+		</head>
+		<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+			<div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: sans-serif; line-height: 1.6; color: #111827;">
+				{ children... }
+				<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;"/>
+				<p style="color: #6b7280; font-size: 12px;">Groobb</p>
+			</div>
+		</body>
+	</html>
+}

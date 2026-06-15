@@ -94,6 +94,23 @@ func GetTestDB() *pgxpool.Pool {
 	return testPool
 }
 
+// DatabaseURL returns the test database connection string: DATABASE_URL if set
+// (provided by the test harness), otherwise the local/CI default. It is the
+// single source of truth for how tests resolve the DSN, so callers that need
+// the URL string rather than the pool (such as the worker client, which takes a
+// URL instead of a *pgxpool.Pool) resolve it the same way GetTestDB's pool does.
+//
+// [Ja] DatabaseURL はテスト DB の接続文字列を返す。DATABASE_URL (テストハーネスが
+// 設定) があればそれを、無ければローカル / CI の既定値を返す。テストが DSN をどう
+// 解決するかの正本であり、プールではなく URL 文字列を必要とする呼び出し元 (URL を
+// 受け取る worker クライアントなど) も、GetTestDB のプールと同じ方法で解決できる。
+func DatabaseURL() string {
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		return dsn
+	}
+	return "postgres://postgres:postgres@postgresql:5432/groobb_test?sslmode=disable"
+}
+
 // initTestPool establishes the shared pool exactly once. Whichever of
 // SetupTestMain / SetupTx / GetTestDB is called first triggers it, and all
 // callers share the same pool.
@@ -110,12 +127,7 @@ func initTestPool() {
 		// (DefaultCost 10 → MinCost 4 で約 64 倍高速)。
 		auth.BcryptCost = auth.TestBcryptCost
 
-		dsn := os.Getenv("DATABASE_URL")
-		if dsn == "" {
-			dsn = "postgres://postgres:postgres@postgresql:5432/groobb_test?sslmode=disable"
-		}
-
-		pool, err := pgxpool.New(context.Background(), dsn)
+		pool, err := pgxpool.New(context.Background(), DatabaseURL())
 		if err != nil {
 			panic(fmt.Sprintf("テスト用データベースへの接続に失敗: %v", err))
 		}

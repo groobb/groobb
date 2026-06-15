@@ -32,11 +32,27 @@ sql:
           #
           # [Ja] timestamptz は time.Time にマップする。すべての時刻は
           # TIMESTAMP WITH TIME ZONE として UTC で保存する (開発ガイドに従う)。
-          - db_type: "timestamptz"
-            go_type: "time.Time"
-          - db_type: "timestamptz"
+          - db_type: "pg_catalog.timestamptz"
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.timestamptz"
             nullable: true
             go_type:
               import: "time"
               type: "Time"
+              pointer: true
+          # Map the citext extension type to string. citext gives the database
+          # case-insensitive comparison (e.g. users.email uniqueness); on the Go
+          # side it is just a string.
+          #
+          # [Ja] citext 拡張型は string にマップする。citext は DB 側で大文字小文字を
+          # 区別しない比較 (例: users.email の一意性) を担い、Go 側では単なる string
+          # として扱う。
+          - db_type: "public.citext"
+            go_type: "string"
+          - db_type: "public.citext"
+            nullable: true
+            go_type:
+              type: "string"
               pointer: true
