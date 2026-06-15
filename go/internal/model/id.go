@@ -51,3 +51,15 @@ func UUIDsToUserIDs(us []uuid.UUID) []UserID {
 	}
 	return ids
 }
+
+// UserSessionID is the typed identifier for a user session. Like UserID it wraps
+// uuid.UUID so session IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] UserSessionID はユーザーセッションの型付き識別子です。UserID と同様に
+// uuid.UUID をラップし、セッション ID を他エンティティの ID と取り違えられない
+// ようにします。
+type UserSessionID uuid.UUID
+
+// String returns the canonical UUID string form of the UserSessionID.
+// [Ja] String は UserSessionID を正準の UUID 文字列形式で返します。
+func (id UserSessionID) String() string { return uuid.UUID(id).String() }
