@@ -13,17 +13,21 @@ import (
 )
 
 // PageMeta holds the per-page metadata rendered into the HTML <head>.
+//
 // [Ja] PageMeta は HTML の <head> に描画されるページ単位のメタ情報を保持します。
 type PageMeta struct {
 	// Title is the page title rendered into the <title> tag.
+	//
 	// [Ja] Title は <title> タグに描画されるページタイトルです。
 	Title string
 
 	// Description is the page description rendered into the meta description tag.
+	//
 	// [Ja] Description は meta description タグに描画されるページ説明です。
 	Description string
 
 	// AssetVersion is the cache-busting query value appended to CSS / JS URLs.
+	//
 	// [Ja] AssetVersion は CSS / JS の URL に付与するキャッシュ無効化用のクエリ値です。
 	AssetVersion string
 }

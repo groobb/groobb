@@ -1,4 +1,5 @@
 // Command server is the entry point for the Groobb HTTP server.
+//
 // [Ja] server コマンドは Groobb HTTP サーバーのエントリポイントです。
 package main
 
@@ -63,15 +64,18 @@ func main() {
 	r.Use(i18n.Middleware)
 
 	// Health check (no authentication required).
+	//
 	// [Ja] ヘルスチェック (認証不要)。
 	r.Get("/health", healthHandler.Show)
 
 	// Serve static assets (CSS / JS / images) built into ./static.
+	//
 	// [Ja] ./static にビルドされた静的アセット (CSS / JS / 画像) を配信する。
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
 
 	// Top page.
+	//
 	// [Ja] トップページ。
 	r.Get("/", welcomeHandler.Show)
 

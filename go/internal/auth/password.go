@@ -22,6 +22,7 @@ import "golang.org/x/crypto/bcrypt"
 var BcryptCost = bcrypt.DefaultCost
 
 // TestBcryptCost is the minimal bcrypt cost used in tests to speed up hashing.
+//
 // [Ja] TestBcryptCost はテストでハッシュ化を高速化するための最小 bcrypt コストです。
 const TestBcryptCost = bcrypt.MinCost
 

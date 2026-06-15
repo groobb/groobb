@@ -48,6 +48,7 @@ func NewUserSessionBuilder(t *testing.T, tx pgx.Tx) *UserSessionBuilder {
 }
 
 // WithUserID sets the owning user.
+//
 // [Ja] WithUserID は所有ユーザーを設定します。
 func (b *UserSessionBuilder) WithUserID(userID model.UserID) *UserSessionBuilder {
 	b.userID = userID
@@ -55,6 +56,7 @@ func (b *UserSessionBuilder) WithUserID(userID model.UserID) *UserSessionBuilder
 }
 
 // WithToken sets the session token.
+//
 // [Ja] WithToken はセッショントークンを設定します。
 func (b *UserSessionBuilder) WithToken(token string) *UserSessionBuilder {
 	b.token = token
@@ -62,6 +64,7 @@ func (b *UserSessionBuilder) WithToken(token string) *UserSessionBuilder {
 }
 
 // WithIPAddress sets the IP address.
+//
 // [Ja] WithIPAddress は IP アドレスを設定します。
 func (b *UserSessionBuilder) WithIPAddress(ipAddress string) *UserSessionBuilder {
 	b.ipAddress = ipAddress
@@ -69,6 +72,7 @@ func (b *UserSessionBuilder) WithIPAddress(ipAddress string) *UserSessionBuilder
 }
 
 // WithUserAgent sets the user agent.
+//
 // [Ja] WithUserAgent は User-Agent を設定します。
 func (b *UserSessionBuilder) WithUserAgent(userAgent string) *UserSessionBuilder {
 	b.userAgent = userAgent

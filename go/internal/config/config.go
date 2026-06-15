@@ -15,17 +15,21 @@ import (
 )
 
 // Config holds the application settings.
+//
 // [Ja] Config はアプリケーションの設定を保持します。
 type Config struct {
 	// Env is the running environment: "dev", "test", or "prod".
+	//
 	// [Ja] Env は実行環境 ("dev" / "test" / "prod") を表します。
 	Env string
 
 	// DatabaseURL is the PostgreSQL connection string.
+	//
 	// [Ja] DatabaseURL は PostgreSQL の接続文字列です。
 	DatabaseURL string
 
 	// Port is the TCP port the HTTP server listens on.
+	//
 	// [Ja] Port は HTTP サーバーが待ち受ける TCP ポートです。
 	Port string
 
@@ -52,6 +56,7 @@ type Config struct {
 // CI / 本番ではランタイムが直接設定します。
 func Load() (*Config, error) {
 	// APP_ENV defaults to "dev" when unset.
+	//
 	// [Ja] APP_ENV は未設定の場合 "dev" を既定値とします。
 	env := os.Getenv("APP_ENV")
 	if env == "" {
@@ -74,6 +79,7 @@ func Load() (*Config, error) {
 
 	// Pin the asset version to the current commit so that non-dev environments
 	// serve stable, cache-busting asset URLs per deploy.
+	//
 	// [Ja] 非開発環境がデプロイ単位で安定したキャッシュ無効化 URL を配信できるよう、
 	// アセットバージョンを現在のコミットに固定します。
 	cfg.AssetVersion = getGitCommitHash()
@@ -82,18 +88,21 @@ func Load() (*Config, error) {
 }
 
 // IsDev reports whether the running environment is development.
+//
 // [Ja] IsDev は実行環境が開発環境かどうかを返します。
 func (c *Config) IsDev() bool {
 	return c.Env == "dev"
 }
 
 // IsTest reports whether the running environment is test.
+//
 // [Ja] IsTest は実行環境がテスト環境かどうかを返します。
 func (c *Config) IsTest() bool {
 	return c.Env == "test"
 }
 
 // IsProduction reports whether the running environment is production.
+//
 // [Ja] IsProduction は実行環境が本番環境かどうかを返します。
 func (c *Config) IsProduction() bool {
 	return c.Env == "prod"

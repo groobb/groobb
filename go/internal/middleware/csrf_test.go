@@ -84,6 +84,7 @@ func TestCSRF_ReusesExistingToken(t *testing.T) {
 		t.Errorf("context のトークン = %q, want %q", ctxToken, "existing-token")
 	}
 	// No new cookie is issued when a valid one already exists.
+	//
 	// [Ja] 有効な Cookie が既にあるとき新しい Cookie は発行しない。
 	if cookie := findCookie(rec, middleware.CSRFCookieName); cookie != nil {
 		t.Errorf("既存トークンがあるのに新しい Cookie %q が発行された", middleware.CSRFCookieName)
@@ -140,9 +141,12 @@ func TestCSRF_Verify(t *testing.T) {
 	c := middleware.NewCSRF(&config.Config{Env: "test"})
 
 	tests := []struct {
-		name        string
-		method      string
-		cookieToken string // empty means no cookie is sent. [Ja] 空のときは Cookie を送らない
+		name   string
+		method string
+		// empty means no cookie is sent.
+		//
+		// [Ja] 空のときは Cookie を送らない
+		cookieToken string
 		formToken   string
 		headerToken string
 		wantStatus  int
@@ -196,6 +200,7 @@ func TestCSRF_Verify(t *testing.T) {
 					t.Fatal("検証成功時は次のハンドラーが呼ばれるべき")
 				}
 				// The verified token is stored so a re-rendered form can reuse it.
+				//
 				// [Ja] 再描画フォームが再利用できるよう検証済みトークンを格納する。
 				if ctxToken != tt.cookieToken {
 					t.Errorf("検証済みトークンが context に格納されていない: got %q, want %q", ctxToken, tt.cookieToken)

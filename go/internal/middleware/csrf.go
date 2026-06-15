@@ -51,6 +51,7 @@ type CSRF struct {
 }
 
 // NewCSRF creates a CSRF middleware.
+//
 // [Ja] NewCSRF は CSRF ミドルウェアを生成します。
 func NewCSRF(cfg *config.Config) *CSRF {
 	return &CSRF{cfg: cfg}

@@ -19,12 +19,14 @@ import (
 )
 
 // UserRepository reads and writes users through sqlc-generated queries.
+//
 // [Ja] UserRepository は sqlc 生成のクエリ経由で users を読み書きします。
 type UserRepository struct {
 	q *query.Queries
 }
 
 // NewUserRepository creates a UserRepository backed by the given queries.
+//
 // [Ja] NewUserRepository は与えられた queries を使う UserRepository を生成します。
 func NewUserRepository(q *query.Queries) *UserRepository {
 	return &UserRepository{q: q}
