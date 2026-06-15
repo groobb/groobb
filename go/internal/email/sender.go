@@ -20,25 +20,31 @@ import (
 )
 
 // Sender sends an email rendered from templ components.
+//
 // [Ja] Sender は templ コンポーネントからレンダリングしたメールを送信する。
 type Sender interface {
 	// Send sends the email described by input.
+	//
 	// [Ja] Send は input が表すメールを送信する。
 	Send(ctx context.Context, input SendInput) error
 }
 
 // SendInput is the input for sending one email.
+//
 // [Ja] SendInput は 1 通のメール送信の入力。
 type SendInput struct {
 	// To is the recipient email address.
+	//
 	// [Ja] To は送信先メールアドレス。
 	To string
 
 	// Subject is the email subject line.
+	//
 	// [Ja] Subject はメールの件名。
 	Subject string
 
 	// HTMLBody is the HTML body of the email.
+	//
 	// [Ja] HTMLBody はメール本文 (HTML 形式)。
 	HTMLBody templ.Component
 
@@ -94,6 +100,7 @@ func (s *ResendSender) from() string {
 }
 
 // Send renders the bodies and sends the email through Resend.
+//
 // [Ja] Send は本文をレンダリングし、Resend 経由でメールを送信する。
 func (s *ResendSender) Send(ctx context.Context, input SendInput) error {
 	var htmlBuf bytes.Buffer
@@ -128,17 +135,20 @@ func (s *ResendSender) Send(ctx context.Context, input SendInput) error {
 // [Ja] NoopSender はメールを送信せず記録する。Sender のテスト実装。
 type NoopSender struct {
 	// SentEmails holds every email passed to Send, in order, for assertions.
+	//
 	// [Ja] SentEmails は Send に渡された全メールを順に保持し、検証に用いる。
 	SentEmails []SendInput
 }
 
 // NewNoopSender builds a NoopSender with an empty record.
+//
 // [Ja] NewNoopSender は記録が空の NoopSender を構築する。
 func NewNoopSender() *NoopSender {
 	return &NoopSender{SentEmails: make([]SendInput, 0)}
 }
 
 // Send records the email without sending it.
+//
 // [Ja] Send はメールを送信せず記録する。
 func (s *NoopSender) Send(_ context.Context, input SendInput) error {
 	s.SentEmails = append(s.SentEmails, input)
@@ -146,6 +156,7 @@ func (s *NoopSender) Send(_ context.Context, input SendInput) error {
 }
 
 // Reset clears the recorded emails so one sender can be reused across cases.
+//
 // [Ja] Reset は記録済みメールをクリアし、1 つの sender を複数ケースで使い回せる
 // ようにする。
 func (s *NoopSender) Reset() {

@@ -9,6 +9,7 @@ import (
 )
 
 // Compile-time assertions that both senders satisfy Sender.
+//
 // [Ja] 両 Sender が Sender を満たすことのコンパイル時表明。
 var (
 	_ Sender = (*ResendSender)(nil)

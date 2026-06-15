@@ -31,6 +31,7 @@ func TestDefault_Japanese(t *testing.T) {
 	html := renderDefault(t, "ja", "確認用コード", "<p>BODY_MARKER</p>")
 
 	// templ lowercases the doctype on render.
+	//
 	// [Ja] templ は描画時に doctype を小文字化する。
 	if !strings.Contains(html, "<!doctype html>") {
 		t.Errorf("expected doctype in HTML, got: %s", html)
@@ -42,11 +43,13 @@ func TestDefault_Japanese(t *testing.T) {
 		t.Error("expected the title in HTML")
 	}
 	// The children body is rendered inside the layout.
+	//
 	// [Ja] children 本文がレイアウト内に描画されている。
 	if !strings.Contains(html, "BODY_MARKER") {
 		t.Error("expected the children body in HTML")
 	}
 	// The shared footer carries the Groobb signature.
+	//
 	// [Ja] 共有フッターに Groobb の署名が入る。
 	if !strings.Contains(html, "Groobb") {
 		t.Error("expected the footer signature in HTML")

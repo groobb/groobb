@@ -29,6 +29,7 @@ import (
 var localesFS embed.FS
 
 // Supported languages. Japanese is the default.
+//
 // [Ja] サポートする言語。日本語をデフォルトとする。
 const (
 	LangJa      = "ja"
@@ -56,6 +57,7 @@ const (
 var bundle *i18n.Bundle
 
 // init builds the translation bundle from the embedded locale files.
+//
 // [Ja] init は埋め込まれたロケールファイルから翻訳バンドルを構築する。
 func init() {
 	bundle = i18n.NewBundle(language.Japanese)
@@ -97,6 +99,7 @@ func T(ctx context.Context, messageID string, templateData ...map[string]any) st
 		config.TemplateData = templateData[0]
 
 		// Enable plural handling when a Count value is supplied.
+		//
 		// [Ja] Count が渡された場合は複数形処理を有効にする。
 		if count, ok := pluralCount(templateData[0]["Count"]); ok {
 			config.PluralCount = count
@@ -180,6 +183,7 @@ func GetLocale(ctx context.Context) string {
 }
 
 // SetLocale returns a copy of ctx with the given locale stored in it.
+//
 // [Ja] SetLocale は指定したロケールを格納した ctx のコピーを返す。
 func SetLocale(ctx context.Context, locale string) context.Context {
 	return context.WithValue(ctx, localeContextKey, locale)
@@ -200,6 +204,7 @@ func GetLocalizer(ctx context.Context) *i18n.Localizer {
 }
 
 // SetLocalizer returns a copy of ctx with the given Localizer stored in it.
+//
 // [Ja] SetLocalizer は指定した Localizer を格納した ctx のコピーを返す。
 func SetLocalizer(ctx context.Context, localizer *i18n.Localizer) context.Context {
 	return context.WithValue(ctx, localizerContextKey, localizer)

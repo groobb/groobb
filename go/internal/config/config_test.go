@@ -15,6 +15,7 @@ func setRequiredEnv(t *testing.T) {
 }
 
 // TestLoad verifies that Load reads the required environment variables.
+//
 // [Ja] TestLoad は Load が必須の環境変数を読み込むことを検証します。
 func TestLoad(t *testing.T) {
 	setRequiredEnv(t)
@@ -36,6 +37,7 @@ func TestLoad(t *testing.T) {
 }
 
 // TestLoadDefaultsEnvToDev verifies that an empty APP_ENV defaults to "dev".
+//
 // [Ja] TestLoadDefaultsEnvToDev は APP_ENV が空のとき "dev" が既定値になることを検証します。
 func TestLoadDefaultsEnvToDev(t *testing.T) {
 	setRequiredEnv(t)
@@ -52,6 +54,7 @@ func TestLoadDefaultsEnvToDev(t *testing.T) {
 }
 
 // TestLoadMissingRequiredEnv verifies that Load fails when a required variable is missing.
+//
 // [Ja] TestLoadMissingRequiredEnv は必須の環境変数が欠けているとき Load が失敗することを検証します。
 func TestLoadMissingRequiredEnv(t *testing.T) {
 	tests := []struct {
@@ -75,6 +78,7 @@ func TestLoadMissingRequiredEnv(t *testing.T) {
 }
 
 // TestEnvHelpers verifies the IsDev / IsTest / IsProduction helpers.
+//
 // [Ja] TestEnvHelpers は IsDev / IsTest / IsProduction ヘルパーを検証します。
 func TestEnvHelpers(t *testing.T) {
 	t.Parallel()

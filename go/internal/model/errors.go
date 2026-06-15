@@ -19,6 +19,7 @@ type ValidationError struct {
 	// [Ja] Global は特定のフィールドではなくフォーム全体に関わるメッセージを集めます。
 	Global []string
 	// Fields collects messages keyed by the field they belong to.
+	//
 	// [Ja] Fields はフィールドごとに紐づくメッセージを保持します。
 	Fields map[string][]string
 }
@@ -33,12 +34,14 @@ type ValidationError struct {
 func (e *ValidationError) Error() string { return "validation failed" }
 
 // AddGlobal appends a form-wide error message.
+//
 // [Ja] AddGlobal はフォーム全体のエラーメッセージを追加します。
 func (e *ValidationError) AddGlobal(message string) {
 	e.Global = append(e.Global, message)
 }
 
 // AddField appends an error message for the given field.
+//
 // [Ja] AddField は指定したフィールドのエラーメッセージを追加します。
 func (e *ValidationError) AddField(field, message string) {
 	if e.Fields == nil {
@@ -48,6 +51,7 @@ func (e *ValidationError) AddField(field, message string) {
 }
 
 // HasErrors reports whether any global or field error has been added.
+//
 // [Ja] HasErrors はグローバルまたはフィールドのエラーが追加されているかを返します。
 func (e *ValidationError) HasErrors() bool {
 	if e == nil {
@@ -57,6 +61,7 @@ func (e *ValidationError) HasErrors() bool {
 }
 
 // HasFieldError reports whether the given field has any error.
+//
 // [Ja] HasFieldError は指定したフィールドにエラーがあるかを返します。
 func (e *ValidationError) HasFieldError(field string) bool {
 	if e == nil || e.Fields == nil {
@@ -66,6 +71,7 @@ func (e *ValidationError) HasFieldError(field string) bool {
 }
 
 // GetFieldErrors returns the error messages for the given field.
+//
 // [Ja] GetFieldErrors は指定したフィールドのエラーメッセージを返します。
 func (e *ValidationError) GetFieldErrors(field string) []string {
 	if e == nil || e.Fields == nil {
@@ -75,6 +81,7 @@ func (e *ValidationError) GetFieldErrors(field string) []string {
 }
 
 // FieldError is a single field error flattened for template iteration.
+//
 // [Ja] FieldError はテンプレートで反復するために平坦化した単一のフィールドエラー
 // です。
 type FieldError struct {
@@ -83,6 +90,7 @@ type FieldError struct {
 }
 
 // FieldErrors returns all field errors flattened into an iterable slice.
+//
 // [Ja] FieldErrors はすべてのフィールドエラーを反復可能なスライスに平坦化して返し
 // ます。
 func (e *ValidationError) FieldErrors() []FieldError {
@@ -102,6 +110,7 @@ func (e *ValidationError) FieldErrors() []FieldError {
 }
 
 // NewValidationError creates an empty ValidationError ready to collect messages.
+//
 // [Ja] NewValidationError はメッセージを集める準備が整った空の ValidationError を
 // 生成します。
 func NewValidationError() *ValidationError {
@@ -120,15 +129,19 @@ type AppErrorCode int
 
 const (
 	// AppErrCodeResourceNotFound is a missing resource (404-equivalent).
+	//
 	// [Ja] AppErrCodeResourceNotFound はリソース未存在 (404 相当) です。
 	AppErrCodeResourceNotFound AppErrorCode = iota + 1
 	// AppErrCodeForbidden is insufficient permission (403-equivalent).
+	//
 	// [Ja] AppErrCodeForbidden は権限不足 (403 相当) です。
 	AppErrCodeForbidden
 	// AppErrCodeConflict is a state conflict (409-equivalent).
+	//
 	// [Ja] AppErrCodeConflict は状態の競合 (409 相当) です。
 	AppErrCodeConflict
 	// AppErrCodeInternal is a known internal failure (500-equivalent).
+	//
 	// [Ja] AppErrCodeInternal は想定済みの内部エラー (500 相当) です。
 	AppErrCodeInternal
 )
@@ -142,24 +155,30 @@ const (
 // ユーザーに漏れることはありません。
 type AppError struct {
 	// Code is the error kind a handler uses to decide the status code.
+	//
 	// [Ja] Code はハンドラーがステータスコードを決めるために使うエラー種別です。
 	Code AppErrorCode
 	// UserMsg is the user-safe message. It must not contain internal details.
+	//
 	// [Ja] UserMsg はユーザー安全なメッセージです。内部情報を含めてはなりません。
 	UserMsg string
 	// Internal is the underlying error for logging; it is never shown to users.
+	//
 	// [Ja] Internal はログ出力用の内部エラーです。ユーザーには公開しません。
 	Internal error
 	// Metadata is structured-logging context such as user_id or resource_id.
+	//
 	// [Ja] Metadata は user_id や resource_id などの構造化ログ用コンテキストです。
 	Metadata map[string]string
 }
 
 // Error returns only the user-safe message.
+//
 // [Ja] Error はユーザー安全なメッセージのみを返します。
 func (e *AppError) Error() string { return e.UserMsg }
 
 // Unwrap exposes the internal error to the errors.Is / errors.As chain.
+//
 // [Ja] Unwrap は内部エラーを errors.Is / errors.As のチェーンに公開します。
 func (e *AppError) Unwrap() error { return e.Internal }
 

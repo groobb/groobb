@@ -106,6 +106,7 @@ func TestFlashManager_GetFlashCorruptCookie(t *testing.T) {
 	fm := session.NewFlashManager(&config.Config{Env: "test"})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	// "!" is outside the base64 alphabet, so decoding fails.
+	//
 	// [Ja] "!" は base64 のアルファベット外なのでデコードに失敗する。
 	req.AddCookie(&http.Cookie{Name: session.FlashCookieName, Value: "!!!not-base64!!!"})
 	getRec := httptest.NewRecorder()

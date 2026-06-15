@@ -49,6 +49,7 @@ type Manager struct {
 }
 
 // NewManager creates a Manager.
+//
 // [Ja] NewManager は Manager を生成します。
 func NewManager(
 	userRepo *repository.UserRepository,

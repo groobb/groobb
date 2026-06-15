@@ -1,4 +1,5 @@
 // Package templates provides helper functions called from templ templates.
+//
 // [Ja] templates パッケージは templ テンプレートから呼び出されるヘルパー関数を提供します。
 package templates
 

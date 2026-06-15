@@ -27,20 +27,25 @@ type FlashType string
 
 const (
 	// FlashSuccess marks a success message.
+	//
 	// [Ja] FlashSuccess は成功メッセージを表します。
 	FlashSuccess FlashType = "success"
 	// FlashError marks an error message.
+	//
 	// [Ja] FlashError はエラーメッセージを表します。
 	FlashError FlashType = "error"
 	// FlashWarning marks a warning message.
+	//
 	// [Ja] FlashWarning は警告メッセージを表します。
 	FlashWarning FlashType = "warning"
 	// FlashInfo marks an informational message.
+	//
 	// [Ja] FlashInfo は情報メッセージを表します。
 	FlashInfo FlashType = "info"
 )
 
 // FlashMessage is a single flash message persisted in the flash cookie.
+//
 // [Ja] FlashMessage はフラッシュ Cookie に保存される単一のフラッシュメッセージです。
 type FlashMessage struct {
 	Type    FlashType `json:"type"`
@@ -59,30 +64,35 @@ type FlashManager struct {
 }
 
 // NewFlashManager creates a FlashManager.
+//
 // [Ja] NewFlashManager は FlashManager を生成します。
 func NewFlashManager(cfg *config.Config) *FlashManager {
 	return &FlashManager{cfg: cfg}
 }
 
 // SetSuccess sets a success flash message.
+//
 // [Ja] SetSuccess は成功フラッシュメッセージを設定します。
 func (f *FlashManager) SetSuccess(w http.ResponseWriter, message string) {
 	f.setFlash(w, FlashSuccess, message)
 }
 
 // SetError sets an error flash message.
+//
 // [Ja] SetError はエラーフラッシュメッセージを設定します。
 func (f *FlashManager) SetError(w http.ResponseWriter, message string) {
 	f.setFlash(w, FlashError, message)
 }
 
 // SetWarning sets a warning flash message.
+//
 // [Ja] SetWarning は警告フラッシュメッセージを設定します。
 func (f *FlashManager) SetWarning(w http.ResponseWriter, message string) {
 	f.setFlash(w, FlashWarning, message)
 }
 
 // SetInfo sets an informational flash message.
+//
 // [Ja] SetInfo は情報フラッシュメッセージを設定します。
 func (f *FlashManager) SetInfo(w http.ResponseWriter, message string) {
 	f.setFlash(w, FlashInfo, message)
@@ -104,11 +114,14 @@ func (f *FlashManager) setFlash(w http.ResponseWriter, flashType FlashType, mess
 	encoded := base64.StdEncoding.EncodeToString(data)
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     FlashCookieName,
-		Value:    encoded,
-		Path:     "/",
-		Secure:   f.cfg.IsProduction(),
-		HttpOnly: false, // readable from JavaScript for toast rendering. [Ja] toast 描画のため JavaScript から参照可能にする
+		Name:   FlashCookieName,
+		Value:  encoded,
+		Path:   "/",
+		Secure: f.cfg.IsProduction(),
+		// readable from JavaScript for toast rendering.
+		//
+		// [Ja] toast 描画のため JavaScript から参照可能にする
+		HttpOnly: false,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

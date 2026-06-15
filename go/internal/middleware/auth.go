@@ -29,12 +29,14 @@ type contextKey string
 const userContextKey contextKey = "user"
 
 // Auth holds the dependencies of the authentication middleware.
+//
 // [Ja] Auth は認証ミドルウェアの依存を保持する。
 type Auth struct {
 	sessionMgr *session.Manager
 }
 
 // NewAuth creates an Auth middleware.
+//
 // [Ja] NewAuth は Auth ミドルウェアを生成する。
 func NewAuth(sessionMgr *session.Manager) *Auth {
 	return &Auth{sessionMgr: sessionMgr}

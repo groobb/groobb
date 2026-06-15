@@ -43,6 +43,7 @@ func NewUserBuilder(t *testing.T, tx pgx.Tx) *UserBuilder {
 }
 
 // WithEmail sets the email.
+//
 // [Ja] WithEmail は email を設定します。
 func (b *UserBuilder) WithEmail(email string) *UserBuilder {
 	b.email = email
@@ -50,6 +51,7 @@ func (b *UserBuilder) WithEmail(email string) *UserBuilder {
 }
 
 // WithLocale sets the locale.
+//
 // [Ja] WithLocale は locale を設定します。
 func (b *UserBuilder) WithLocale(locale string) *UserBuilder {
 	b.locale = locale
@@ -57,6 +59,7 @@ func (b *UserBuilder) WithLocale(locale string) *UserBuilder {
 }
 
 // WithTimeZone sets the time zone.
+//
 // [Ja] WithTimeZone は time zone を設定します。
 func (b *UserBuilder) WithTimeZone(timeZone string) *UserBuilder {
 	b.timeZone = timeZone

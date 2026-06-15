@@ -11,6 +11,7 @@ import (
 )
 
 // Show GET / - renders the top page.
+//
 // [Ja] Show GET / - トップページを描画します。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

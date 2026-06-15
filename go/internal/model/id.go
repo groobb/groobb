@@ -23,6 +23,7 @@ import "github.com/google/uuid"
 type UserID uuid.UUID
 
 // String returns the canonical UUID string form of the UserID.
+//
 // [Ja] String は UserID を正準の UUID 文字列形式で返します。
 func (id UserID) String() string { return uuid.UUID(id).String() }
 
@@ -61,5 +62,6 @@ func UUIDsToUserIDs(us []uuid.UUID) []UserID {
 type UserSessionID uuid.UUID
 
 // String returns the canonical UUID string form of the UserSessionID.
+//
 // [Ja] String は UserSessionID を正準の UUID 文字列形式で返します。
 func (id UserSessionID) String() string { return uuid.UUID(id).String() }
