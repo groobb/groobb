@@ -1,0 +1,82 @@
+package sign_up
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+)
+
+// NewPageData is the data for the sign-up form page. Email is echoed back so a
+// re-rendered form (after a validation error) keeps what the user typed,
+// FormErrors carries the per-field validation messages to show, and FormError
+// carries a single form-wide message (empty when there is none) shown when the
+// request itself failed, e.g. the confirmation mail could not be enqueued.
+//
+// [Ja] NewPageData はサインアップフォームページのデータです。Email は再描画
+// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// 表示するフィールド別のバリデーションメッセージを運び、FormError は申請自体が失敗した
+// とき (例: 確認メールを投入できなかった) に表示するフォーム全体のメッセージ 1 件
+// (無いときは空文字列) を運びます。
+type NewPageData struct {
+	CSRFToken  string
+	Email      string
+	FormErrors *model.ValidationError
+	FormError  string
+}
+
+// New renders the sign-up form: a single email field that, on submit, requests a
+// confirmation code. The CSRF token is embedded as a hidden field for the
+// double-submit-cookie check.
+//
+// [Ja] New はサインアップフォームを描画します。送信すると確認コードを要求する単一の
+// email フィールドです。CSRF トークンは double-submit cookie 検証のため hidden
+// フィールドとして埋め込みます。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+				{ templates.T(ctx, "sign_up_new_heading") }
+			</h1>
+			<p class="text-sm text-gray-600">
+				{ templates.T(ctx, "sign_up_new_lead") }
+			</p>
+		</div>
+		<form action="/sign_up" method="POST" class="flex flex-col gap-4">
+			if data.FormError != "" {
+				<div role="alert" class="rounded-md border border-red-300 bg-red-50 px-3 py-2">
+					<p class="text-sm text-red-600">{ data.FormError }</p>
+				</div>
+			}
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div class="flex flex-col gap-1">
+				<label for="email" class="text-sm font-medium text-gray-900">
+					{ templates.T(ctx, "sign_up_new_email_label") }
+				</label>
+				<input
+					id="email"
+					name="email"
+					type="email"
+					value={ data.Email }
+					autocomplete="email"
+					enterkeyhint="send"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("email") {
+						aria-invalid="true"
+						aria-describedby="email-error"
+					}
+					class="rounded-md border border-gray-300 px-3 py-2"
+				/>
+				if data.FormErrors.HasFieldError("email") {
+					<div id="email-error" role="alert" class="flex flex-col gap-1">
+						for _, message := range data.FormErrors.GetFieldErrors("email") {
+							<p class="text-sm text-red-600">{ message }</p>
+						}
+					</div>
+				}
+			</div>
+			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+				{ templates.T(ctx, "sign_up_new_submit") }
+			</button>
+		</form>
+	</div>
+}
