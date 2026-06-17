@@ -1,0 +1,22 @@
+package password_reset
+
+import (
+	"strconv"
+
+	"github.com/groobb/groobb/go/internal/templates/emails/layouts"
+)
+
+// EnHTML renders the English HTML body, wrapping the content in the shared email
+// layout (which supplies the document scaffold and Groobb footer).
+//
+// [Ja] EnHTML は英語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobb フッターを供給する) で内容を包みます。
+templ EnHTML(data Data) {
+	@layouts.Default("en", "Reset your password") {
+		<p>We received a request to reset the password for { data.Email }.</p>
+		<p>Open the link below to set a new password.</p>
+		<p><a href={ templ.SafeURL(data.ResetURL) }>{ data.ResetURL }</a></p>
+		<p>This link is valid for { strconv.Itoa(data.ExpiresInHours) } { data.enHourUnit() }.</p>
+		<p>If you did not request this email, please disregard it. Your password will not be changed.</p>
+	}
+}

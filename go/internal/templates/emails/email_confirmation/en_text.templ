@@ -1,0 +1,24 @@
+package email_confirmation
+
+import (
+	"fmt"
+
+	"github.com/a-h/templ"
+)
+
+// EnText renders the English plain-text body. Like JaText it is built with
+// templ.Raw from a formatted string so the line breaks survive verbatim.
+//
+// [Ja] EnText は英語のプレーンテキスト本文を描画します。JaText と同様、整形済み
+// 文字列から templ.Raw で組み立て、改行をそのまま保ちます。
+templ EnText(data Data) {
+	@templ.Raw(fmt.Sprintf(
+		"Here is the confirmation code for %s.\n\n"+
+			"Enter the code below to confirm your email address.\n\n"+
+			"%s\n\n"+
+			"This code is valid for 15 minutes.\n\n"+
+			"If you did not request this email, please disregard it.\n\n"+
+			"Groobb\n",
+		data.Email, data.Code,
+	))
+}
