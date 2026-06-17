@@ -41,6 +41,53 @@ type Config struct {
 	// (Git コミットハッシュ) です。開発環境では代わりにタイムスタンプを使います
 	// (GetAssetVersion を参照)。
 	AssetVersion string
+
+	// ResendAPIKey, EmailFrom, and EmailFromName configure outgoing email through
+	// Resend. They are consumed by the worker client when it builds the email
+	// sender for background jobs. They are optional rather than required: the
+	// worker is not started yet (its first enqueue-side consumer, sign-up, comes
+	// in a later task), so a deployment without email configured must still boot.
+	// When the worker is wired into main.go, missing values can be promoted to a
+	// startup error then.
+	//
+	// [Ja] ResendAPIKey / EmailFrom / EmailFromName は Resend 経由の送信メールを設定
+	// します。ワーカークライアントがバックグラウンドジョブ用の email sender を構築する
+	// 際に使います。必須ではなく任意とします。ワーカーはまだ起動されておらず (最初の
+	// 投入側の利用者であるサインアップは後続タスク)、メール未設定のデプロイでも起動できる
+	// 必要があるためです。ワーカーを main.go に配線する時点で、欠落を起動時エラーへ
+	// 格上げできます。
+	ResendAPIKey string
+
+	// EmailFrom is the sender address used in the From header of outgoing email.
+	//
+	// [Ja] EmailFrom は送信メールの From ヘッダーに使う送信元アドレスです。
+	EmailFrom string
+
+	// EmailFromName is the display name shown alongside EmailFrom in the From
+	// header.
+	//
+	// [Ja] EmailFromName は From ヘッダーで EmailFrom と並べて表示する送信元の表示名
+	// です。
+	EmailFromName string
+
+	// AppURL is the public base URL of the application (e.g.
+	// "https://groobb.example.dev" in production, "http://localhost:8080" in
+	// dev), with no trailing slash. It is needed to build absolute links in
+	// outgoing email (such as the password reset link), which a relative path
+	// cannot express. A full base URL is stored rather than a bare domain so it
+	// can carry the scheme and port that dev (plain HTTP on a port) requires. It
+	// is optional rather than required for the same reason as the email settings
+	// (a deployment without email configured must still boot); when the link is
+	// built from an empty AppURL the URL is simply host-relative.
+	//
+	// [Ja] AppURL はアプリケーションの公開ベース URL (例: 本番は
+	// "https://groobb.example.dev"、dev は "http://localhost:8080") で、末尾スラッシュは
+	// 付けません。送信メール内の絶対リンク (パスワードリセットリンクなど) を組み立てるのに
+	// 必要で、相対パスでは表現できません。素のドメインではなくベース URL 全体を保持するのは、
+	// dev (ポート上の平文 HTTP) が要求するスキームとポートを含められるようにするためです。
+	// メール設定と同じ理由で必須ではなく任意とします (メール未設定のデプロイでも起動できる
+	// 必要があるため)。空の AppURL からリンクを組み立てた場合、URL は単にホスト相対になります。
+	AppURL string
 }
 
 // Load reads the configuration from environment variables.
@@ -83,6 +130,24 @@ func Load() (*Config, error) {
 	// [Ja] 非開発環境がデプロイ単位で安定したキャッシュ無効化 URL を配信できるよう、
 	// アセットバージョンを現在のコミットに固定します。
 	cfg.AssetVersion = getGitCommitHash()
+
+	// Email settings are read without requiring them: the worker that uses them
+	// is not started yet, so a deployment without email configured must still
+	// boot (see the field docs).
+	//
+	// [Ja] メール設定は必須にせず読み込む。これらを使うワーカーはまだ起動されない
+	// ため、メール未設定のデプロイでも起動できる必要がある (フィールドのドキュメントを
+	// 参照)。
+	cfg.ResendAPIKey = os.Getenv("GROOBB_RESEND_API_KEY")
+	cfg.EmailFrom = os.Getenv("GROOBB_EMAIL_FROM")
+	cfg.EmailFromName = os.Getenv("GROOBB_EMAIL_FROM_NAME")
+
+	// AppURL is read without requiring it, for the same reason as the email
+	// settings above (see the field docs).
+	//
+	// [Ja] AppURL は必須にせず読み込む。理由は上のメール設定と同じ (フィールドの
+	// ドキュメントを参照)。
+	cfg.AppURL = os.Getenv("GROOBB_APP_URL")
 
 	return cfg, nil
 }
