@@ -60,6 +60,26 @@ func (e *ValidationError) HasErrors() bool {
 	return len(e.Global) > 0 || len(e.Fields) > 0
 }
 
+// HasGlobalError reports whether any form-wide error has been added.
+//
+// [Ja] HasGlobalError はフォーム全体のエラーが追加されているかを返します。
+func (e *ValidationError) HasGlobalError() bool {
+	if e == nil {
+		return false
+	}
+	return len(e.Global) > 0
+}
+
+// GetGlobalErrors returns the form-wide error messages.
+//
+// [Ja] GetGlobalErrors はフォーム全体のエラーメッセージを返します。
+func (e *ValidationError) GetGlobalErrors() []string {
+	if e == nil {
+		return nil
+	}
+	return e.Global
+}
+
 // HasFieldError reports whether the given field has any error.
 //
 // [Ja] HasFieldError は指定したフィールドにエラーがあるかを返します。

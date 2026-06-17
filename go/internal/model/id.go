@@ -65,3 +65,45 @@ type UserSessionID uuid.UUID
 //
 // [Ja] String は UserSessionID を正準の UUID 文字列形式で返します。
 func (id UserSessionID) String() string { return uuid.UUID(id).String() }
+
+// EmailConfirmationID is the typed identifier for an email confirmation. Like
+// UserID it wraps uuid.UUID so confirmation IDs cannot be mixed up with other
+// entities' IDs.
+//
+// [Ja] EmailConfirmationID はメール確認の型付き識別子です。UserID と同様に
+// uuid.UUID をラップし、確認 ID を他エンティティの ID と取り違えられないように
+// します。
+type EmailConfirmationID uuid.UUID
+
+// String returns the canonical UUID string form of the EmailConfirmationID.
+//
+// [Ja] String は EmailConfirmationID を正準の UUID 文字列形式で返します。
+func (id EmailConfirmationID) String() string { return uuid.UUID(id).String() }
+
+// UserPasswordID is the typed identifier for a user's password credential. Like
+// UserID it wraps uuid.UUID so password IDs cannot be mixed up with other
+// entities' IDs.
+//
+// [Ja] UserPasswordID はユーザーのパスワード資格情報の型付き識別子です。UserID と
+// 同様に uuid.UUID をラップし、パスワード ID を他エンティティの ID と取り違えられ
+// ないようにします。
+type UserPasswordID uuid.UUID
+
+// String returns the canonical UUID string form of the UserPasswordID.
+//
+// [Ja] String は UserPasswordID を正準の UUID 文字列形式で返します。
+func (id UserPasswordID) String() string { return uuid.UUID(id).String() }
+
+// PasswordResetTokenID is the typed identifier for a password reset token. Like
+// UserID it wraps uuid.UUID so reset-token IDs cannot be mixed up with other
+// entities' IDs.
+//
+// [Ja] PasswordResetTokenID はパスワードリセットトークンの型付き識別子です。UserID と
+// 同様に uuid.UUID をラップし、リセットトークン ID を他エンティティの ID と取り違え
+// られないようにします。
+type PasswordResetTokenID uuid.UUID
+
+// String returns the canonical UUID string form of the PasswordResetTokenID.
+//
+// [Ja] String は PasswordResetTokenID を正準の UUID 文字列形式で返します。
+func (id PasswordResetTokenID) String() string { return uuid.UUID(id).String() }
