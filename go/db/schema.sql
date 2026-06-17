@@ -95,6 +95,38 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: email_confirmations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.email_confirmations (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    email public.citext NOT NULL,
+    event character varying NOT NULL,
+    code character varying NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    succeeded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    failed_attempts_count integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: password_reset_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.password_reset_tokens (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    user_id uuid NOT NULL,
+    token_digest character varying NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: river_client; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -227,6 +259,19 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: user_passwords; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_passwords (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    user_id uuid NOT NULL,
+    password_digest character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -261,6 +306,30 @@ CREATE TABLE public.users (
 --
 
 ALTER TABLE ONLY public.river_job ALTER COLUMN id SET DEFAULT nextval('public.river_job_id_seq'::regclass);
+
+
+--
+-- Name: email_confirmations email_confirmations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.email_confirmations
+    ADD CONSTRAINT email_confirmations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: password_reset_tokens password_reset_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: password_reset_tokens password_reset_tokens_token_digest_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_token_digest_key UNIQUE (token_digest);
 
 
 --
@@ -320,6 +389,22 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: user_passwords user_passwords_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_passwords
+    ADD CONSTRAINT user_passwords_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_passwords user_passwords_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_passwords
+    ADD CONSTRAINT user_passwords_user_id_key UNIQUE (user_id);
+
+
+--
 -- Name: user_sessions user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -349,6 +434,13 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: index_password_reset_tokens_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_password_reset_tokens_on_user_id ON public.password_reset_tokens USING btree (user_id);
 
 
 --
@@ -401,11 +493,27 @@ CREATE INDEX user_sessions_user_id_idx ON public.user_sessions USING btree (user
 
 
 --
+-- Name: password_reset_tokens password_reset_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.password_reset_tokens
+    ADD CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: river_client_queue river_client_queue_river_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.river_client_queue
     ADD CONSTRAINT river_client_queue_river_client_id_fkey FOREIGN KEY (river_client_id) REFERENCES public.river_client(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_passwords user_passwords_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_passwords
+    ADD CONSTRAINT user_passwords_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -430,4 +538,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260614160555'),
     ('20260614160556'),
     ('20260615021215'),
-    ('20260615120000');
+    ('20260615120000'),
+    ('20260616014134'),
+    ('20260616023735'),
+    ('20260616152453'),
+    ('20260617054258');
