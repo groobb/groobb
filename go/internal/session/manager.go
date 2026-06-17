@@ -11,6 +11,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
@@ -22,6 +24,28 @@ import (
 // [Ja] CookieName はセッショントークンを格納する Cookie の名前です。環境変数 /
 // 識別子の命名規約に従いプロジェクト接頭辞を付けています。
 const CookieName = "groobb_session_token"
+
+// EmailConfirmationCookieName is the name of the cookie that carries the pending
+// email confirmation's id across the sign-up handoff: sign-up issues a
+// confirmation and stores its id here, and the code-entry step reads it back to
+// know which confirmation to verify. It carries the project prefix per the
+// identifier naming convention.
+//
+// [Ja] EmailConfirmationCookieName は、サインアップの受け渡しをまたいで保留中のメール
+// 確認の id を運ぶ Cookie の名前です。サインアップは確認を発行してその id をここに
+// 保存し、コード入力のステップがこれを読み戻してどの確認を検証すべきかを知ります。
+// 識別子の命名規約に従いプロジェクト接頭辞を付けています。
+const EmailConfirmationCookieName = "groobb_email_confirmation_id"
+
+// emailConfirmationCookieMaxAge is the email-confirmation cookie lifetime in
+// seconds (15 minutes). It matches the confirmation code's own expiry window
+// (the Korylus convention is 15 minutes), so the cookie does not outlive the
+// code it points at.
+//
+// [Ja] emailConfirmationCookieMaxAge はメール確認 Cookie の有効期間 (秒、15 分) です。
+// 確認コード自体の有効期限ウィンドウ (Korylus の慣行は 15 分) に揃え、Cookie が指す先の
+// コードより長く生存しないようにします。
+const emailConfirmationCookieMaxAge = 15 * 60
 
 // sessionCookieMaxAge is the session cookie lifetime in seconds. Sessions have
 // no server-side expiry column (a row in user_sessions lives until explicit
@@ -71,7 +95,7 @@ func NewManager(
 // を返します。非 nil のエラーは本物の失敗 (例: データベースに到達できない) のために
 // のみ用います。
 func (m *Manager) GetCurrentUser(ctx context.Context, r *http.Request) (*model.User, error) {
-	token := m.sessionToken(r)
+	token := m.SessionToken(r)
 	if token == "" {
 		return nil, nil
 	}
@@ -119,12 +143,79 @@ func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// sessionToken returns the session token from the request cookie, or "" when the
-// cookie is absent.
+// SetEmailConfirmationID writes the pending confirmation's id to its cookie so
+// the next step (code entry) can read which confirmation to verify. The cookie
+// is HttpOnly because the id is server-side state the browser only relays; the
+// other attributes mirror the session cookie's policy (Secure only in
+// production, SameSite=Lax).
 //
-// [Ja] sessionToken はリクエスト Cookie からセッショントークンを返します。Cookie が
-// 無い場合は "" を返します。
-func (m *Manager) sessionToken(r *http.Request) string {
+// [Ja] SetEmailConfirmationID は保留中の確認の id を専用 Cookie に書き込み、次の
+// ステップ (コード入力) がどの確認を検証すべきかを読めるようにします。id はブラウザが
+// 中継するだけのサーバー側の状態のため Cookie は HttpOnly とし、他の属性はセッション
+// Cookie の方針 (Secure は本番のみ・SameSite=Lax) に揃えます。
+func (m *Manager) SetEmailConfirmationID(w http.ResponseWriter, id model.EmailConfirmationID) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     EmailConfirmationCookieName,
+		Value:    id.String(),
+		Path:     "/",
+		Secure:   m.cfg.IsProduction(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   emailConfirmationCookieMaxAge,
+	})
+}
+
+// GetEmailConfirmationID returns the pending confirmation id stored in the
+// request cookie. The second return value is false when the cookie is absent or
+// its value is not a valid UUID (e.g. a corrupt or forged cookie), so callers
+// treat a malformed cookie the same as no cookie.
+//
+// [Ja] GetEmailConfirmationID はリクエスト Cookie に格納された保留中の確認 id を
+// 返します。Cookie が無い、または値が妥当な UUID でない (壊れた / 偽造された Cookie
+// など) 場合は第 2 戻り値が false になり、呼び出し側は不正な Cookie を Cookie 無しと
+// 同じに扱えます。
+func (m *Manager) GetEmailConfirmationID(r *http.Request) (model.EmailConfirmationID, bool) {
+	cookie, err := r.Cookie(EmailConfirmationCookieName)
+	if err != nil {
+		return model.EmailConfirmationID{}, false
+	}
+	parsed, err := uuid.Parse(cookie.Value)
+	if err != nil {
+		return model.EmailConfirmationID{}, false
+	}
+	return model.EmailConfirmationID(parsed), true
+}
+
+// DeleteEmailConfirmationID clears the email-confirmation cookie by setting a
+// matching cookie with MaxAge < 0, so a completed or abandoned confirmation does
+// not linger. The attributes mirror SetEmailConfirmationID so the browser
+// matches and removes it.
+//
+// [Ja] DeleteEmailConfirmationID は MaxAge < 0 の同名 Cookie を設定してメール確認
+// Cookie を消去し、完了または放棄された確認が残らないようにします。属性は
+// SetEmailConfirmationID と揃え、ブラウザが一致して削除できるようにします。
+func (m *Manager) DeleteEmailConfirmationID(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     EmailConfirmationCookieName,
+		Value:    "",
+		Path:     "/",
+		Secure:   m.cfg.IsProduction(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+// SessionToken returns the session token from the request cookie, or "" when the
+// cookie is absent. Sign-out reads it to delete the matching session row before
+// clearing the cookie, and GetCurrentUser reads it the same way to resolve the
+// signed-in user, so this is the single source for reading the token.
+//
+// [Ja] SessionToken はリクエスト Cookie からセッショントークンを返します。Cookie が
+// 無い場合は "" を返します。サインアウトは Cookie を消去する前に一致するセッション行を
+// 削除するためにこれを読み、GetCurrentUser も同じ方法でサインイン済みユーザーを解決する
+// ため、これがトークン読み取りの単一の情報源です。
+func (m *Manager) SessionToken(r *http.Request) string {
 	cookie, err := r.Cookie(CookieName)
 	if err != nil {
 		return ""
