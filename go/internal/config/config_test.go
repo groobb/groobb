@@ -36,6 +36,90 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+// TestLoadReadsEmailSettings verifies the optional Resend email settings are
+// read from the environment, and default to empty when unset (they are not
+// required because the worker that uses them is not started yet).
+//
+// [Ja] TestLoadReadsEmailSettings は任意の Resend メール設定が環境変数から読み込まれ、
+// 未設定時は空になることを検証する (これらを使うワーカーはまだ起動されないため必須では
+// ない)。
+func TestLoadReadsEmailSettings(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("GROOBB_RESEND_API_KEY", "re_test_key")
+		t.Setenv("GROOBB_EMAIL_FROM", "noreply@example.dev")
+		t.Setenv("GROOBB_EMAIL_FROM_NAME", "Groobb")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() returned an unexpected error: %v", err)
+		}
+
+		if cfg.ResendAPIKey != "re_test_key" {
+			t.Errorf("ResendAPIKey = %q, want %q", cfg.ResendAPIKey, "re_test_key")
+		}
+		if cfg.EmailFrom != "noreply@example.dev" {
+			t.Errorf("EmailFrom = %q, want %q", cfg.EmailFrom, "noreply@example.dev")
+		}
+		if cfg.EmailFromName != "Groobb" {
+			t.Errorf("EmailFromName = %q, want %q", cfg.EmailFromName, "Groobb")
+		}
+	})
+
+	t.Run("unset defaults to empty without error", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("GROOBB_RESEND_API_KEY", "")
+		t.Setenv("GROOBB_EMAIL_FROM", "")
+		t.Setenv("GROOBB_EMAIL_FROM_NAME", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() should not fail when email settings are missing: %v", err)
+		}
+
+		if cfg.ResendAPIKey != "" || cfg.EmailFrom != "" || cfg.EmailFromName != "" {
+			t.Errorf("email settings should default to empty, got %q / %q / %q",
+				cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
+		}
+	})
+}
+
+// TestLoadReadsAppURL verifies the optional AppURL is read from the environment,
+// and defaults to empty when unset (it is not required for the same reason as
+// the email settings: a deployment without it must still boot).
+//
+// [Ja] TestLoadReadsAppURL は任意の AppURL が環境変数から読み込まれ、未設定時は空に
+// なることを検証する (メール設定と同じ理由で必須ではない: 未設定でも起動できる必要がある)。
+func TestLoadReadsAppURL(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("GROOBB_APP_URL", "https://groobb.example.dev")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() returned an unexpected error: %v", err)
+		}
+
+		if cfg.AppURL != "https://groobb.example.dev" {
+			t.Errorf("AppURL = %q, want %q", cfg.AppURL, "https://groobb.example.dev")
+		}
+	})
+
+	t.Run("unset defaults to empty without error", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("GROOBB_APP_URL", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() should not fail when AppURL is missing: %v", err)
+		}
+
+		if cfg.AppURL != "" {
+			t.Errorf("AppURL should default to empty, got %q", cfg.AppURL)
+		}
+	})
+}
+
 // TestLoadDefaultsEnvToDev verifies that an empty APP_ENV defaults to "dev".
 //
 // [Ja] TestLoadDefaultsEnvToDev は APP_ENV が空のとき "dev" が既定値になることを検証します。

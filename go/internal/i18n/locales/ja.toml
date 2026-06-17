@@ -25,3 +25,263 @@ other = "あなたの掲示板を、つくろう。"
 [welcome_show_lead]
 description = "トップページのヒーロー説明文"
 other = "Groobb は、自分だけの掲示板をつくって仲間と交流できる掲示板サービスです。"
+
+[email_confirmation_subject]
+description = "メール確認コードのメールの件名"
+other = "[Groobb] 確認用コード"
+
+[password_reset_email_subject]
+description = "パスワードリセットメールの件名"
+other = "[Groobb] パスワードの再設定"
+
+[sign_up_new_title]
+description = "サインアップページのタイトル (title タグ)"
+other = "アカウント登録"
+
+[sign_up_new_description]
+description = "サインアップページの meta description"
+other = "Groobb のアカウントを新規登録します。"
+
+[sign_up_new_heading]
+description = "サインアップページの見出し"
+other = "Groobb に登録"
+
+[sign_up_new_lead]
+description = "サインアップページの説明文 (メール確認コード送信の案内)"
+other = "入力したメールアドレスに確認コードを送信します。"
+
+[sign_up_new_email_label]
+description = "サインアップページのメールアドレスのラベル"
+other = "メールアドレス"
+
+[sign_up_new_submit]
+description = "サインアップページの送信ボタン"
+other = "確認コードを送信"
+
+[email_confirmation_new_title]
+description = "メール確認コード入力ページのタイトル (title タグ)"
+other = "確認コードの入力"
+
+[email_confirmation_new_description]
+description = "メール確認コード入力ページの meta description"
+other = "メールで届いた確認コードを入力してアカウント登録を続けます。"
+
+[email_confirmation_new_heading]
+description = "メール確認コード入力ページの見出し"
+other = "確認コードを入力"
+
+[email_confirmation_new_lead]
+description = "メール確認コード入力ページの説明文 (コードの入力を促す)"
+other = "メールに記載された 6 桁の確認コードを入力してください。"
+
+[email_confirmation_new_code_label]
+description = "メール確認コード入力ページの確認コードのラベル"
+other = "確認コード"
+
+[email_confirmation_new_submit]
+description = "メール確認コード入力ページの送信ボタン"
+other = "確認する"
+
+[account_new_title]
+description = "アカウント作成 (パスワード設定) ページのタイトル (title タグ)"
+other = "パスワードの設定"
+
+[account_new_description]
+description = "アカウント作成 (パスワード設定) ページの meta description"
+other = "パスワードを設定してアカウント登録を完了します。"
+
+[account_new_heading]
+description = "アカウント作成 (パスワード設定) ページの見出し"
+other = "パスワードを設定"
+
+[account_new_lead]
+description = "アカウント作成 (パスワード設定) ページの説明文 (最後のステップである旨を伝える)"
+other = "アカウント登録の最後のステップです。パスワードを設定してください。"
+
+[account_new_password_label]
+description = "アカウント作成ページのパスワードのラベル"
+other = "パスワード"
+
+[account_new_password_hint]
+description = "アカウント作成ページのパスワードのヒント (文字数)"
+other = "8 文字以上で入力してください"
+
+[account_new_password_confirmation_label]
+description = "アカウント作成ページのパスワード確認のラベル"
+other = "パスワード (確認)"
+
+[account_new_submit]
+description = "アカウント作成ページの送信ボタン"
+other = "アカウントを作成"
+
+[sign_in_new_title]
+description = "サインインページのタイトル (title タグ)"
+other = "ログイン"
+
+[sign_in_new_description]
+description = "サインインページの meta description"
+other = "Groobb アカウントにログインします。"
+
+[sign_in_new_heading]
+description = "サインインページの見出し"
+other = "Groobb にログイン"
+
+[sign_in_new_lead]
+description = "サインインページの説明文 (メールアドレスとパスワードの入力を促す)"
+other = "メールアドレスとパスワードを入力してください。"
+
+[sign_in_new_email_label]
+description = "サインインページのメールアドレスのラベル"
+other = "メールアドレス"
+
+[sign_in_new_password_label]
+description = "サインインページのパスワードのラベル"
+other = "パスワード"
+
+[sign_in_new_submit]
+description = "サインインページの送信ボタン"
+other = "ログイン"
+
+[sign_in_new_sign_up_link]
+description = "サインインページからサインアップへ誘導するリンクのテキスト"
+other = "アカウントを新規登録"
+
+[sign_in_new_forgot_password_link]
+description = "サインインページからパスワードリセット申請へ誘導するリンクのテキスト"
+other = "パスワードを忘れた場合"
+
+[password_reset_new_title]
+description = "パスワードリセット申請ページのタイトル (title タグ)"
+other = "パスワードの再設定"
+
+[password_reset_new_description]
+description = "パスワードリセット申請ページの meta description"
+other = "登録したメールアドレスにパスワード再設定用のリンクを送信します。"
+
+[password_reset_new_heading]
+description = "パスワードリセット申請ページの見出し"
+other = "パスワードを再設定"
+
+[password_reset_new_lead]
+description = "パスワードリセット申請ページの説明文 (リセットリンク送信の案内)"
+other = "登録したメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。"
+
+[password_reset_new_email_label]
+description = "パスワードリセット申請ページのメールアドレスのラベル"
+other = "メールアドレス"
+
+[password_reset_new_submit]
+description = "パスワードリセット申請ページの送信ボタン"
+other = "再設定用リンクを送信"
+
+[password_reset_new_back_to_sign_in]
+description = "パスワードリセット申請ページからサインインへ戻るリンクのテキスト"
+other = "ログインに戻る"
+
+[password_reset_sent_title]
+description = "パスワードリセット送信完了ページのタイトル (title タグ)"
+other = "メールを送信しました"
+
+[password_reset_sent_description]
+description = "パスワードリセット送信完了ページの meta description"
+other = "パスワード再設定用のリンクを送信しました。"
+
+[password_reset_sent_heading]
+description = "パスワードリセット送信完了ページの見出し"
+other = "メールをご確認ください"
+
+[password_reset_sent_lead]
+description = "パスワードリセット送信完了ページの説明文 (アカウントの存在を明かさない案内)"
+other = "入力されたメールアドレスのアカウントが存在する場合、パスワード再設定用のリンクを送信しました。メールが届かない場合は迷惑メールフォルダもご確認ください。"
+
+[password_reset_sent_back_to_sign_in]
+description = "パスワードリセット送信完了ページからサインインへ戻るリンクのテキスト"
+other = "ログインに戻る"
+
+[password_edit_title]
+description = "パスワード更新 (新パスワード設定) ページのタイトル (title タグ)"
+other = "新しいパスワードの設定"
+
+[password_edit_description]
+description = "パスワード更新 (新パスワード設定) ページの meta description"
+other = "新しいパスワードを設定します。"
+
+[password_edit_heading]
+description = "パスワード更新 (新パスワード設定) ページの見出し"
+other = "新しいパスワードを設定"
+
+[password_edit_lead]
+description = "パスワード更新 (新パスワード設定) ページの説明文 (新しいパスワードの入力を促す)"
+other = "新しいパスワードを入力してください。"
+
+[password_edit_password_label]
+description = "パスワード更新ページのパスワードのラベル"
+other = "新しいパスワード"
+
+[password_edit_password_hint]
+description = "パスワード更新ページのパスワードのヒント (文字数)"
+other = "8 文字以上で入力してください"
+
+[password_edit_password_confirmation_label]
+description = "パスワード更新ページのパスワード確認のラベル"
+other = "新しいパスワード (確認)"
+
+[password_edit_submit]
+description = "パスワード更新ページの送信ボタン"
+other = "パスワードを更新"
+
+[password_edit_request_new_link]
+description = "パスワード更新ページからパスワードリセット申請へ誘導するリンクのテキスト (リンクが無効なとき新しいリンクを申請する)"
+other = "新しい再設定用リンクを申請"
+
+[validation_required]
+description = "必須フィールドのバリデーションエラー"
+other = "入力してください"
+
+[validation_email_invalid]
+description = "メールアドレス形式のバリデーションエラー"
+other = "正しいメールアドレスを入力してください"
+
+[validation_email_already_taken]
+description = "メールアドレス重複のバリデーションエラー"
+other = "このメールアドレスは既に使用されています"
+
+[validation_code_invalid_format]
+description = "確認コードの形式が不正なときのバリデーションエラー"
+other = "確認コードは 6 桁の数字で入力してください"
+
+[validation_code_incorrect_or_expired]
+description = "確認コードが一致しない、または有効期限切れのときのフォーム全体のエラー"
+other = "確認コードが正しくないか、有効期限が切れています"
+
+[validation_email_delivery_failed]
+description = "確認メールの投入に失敗したときのフォーム全体のエラー (再申請を促す)"
+other = "確認コードの送信に失敗しました。時間をおいて再度お試しください。"
+
+[validation_password_too_short]
+description = "パスワードが短すぎるときのバリデーションエラー"
+other = "パスワードは 8 文字以上で入力してください"
+
+[validation_password_too_long]
+description = "パスワードが長すぎるときのバリデーションエラー"
+other = "パスワードが長すぎます"
+
+[validation_password_mismatch]
+description = "パスワードと確認用パスワードが一致しないときのバリデーションエラー"
+other = "パスワードが一致しません"
+
+[validation_credentials_invalid]
+description = "サインイン時に email とパスワードの組み合わせが正しくないときのフォーム全体のエラー (どちらが誤りかは明かさない)"
+other = "メールアドレスかパスワードが正しくありません"
+
+[validation_token_invalid]
+description = "パスワードリセットのトークンが無効 (未知・未入力) なときのフォーム全体のエラー"
+other = "このパスワード再設定用リンクは無効です。新しいリンクを申請してください"
+
+[validation_token_used]
+description = "パスワードリセットのトークンが使用済みのときのフォーム全体のエラー"
+other = "このパスワード再設定用リンクは既に使用されています。新しいリンクを申請してください"
+
+[validation_token_expired]
+description = "パスワードリセットのトークンが期限切れのときのフォーム全体のエラー"
+other = "このパスワード再設定用リンクは有効期限が切れています。新しいリンクを申請してください"

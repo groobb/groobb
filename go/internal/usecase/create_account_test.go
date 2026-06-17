@@ -1,0 +1,220 @@
+package usecase_test
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/repository"
+	"github.com/groobb/groobb/go/internal/testutil"
+	"github.com/groobb/groobb/go/internal/usecase"
+	"github.com/groobb/groobb/go/internal/validator"
+)
+
+// newCreateAccountUsecase wires the usecase over the shared pool (not a rolled-
+// back transaction) because CreateAccountUsecase opens its own transaction
+// internally; an outer transaction's seed rows would be invisible to that inner
+// transaction. It returns the repositories so a test can seed a confirmation and
+// assert the created user and password. Tests use unique emails so committed
+// rows do not collide (the test database is reset by make test).
+//
+// [Ja] newCreateAccountUsecase は共有プール (ロールバックされるトランザクションではなく)
+// で UseCase を組み立てます。CreateAccountUsecase は内部で自前のトランザクションを開く
+// ため、外側トランザクションで仕込んだ行はその内側トランザクションから見えないからです。
+// テストが確認を仕込み、作成されたユーザーとパスワードを検証できるようリポジトリも返し
+// ます。テストはユニークな email を使い、コミット済みの行が衝突しないようにします
+// (テスト DB は make test がリセットする)。
+func newCreateAccountUsecase(t *testing.T) (*usecase.CreateAccountUsecase, *repository.EmailConfirmationRepository, *repository.UserRepository, *repository.UserPasswordRepository) {
+	t.Helper()
+
+	db := testutil.GetTestDB()
+	queries := query.New(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
+	userRepo := repository.NewUserRepository(queries)
+	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+
+	uc := usecase.NewCreateAccountUsecase(
+		db,
+		validator.NewAccountCreateValidator(),
+		emailConfirmationRepo,
+		userRepo,
+		userPasswordRepo,
+	)
+	return uc, emailConfirmationRepo, userRepo, userPasswordRepo
+}
+
+// seedSucceededConfirmation creates and stamps a sign-up confirmation as
+// succeeded (committed), returning it so a test can drive account creation from
+// a verified confirmation.
+//
+// [Ja] seedSucceededConfirmation はサインアップ確認を作成し成功済みとして打刻
+// (コミット) し、テストが検証済みの確認からアカウント作成を駆動できるよう返します。
+func seedSucceededConfirmation(t *testing.T, ctx context.Context, repo *repository.EmailConfirmationRepository, email string) *model.EmailConfirmation {
+	t.Helper()
+
+	confirmation, err := repo.Create(ctx, repository.CreateEmailConfirmationInput{
+		Email: email,
+		Event: model.EmailConfirmationEventSignUp,
+		Code:  "123456",
+	})
+	if err != nil {
+		t.Fatalf("確認の作成に失敗: %v", err)
+	}
+	if err := repo.Succeed(ctx, confirmation.ID); err != nil {
+		t.Fatalf("確認の成功打刻に失敗: %v", err)
+	}
+	return confirmation
+}
+
+// TestCreateAccountUsecase_Execute_Success verifies that a verified confirmation
+// plus a valid password creates the user (with the confirmation's email and the
+// request locale) and a matching password credential.
+//
+// [Ja] TestCreateAccountUsecase_Execute_Success は、検証済みの確認と有効なパスワードが、
+// ユーザー (確認の email とリクエストのロケールを持つ) と対応するパスワード資格情報を
+// 作成することを検証します。
+func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
+	t.Parallel()
+
+	uc, ecRepo, userRepo, userPasswordRepo := newCreateAccountUsecase(t)
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+
+	email := fmt.Sprintf("acct-success-%s@example.com", uuid.NewString())
+	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
+
+	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
+		EmailConfirmationID:  confirmation.ID,
+		Password:             "password123",
+		PasswordConfirmation: "password123",
+		Locale:               "ja",
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if out == nil || out.User == nil {
+		t.Fatal("Execute() output / User = nil")
+	}
+	if out.User.Email != email {
+		t.Errorf("out.User.Email = %q, want %q", out.User.Email, email)
+	}
+	if out.User.Locale != "ja" {
+		t.Errorf("out.User.Locale = %q, want %q", out.User.Locale, "ja")
+	}
+
+	// The user and a matching password credential are persisted.
+	//
+	// [Ja] ユーザーと対応するパスワード資格情報が永続化されている。
+	user, err := userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		t.Fatalf("FindByEmail() error = %v", err)
+	}
+	if user == nil {
+		t.Fatal("作成したユーザーを email で引けない")
+	}
+	password, err := userPasswordRepo.FindByUserID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("FindByUserID() error = %v", err)
+	}
+	if password == nil {
+		t.Fatal("作成したユーザーのパスワード資格情報を引けない")
+	}
+	if err := auth.CheckPassword(password.PasswordDigest, "password123"); err != nil {
+		t.Errorf("保存されたダイジェストが元のパスワードで検証できない: %v", err)
+	}
+}
+
+// TestCreateAccountUsecase_Execute_NoSucceededConfirmation verifies that without
+// a verified confirmation (the confirmation exists but was never succeeded),
+// Execute returns an AppError and creates no user.
+//
+// [Ja] TestCreateAccountUsecase_Execute_NoSucceededConfirmation は、検証済みの確認が
+// 無い (確認は存在するが未成功) とき、Execute が AppError を返しユーザーを作成しない
+// ことを検証します。
+func TestCreateAccountUsecase_Execute_NoSucceededConfirmation(t *testing.T) {
+	t.Parallel()
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+
+	email := fmt.Sprintf("acct-unverified-%s@example.com", uuid.NewString())
+	// Create the confirmation but do not stamp it succeeded.
+	//
+	// [Ja] 確認を作成するが成功済みとして打刻しない。
+	confirmation, err := ecRepo.Create(ctx, repository.CreateEmailConfirmationInput{
+		Email: email,
+		Event: model.EmailConfirmationEventSignUp,
+		Code:  "123456",
+	})
+	if err != nil {
+		t.Fatalf("確認の作成に失敗: %v", err)
+	}
+
+	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
+		EmailConfirmationID:  confirmation.ID,
+		Password:             "password123",
+		PasswordConfirmation: "password123",
+		Locale:               "ja",
+	})
+	if out != nil {
+		t.Errorf("Execute() output = %v, want nil", out)
+	}
+	ae := model.AsAppError(err)
+	if ae == nil {
+		t.Fatalf("Execute() error = %v, want *model.AppError", err)
+	}
+	if ae.Code != model.AppErrCodeResourceNotFound {
+		t.Errorf("ae.Code = %d, want %d (AppErrCodeResourceNotFound)", ae.Code, model.AppErrCodeResourceNotFound)
+	}
+
+	user, err := userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		t.Fatalf("FindByEmail() error = %v", err)
+	}
+	if user != nil {
+		t.Error("検証済みの確認が無い場合はユーザーを作成すべきでない")
+	}
+}
+
+// TestCreateAccountUsecase_Execute_InvalidPassword verifies that a password that
+// fails validation (here, a mismatched confirmation) returns a ValidationError
+// and creates no user, even though the confirmation is verified.
+//
+// [Ja] TestCreateAccountUsecase_Execute_InvalidPassword は、確認が検証済みでも、
+// バリデーションに失敗するパスワード (ここでは確認の不一致) が ValidationError を返し
+// ユーザーを作成しないことを検証します。
+func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
+	t.Parallel()
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+
+	email := fmt.Sprintf("acct-badpw-%s@example.com", uuid.NewString())
+	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
+
+	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
+		EmailConfirmationID:  confirmation.ID,
+		Password:             "password123",
+		PasswordConfirmation: "different456",
+		Locale:               "ja",
+	})
+	if out != nil {
+		t.Errorf("Execute() output = %v, want nil", out)
+	}
+	if ve := model.AsValidationError(err); ve == nil {
+		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+	}
+
+	user, err := userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		t.Fatalf("FindByEmail() error = %v", err)
+	}
+	if user != nil {
+		t.Error("パスワードが不正な場合はユーザーを作成すべきでない")
+	}
+}

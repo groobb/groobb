@@ -26,3 +26,263 @@ other = "Create your own bulletin board."
 [welcome_show_lead]
 description = "Top page hero lead text"
 other = "Groobb is a bulletin board service where you can create your own board and interact with others."
+
+[email_confirmation_subject]
+description = "Subject line for the email confirmation code email"
+other = "[Groobb] Confirmation code"
+
+[password_reset_email_subject]
+description = "Subject line for the password reset email"
+other = "[Groobb] Reset your password"
+
+[sign_up_new_title]
+description = "Sign-up page title (title tag)"
+other = "Sign up"
+
+[sign_up_new_description]
+description = "Sign-up page meta description"
+other = "Create a new Groobb account."
+
+[sign_up_new_heading]
+description = "Sign-up page heading"
+other = "Sign up for Groobb"
+
+[sign_up_new_lead]
+description = "Sign-up page lead text (confirmation code guidance)"
+other = "We'll send a confirmation code to the email address you enter."
+
+[sign_up_new_email_label]
+description = "Sign-up page email label"
+other = "Email address"
+
+[sign_up_new_submit]
+description = "Sign-up page submit button"
+other = "Send confirmation code"
+
+[email_confirmation_new_title]
+description = "Email confirmation code entry page title (title tag)"
+other = "Enter confirmation code"
+
+[email_confirmation_new_description]
+description = "Email confirmation code entry page meta description"
+other = "Enter the confirmation code sent to your email to continue creating your account."
+
+[email_confirmation_new_heading]
+description = "Email confirmation code entry page heading"
+other = "Enter your confirmation code"
+
+[email_confirmation_new_lead]
+description = "Email confirmation code entry page lead text (prompts for the code)"
+other = "Enter the 6-digit confirmation code from the email we sent you."
+
+[email_confirmation_new_code_label]
+description = "Email confirmation code entry page code label"
+other = "Confirmation code"
+
+[email_confirmation_new_submit]
+description = "Email confirmation code entry page submit button"
+other = "Confirm"
+
+[account_new_title]
+description = "Account creation (password setup) page title (title tag)"
+other = "Set your password"
+
+[account_new_description]
+description = "Account creation (password setup) page meta description"
+other = "Set a password to finish creating your account."
+
+[account_new_heading]
+description = "Account creation (password setup) page heading"
+other = "Set your password"
+
+[account_new_lead]
+description = "Account creation (password setup) page lead text (says it is the final step)"
+other = "This is the final step. Set a password to create your account."
+
+[account_new_password_label]
+description = "Account creation page password label"
+other = "Password"
+
+[account_new_password_hint]
+description = "Account creation page password hint (length)"
+other = "Enter at least 8 characters"
+
+[account_new_password_confirmation_label]
+description = "Account creation page password confirmation label"
+other = "Password (confirmation)"
+
+[account_new_submit]
+description = "Account creation page submit button"
+other = "Create account"
+
+[sign_in_new_title]
+description = "Sign-in page title (title tag)"
+other = "Sign in"
+
+[sign_in_new_description]
+description = "Sign-in page meta description"
+other = "Sign in to your Groobb account."
+
+[sign_in_new_heading]
+description = "Sign-in page heading"
+other = "Sign in to Groobb"
+
+[sign_in_new_lead]
+description = "Sign-in page lead text (prompts for email and password)"
+other = "Enter your email address and password."
+
+[sign_in_new_email_label]
+description = "Sign-in page email label"
+other = "Email address"
+
+[sign_in_new_password_label]
+description = "Sign-in page password label"
+other = "Password"
+
+[sign_in_new_submit]
+description = "Sign-in page submit button"
+other = "Sign in"
+
+[sign_in_new_sign_up_link]
+description = "Link text on the sign-in page that leads to sign-up"
+other = "Create an account"
+
+[sign_in_new_forgot_password_link]
+description = "Link text on the sign-in page that leads to the password reset request"
+other = "Forgot your password?"
+
+[password_reset_new_title]
+description = "Password reset request page title (title tag)"
+other = "Reset your password"
+
+[password_reset_new_description]
+description = "Password reset request page meta description"
+other = "We'll send a password reset link to your registered email address."
+
+[password_reset_new_heading]
+description = "Password reset request page heading"
+other = "Reset your password"
+
+[password_reset_new_lead]
+description = "Password reset request page lead text (reset link guidance)"
+other = "Enter your registered email address and we'll send you a link to reset your password."
+
+[password_reset_new_email_label]
+description = "Password reset request page email label"
+other = "Email address"
+
+[password_reset_new_submit]
+description = "Password reset request page submit button"
+other = "Send reset link"
+
+[password_reset_new_back_to_sign_in]
+description = "Link text on the password reset request page that goes back to sign-in"
+other = "Back to sign in"
+
+[password_reset_sent_title]
+description = "Password reset sent page title (title tag)"
+other = "Email sent"
+
+[password_reset_sent_description]
+description = "Password reset sent page meta description"
+other = "We've sent a password reset link."
+
+[password_reset_sent_heading]
+description = "Password reset sent page heading"
+other = "Check your email"
+
+[password_reset_sent_lead]
+description = "Password reset sent page lead text (does not reveal whether the account exists)"
+other = "If an account exists for the email address you entered, we've sent a password reset link. If you don't see it, please check your spam folder."
+
+[password_reset_sent_back_to_sign_in]
+description = "Link text on the password reset sent page that goes back to sign-in"
+other = "Back to sign in"
+
+[password_edit_title]
+description = "Password update (set new password) page title (title tag)"
+other = "Set a new password"
+
+[password_edit_description]
+description = "Password update (set new password) page meta description"
+other = "Set a new password."
+
+[password_edit_heading]
+description = "Password update (set new password) page heading"
+other = "Set a new password"
+
+[password_edit_lead]
+description = "Password update (set new password) page lead text (prompts for the new password)"
+other = "Enter your new password."
+
+[password_edit_password_label]
+description = "Password update page password label"
+other = "New password"
+
+[password_edit_password_hint]
+description = "Password update page password hint (length)"
+other = "Enter at least 8 characters"
+
+[password_edit_password_confirmation_label]
+description = "Password update page password confirmation label"
+other = "New password (confirmation)"
+
+[password_edit_submit]
+description = "Password update page submit button"
+other = "Update password"
+
+[password_edit_request_new_link]
+description = "Link text on the password update page that leads to the password reset request (to request a new link when the current one is invalid)"
+other = "Request a new reset link"
+
+[validation_required]
+description = "Required field validation error"
+other = "is required"
+
+[validation_email_invalid]
+description = "Invalid email format validation error"
+other = "is not a valid email address"
+
+[validation_email_already_taken]
+description = "Duplicate email validation error"
+other = "is already taken"
+
+[validation_code_invalid_format]
+description = "Validation error when the confirmation code format is invalid"
+other = "must be a 6-digit number"
+
+[validation_code_incorrect_or_expired]
+description = "Form-wide error when the confirmation code is incorrect or expired"
+other = "The confirmation code is incorrect or has expired"
+
+[validation_email_delivery_failed]
+description = "Form-wide error when the confirmation mail could not be enqueued (prompts a retry)"
+other = "Failed to send the confirmation code. Please try again in a moment."
+
+[validation_password_too_short]
+description = "Validation error when the password is too short"
+other = "must be at least 8 characters"
+
+[validation_password_too_long]
+description = "Validation error when the password is too long"
+other = "is too long"
+
+[validation_password_mismatch]
+description = "Validation error when the password and its confirmation do not match"
+other = "does not match the password"
+
+[validation_credentials_invalid]
+description = "Form-wide error on sign-in when the email and password do not match (without revealing which is wrong)"
+other = "The email or password is incorrect"
+
+[validation_token_invalid]
+description = "Form-wide error when the password reset token is invalid (unknown or missing)"
+other = "This password reset link is invalid. Please request a new one."
+
+[validation_token_used]
+description = "Form-wide error when the password reset token has already been used"
+other = "This password reset link has already been used. Please request a new one."
+
+[validation_token_expired]
+description = "Form-wide error when the password reset token has expired"
+other = "This password reset link has expired. Please request a new one."

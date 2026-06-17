@@ -61,6 +61,28 @@ func (ns NullRiverJobState) Value() (driver.Value, error) {
 	return string(ns.RiverJobState), nil
 }
 
+type EmailConfirmation struct {
+	ID                  uuid.UUID  `json:"id"`
+	Email               string     `json:"email"`
+	Event               string     `json:"event"`
+	Code                string     `json:"code"`
+	StartedAt           time.Time  `json:"started_at"`
+	SucceededAt         *time.Time `json:"succeeded_at"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	FailedAttemptsCount int32      `json:"failed_attempts_count"`
+}
+
+type PasswordResetToken struct {
+	ID          uuid.UUID  `json:"id"`
+	UserID      uuid.UUID  `json:"user_id"`
+	TokenDigest string     `json:"token_digest"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	UsedAt      *time.Time `json:"used_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
 type RiverClient struct {
 	ID        string     `json:"id"`
 	CreatedAt time.Time  `json:"created_at"`
@@ -133,6 +155,14 @@ type User struct {
 	TimeZone  string    `json:"time_zone"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type UserPassword struct {
+	ID             uuid.UUID `json:"id"`
+	UserID         uuid.UUID `json:"user_id"`
+	PasswordDigest string    `json:"password_digest"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type UserSession struct {

@@ -1,0 +1,104 @@
+package account
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+)
+
+// NewPageData is the data for the account-creation (password setup) page.
+// FormErrors carries the per-field validation messages: a too-short, too-long,
+// or mismatched password is shown beneath the field it belongs to. The password
+// values are deliberately not echoed back; re-rendering a password field with
+// its value is a credential-leak risk, so the user re-types on a validation
+// error.
+//
+// [Ja] NewPageData はアカウント作成 (パスワード設定) ページのデータです。FormErrors は
+// フィールド別のバリデーションメッセージを運び、短すぎ・長すぎ・不一致のパスワードは
+// 該当フィールドの下に表示します。パスワードの値は意図的にエコーバックしません。値付きで
+// パスワードフィールドを再描画するのは資格情報の漏えいリスクのため、バリデーション
+// エラー時はユーザーに再入力させます。
+type NewPageData struct {
+	CSRFToken  string
+	FormErrors *model.ValidationError
+}
+
+// New renders the account-creation form: a password and a password-confirmation
+// field that, on submit, create the account (using the email from the verified
+// confirmation) and sign the user in. The CSRF token is embedded as a hidden
+// field for the double-submit-cookie check.
+//
+// [Ja] New はアカウント作成フォームを描画します。送信すると (検証済みの確認の email を
+// 使って) アカウントを作成しユーザーをサインインさせる、パスワードとパスワード確認の
+// フィールドです。CSRF トークンは double-submit cookie 検証のため hidden フィールドとして
+// 埋め込みます。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+				{ templates.T(ctx, "account_new_heading") }
+			</h1>
+			<p class="text-sm text-gray-600">
+				{ templates.T(ctx, "account_new_lead") }
+			</p>
+		</div>
+		<form action="/account" method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div class="flex flex-col gap-1">
+				<label for="password" class="text-sm font-medium text-gray-900">
+					{ templates.T(ctx, "account_new_password_label") }
+				</label>
+				<input
+					id="password"
+					name="password"
+					type="password"
+					autocomplete="new-password"
+					minlength="8"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("password") {
+						aria-invalid="true"
+						aria-describedby="password-error"
+					}
+					class="rounded-md border border-gray-300 px-3 py-2"
+				/>
+				<p class="text-sm text-gray-600">{ templates.T(ctx, "account_new_password_hint") }</p>
+				if data.FormErrors.HasFieldError("password") {
+					<div id="password-error" role="alert" class="flex flex-col gap-1">
+						for _, message := range data.FormErrors.GetFieldErrors("password") {
+							<p class="text-sm text-red-600">{ message }</p>
+						}
+					</div>
+				}
+			</div>
+			<div class="flex flex-col gap-1">
+				<label for="password_confirmation" class="text-sm font-medium text-gray-900">
+					{ templates.T(ctx, "account_new_password_confirmation_label") }
+				</label>
+				<input
+					id="password_confirmation"
+					name="password_confirmation"
+					type="password"
+					autocomplete="new-password"
+					minlength="8"
+					enterkeyhint="send"
+					required
+					if data.FormErrors.HasFieldError("password_confirmation") {
+						aria-invalid="true"
+						aria-describedby="password_confirmation-error"
+					}
+					class="rounded-md border border-gray-300 px-3 py-2"
+				/>
+				if data.FormErrors.HasFieldError("password_confirmation") {
+					<div id="password_confirmation-error" role="alert" class="flex flex-col gap-1">
+						for _, message := range data.FormErrors.GetFieldErrors("password_confirmation") {
+							<p class="text-sm text-red-600">{ message }</p>
+						}
+					</div>
+				}
+			</div>
+			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+				{ templates.T(ctx, "account_new_submit") }
+			</button>
+		</form>
+	</div>
+}

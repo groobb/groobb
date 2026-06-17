@@ -5,7 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
@@ -136,6 +139,114 @@ func TestManager_DeleteSessionCookie(t *testing.T) {
 	cookie := findCookie(rec, session.CookieName)
 	if cookie == nil {
 		t.Fatalf("セッション Cookie %q が設定されていない", session.CookieName)
+	}
+	if cookie.Value != "" {
+		t.Errorf("cookie.Value = %q, want 空文字列", cookie.Value)
+	}
+	if cookie.MaxAge >= 0 {
+		t.Errorf("cookie.MaxAge = %d, want 負の値 (削除指示)", cookie.MaxAge)
+	}
+}
+
+func TestManager_SetEmailConfirmationID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		env        string
+		wantSecure bool
+	}{
+		{name: "本番では Secure を立てる", env: "prod", wantSecure: true},
+		{name: "開発では Secure を立てない (平文 HTTP のため)", env: "dev", wantSecure: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mgr := session.NewManager(nil, &config.Config{Env: tt.env})
+			rec := httptest.NewRecorder()
+
+			id := model.EmailConfirmationID(uuid.New())
+			mgr.SetEmailConfirmationID(rec, id)
+
+			cookie := findCookie(rec, session.EmailConfirmationCookieName)
+			if cookie == nil {
+				t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
+			}
+			if cookie.Value != id.String() {
+				t.Errorf("cookie.Value = %q, want %q", cookie.Value, id.String())
+			}
+			if !cookie.HttpOnly {
+				t.Error("メール確認 Cookie は HttpOnly であるべき")
+			}
+			if cookie.SameSite != http.SameSiteLaxMode {
+				t.Errorf("cookie.SameSite = %v, want %v", cookie.SameSite, http.SameSiteLaxMode)
+			}
+			if cookie.MaxAge <= 0 {
+				t.Errorf("cookie.MaxAge = %d, want 正の値", cookie.MaxAge)
+			}
+			if cookie.Secure != tt.wantSecure {
+				t.Errorf("cookie.Secure = %v, want %v", cookie.Secure, tt.wantSecure)
+			}
+		})
+	}
+}
+
+func TestManager_GetEmailConfirmationID(t *testing.T) {
+	t.Parallel()
+
+	mgr := session.NewManager(nil, &config.Config{Env: "test"})
+
+	t.Run("有効な id Cookie から確認 id を取り出せる", func(t *testing.T) {
+		t.Parallel()
+
+		id := model.EmailConfirmationID(uuid.New())
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.AddCookie(&http.Cookie{Name: session.EmailConfirmationCookieName, Value: id.String()})
+
+		got, ok := mgr.GetEmailConfirmationID(req)
+		if !ok {
+			t.Fatal("GetEmailConfirmationID() ok = false, want true")
+		}
+		if got != id {
+			t.Errorf("GetEmailConfirmationID() = %v, want %v", got, id)
+		}
+	})
+
+	t.Run("Cookie が無い場合は ok=false を返す", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+		if _, ok := mgr.GetEmailConfirmationID(req); ok {
+			t.Error("GetEmailConfirmationID() ok = true, want false")
+		}
+	})
+
+	t.Run("UUID として不正な値の場合は ok=false を返す", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.AddCookie(&http.Cookie{Name: session.EmailConfirmationCookieName, Value: "not-a-uuid"})
+
+		if _, ok := mgr.GetEmailConfirmationID(req); ok {
+			t.Error("GetEmailConfirmationID() ok = true, want false")
+		}
+	})
+}
+
+func TestManager_DeleteEmailConfirmationID(t *testing.T) {
+	t.Parallel()
+
+	mgr := session.NewManager(nil, &config.Config{Env: "test"})
+	rec := httptest.NewRecorder()
+
+	mgr.DeleteEmailConfirmationID(rec)
+
+	cookie := findCookie(rec, session.EmailConfirmationCookieName)
+	if cookie == nil {
+		t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
 	}
 	if cookie.Value != "" {
 		t.Errorf("cookie.Value = %q, want 空文字列", cookie.Value)

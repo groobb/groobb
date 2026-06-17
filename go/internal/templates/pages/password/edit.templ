@@ -1,0 +1,127 @@
+package password
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+)
+
+// EditPageData is the data for the password reset update (new-password) page.
+// Token is the plaintext reset token, carried in a hidden field so the submitted
+// form names which token to spend; it is cleared by the handler when a token
+// error occurs so an invalid link is not re-submitted. FormErrors carries the
+// messages: a form-wide message (an invalid, used, or expired link) shown at the
+// top, and per-field messages (a too-short, too-long, or mismatched password)
+// beneath each field. The password values are deliberately not echoed back, since
+// re-rendering a password field with its value is a credential-leak risk.
+//
+// [Ja] EditPageData はパスワードリセット更新 (新パスワード) ページのデータです。Token は
+// 平文のリセットトークンで、送信フォームがどのトークンを消費するか示すよう hidden
+// フィールドで運びます。トークンエラー時はハンドラーが消去し、無効なリンクが再送信され
+// ないようにします。FormErrors はメッセージを運びます。上部に出すフォーム全体のメッセージ
+// (リンクが無効・使用済み・期限切れ) と、各フィールドの下に出すフィールド別のメッセージ
+// (短すぎ・長すぎ・不一致のパスワード) です。パスワードの値は意図的にエコーバックしません。
+// 値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスクのためです。
+type EditPageData struct {
+	CSRFToken  string
+	Token      string
+	FormErrors *model.ValidationError
+}
+
+// Edit renders the new-password form: a password and a password-confirmation
+// field that, on submit, set the account's new password and spend the reset
+// token. The form posts to /password with a hidden _method=PATCH so the HTML form
+// drives the PATCH route, and the CSRF token and the reset token are embedded as
+// hidden fields. A link to request a fresh reset link is offered below, for when
+// the current link is no longer valid.
+//
+// [Ja] Edit は新パスワードフォームを描画します。送信するとアカウントの新しいパスワードを
+// 設定しリセットトークンを消費する、パスワードとパスワード確認のフィールドです。フォームは
+// hidden な _method=PATCH を付けて /password へ POST し、HTML フォームから PATCH ルートを
+// 動かします。CSRF トークンとリセットトークンは hidden フィールドとして埋め込みます。
+// 現在のリンクがもう有効でないときのために、新しいリセットリンクを申請するリンクを下に
+// 提供します。
+templ Edit(data EditPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+				{ templates.T(ctx, "password_edit_heading") }
+			</h1>
+			<p class="text-sm text-gray-600">
+				{ templates.T(ctx, "password_edit_lead") }
+			</p>
+		</div>
+		<form action="/password" method="POST" class="flex flex-col gap-4">
+			if data.FormErrors.HasGlobalError() {
+				<div role="alert" class="rounded-md border border-red-300 bg-red-50 px-3 py-2">
+					for _, message := range data.FormErrors.GetGlobalErrors() {
+						<p class="text-sm text-red-600">{ message }</p>
+					}
+				</div>
+			}
+			<input type="hidden" name="_method" value="PATCH"/>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="token" value={ data.Token }/>
+			<div class="flex flex-col gap-1">
+				<label for="password" class="text-sm font-medium text-gray-900">
+					{ templates.T(ctx, "password_edit_password_label") }
+				</label>
+				<input
+					id="password"
+					name="password"
+					type="password"
+					autocomplete="new-password"
+					minlength="8"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("password") {
+						aria-invalid="true"
+						aria-describedby="password-error"
+					}
+					class="rounded-md border border-gray-300 px-3 py-2"
+				/>
+				<p class="text-sm text-gray-600">{ templates.T(ctx, "password_edit_password_hint") }</p>
+				if data.FormErrors.HasFieldError("password") {
+					<div id="password-error" role="alert" class="flex flex-col gap-1">
+						for _, message := range data.FormErrors.GetFieldErrors("password") {
+							<p class="text-sm text-red-600">{ message }</p>
+						}
+					</div>
+				}
+			</div>
+			<div class="flex flex-col gap-1">
+				<label for="password_confirmation" class="text-sm font-medium text-gray-900">
+					{ templates.T(ctx, "password_edit_password_confirmation_label") }
+				</label>
+				<input
+					id="password_confirmation"
+					name="password_confirmation"
+					type="password"
+					autocomplete="new-password"
+					minlength="8"
+					enterkeyhint="send"
+					required
+					if data.FormErrors.HasFieldError("password_confirmation") {
+						aria-invalid="true"
+						aria-describedby="password_confirmation-error"
+					}
+					class="rounded-md border border-gray-300 px-3 py-2"
+				/>
+				if data.FormErrors.HasFieldError("password_confirmation") {
+					<div id="password_confirmation-error" role="alert" class="flex flex-col gap-1">
+						for _, message := range data.FormErrors.GetFieldErrors("password_confirmation") {
+							<p class="text-sm text-red-600">{ message }</p>
+						}
+					</div>
+				}
+			</div>
+			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+				{ templates.T(ctx, "password_edit_submit") }
+			</button>
+		</form>
+		<p class="text-center text-sm text-gray-600">
+			<a href="/password_reset/new" class="font-medium text-gray-900 underline">
+				{ templates.T(ctx, "password_edit_request_new_link") }
+			</a>
+		</p>
+	</div>
+}

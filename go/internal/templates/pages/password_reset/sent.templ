@@ -1,0 +1,31 @@
+package password_reset
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// Sent renders the confirmation shown after a reset request is submitted. Its
+// message is deliberately non-committal ("if an account exists, a link was
+// sent"): it is shown for every submission regardless of whether the email
+// belongs to an account, so it must not imply that one does. It takes no data
+// for the same reason—nothing about the submitted address is echoed back.
+//
+// [Ja] Sent はリセット申請の送信後に表示する確認を描画します。メッセージは意図的に
+// 断定を避けます (「アカウントが存在すればリンクを送信した」)。email がアカウントに
+// 属するかによらずすべての送信で表示するため、存在をほのめかしてはなりません。同じ理由で
+// データを取りません — 送信されたアドレスについて何もエコーバックしません。
+templ Sent() {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+				{ templates.T(ctx, "password_reset_sent_heading") }
+			</h1>
+			<p class="text-sm text-gray-600">
+				{ templates.T(ctx, "password_reset_sent_lead") }
+			</p>
+		</div>
+		<p class="text-center text-sm text-gray-600">
+			<a href="/sign_in" class="font-medium text-gray-900 underline">
+				{ templates.T(ctx, "password_reset_sent_back_to_sign_in") }
+			</a>
+		</p>
+	</div>
+}
