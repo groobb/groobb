@@ -20,6 +20,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+
+	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/email"
+	"github.com/groobb/groobb/go/internal/usecase"
 )
 
 // Client wraps the River client together with the pgx pool it owns, so the two
@@ -35,18 +39,17 @@ type Client struct {
 // NewClient builds the River client on its own connection pool. The pool is
 // dedicated to background job processing, separate from the application's
 // request-serving pool, so jobs and HTTP traffic do not compete for the same
-// connections. Worker registrations (and the dependencies they need, built from
-// cfg) are added here as jobs are introduced in later tasks; for now the worker
-// set is intentionally empty, so the client can poll its queue but has nothing
-// to run yet.
+// connections. Worker-only dependencies are built from cfg inside this function
+// (rather than injected) so they stay encapsulated here and never leak into the
+// rest of the DI graph; more worker registrations are added here as jobs are
+// introduced in later tasks.
 //
 // [Ja] NewClient は専用の接続プール上に River クライアントを構築する。プールは
 // バックグラウンドジョブ処理専用で、アプリのリクエスト処理用プールとは分離し、ジョブと
-// HTTP トラフィックが同じ接続を奪い合わないようにする。ワーカーの登録 (および cfg から
-// 構築するその依存) は、後続タスクでジョブが導入されるのに合わせてここに追加する。
-// 現時点ではワーカー集合は意図的に空であり、クライアントはキューをポーリングできるが
-// まだ実行するものを持たない。
-func NewClient(ctx context.Context, databaseURL string) (*Client, error) {
+// HTTP トラフィックが同じ接続を奪い合わないようにする。ワーカー専用の依存は (注入では
+// なく) 本関数内で cfg から構築し、ここに閉じ込めて DI グラフの他の部分へ漏らさない。
+// 追加のワーカー登録は、後続タスクでジョブが導入されるのに合わせてここに加える。
+func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Client, error) {
 	poolConfig, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("ワーカー用プール設定の解析に失敗: %w", err)
@@ -67,7 +70,26 @@ func NewClient(ctx context.Context, databaseURL string) (*Client, error) {
 		return nil, fmt.Errorf("ワーカー用接続プールの作成に失敗: %w", err)
 	}
 
+	// Build the worker-only email dependencies from cfg and register the mail
+	// workers (email confirmation and password reset). Constructing the senders
+	// here keeps Resend configuration out of main.go's DI graph, where no
+	// request-path code needs it; both per-mail senders share the one base
+	// ResendSender.
+	//
+	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認と
+	// パスワードリセット) を登録する。ここで sender を構築することで、リクエスト経路の
+	// コードが必要としない Resend 設定を main.go の DI グラフから締め出す。メール種別ごとの
+	// 2 つの sender は 1 つの基盤 ResendSender を共有する。
+	emailSender := email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
+	confirmationSender := email.NewConfirmationSender(emailSender)
+	sendEmailConfirmationUC := usecase.NewSendEmailConfirmationUsecase(confirmationSender)
+
+	passwordResetSender := email.NewPasswordResetSender(emailSender)
+	sendPasswordResetUC := usecase.NewSendPasswordResetUsecase(passwordResetSender)
+
 	workers := river.NewWorkers()
+	river.AddWorker(workers, NewSendEmailConfirmationWorker(sendEmailConfirmationUC))
+	river.AddWorker(workers, NewSendPasswordResetWorker(sendPasswordResetUC))
 
 	// Logger: slog.Default() routes River's own job-execution and retry logging
 	// through the structured logger, so observability is in place before any

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/worker"
 )
@@ -16,7 +17,7 @@ import (
 func TestNewClient_InvalidDatabaseURL(t *testing.T) {
 	t.Parallel()
 
-	client, err := worker.NewClient(context.Background(), "://not-a-valid-url")
+	client, err := worker.NewClient(context.Background(), "://not-a-valid-url", &config.Config{})
 	if err == nil {
 		t.Fatal("不正な databaseURL に対してエラーが返るべきです")
 	}
@@ -25,30 +26,32 @@ func TestNewClient_InvalidDatabaseURL(t *testing.T) {
 	}
 }
 
-// TestNewClient builds the client against the test database and tears it back
-// down, proving the pool and River client wire up correctly and that Stop
-// cleanly releases them. The full Start -> work -> Stop path is not exercised
-// here because River's Start requires at least one registered worker, and the
-// first worker is added in a later task (the email-confirmation job); that
-// task's integration test covers Start.
+// TestNewClient builds the client against the test database, starts it, and
+// tears it back down. Start now succeeds because the send_email_confirmation
+// worker is registered (River requires at least one worker to start). No job is
+// enqueued, so nothing is processed and no email is sent; the Work path itself is
+// covered by TestSendEmailConfirmationWorker_Work with a NoopSender.
 //
-// [Ja] TestNewClient はテスト DB に対してクライアントを構築し、また片付ける。これにより
-// プールと River クライアントが正しく配線され、Stop がそれらをきれいに解放することを
-// 確認する。River の Start は最低 1 つのワーカー登録を要求し、最初のワーカーは後続タスク
-// (メール確認ジョブ) で追加されるため、Start -> 処理 -> Stop の全体経路はここでは検証
-// しない (Start はそのタスクの統合テストでカバーする)。
+// [Ja] TestNewClient はテスト DB に対してクライアントを構築・起動し、また片付ける。
+// send_email_confirmation ワーカーが登録されたことで Start が成功する (River は起動に
+// 最低 1 つのワーカーを要求する)。ジョブは投入しないため何も処理されず、メールも送られ
+// ない。Work 経路自体は NoopSender を使う TestSendEmailConfirmationWorker_Work が担う。
 func TestNewClient(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
-	client, err := worker.NewClient(ctx, testutil.DatabaseURL())
+	client, err := worker.NewClient(ctx, testutil.DatabaseURL(), &config.Config{})
 	if err != nil {
 		t.Fatalf("NewClient に失敗: %v", err)
 	}
 
 	if client.Client() == nil {
 		t.Fatal("Client() は基盤の River クライアントを返すべきです")
+	}
+
+	if err := client.Start(ctx); err != nil {
+		t.Fatalf("Start に失敗: %v", err)
 	}
 
 	if err := client.Stop(ctx); err != nil {
