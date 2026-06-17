@@ -16,6 +16,68 @@ import (
 	"github.com/riverqueue/river/rivertype"
 )
 
+// SendEmailConfirmationArgs are the arguments for the job that sends an email
+// confirmation code. They are the primitive values the worker needs to render
+// and send the mail, kept JSON-encodable for River to persist on the queue.
+//
+// [Ja] SendEmailConfirmationArgs はメール確認コードを送信するジョブの引数です。
+// ワーカーがメールを描画・送信するのに必要なプリミティブ値で、River がキューに永続化
+// できるよう JSON エンコード可能に保ちます。
+type SendEmailConfirmationArgs struct {
+	Email  string `json:"email"`
+	Code   string `json:"code"`
+	Locale string `json:"locale"`
+}
+
+// Kind returns the unique job identifier River uses to route the job to its
+// worker.
+//
+// [Ja] Kind は River がジョブをワーカーに振り分けるために使う一意なジョブ識別子を
+// 返します。
+func (SendEmailConfirmationArgs) Kind() string { return "send_email_confirmation" }
+
+// InsertOpts sets the per-job defaults: the default queue and up to 5 attempts,
+// so a transient mail-send failure (e.g. a Resend hiccup) is retried rather than
+// lost.
+//
+// [Ja] InsertOpts はジョブ単位の既定値を設定します。既定キューと最大 5 回の試行とし、
+// 一時的なメール送信失敗 (例: Resend の不調) を失わずにリトライします。
+func (SendEmailConfirmationArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 5}
+}
+
+// SendPasswordResetArgs are the arguments for the job that sends a password reset
+// mail. ResetURL is the absolute reset link (carrying the one-time token) the
+// mail must present; Locale selects the language the mail is rendered in. They
+// are kept JSON-encodable for River to persist on the queue.
+//
+// [Ja] SendPasswordResetArgs はパスワードリセットメールを送信するジョブの引数です。
+// ResetURL はメールが提示すべき絶対リセットリンク (使い捨てトークンを含む)、Locale は
+// メールを描画する言語を選びます。River がキューに永続化できるよう JSON エンコード可能に
+// 保ちます。
+type SendPasswordResetArgs struct {
+	Email    string `json:"email"`
+	ResetURL string `json:"reset_url"`
+	Locale   string `json:"locale"`
+}
+
+// Kind returns the unique job identifier River uses to route the job to its
+// worker.
+//
+// [Ja] Kind は River がジョブをワーカーに振り分けるために使う一意なジョブ識別子を
+// 返します。
+func (SendPasswordResetArgs) Kind() string { return "send_password_reset" }
+
+// InsertOpts sets the per-job defaults: the default queue and up to 5 attempts,
+// so a transient mail-send failure (e.g. a Resend hiccup) is retried rather than
+// lost.
+//
+// [Ja] InsertOpts はジョブ単位の既定値を設定します。既定キューと最大 5 回の試行とし、
+// 一時的なメール送信失敗 (例: Resend の不調) を失わずにリトライします。
+func (SendPasswordResetArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 5}
+}
+
 // JobInserter is the single slice of the River client the Dispatcher depends
 // on: inserting a job. *river.Client[pgx.Tx] satisfies this signature directly,
 // so the worker client can be injected without a wrapper, and tests can pass a
@@ -46,4 +108,38 @@ type Dispatcher struct {
 // [Ja] NewDispatcher は与えられた JobInserter を背後に持つ Dispatcher を生成する。
 func NewDispatcher(client JobInserter) *Dispatcher {
 	return &Dispatcher{client: client}
+}
+
+// EnqueueEmailConfirmation enqueues a job to send the confirmation code for
+// email in locale. Callers (UseCases) pass primitive values; the Args struct and
+// its options are assembled here so callers need not import River. The options
+// come from the Args' own InsertOpts so the MaxAttempts default is applied
+// (passing nil would drop it).
+//
+// [Ja] EnqueueEmailConfirmation は email 宛に locale で確認コードを送信するジョブを
+// 投入します。呼び出し側 (UseCase) はプリミティブ値を渡し、Args 構造体とそのオプションは
+// ここで組み立てるため、呼び出し側は River を import せずに済みます。オプションは Args
+// 自身の InsertOpts から取り、MaxAttempts の既定値を適用します (nil を渡すと失われます)。
+func (d *Dispatcher) EnqueueEmailConfirmation(ctx context.Context, email, code, locale string) error {
+	args := SendEmailConfirmationArgs{Email: email, Code: code, Locale: locale}
+	opts := args.InsertOpts()
+	_, err := d.client.Insert(ctx, args, &opts)
+	return err
+}
+
+// EnqueuePasswordReset enqueues a job to send the password reset mail to email,
+// presenting resetURL, in locale. Like EnqueueEmailConfirmation it takes
+// primitive values and assembles the Args and options here (from the Args' own
+// InsertOpts so the MaxAttempts default is applied), so callers (UseCases) need
+// not import River.
+//
+// [Ja] EnqueuePasswordReset は email 宛に resetURL を提示するパスワードリセットメールを
+// locale で送信するジョブを投入します。EnqueueEmailConfirmation と同様にプリミティブ値を
+// 取り、Args とオプションをここで (MaxAttempts の既定値が適用されるよう Args 自身の
+// InsertOpts から) 組み立てるため、呼び出し側 (UseCase) は River を import せずに済みます。
+func (d *Dispatcher) EnqueuePasswordReset(ctx context.Context, email, resetURL, locale string) error {
+	args := SendPasswordResetArgs{Email: email, ResetURL: resetURL, Locale: locale}
+	opts := args.InsertOpts()
+	_, err := d.client.Insert(ctx, args, &opts)
+	return err
 }
