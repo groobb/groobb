@@ -26,6 +26,14 @@ other = "あなたの掲示板を、つくろう。"
 description = "トップページのヒーロー説明文"
 other = "Groobb は、自分だけの掲示板をつくって仲間と交流できる掲示板サービスです。"
 
+[welcome_show_sign_up_link]
+description = "トップページからサインアップ (アカウント登録) へ誘導する CTA リンクのテキスト"
+other = "アカウント登録"
+
+[welcome_show_sign_in_link]
+description = "トップページからサインイン (ログイン) へ誘導する CTA リンクのテキスト"
+other = "ログイン"
+
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"
 other = "[Groobb] 確認用コード"

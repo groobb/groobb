@@ -12,24 +12,28 @@ import (
 )
 
 // TestShow verifies that the top page returns HTTP 200 with an HTML body that
-// renders the localized hero text, the request-locale lang attribute, the
-// footer, and the versioned asset references for each supported locale.
+// renders the localized hero text, the sign-up and sign-in calls to action,
+// the request-locale lang attribute, the footer, and the versioned asset
+// references for each supported locale.
 //
 // [Ja] TestShow はトップページが HTTP 200 と、サポートする各ロケールについて、
-// ローカライズされたヒーロー文言・リクエストロケールの lang 属性・フッター・
-// バージョン付きのアセット参照を描画した HTML ボディを返すことを検証します。
+// ローカライズされたヒーロー文言・サインアップ / サインインの CTA・リクエスト
+// ロケールの lang 属性・フッター・バージョン付きのアセット参照を描画した HTML
+// ボディを返すことを検証します。
 func TestShow(t *testing.T) {
 	t.Parallel()
 
 	handler := welcome.NewHandler(&config.Config{Env: "dev"})
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
+		name           string
+		locale         string
+		wantHeading    string
+		wantSignUpLink string
+		wantSignInLink string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "あなたの掲示板を、つくろう。"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Create your own bulletin board."},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in"},
 	}
 
 	for _, tt := range tests {
@@ -53,6 +57,10 @@ func TestShow(t *testing.T) {
 			body := rec.Body.String()
 			wants := []string{
 				tt.wantHeading,
+				tt.wantSignUpLink,
+				tt.wantSignInLink,
+				`href="/sign_up"`,
+				`href="/sign_in"`,
 				`lang="` + tt.locale + `"`,
 				"<footer",
 				"Groobb",
