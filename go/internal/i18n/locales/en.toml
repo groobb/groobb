@@ -27,6 +27,14 @@ other = "Create your own bulletin board."
 description = "Top page hero lead text"
 other = "Groobb is a bulletin board service where you can create your own board and interact with others."
 
+[welcome_show_sign_up_link]
+description = "CTA link text on the top page that leads to sign-up (account registration)"
+other = "Sign up"
+
+[welcome_show_sign_in_link]
+description = "Link text on the top page that leads to sign-in"
+other = "Sign in"
+
 [email_confirmation_subject]
 description = "Subject line for the email confirmation code email"
 other = "[Groobb] Confirmation code"
