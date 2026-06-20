@@ -32,7 +32,7 @@ description = "CTA link text on the top page that leads to sign-up (account regi
 other = "Sign up"
 
 [welcome_show_sign_in_link]
-description = "Link text on the top page that leads to sign-in"
+description = "CTA link text on the top page that leads to sign-in"
 other = "Sign in"
 
 [email_confirmation_subject]

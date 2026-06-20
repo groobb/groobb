@@ -31,7 +31,7 @@ description = "トップページからサインアップ (アカウント登録
 other = "アカウント登録"
 
 [welcome_show_sign_in_link]
-description = "トップページからサインイン (ログイン) へ誘導するリンクのテキスト"
+description = "トップページからサインイン (ログイン) へ誘導する CTA リンクのテキスト"
 other = "ログイン"
 
 [email_confirmation_subject]
