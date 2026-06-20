@@ -159,6 +159,18 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 ENV GOCACHE=/go/.cache/go-build
 ENV GOMODCACHE=/go/pkg/mod
 ENV GOPATH=/go
+# Pin GOBIN to GOPATH/bin so `go install` binaries land on PATH. The mise-managed
+# `go` toolchain otherwise overrides GOBIN to its own bin ($GOROOT/bin =
+# /mise/installs/go/<ver>/bin), which is not on PATH, so tools like sqlc and air
+# would be installed yet unreachable (`air: not found` from `make dev`). An
+# explicit GOBIN takes precedence over the mise default.
+#
+# [Ja] `go install` のバイナリを PATH 上の GOPATH/bin に置くため GOBIN を固定する。
+# これが無いと mise 管理の `go` ツールチェインが GOBIN を自身の bin ($GOROOT/bin =
+# /mise/installs/go/<ver>/bin) に上書きし、そこは PATH に無いため、sqlc や air は
+# インストールされても辿り着けない (`make dev` で `air: not found`)。GOBIN を明示すると
+# mise のデフォルトより優先される。
+ENV GOBIN="${GOPATH}/bin"
 ENV PATH="${GOPATH}/bin:${PATH}"
 RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 && \
     go install github.com/air-verse/air@latest
@@ -174,6 +186,7 @@ RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0 && \
 # リリース tarball を直接取得して SHA256 検証する。
 ARG GOLANGCI_LINT_VERSION=v2.11.4
 ARG GOLANGCI_LINT_SHA256=200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1
+USER root
 RUN GOLANGCI_LINT_DIR="golangci-lint-${GOLANGCI_LINT_VERSION#v}-linux-amd64" && \
     curl -fsSL -o /tmp/golangci-lint.tar.gz "https://github.com/golangci/golangci-lint/releases/download/${GOLANGCI_LINT_VERSION}/${GOLANGCI_LINT_DIR}.tar.gz" && \
     echo "${GOLANGCI_LINT_SHA256}  /tmp/golangci-lint.tar.gz" | sha256sum -c - && \
@@ -181,6 +194,7 @@ RUN GOLANGCI_LINT_DIR="golangci-lint-${GOLANGCI_LINT_VERSION#v}-linux-amd64" && 
     mv "/tmp/${GOLANGCI_LINT_DIR}/golangci-lint" /usr/local/bin/golangci-lint && \
     chmod +x /usr/local/bin/golangci-lint && \
     rm -rf "/tmp/golangci-lint.tar.gz" "/tmp/${GOLANGCI_LINT_DIR}"
+USER ${USERNAME}
 
 # --- Shell setup ---
 # [Ja] シェル設定
