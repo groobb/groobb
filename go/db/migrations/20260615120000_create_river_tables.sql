@@ -10,6 +10,13 @@
 -- migrate again at runtime. River owns these tables at runtime via riverpgxv5;
 -- the application never queries them through sqlc.
 --
+-- When River is bumped and a new migration version N appears, keep dbmate as
+-- the source of truth: generate clean SQL with `river migrate-get --line main
+-- --version N --up/--down` (pinned via `go run .../cmd/river@vX.Y.Z`, excluding
+-- version 1), add it as a new dbmate migration that appends `INSERT INTO
+-- river_migration (line, version) VALUES ('main', N);` (DELETE on down), and
+-- bump appliedRiverMigrationVersion in internal/worker to N.
+--
 -- [Ja] バックグラウンドジョブキュー River が動作するために必要なテーブルを作成する。
 -- River は自前のスキーママイグレーションを持つが、本プロジェクトは dbmate と単一の
 -- ダンプ済み db/schema.sql に統一しているため、River の DDL を River 独自のマイグレータ
@@ -19,6 +26,13 @@
 -- マイグレーションがすべて適用済みであることを記録して、ライブラリが実行時に再度
 -- マイグレーションを試みないようにする。これらのテーブルは実行時に riverpgxv5 経由で
 -- River が所有し、アプリケーションが sqlc を通じてクエリすることはない。
+--
+-- River を bump して新しいマイグレーションバージョン N が増えたときは、dbmate を正本
+-- に保つ: `river migrate-get --line main --version N --up/--down` (`go run
+-- .../cmd/river@vX.Y.Z` でバージョン固定、version 1 は除外) で clean SQL を生成し、
+-- 末尾に `INSERT INTO river_migration (line, version) VALUES ('main', N);` を追記する
+-- 新しい dbmate マイグレーションとして追加し (down では DELETE)、internal/worker の
+-- appliedRiverMigrationVersion を N に更新する。
 
 CREATE TABLE river_migration(
     line TEXT NOT NULL,
