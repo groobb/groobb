@@ -18,6 +18,12 @@ updates:
     # [Ja] メジャーは破壊的変更を含むことがあり個別 PR でレビューしたいため、
     # 以下のすべてのグループで patch / minor のみを含める。
     groups:
+      river:
+        patterns:
+          - "github.com/riverqueue/*"
+        update-types:
+          - "patch"
+          - "minor"
       golang-x:
         patterns:
           - "golang.org/x/*"
