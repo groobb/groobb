@@ -3,6 +3,7 @@ package password
 import (
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
 // EditPageData is the data for the password reset update (new-password) page.
@@ -43,26 +44,26 @@ type EditPageData struct {
 templ Edit(data EditPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">
-			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+			<h1 class="text-3xl font-bold tracking-tight">
 				{ templates.T(ctx, "password_edit_heading") }
 			</h1>
-			<p class="text-sm text-gray-600">
+			<p class="text-sm text-muted-foreground">
 				{ templates.T(ctx, "password_edit_lead") }
 			</p>
 		</div>
+		@components.FormErrors(data.FormErrors)
 		<form action="/password" method="POST" class="flex flex-col gap-4">
-			if data.FormErrors.HasGlobalError() {
-				<div role="alert" class="rounded-md border border-red-300 bg-red-50 px-3 py-2">
-					for _, message := range data.FormErrors.GetGlobalErrors() {
-						<p class="text-sm text-red-600">{ message }</p>
-					}
-				</div>
-			}
 			<input type="hidden" name="_method" value="PATCH"/>
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 			<input type="hidden" name="token" value={ data.Token }/>
-			<div class="flex flex-col gap-1">
-				<label for="password" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password") {
+					data-invalid="true"
+				}
+			>
+				<label for="password">
 					{ templates.T(ctx, "password_edit_password_label") }
 				</label>
 				<input
@@ -75,21 +76,22 @@ templ Edit(data EditPageData) {
 					autofocus
 					if data.FormErrors.HasFieldError("password") {
 						aria-invalid="true"
-						aria-describedby="password-error"
+						aria-describedby={ "password-hint " + components.FieldErrorsDescribedBy("password", data.FormErrors) }
+					} else {
+						aria-describedby="password-hint"
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				<p class="text-sm text-gray-600">{ templates.T(ctx, "password_edit_password_hint") }</p>
-				if data.FormErrors.HasFieldError("password") {
-					<div id="password-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("password") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				<p id="password-hint">{ templates.T(ctx, "password_edit_password_hint") }</p>
+				@components.FieldErrors("password", data.FormErrors)
 			</div>
-			<div class="flex flex-col gap-1">
-				<label for="password_confirmation" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password_confirmation") {
+					data-invalid="true"
+				}
+			>
+				<label for="password_confirmation">
 					{ templates.T(ctx, "password_edit_password_confirmation_label") }
 				</label>
 				<input
@@ -102,24 +104,17 @@ templ Edit(data EditPageData) {
 					required
 					if data.FormErrors.HasFieldError("password_confirmation") {
 						aria-invalid="true"
-						aria-describedby="password_confirmation-error"
+						aria-describedby={ components.FieldErrorsDescribedBy("password_confirmation", data.FormErrors) }
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				if data.FormErrors.HasFieldError("password_confirmation") {
-					<div id="password_confirmation-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("password_confirmation") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				@components.FieldErrors("password_confirmation", data.FormErrors)
 			</div>
-			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+			<button type="submit" class="btn w-full">
 				{ templates.T(ctx, "password_edit_submit") }
 			</button>
 		</form>
-		<p class="text-center text-sm text-gray-600">
-			<a href="/password_reset/new" class="font-medium text-gray-900 underline">
+		<p class="text-center text-sm text-muted-foreground">
+			<a href="/password_reset/new" class="font-medium text-foreground underline underline-offset-4">
 				{ templates.T(ctx, "password_edit_request_new_link") }
 			</a>
 		</p>

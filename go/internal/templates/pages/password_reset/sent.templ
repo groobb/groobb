@@ -14,18 +14,16 @@ import "github.com/groobb/groobb/go/internal/templates"
 // データを取りません — 送信されたアドレスについて何もエコーバックしません。
 templ Sent() {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
-		<div class="flex flex-col gap-2 text-center">
-			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
-				{ templates.T(ctx, "password_reset_sent_heading") }
-			</h1>
-			<p class="text-sm text-gray-600">
-				{ templates.T(ctx, "password_reset_sent_lead") }
-			</p>
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "password_reset_sent_heading") }</h1>
+				<p>{ templates.T(ctx, "password_reset_sent_lead") }</p>
+			</header>
+			<footer class="justify-center">
+				<a href="/sign_in" class="font-medium text-foreground underline underline-offset-4">
+					{ templates.T(ctx, "password_reset_sent_back_to_sign_in") }
+				</a>
+			</footer>
 		</div>
-		<p class="text-center text-sm text-gray-600">
-			<a href="/sign_in" class="font-medium text-gray-900 underline">
-				{ templates.T(ctx, "password_reset_sent_back_to_sign_in") }
-			</a>
-		</p>
 	</div>
 }

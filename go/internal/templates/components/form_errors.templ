@@ -1,0 +1,43 @@
+package components
+
+import "github.com/groobb/groobb/go/internal/model"
+
+// FormErrors renders the form-wide (global) validation messages as Basecoat
+// destructive alerts, each with role="alert" so screen readers announce it. It
+// renders nothing when there are no global errors, so callers can place it
+// unconditionally at the top of a form.
+//
+// [Ja] FormErrors はフォーム全体 (グローバル) のバリデーションメッセージを Basecoat の
+// destructive アラートとして描画します。各アラートは role="alert" を持ち、スクリーン
+// リーダーが読み上げます。グローバルエラーが無ければ何も描画しないため、呼び出し側は
+// フォーム先頭に無条件で置けます。
+templ FormErrors(formErrors *model.ValidationError) {
+	if formErrors.HasGlobalError() {
+		for _, message := range formErrors.GetGlobalErrors() {
+			<div class="alert" data-variant="destructive" role="alert">
+				<h2>{ message }</h2>
+			</div>
+		}
+	}
+}
+
+// FieldErrors renders the validation messages for a single field as Basecoat
+// field error text (styled destructive by the enclosing .field). Each message
+// carries id="{field}-error-{i}" so the control can reference every one of them
+// from aria-describedby (built with FieldErrorsDescribedBy), and role="alert" so
+// screen readers announce it. It renders nothing when the field has no errors,
+// so callers can place it unconditionally inside a .field wrapper.
+//
+// [Ja] FieldErrors は単一フィールドのバリデーションメッセージを Basecoat のフィールド
+// エラーテキスト (囲む .field によって destructive 色で描画) として描画します。各
+// メッセージは id="{field}-error-{i}" を持ち、入力欄が (FieldErrorsDescribedBy で
+// 組み立てた) aria-describedby からその全てを参照できるようにし、role="alert" で
+// スクリーンリーダーが読み上げます。フィールドにエラーが無ければ何も描画しないため、
+// 呼び出し側は .field ラッパー内に無条件で置けます。
+templ FieldErrors(field string, formErrors *model.ValidationError) {
+	if formErrors.HasFieldError(field) {
+		for i, message := range formErrors.GetFieldErrors(field) {
+			<p role="alert" id={ fieldErrorID(field, i) }>{ message }</p>
+		}
+	}
+}

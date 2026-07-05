@@ -52,10 +52,19 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		var ae *model.AppError
 		if errors.As(err, &ae) {
 			slog.ErrorContext(ctx, ae.LogString())
+			// Carry the user-safe message as a form-wide (global) error so the
+			// re-rendered form surfaces it through the shared FormErrors alert,
+			// the same channel sign-in uses for its credentials error.
+			//
+			// [Ja] ユーザー安全なメッセージをフォーム全体 (グローバル) のエラーとして
+			// 運び、再描画されたフォームが共通の FormErrors アラート経由で表示する。
+			// サインインが資格情報エラーに使うのと同じ経路。
+			formErrors := model.NewValidationError()
+			formErrors.AddGlobal(ae.Error())
 			h.renderNew(w, r, http.StatusInternalServerError, signuppage.NewPageData{
-				CSRFToken: middleware.CSRFTokenFromContext(ctx),
-				Email:     email,
-				FormError: ae.Error(),
+				CSRFToken:  middleware.CSRFTokenFromContext(ctx),
+				Email:      email,
+				FormErrors: formErrors,
 			})
 			return
 		}
