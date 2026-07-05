@@ -2,28 +2,28 @@ package welcome
 
 import "github.com/groobb/groobb/go/internal/templates"
 
-// Show renders the Groobb top page: a centered hero with the service heading,
-// a short description, and two calls to action that lead to sign-up and sign-in.
+// Show renders the Groobb top page: a centered card with the service heading, a
+// short description, and two calls to action that lead to sign-up and sign-in.
 // The text is sourced from the locale files so it follows the request locale.
 //
-// [Ja] Show は Groobb のトップページを描画します。中央寄せのヒーローにサービスの
+// [Ja] Show は Groobb のトップページを描画します。中央寄せのカードにサービスの
 // 見出しと短い説明、そしてサインアップとサインインへ誘導する 2 つの CTA を表示します。
 // 文言はロケールファイルから取得し、リクエストのロケールに従います。
 templ Show() {
-	<div class="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-4 py-16 text-center">
-		<h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-			{ templates.T(ctx, "welcome_show_heading") }
-		</h1>
-		<p class="text-lg text-gray-600">
-			{ templates.T(ctx, "welcome_show_lead") }
-		</p>
-		<div class="flex flex-wrap items-center justify-center gap-4">
-			<a href={ templates.SignUpPath().SafeURL() } class="rounded-full bg-gray-900 px-5 py-2.5 font-medium text-white">
-				{ templates.T(ctx, "welcome_show_sign_up_link") }
-			</a>
-			<a href={ templates.SignInPath().SafeURL() } class="font-medium text-gray-900 underline">
-				{ templates.T(ctx, "welcome_show_sign_in_link") }
-			</a>
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "welcome_show_heading") }</h1>
+				<p>{ templates.T(ctx, "welcome_show_lead") }</p>
+			</header>
+			<footer class="flex-col gap-2">
+				<a href={ templates.SignUpPath().SafeURL() } class="btn w-full">
+					{ templates.T(ctx, "welcome_show_sign_up_link") }
+				</a>
+				<a href={ templates.SignInPath().SafeURL() } class="btn w-full" data-variant="outline">
+					{ templates.T(ctx, "welcome_show_sign_in_link") }
+				</a>
+			</footer>
 		</div>
 	</div>
 }

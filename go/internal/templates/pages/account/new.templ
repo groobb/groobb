@@ -3,6 +3,7 @@ package account
 import (
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
 // NewPageData is the data for the account-creation (password setup) page.
@@ -34,17 +35,24 @@ type NewPageData struct {
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">
-			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+			<h1 class="text-3xl font-bold tracking-tight">
 				{ templates.T(ctx, "account_new_heading") }
 			</h1>
-			<p class="text-sm text-gray-600">
+			<p class="text-sm text-muted-foreground">
 				{ templates.T(ctx, "account_new_lead") }
 			</p>
 		</div>
+		@components.FormErrors(data.FormErrors)
 		<form action="/account" method="POST" class="flex flex-col gap-4">
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-			<div class="flex flex-col gap-1">
-				<label for="password" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password") {
+					data-invalid="true"
+				}
+			>
+				<label for="password">
 					{ templates.T(ctx, "account_new_password_label") }
 				</label>
 				<input
@@ -57,21 +65,22 @@ templ New(data NewPageData) {
 					autofocus
 					if data.FormErrors.HasFieldError("password") {
 						aria-invalid="true"
-						aria-describedby="password-error"
+						aria-describedby={ "password-hint " + components.FieldErrorsDescribedBy("password", data.FormErrors) }
+					} else {
+						aria-describedby="password-hint"
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				<p class="text-sm text-gray-600">{ templates.T(ctx, "account_new_password_hint") }</p>
-				if data.FormErrors.HasFieldError("password") {
-					<div id="password-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("password") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				<p id="password-hint">{ templates.T(ctx, "account_new_password_hint") }</p>
+				@components.FieldErrors("password", data.FormErrors)
 			</div>
-			<div class="flex flex-col gap-1">
-				<label for="password_confirmation" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password_confirmation") {
+					data-invalid="true"
+				}
+			>
+				<label for="password_confirmation">
 					{ templates.T(ctx, "account_new_password_confirmation_label") }
 				</label>
 				<input
@@ -84,19 +93,12 @@ templ New(data NewPageData) {
 					required
 					if data.FormErrors.HasFieldError("password_confirmation") {
 						aria-invalid="true"
-						aria-describedby="password_confirmation-error"
+						aria-describedby={ components.FieldErrorsDescribedBy("password_confirmation", data.FormErrors) }
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				if data.FormErrors.HasFieldError("password_confirmation") {
-					<div id="password_confirmation-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("password_confirmation") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				@components.FieldErrors("password_confirmation", data.FormErrors)
 			</div>
-			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+			<button type="submit" class="btn w-full">
 				{ templates.T(ctx, "account_new_submit") }
 			</button>
 		</form>

@@ -3,6 +3,7 @@ package sign_in
 import (
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
 // NewPageData is the data for the sign-in form page. Email is echoed back so a
@@ -37,24 +38,24 @@ type NewPageData struct {
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">
-			<h1 class="text-3xl font-bold tracking-tight text-gray-900">
+			<h1 class="text-3xl font-bold tracking-tight">
 				{ templates.T(ctx, "sign_in_new_heading") }
 			</h1>
-			<p class="text-sm text-gray-600">
+			<p class="text-sm text-muted-foreground">
 				{ templates.T(ctx, "sign_in_new_lead") }
 			</p>
 		</div>
+		@components.FormErrors(data.FormErrors)
 		<form action="/sign_in" method="POST" class="flex flex-col gap-4">
-			if data.FormErrors.HasGlobalError() {
-				<div role="alert" class="rounded-md border border-red-300 bg-red-50 px-3 py-2">
-					for _, message := range data.FormErrors.GetGlobalErrors() {
-						<p class="text-sm text-red-600">{ message }</p>
-					}
-				</div>
-			}
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-			<div class="flex flex-col gap-1">
-				<label for="email" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("email") {
+					data-invalid="true"
+				}
+			>
+				<label for="email">
 					{ templates.T(ctx, "sign_in_new_email_label") }
 				</label>
 				<input
@@ -67,20 +68,19 @@ templ New(data NewPageData) {
 					autofocus
 					if data.FormErrors.HasFieldError("email") {
 						aria-invalid="true"
-						aria-describedby="email-error"
+						aria-describedby={ components.FieldErrorsDescribedBy("email", data.FormErrors) }
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				if data.FormErrors.HasFieldError("email") {
-					<div id="email-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("email") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				@components.FieldErrors("email", data.FormErrors)
 			</div>
-			<div class="flex flex-col gap-1">
-				<label for="password" class="text-sm font-medium text-gray-900">
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password") {
+					data-invalid="true"
+				}
+			>
+				<label for="password">
 					{ templates.T(ctx, "sign_in_new_password_label") }
 				</label>
 				<input
@@ -92,29 +92,22 @@ templ New(data NewPageData) {
 					required
 					if data.FormErrors.HasFieldError("password") {
 						aria-invalid="true"
-						aria-describedby="password-error"
+						aria-describedby={ components.FieldErrorsDescribedBy("password", data.FormErrors) }
 					}
-					class="rounded-md border border-gray-300 px-3 py-2"
 				/>
-				if data.FormErrors.HasFieldError("password") {
-					<div id="password-error" role="alert" class="flex flex-col gap-1">
-						for _, message := range data.FormErrors.GetFieldErrors("password") {
-							<p class="text-sm text-red-600">{ message }</p>
-						}
-					</div>
-				}
+				@components.FieldErrors("password", data.FormErrors)
 			</div>
-			<button type="submit" class="rounded-full bg-gray-900 px-4 py-2 font-medium text-white">
+			<button type="submit" class="btn w-full">
 				{ templates.T(ctx, "sign_in_new_submit") }
 			</button>
 		</form>
-		<p class="text-center text-sm text-gray-600">
-			<a href="/password_reset/new" class="font-medium text-gray-900 underline">
+		<p class="text-center text-sm text-muted-foreground">
+			<a href="/password_reset/new" class="font-medium text-foreground underline underline-offset-4">
 				{ templates.T(ctx, "sign_in_new_forgot_password_link") }
 			</a>
 		</p>
-		<p class="text-center text-sm text-gray-600">
-			<a href="/sign_up" class="font-medium text-gray-900 underline">
+		<p class="text-center text-sm text-muted-foreground">
+			<a href="/sign_up" class="font-medium text-foreground underline underline-offset-4">
 				{ templates.T(ctx, "sign_in_new_sign_up_link") }
 			</a>
 		</p>
