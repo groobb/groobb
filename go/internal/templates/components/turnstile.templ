@@ -1,0 +1,24 @@
+package components
+
+// Turnstile renders the Cloudflare Turnstile widget and loads its api.js so the
+// browser injects a cf-turnstile-response token into the enclosing form on
+// submit. The script is loaded async + defer so it never blocks HTML parsing.
+//
+// When siteKey is empty (the dev / test disable path, where config clears the
+// key) it renders nothing at all — neither the script nor the widget — so those
+// environments make no third-party request and the markup stays clean.
+//
+// [Ja] Turnstile は Cloudflare Turnstile ウィジェットを描画し、その api.js を
+// 読み込むことで、送信時にブラウザが囲んでいるフォームへ cf-turnstile-response
+// トークンを差し込むようにします。スクリプトは async + defer で読み込むため、
+// HTML の解析をブロックしません。
+//
+// siteKey が空のとき (dev / test の無効化経路。config がキーを空にする) は
+// スクリプトもウィジェットも一切描画しないため、それらの環境はサードパーティ
+// リクエストを行わず、マークアップもクリーンなまま保たれます。
+templ Turnstile(siteKey string) {
+	if siteKey != "" {
+		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+		<div class="cf-turnstile" data-sitekey={ siteKey }></div>
+	}
+}

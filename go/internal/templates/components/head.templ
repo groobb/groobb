@@ -2,16 +2,29 @@ package components
 
 import "github.com/groobb/groobb/go/internal/viewmodel"
 
-// Head renders the shared <head> contents: meta tags and asset references. The
-// "?v=" query string busts the browser cache whenever the asset version changes.
+// Head renders the shared <head> contents: meta tags, a preconnect hint, and
+// asset references. The "?v=" query string busts the browser cache whenever the
+// asset version changes.
 //
-// [Ja] Head は共通の <head> 内容 (メタタグとアセット参照) を描画します。"?v="
-// クエリ文字列は、アセットのバージョンが変わるたびにブラウザキャッシュを無効化します。
+// The preconnect to challenges.cloudflare.com warms the connection the
+// Turnstile widget on the public forms will use. It is unconditional because
+// <head> has no access to the per-page site key; on pages that never open the
+// connection the browser drops the unused preconnect after a few seconds.
+//
+// [Ja] Head は共通の <head> 内容 (メタタグ、preconnect ヒント、アセット参照) を
+// 描画します。"?v=" クエリ文字列は、アセットのバージョンが変わるたびにブラウザ
+// キャッシュを無効化します。
+//
+// challenges.cloudflare.com への preconnect は、公開フォームの Turnstile
+// ウィジェットが使う接続を事前に温めます。<head> はページ単位のサイトキーを
+// 参照できないため無条件で置いており、接続を開かないページではブラウザが数秒後に
+// 未使用の preconnect を破棄します。
 templ Head(meta viewmodel.PageMeta) {
 	<meta charset="UTF-8"/>
 	<title>{ meta.Title }</title>
 	<meta name="description" content={ meta.Description }/>
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+	<link rel="preconnect" href="https://challenges.cloudflare.com"/>
 	<link rel="stylesheet" href={ "/static/css/style.css?v=" + meta.AssetVersion }/>
 	<script type="module" src={ "/static/js/main.js?v=" + meta.AssetVersion }></script>
 }
