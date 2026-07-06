@@ -294,3 +294,7 @@ other = "This password reset link has already been used. Please request a new on
 [validation_token_expired]
 description = "Form-wide error when the password reset token has expired"
 other = "This password reset link has expired. Please request a new one."
+
+[validation_turnstile_failed]
+description = "Form-wide error when the Turnstile bot check fails (prompts a retry)"
+other = "We couldn't verify that you're not a robot. Please try again."
