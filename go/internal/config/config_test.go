@@ -1,6 +1,11 @@
 package config
 
-import "testing"
+import (
+	"bytes"
+	"log/slog"
+	"strings"
+	"testing"
+)
 
 // setRequiredEnv sets the environment variables that Load requires.
 // t.Setenv restores the previous values automatically when the test ends.
@@ -118,6 +123,167 @@ func TestLoadReadsAppURL(t *testing.T) {
 			t.Errorf("AppURL should default to empty, got %q", cfg.AppURL)
 		}
 	})
+}
+
+// Cloudflare's documented dummy keys, used only as test fixtures (never as dev
+// runtime defaults).
+//
+// [Ja] Cloudflare が公開しているダミーキー。テストのフィクスチャとしてのみ使い、
+// dev の実行時デフォルトには使わない。
+const (
+	turnstileTestSiteKey   = "1x00000000000000000000AA"
+	turnstileTestSecretKey = "1x0000000000000000000000000000000AA"
+)
+
+// TestLoadReadsTurnstileSettings verifies the optional Turnstile keys are read
+// from the environment, and default to empty when unset (they are not required
+// because Turnstile is enabled operationally by provisioning the real keys).
+//
+// [Ja] TestLoadReadsTurnstileSettings は任意の Turnstile キーが環境変数から読み込まれ、
+// 未設定時は空になることを検証する (実キーを設定する運用で有効化するため必須ではない)。
+func TestLoadReadsTurnstileSettings(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
+		setRequiredEnv(t)
+		// Keep DISABLE unset so it does not clear the keys under assertion.
+		//
+		// [Ja] DISABLE を未設定にして、検証対象のキーが空に落とされないようにする。
+		t.Setenv("GROOBB_TURNSTILE_DISABLE", "")
+		t.Setenv("GROOBB_TURNSTILE_SITE_KEY", turnstileTestSiteKey)
+		t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", turnstileTestSecretKey)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() returned an unexpected error: %v", err)
+		}
+
+		if cfg.TurnstileSiteKey != turnstileTestSiteKey {
+			t.Errorf("TurnstileSiteKey = %q, want %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
+		}
+		if cfg.TurnstileSecretKey != turnstileTestSecretKey {
+			t.Errorf("TurnstileSecretKey = %q, want %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
+		}
+	})
+
+	t.Run("unset defaults to empty without error", func(t *testing.T) {
+		setRequiredEnv(t)
+		t.Setenv("GROOBB_TURNSTILE_DISABLE", "")
+		t.Setenv("GROOBB_TURNSTILE_SITE_KEY", "")
+		t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() should not fail when Turnstile keys are missing: %v", err)
+		}
+
+		if cfg.TurnstileSiteKey != "" || cfg.TurnstileSecretKey != "" {
+			t.Errorf("Turnstile keys should default to empty, got %q / %q",
+				cfg.TurnstileSiteKey, cfg.TurnstileSecretKey)
+		}
+	})
+}
+
+// TestLoadTurnstileDisable verifies the fail-closed disable logic:
+// GROOBB_TURNSTILE_DISABLE clears both keys in non-production environments but is
+// ignored (keys kept) in production.
+//
+// [Ja] TestLoadTurnstileDisable は fail-closed の無効化ロジックを検証する。
+// GROOBB_TURNSTILE_DISABLE は非本番環境では両キーを空にするが、本番環境では無視され
+// (キーを保持する)。
+func TestLoadTurnstileDisable(t *testing.T) {
+	tests := []struct {
+		name            string
+		env             string
+		disable         string
+		wantKeysCleared bool
+	}{
+		{name: "dev DISABLE clears keys", env: "dev", disable: "true", wantKeysCleared: true},
+		{name: "test DISABLE clears keys", env: "test", disable: "true", wantKeysCleared: true},
+		{name: "production DISABLE is ignored", env: "prod", disable: "true", wantKeysCleared: false},
+		{name: "DISABLE unset keeps keys", env: "test", disable: "", wantKeysCleared: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("APP_ENV", tt.env)
+			t.Setenv("GROOBB_TURNSTILE_SITE_KEY", turnstileTestSiteKey)
+			t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", turnstileTestSecretKey)
+			t.Setenv("GROOBB_TURNSTILE_DISABLE", tt.disable)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load() returned an unexpected error: %v", err)
+			}
+
+			if tt.wantKeysCleared {
+				if cfg.TurnstileSiteKey != "" || cfg.TurnstileSecretKey != "" {
+					t.Errorf("keys should be cleared, got site=%q secret=%q",
+						cfg.TurnstileSiteKey, cfg.TurnstileSecretKey)
+				}
+				return
+			}
+
+			if cfg.TurnstileSiteKey != turnstileTestSiteKey {
+				t.Errorf("TurnstileSiteKey = %q, want %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
+			}
+			if cfg.TurnstileSecretKey != turnstileTestSecretKey {
+				t.Errorf("TurnstileSecretKey = %q, want %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
+			}
+		})
+	}
+}
+
+// TestLoadTurnstilePartialKeyWarning verifies that Load warns in production when
+// exactly one Turnstile key is set (a silent-bypass misconfiguration), and stays
+// quiet when both keys are set, both are empty, or the environment is not
+// production.
+//
+// [Ja] TestLoadTurnstilePartialKeyWarning は、本番で Turnstile のキーが片方だけ設定
+// されているとき (黙ってバイパスされる設定ミス) に Load が警告し、両方設定・両方空・
+// 非本番のときは警告しないことを検証する。
+func TestLoadTurnstilePartialKeyWarning(t *testing.T) {
+	tests := []struct {
+		name      string
+		env       string
+		siteKey   string
+		secretKey string
+		wantWarn  bool
+	}{
+		{name: "prod site key only warns", env: "prod", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: true},
+		{name: "prod secret key only warns", env: "prod", siteKey: "", secretKey: turnstileTestSecretKey, wantWarn: true},
+		{name: "prod both keys set does not warn", env: "prod", siteKey: turnstileTestSiteKey, secretKey: turnstileTestSecretKey, wantWarn: false},
+		{name: "prod both keys empty does not warn", env: "prod", siteKey: "", secretKey: "", wantWarn: false},
+		{name: "dev site key only does not warn", env: "dev", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("APP_ENV", tt.env)
+			t.Setenv("GROOBB_TURNSTILE_DISABLE", "")
+			t.Setenv("GROOBB_TURNSTILE_SITE_KEY", tt.siteKey)
+			t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", tt.secretKey)
+
+			// Capture the default slog output for the duration of the test and
+			// restore it afterward, so the partial-key warning can be asserted.
+			//
+			// [Ja] 片方キー警告を検証できるよう、テスト中だけデフォルトの slog 出力を
+			// 捕捉し、終了後に元へ戻す。
+			var buf bytes.Buffer
+			original := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+			defer slog.SetDefault(original)
+
+			if _, err := Load(); err != nil {
+				t.Fatalf("Load() returned an unexpected error: %v", err)
+			}
+
+			warned := strings.Contains(buf.String(), "片方のみ設定")
+			if warned != tt.wantWarn {
+				t.Errorf("partial-key warning logged = %v, want %v (log: %q)", warned, tt.wantWarn, buf.String())
+			}
+		})
+	}
 }
 
 // TestLoadDefaultsEnvToDev verifies that an empty APP_ENV defaults to "dev".

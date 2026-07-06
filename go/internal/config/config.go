@@ -7,6 +7,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
@@ -88,6 +89,20 @@ type Config struct {
 	// メール設定と同じ理由で必須ではなく任意とします (メール未設定のデプロイでも起動できる
 	// 必要があるため)。空の AppURL からリンクを組み立てた場合、URL は単にホスト相対になります。
 	AppURL string
+
+	// TurnstileSiteKey and TurnstileSecretKey configure Cloudflare Turnstile bot
+	// protection on the public forms. The site key is handed to templates to
+	// render the widget, and the secret key is used server-side to verify the
+	// submitted token. They are optional: when both are empty (a disabled dev /
+	// test setup), the widget is not rendered and token verification is bypassed.
+	//
+	// [Ja] TurnstileSiteKey と TurnstileSecretKey は公開フォームの Cloudflare
+	// Turnstile による Bot 対策を設定します。サイトキーはウィジェットを描画するために
+	// テンプレートへ渡し、シークレットキーは送信されたトークンをサーバー側で検証するのに
+	// 使います。任意であり、両方が空のとき (dev / test の無効化時) はウィジェットを描画せず、
+	// トークン検証もバイパスします。
+	TurnstileSiteKey   string
+	TurnstileSecretKey string
 }
 
 // Load reads the configuration from environment variables.
@@ -148,6 +163,60 @@ func Load() (*Config, error) {
 	// [Ja] AppURL は必須にせず読み込む。理由は上のメール設定と同じ (フィールドの
 	// ドキュメントを参照)。
 	cfg.AppURL = os.Getenv("GROOBB_APP_URL")
+
+	// Turnstile keys are read without requiring them: Turnstile is enabled
+	// operationally by provisioning the real keys, so a deployment must still boot
+	// before they are set (see the field docs).
+	//
+	// [Ja] Turnstile キーは必須にせず読み込む。Turnstile は実キーを設定する運用手順で
+	// 有効化するため、キー設定前でもデプロイが起動できる必要がある (フィールドの
+	// ドキュメントを参照)。
+	cfg.TurnstileSiteKey = os.Getenv("GROOBB_TURNSTILE_SITE_KEY")
+	cfg.TurnstileSecretKey = os.Getenv("GROOBB_TURNSTILE_SECRET_KEY")
+
+	// GROOBB_TURNSTILE_DISABLE lets non-production environments switch Turnstile
+	// off with a single flag instead of unsetting both keys. When enabled, both
+	// keys are cleared so the empty-key path takes over: token verification is
+	// bypassed and the widget is not rendered.
+	//
+	// In production the flag is deliberately ignored (fail-closed) and only logged
+	// as a warning. Turnstile is bot protection, so a stray
+	// GROOBB_TURNSTILE_DISABLE=true leaking into production must never silently
+	// disable it.
+	//
+	// [Ja] GROOBB_TURNSTILE_DISABLE は、非本番環境で 2 つのキーを未設定にする代わりに
+	// 1 フラグで Turnstile を無効化するためのものです。有効時は両キーを空に落とし、
+	// キー空の経路 (トークン検証がバイパスされ、ウィジェットも描画されない) に
+	// 委ねます。
+	//
+	// 本番ではフラグを意図的に無視し (fail-closed)、warn ログを出すだけにします。
+	// Turnstile は Bot 対策なので、GROOBB_TURNSTILE_DISABLE=true が誤って本番に漏れても、
+	// 黙って無効化されてはなりません。
+	if os.Getenv("GROOBB_TURNSTILE_DISABLE") == "true" {
+		if cfg.IsProduction() {
+			slog.Warn("GROOBB_TURNSTILE_DISABLE は本番環境では無視されます (Bot 対策を維持するため fail-closed)")
+		} else {
+			cfg.TurnstileSiteKey = ""
+			cfg.TurnstileSecretKey = ""
+		}
+	}
+
+	// In production, warn when exactly one of the two keys is set. A site key
+	// without a secret key still renders the widget while server-side
+	// verification is bypassed (empty secret), so bot protection would be
+	// silently off despite looking active. This is kept a warning rather than a
+	// startup error because the keys are optional (a deployment must still boot
+	// before they are provisioned); both keys empty is the deliberate
+	// "not enabled yet" state and is not warned.
+	//
+	// [Ja] 本番では 2 つのキーのうち片方だけが設定されているときに警告します。
+	// シークレットキーのないサイトキーは、ウィジェットを描画しつつサーバー側の検証を
+	// バイパスする (シークレット空) ため、有効に見えて Bot 対策が黙って無効になります。
+	// キーは任意 (設定前でもデプロイが起動できる必要がある) なので起動時エラーにはせず
+	// 警告に留めます。両キーが空の状態は「まだ導入していない」意図的な状態として警告しません。
+	if cfg.IsProduction() && (cfg.TurnstileSiteKey == "") != (cfg.TurnstileSecretKey == "") {
+		slog.Warn("Turnstile のキーが片方のみ設定されています (本番で Bot 対策が黙って無効化される恐れ)")
+	}
 
 	return cfg, nil
 }
