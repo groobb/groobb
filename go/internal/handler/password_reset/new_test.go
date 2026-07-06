@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/i18n"
 )
 
@@ -27,7 +29,7 @@ func getPasswordResetNew(locale string) *http.Request {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newPasswordResetHandler(t)
+	handler, _, _ := newPasswordResetHandler(t)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getPasswordResetNew(i18n.LangJa))
@@ -59,7 +61,7 @@ func TestNew(t *testing.T) {
 func TestNew_English(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newPasswordResetHandler(t)
+	handler, _, _ := newPasswordResetHandler(t)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getPasswordResetNew(i18n.LangEn))
@@ -69,5 +71,46 @@ func TestNew_English(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "Reset your password") {
 		t.Error("英語の見出しが描画されていない")
+	}
+}
+
+// TestNew_RendersTurnstileWidget verifies that when a Turnstile site key is
+// configured, GET /password_reset/new renders the widget — the cf-turnstile div
+// carrying the site key and the api.js script — confirming renderNew forwards
+// cfg.TurnstileSiteKey into the form. New does not verify tokens, so the UseCase
+// and verifier are left nil. The site key is Cloudflare's dummy testing key, kept
+// to fixtures.
+//
+// [Ja] TestNew_RendersTurnstileWidget は、Turnstile のサイトキーが設定されているとき
+// GET /password_reset/new がウィジェット (サイトキーを持つ cf-turnstile div と api.js
+// スクリプト) を描画することを検証し、renderNew が cfg.TurnstileSiteKey をフォームへ
+// 渡していることを確認する。New はトークンを検証しないため、UseCase と検証器は nil の
+// ままにする。サイトキーは Cloudflare のダミーテストキーで、フィクスチャに留める。
+func TestNew_RendersTurnstileWidget(t *testing.T) {
+	t.Parallel()
+
+	// Cloudflare's always-passing dummy site key, kept to test fixtures.
+	//
+	// [Ja] Cloudflare の「常に成功」ダミーサイトキー (テスト専用)。
+	const dummySiteKey = "1x00000000000000000000AA"
+
+	handler := password_reset.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil)
+
+	rec := httptest.NewRecorder()
+	handler.New(rec, getPasswordResetNew(i18n.LangJa))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	wants := []string{
+		`class="cf-turnstile"`,
+		`data-sitekey="1x00000000000000000000AA"`,
+		"challenges.cloudflare.com/turnstile/v0/api.js",
+	}
+	for _, want := range wants {
+		if !strings.Contains(body, want) {
+			t.Errorf("response body does not contain %q", want)
+		}
 	}
 }

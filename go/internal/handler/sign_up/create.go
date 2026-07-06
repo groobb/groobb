@@ -25,6 +25,43 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	email := r.FormValue("email")
 
+	// Verify the Turnstile token before the UseCase, as a request-level bot gate:
+	// a non-pass (an unsolved / bot-forged widget) and a siteverify failure both
+	// stop the request here so it never reaches the UseCase (no confirmation mail
+	// is enqueued). Both are logged at warn — Groobb has no error tracker, so warn
+	// is the ceiling — and surfaced to the user as a form-wide message, 422. The
+	// disabled dev / test setup (empty secret key) passes verification, so this
+	// gate is transparent there.
+	//
+	// [Ja] UseCase の前に Turnstile トークンを検証する。リクエストレベルの Bot ゲートとして、
+	// 非通過 (未解決 / Bot による偽造ウィジェット) と siteverify の失敗のどちらもここで
+	// リクエストを止め、UseCase へは到達させない (確認メールは投入されない)。どちらも warn で
+	// ログする (Groobb はエラートラッカー未連携のため warn が上限)。ユーザーにはフォーム全体の
+	// メッセージとして 422 で表示する。無効化された dev / test 構成 (シークレットキー空) は検証を
+	// 通過するため、そこではこのゲートは透過的に働く。
+	if passed, err := h.turnstile.Verify(ctx, r.FormValue("cf-turnstile-response")); err != nil || !passed {
+		// A plain non-pass (passed == false, err == nil) is an expected bot
+		// rejection, not a system error, so attach the error attribute only when
+		// there actually is one — otherwise the log carries an empty error=<nil>.
+		//
+		// [Ja] 単なる非通過 (passed == false, err == nil) は想定内の Bot 拒否であり
+		// システムエラーではないため、error 属性は実際にエラーがあるときだけ付ける。
+		// そうしないとログに空の error=<nil> が残る。
+		attrs := []any{}
+		if err != nil {
+			attrs = append(attrs, "error", err)
+		}
+		slog.WarnContext(ctx, "Turnstile 検証を通過しなかったためサインアップを受け付けない", attrs...)
+		formErrors := model.NewValidationError()
+		formErrors.AddGlobal(i18n.T(ctx, "validation_turnstile_failed"))
+		h.renderNew(w, r, http.StatusUnprocessableEntity, signuppage.NewPageData{
+			CSRFToken:  middleware.CSRFTokenFromContext(ctx),
+			Email:      email,
+			FormErrors: formErrors,
+		})
+		return
+	}
+
 	output, err := h.createSignUpUC.Execute(ctx, usecase.CreateSignUpInput{
 		Email:  email,
 		Locale: i18n.GetLocale(ctx),

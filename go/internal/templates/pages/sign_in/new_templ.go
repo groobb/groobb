@@ -16,21 +16,26 @@ import (
 // NewPageData is the data for the sign-in form page. Email is echoed back so a
 // re-rendered form (after a validation error) keeps what the user typed, and
 // FormErrors carries the validation messages: a form-wide message (an invalid
-// email/password combination) shown at the top, and per-field messages (a missing
-// or malformed email, a missing password) shown beneath each input. The password
-// is deliberately not echoed back, since re-rendering a password field with its
-// value is a credential-leak risk.
+// email/password combination, or a failed bot check) shown at the top, and
+// per-field messages (a missing or malformed email, a missing password) shown
+// beneath each input. The password is deliberately not echoed back, since
+// re-rendering a password field with its value is a credential-leak risk.
+// TurnstileSiteKey renders the bot-protection widget; when it is empty (the
+// disabled dev / test setup) the widget is omitted entirely.
 //
 // [Ja] NewPageData はサインインフォームページのデータです。Email は再描画
 // (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
 // バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (email と
-// パスワードの組み合わせが不正) と、各入力欄の下に出すフィールド別のメッセージ (email の
-// 未入力・不正、パスワードの未入力) です。パスワードは意図的にエコーバックしません。値付き
-// でパスワードフィールドを再描画するのは資格情報の漏えいリスクのためです。
+// パスワードの組み合わせが不正、または Bot 検証の失敗) と、各入力欄の下に出すフィールド別の
+// メッセージ (email の未入力・不正、パスワードの未入力) です。パスワードは意図的に
+// エコーバックしません。値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスクの
+// ためです。TurnstileSiteKey は Bot 対策ウィジェットを描画します。空のとき (無効化された
+// dev / test 構成) はウィジェットを完全に省きます。
 type NewPageData struct {
-	CSRFToken  string
-	Email      string
-	FormErrors *model.ValidationError
+	CSRFToken        string
+	Email            string
+	FormErrors       *model.ValidationError
+	TurnstileSiteKey string
 }
 
 // New renders the sign-in form: an email and a password field that, on submit,
@@ -70,7 +75,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 42, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 47, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +88,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 45, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 50, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -104,7 +109,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 50, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 55, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -127,7 +132,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_email_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 59, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 64, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -140,7 +145,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Email)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 65, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 70, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -158,7 +163,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("email", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 71, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 76, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -194,7 +199,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_password_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 84, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 89, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -212,7 +217,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("password", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 95, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 100, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -231,46 +236,54 @@ func New(data NewPageData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div><button type=\"submit\" class=\"btn w-full\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.Turnstile(data.TurnstileSiteKey).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<button type=\"submit\" class=\"btn w-full\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 101, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 107, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</button></form><p class=\"text-center text-sm text-muted-foreground\"><a href=\"/password_reset/new\" class=\"font-medium text-foreground underline underline-offset-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button></form><p class=\"text-center text-sm text-muted-foreground\"><a href=\"/password_reset/new\" class=\"font-medium text-foreground underline underline-offset-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_forgot_password_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 106, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 112, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</a></p><p class=\"text-center text-sm text-muted-foreground\"><a href=\"/sign_up\" class=\"font-medium text-foreground underline underline-offset-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</a></p><p class=\"text-center text-sm text-muted-foreground\"><a href=\"/sign_up\" class=\"font-medium text-foreground underline underline-offset-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_new_sign_up_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 111, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in/new.templ`, Line: 117, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</a></p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</a></p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

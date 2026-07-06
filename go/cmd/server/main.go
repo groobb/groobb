@@ -34,6 +34,7 @@ import (
 	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 	"github.com/groobb/groobb/go/internal/worker"
@@ -108,6 +109,17 @@ func main() {
 	sessionMgr := session.NewManager(userRepo, cfg)
 	jobDispatcher := dispatcher.NewDispatcher(workerClient.Client())
 
+	// One Turnstile verifier is shared across the public-form handlers (sign-up
+	// here, then sign-in and password-reset). Only the secret key is needed: an
+	// empty key (the disabled dev / test setup) makes Verify bypass every request,
+	// and the site key is passed to templates from cfg directly.
+	//
+	// [Ja] Turnstile の検証器は公開フォームのハンドラー (ここではサインアップ、続いて
+	// サインインとパスワードリセット) で 1 つを共有する。必要なのはシークレットキーのみ。
+	// キーが空 (無効化された dev / test 構成) のとき Verify はすべてのリクエストを
+	// バイパスし、サイトキーは cfg から直接テンプレートへ渡す。
+	turnstileVerifier := turnstile.NewClient(cfg.TurnstileSecretKey)
+
 	signUpValidator := validator.NewSignUpCreateValidator(userRepo)
 	createSignUpUC := usecase.NewCreateSignUpUsecase(signUpValidator, emailConfirmationRepo, jobDispatcher)
 
@@ -130,12 +142,12 @@ func main() {
 
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
-	signUpHandler := sign_up.NewHandler(cfg, sessionMgr, createSignUpUC)
+	signUpHandler := sign_up.NewHandler(cfg, sessionMgr, createSignUpUC, turnstileVerifier)
 	emailConfirmationHandler := email_confirmation.NewHandler(cfg, sessionMgr, verifyEmailConfirmationUC)
 	accountHandler := account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
-	signInHandler := sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC)
+	signInHandler := sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC, turnstileVerifier)
 	signOutHandler := sign_out.NewHandler(sessionMgr, deleteSessionUC)
-	passwordResetHandler := password_reset.NewHandler(cfg, createPasswordResetTokenUC)
+	passwordResetHandler := password_reset.NewHandler(cfg, createPasswordResetTokenUC, turnstileVerifier)
 	passwordHandler := password.NewHandler(cfg, updatePasswordResetUC)
 
 	csrf := middleware.NewCSRF(cfg)

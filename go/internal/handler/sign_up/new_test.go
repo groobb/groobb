@@ -22,7 +22,7 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler := sign_up.NewHandler(&config.Config{Env: "test"}, nil, nil)
+	handler := sign_up.NewHandler(&config.Config{Env: "test"}, nil, nil, nil)
 
 	tests := []struct {
 		name        string
@@ -67,5 +67,48 @@ func TestNew(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestNew_RendersTurnstileWidget verifies that when a Turnstile site key is
+// configured, GET /sign_up renders the widget — the cf-turnstile div carrying the
+// site key and the api.js script — confirming renderNew forwards
+// cfg.TurnstileSiteKey into the form. New does not verify tokens, so the verifier
+// is left nil. The site key is Cloudflare's dummy testing key, kept to fixtures.
+//
+// [Ja] TestNew_RendersTurnstileWidget は、Turnstile のサイトキーが設定されているとき
+// GET /sign_up がウィジェット (サイトキーを持つ cf-turnstile div と api.js スクリプト) を
+// 描画することを検証し、renderNew が cfg.TurnstileSiteKey をフォームへ渡していることを
+// 確認します。New はトークンを検証しないため、検証器は nil のままにします。サイトキーは
+// Cloudflare のダミーテストキーで、フィクスチャに留めます。
+func TestNew_RendersTurnstileWidget(t *testing.T) {
+	t.Parallel()
+
+	// Cloudflare's always-passing dummy site key, kept to test fixtures.
+	//
+	// [Ja] Cloudflare の「常に成功」ダミーサイトキー (テスト専用)。
+	const dummySiteKey = "1x00000000000000000000AA"
+
+	handler := sign_up.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/sign_up", nil)
+	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	rec := httptest.NewRecorder()
+
+	handler.New(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	wants := []string{
+		`class="cf-turnstile"`,
+		`data-sitekey="1x00000000000000000000AA"`,
+		"challenges.cloudflare.com/turnstile/v0/api.js",
+	}
+	for _, want := range wants {
+		if !strings.Contains(body, want) {
+			t.Errorf("response body does not contain %q", want)
+		}
 	}
 }

@@ -11,6 +11,7 @@ package password_reset
 
 import (
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
@@ -20,6 +21,7 @@ import (
 type Handler struct {
 	cfg                        *config.Config
 	createPasswordResetTokenUC *usecase.CreatePasswordResetTokenUsecase
+	turnstile                  turnstile.Verifier
 }
 
 // NewHandler creates a password-reset Handler.
@@ -28,9 +30,11 @@ type Handler struct {
 func NewHandler(
 	cfg *config.Config,
 	createPasswordResetTokenUC *usecase.CreatePasswordResetTokenUsecase,
+	turnstileVerifier turnstile.Verifier,
 ) *Handler {
 	return &Handler{
 		cfg:                        cfg,
 		createPasswordResetTokenUC: createPasswordResetTokenUC,
+		turnstile:                  turnstileVerifier,
 	}
 }

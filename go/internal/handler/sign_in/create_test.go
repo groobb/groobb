@@ -2,6 +2,7 @@ package sign_in_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -23,16 +24,21 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignInHandler wires a sign-in Handler over the shared pool. The sign-in
-// flow looks up the user and creates a session through the pool, so its tests
-// commit rows and use unique emails (the test database is reset by make test)
-// rather than the rolled-back transaction pattern.
+// newSignInHandler wires a sign-in Handler over the shared pool, with a Turnstile
+// verifier that passes by default, so a handler test exercises the full request
+// path (Turnstile gate, validator, UseCase, session cookie) against a real
+// database. The sign-in flow looks up the user and creates a session through the
+// pool, so its tests commit rows and use unique emails (the test database is reset
+// by make test) rather than the rolled-back transaction pattern. The verifier is
+// returned so a test can make Turnstile verification fail.
 //
-// [Ja] newSignInHandler は共有プールでサインイン Handler を組み立てます。サインイン
-// フローはプール経由でユーザーを引きセッションを作るため、そのテストはロールバックされる
-// トランザクションパターンではなく、行をコミットしユニークな email を使います (テスト DB は
-// make test がリセットする)。
-func newSignInHandler(t *testing.T) *sign_in.Handler {
+// [Ja] newSignInHandler は共有プールで、既定で通過する Turnstile 検証器を伴ってサインイン
+// Handler を組み立て、ハンドラーテストが実 DB に対してリクエスト経路全体 (Turnstile ゲート・
+// バリデーター・UseCase・セッション Cookie) を通すようにします。サインインフローはプール
+// 経由でユーザーを引きセッションを作るため、そのテストはロールバックされるトランザクション
+// パターンではなく、行をコミットしユニークな email を使います (テスト DB は make test が
+// リセットする)。Turnstile 検証を失敗させられるよう、検証器も併せて返します。
+func newSignInHandler(t *testing.T) (*sign_in.Handler, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
@@ -44,7 +50,8 @@ func newSignInHandler(t *testing.T) *sign_in.Handler {
 	sessionMgr := session.NewManager(userRepo, cfg)
 	createSignInUC := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo))
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
-	return sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC)
+	verifier := &testutil.FakeTurnstileVerifier{Passed: true}
+	return sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC, verifier), verifier
 }
 
 // seedUserWithPassword creates a committed user with the given email and a
@@ -113,7 +120,7 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInHandler(t)
+	handler, _ := newSignInHandler(t)
 	email := seedUserWithPassword(t, "password123")
 
 	rec := httptest.NewRecorder()
@@ -138,7 +145,7 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_WrongPassword(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInHandler(t)
+	handler, _ := newSignInHandler(t)
 	email := seedUserWithPassword(t, "password123")
 
 	rec := httptest.NewRecorder()
@@ -171,7 +178,7 @@ func TestCreate_WrongPassword(t *testing.T) {
 func TestCreate_MissingEmail(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInHandler(t)
+	handler, _ := newSignInHandler(t)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignIn("", "password123", i18n.LangJa))
@@ -181,5 +188,96 @@ func TestCreate_MissingEmail(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `aria-invalid="true"`) {
 		t.Error("エラー時の入力欄に aria-invalid='true' が無い")
+	}
+}
+
+// TestCreate_TurnstileFailure verifies that when Turnstile verification does not
+// pass — a non-pass or a siteverify error — Create stops the request at the bot
+// gate: it re-renders the form with 422 and the form-wide Turnstile message,
+// echoes the email back, forwards the submitted token to the verifier, and
+// neither authenticates nor issues a session. Valid credentials are supplied on
+// purpose, so a gate bypass would sign the user in (303 + session cookie); the 422
+// and the absent session cookie confirm the gate ran before authentication.
+//
+// [Ja] TestCreate_TurnstileFailure は、Turnstile 検証が通過しないとき (非通過または
+// siteverify エラー) に Create が Bot ゲートでリクエストを止めることを検証する。
+// フォームを 422 とフォーム全体の Turnstile メッセージで再描画し、email をエコーバックし、
+// 送信されたトークンを検証器へ渡し、認証もセッション発行もしないことを確認する。有効な
+// 資格情報をあえて与えているため、ゲートが迂回されればユーザーはサインインしてしまう
+// (303 + セッション Cookie)。422 とセッション Cookie の不在が、ゲートが認証の前で走った
+// ことを裏付ける。
+func TestCreate_TurnstileFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		passed bool
+		err    error
+	}{
+		{name: "非通過", passed: false, err: nil},
+		{name: "検証エラー", passed: false, err: errors.New("siteverify unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, verifier := newSignInHandler(t)
+			verifier.Passed = tt.passed
+			verifier.Err = tt.err
+			email := seedUserWithPassword(t, "password123")
+
+			form := url.Values{
+				"email":                 {email},
+				"password":              {"password123"},
+				"cf-turnstile-response": {"submitted-token"},
+			}
+			req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+
+			rec := httptest.NewRecorder()
+			handler.Create(rec, req)
+
+			if rec.Code != http.StatusUnprocessableEntity {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+			}
+			body := rec.Body.String()
+			// The sign-in form is re-rendered carrying the form-wide Turnstile message.
+			//
+			// [Ja] サインインフォームが再描画され、フォーム全体の Turnstile メッセージを
+			// 載せていること。
+			if !strings.Contains(body, `action="/sign_in"`) {
+				t.Error("サインインフォームが再描画されていない")
+			}
+			if !strings.Contains(body, "ロボットでないことの確認に失敗しました") {
+				t.Error("Turnstile 失敗のフォーム全体メッセージが描画されていない")
+			}
+			if !strings.Contains(body, `role="alert"`) {
+				t.Error("フォーム全体のエラーに role='alert' が無い")
+			}
+			// The email is echoed back so the user does not have to retype it.
+			//
+			// [Ja] ユーザーが再入力しなくて済むよう email はエコーバックされること。
+			if !strings.Contains(body, email) {
+				t.Error("入力した email が再描画フォームにエコーバックされていない")
+			}
+			// The submitted token reached the verifier, confirming the handler read
+			// the correct cf-turnstile-response field.
+			//
+			// [Ja] 送信されたトークンが検証器へ到達しており、ハンドラーが正しい
+			// cf-turnstile-response フィールドを読んでいることを確認する。
+			if verifier.Token != "submitted-token" {
+				t.Errorf("verifier に渡ったトークン = %q, want %q", verifier.Token, "submitted-token")
+			}
+			// The bot gate must stop the request before authentication, so even the
+			// valid credentials supplied here do not issue a session.
+			//
+			// [Ja] Bot ゲートは認証の前でリクエストを止めるため、ここで与えた有効な
+			// 資格情報でもセッションは発行されないこと。
+			if findCookie(rec, session.CookieName) != nil {
+				t.Error("Turnstile 失敗時にセッション Cookie が設定された (認証に進んでしまっている)")
+			}
+		})
 	}
 }

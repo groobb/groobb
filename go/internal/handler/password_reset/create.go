@@ -33,6 +33,48 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	email := r.FormValue("email")
 
+	// Verify the Turnstile token before the UseCase, as a request-level bot gate:
+	// a non-pass (an unsolved / bot-forged widget) and a siteverify failure both
+	// stop the request here so it never reaches the UseCase (no reset link is
+	// issued or mailed). Both are logged at warn — Groobb has no error tracker, so
+	// warn is the ceiling — and surfaced to the user as a form-wide message, 422.
+	// This gate runs before any account lookup, so re-rendering the form (rather
+	// than the enumeration-safe "sent" page) reveals nothing about whether the
+	// email is registered; the enumeration concern only applies once an account has
+	// been looked up. The disabled dev / test setup (empty secret key) passes
+	// verification, so this gate is transparent there.
+	//
+	// [Ja] UseCase の前に Turnstile トークンを検証する。リクエストレベルの Bot ゲートとして、
+	// 非通過 (未解決 / Bot による偽造ウィジェット) と siteverify の失敗のどちらもここで
+	// リクエストを止め、UseCase へは到達させない (リセットリンクは発行もメール送信もされない)。
+	// どちらも warn でログする (Groobb はエラートラッカー未連携のため warn が上限)。ユーザーには
+	// フォーム全体のメッセージとして 422 で表示する。このゲートはアカウント検索の前に走るため、
+	// (列挙対策の "送信しました" ページではなく) フォームを再描画しても、その email が登録済みか
+	// どうかは一切漏れない。列挙の懸念はアカウントを検索した後にのみ生じる。無効化された
+	// dev / test 構成 (シークレットキー空) は検証を通過するため、そこではこのゲートは透過的に働く。
+	if passed, err := h.turnstile.Verify(ctx, r.FormValue("cf-turnstile-response")); err != nil || !passed {
+		// A plain non-pass (passed == false, err == nil) is an expected bot
+		// rejection, not a system error, so attach the error attribute only when
+		// there actually is one — otherwise the log carries an empty error=<nil>.
+		//
+		// [Ja] 単なる非通過 (passed == false, err == nil) は想定内の Bot 拒否であり
+		// システムエラーではないため、error 属性は実際にエラーがあるときだけ付ける。
+		// そうしないとログに空の error=<nil> が残る。
+		attrs := []any{}
+		if err != nil {
+			attrs = append(attrs, "error", err)
+		}
+		slog.WarnContext(ctx, "Turnstile 検証を通過しなかったためパスワードリセット申請を受け付けない", attrs...)
+		formErrors := model.NewValidationError()
+		formErrors.AddGlobal(i18n.T(ctx, "validation_turnstile_failed"))
+		h.renderNew(w, r, http.StatusUnprocessableEntity, passwordresetpage.NewPageData{
+			CSRFToken:  middleware.CSRFTokenFromContext(ctx),
+			Email:      email,
+			FormErrors: formErrors,
+		})
+		return
+	}
+
 	_, err := h.createPasswordResetTokenUC.Execute(ctx, usecase.CreatePasswordResetTokenInput{
 		Email:  email,
 		Locale: i18n.GetLocale(ctx),
