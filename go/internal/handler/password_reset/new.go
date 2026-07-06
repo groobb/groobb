@@ -35,6 +35,15 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) renderNew(w http.ResponseWriter, r *http.Request, status int, data passwordresetpage.NewPageData) {
 	ctx := r.Context()
 
+	// The Turnstile site key is the same for every render (it comes from config,
+	// not the request), so set it here once rather than at each call site. An empty
+	// key (the disabled dev / test setup) makes the widget render nothing.
+	//
+	// [Ja] Turnstile のサイトキーはどの描画でも同じ (リクエストではなく config 由来) なので、
+	// 各呼び出し側ではなくここで一度だけ設定する。キーが空 (無効化された dev / test 構成) の
+	// ときはウィジェットを何も描画しない。
+	data.TurnstileSiteKey = h.cfg.TurnstileSiteKey
+
 	meta := viewmodel.DefaultPageMeta(ctx, h.cfg)
 	meta.Title = i18n.T(ctx, "password_reset_new_title")
 	meta.Description = i18n.T(ctx, "password_reset_new_description")

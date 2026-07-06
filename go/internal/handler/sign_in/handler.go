@@ -10,6 +10,7 @@ package sign_in
 import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
@@ -21,6 +22,7 @@ type Handler struct {
 	sessionMgr      *session.Manager
 	createSignInUC  *usecase.CreateSignInUsecase
 	createSessionUC *usecase.CreateSessionUsecase
+	turnstile       turnstile.Verifier
 }
 
 // NewHandler creates a sign-in Handler.
@@ -31,11 +33,13 @@ func NewHandler(
 	sessionMgr *session.Manager,
 	createSignInUC *usecase.CreateSignInUsecase,
 	createSessionUC *usecase.CreateSessionUsecase,
+	turnstileVerifier turnstile.Verifier,
 ) *Handler {
 	return &Handler{
 		cfg:             cfg,
 		sessionMgr:      sessionMgr,
 		createSignInUC:  createSignInUC,
 		createSessionUC: createSessionUC,
+		turnstile:       turnstileVerifier,
 	}
 }

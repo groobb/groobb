@@ -2,6 +2,7 @@ package password_reset_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -22,18 +23,23 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newPasswordResetHandler wires a password-reset Handler over the shared pool.
-// The CreatePasswordResetTokenUsecase opens its own transaction, so its tests
-// commit rows and use unique emails (the test database is reset by make test)
-// rather than the rolled-back transaction pattern. The fake job inserter is
-// returned so a test can assert whether the reset mail was enqueued.
+// newPasswordResetHandler wires a password-reset Handler over the shared pool,
+// with a Turnstile verifier that passes by default, so a handler test exercises
+// the full request path (Turnstile gate, validator, UseCase) against a real
+// database. The CreatePasswordResetTokenUsecase opens its own transaction, so its
+// tests commit rows and use unique emails (the test database is reset by make
+// test) rather than the rolled-back transaction pattern. The fake job inserter
+// and verifier are returned so a test can assert whether the reset mail was
+// enqueued and can make Turnstile verification fail.
 //
-// [Ja] newPasswordResetHandler は共有プールで password-reset Handler を組み立てる。
+// [Ja] newPasswordResetHandler は共有プールで、既定で通過する Turnstile 検証器を伴って
+// password-reset Handler を組み立て、ハンドラーテストが実 DB に対してリクエスト経路全体
+// (Turnstile ゲート・バリデーター・UseCase) を通すようにする。
 // CreatePasswordResetTokenUsecase は自前のトランザクションを開くため、そのテストは
 // ロールバックされるトランザクションパターンではなく、行をコミットしユニークな email を
 // 使う (テスト DB は make test がリセットする)。リセットメールが投入されたかをテストが
-// 検証できるよう、フェイクのジョブインサーターを返す。
-func newPasswordResetHandler(t *testing.T) (*password_reset.Handler, *testutil.FakeJobInserter) {
+// 検証でき、Turnstile 検証を失敗させられるよう、フェイクのジョブインサーターと検証器を返す。
+func newPasswordResetHandler(t *testing.T) (*password_reset.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test", AppURL: "https://groobb.example.dev"}
@@ -51,7 +57,8 @@ func newPasswordResetHandler(t *testing.T) (*password_reset.Handler, *testutil.F
 		dispatcher.NewDispatcher(inserter),
 		cfg,
 	)
-	return password_reset.NewHandler(cfg, uc), inserter
+	verifier := &testutil.FakeTurnstileVerifier{Passed: true}
+	return password_reset.NewHandler(cfg, uc, verifier), inserter, verifier
 }
 
 // seedUser creates a committed user with a unique email and returns the email.
@@ -92,7 +99,7 @@ func postPasswordReset(email, locale string) *http.Request {
 func TestCreate_KnownEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newPasswordResetHandler(t)
+	handler, inserter, _ := newPasswordResetHandler(t)
 	email := seedUser(t)
 
 	rec := httptest.NewRecorder()
@@ -122,7 +129,7 @@ func TestCreate_KnownEmail(t *testing.T) {
 func TestCreate_UnknownEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newPasswordResetHandler(t)
+	handler, inserter, _ := newPasswordResetHandler(t)
 	email := fmt.Sprintf("nobody-h-%s@example.com", uuid.NewString())
 
 	rec := httptest.NewRecorder()
@@ -147,7 +154,7 @@ func TestCreate_UnknownEmail(t *testing.T) {
 func TestCreate_InvalidEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newPasswordResetHandler(t)
+	handler, inserter, _ := newPasswordResetHandler(t)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postPasswordReset("not-an-email", i18n.LangJa))
@@ -167,5 +174,100 @@ func TestCreate_InvalidEmail(t *testing.T) {
 	}
 	if inserter.Called {
 		t.Error("形式不正の email ではメールを投入すべきでない")
+	}
+}
+
+// TestCreate_TurnstileFailure verifies that when Turnstile verification does not
+// pass — a non-pass or a siteverify error — Create stops the request at the bot
+// gate: it re-renders the request form with 422 and the form-wide Turnstile
+// message (not the enumeration-safe sent page), echoes the email back, forwards
+// the submitted token to the verifier, and does not enqueue the reset mail. No
+// user is seeded because the gate runs before any account lookup.
+//
+// [Ja] TestCreate_TurnstileFailure は、Turnstile 検証が通過しないとき (非通過または
+// siteverify エラー) に Create が Bot ゲートでリクエストを止めることを検証する。
+// 申請フォームを 422 とフォーム全体の Turnstile メッセージで (列挙対策の送信済みページ
+// ではなく) 再描画し、email をエコーバックし、送信されたトークンを検証器へ渡し、リセット
+// メールを投入しないことを確認する。ゲートはアカウント検索の前に走るため、ユーザーは
+// 作成しない。
+func TestCreate_TurnstileFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		passed bool
+		err    error
+	}{
+		{name: "非通過", passed: false, err: nil},
+		{name: "検証エラー", passed: false, err: errors.New("siteverify unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, inserter, verifier := newPasswordResetHandler(t)
+			verifier.Passed = tt.passed
+			verifier.Err = tt.err
+
+			form := url.Values{
+				"email":                 {"user@example.com"},
+				"cf-turnstile-response": {"submitted-token"},
+			}
+			req := httptest.NewRequest(http.MethodPost, "/password_reset", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+
+			rec := httptest.NewRecorder()
+			handler.Create(rec, req)
+
+			if rec.Code != http.StatusUnprocessableEntity {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+			}
+			body := rec.Body.String()
+			// The request form is re-rendered (not the enumeration-safe sent page),
+			// carrying the form-wide Turnstile message.
+			//
+			// [Ja] 申請フォームが (列挙対策の送信済みページではなく) 再描画され、
+			// フォーム全体の Turnstile メッセージを載せていること。
+			if !strings.Contains(body, `action="/password_reset"`) {
+				t.Error("申請フォームが再描画されていない")
+			}
+			if !strings.Contains(body, "ロボットでないことの確認に失敗しました") {
+				t.Error("Turnstile 失敗のフォーム全体メッセージが描画されていない")
+			}
+			if !strings.Contains(body, `role="alert"`) {
+				t.Error("フォーム全体のエラーに role='alert' が無い")
+			}
+			// The email is echoed back so the user does not have to retype it.
+			//
+			// [Ja] ユーザーが再入力しなくて済むよう email はエコーバックされること。
+			if !strings.Contains(body, `value="user@example.com"`) {
+				t.Error("入力した email がエコーバックされていない")
+			}
+			// The submitted token reached the verifier, confirming the handler read
+			// the correct cf-turnstile-response field.
+			//
+			// [Ja] 送信されたトークンが検証器へ到達しており、ハンドラーが正しい
+			// cf-turnstile-response フィールドを読んでいることを確認する。
+			if verifier.Token != "submitted-token" {
+				t.Errorf("verifier に渡ったトークン = %q, want %q", verifier.Token, "submitted-token")
+			}
+			// No reset mail is enqueued. This is a supplementary check: for this
+			// unknown email the UseCase would not enqueue mail even if it ran, so on
+			// its own it cannot detect a gate bypass — the 422 + form re-render
+			// assertion above does that (a bypass would reach the UseCase and return
+			// the 200 sent page). It is kept as a guard that the gate stops before any
+			// UseCase side effect.
+			//
+			// [Ja] リセットメールが投入されないこと。これは補助的なチェックである。この
+			// 未知の email では UseCase が走ってもメールを投入しないため、この検証単独では
+			// ゲートの迂回を検出できない。迂回は上の 422 + フォーム再描画のアサーションが
+			// 捕捉する (迂回されれば UseCase に到達し 200 の送信済みページを返す)。ゲートが
+			// UseCase の副作用より前で止まることの担保として残す。
+			if inserter.Called {
+				t.Error("Turnstile 失敗時にリセットメールが投入された (UseCase に進んでしまっている)")
+			}
+		})
 	}
 }

@@ -22,16 +22,19 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignUpHandler wires a sign-up Handler over transaction-bound repositories
-// and a fake job inserter, so a handler test exercises the full request path
-// (validator, UseCase, session cookie) against a real database. The inserter is
-// returned too so a test can make enqueue fail.
+// newSignUpHandler wires a sign-up Handler over transaction-bound repositories,
+// a fake job inserter, and a Turnstile verifier that passes by default, so a
+// handler test exercises the full request path (Turnstile gate, validator,
+// UseCase, session cookie) against a real database. The inserter and verifier are
+// returned too so a test can make enqueue fail or make Turnstile verification
+// fail.
 //
-// [Ja] newSignUpHandler はトランザクション束縛のリポジトリとフェイクのジョブ
-// インサーターでサインアップ Handler を組み立て、ハンドラーテストが実 DB に対して
-// リクエスト経路全体 (バリデーター・UseCase・セッション Cookie) を通すようにします。
-// テストが enqueue を失敗させられるよう、インサーターも併せて返します。
-func newSignUpHandler(t *testing.T, tx pgx.Tx) (*sign_up.Handler, *testutil.FakeJobInserter) {
+// [Ja] newSignUpHandler はトランザクション束縛のリポジトリ、フェイクのジョブ
+// インサーター、既定で通過する Turnstile 検証器でサインアップ Handler を組み立て、
+// ハンドラーテストが実 DB に対してリクエスト経路全体 (Turnstile ゲート・バリデーター・
+// UseCase・セッション Cookie) を通すようにします。テストが enqueue や Turnstile 検証を
+// 失敗させられるよう、インサーターと検証器も併せて返します。
+func newSignUpHandler(t *testing.T, tx pgx.Tx) (*sign_up.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
@@ -46,7 +49,8 @@ func newSignUpHandler(t *testing.T, tx pgx.Tx) (*sign_up.Handler, *testutil.Fake
 		dispatcher.NewDispatcher(inserter),
 	)
 	sessionMgr := session.NewManager(userRepo, cfg)
-	return sign_up.NewHandler(cfg, sessionMgr, uc), inserter
+	verifier := &testutil.FakeTurnstileVerifier{Passed: true}
+	return sign_up.NewHandler(cfg, sessionMgr, uc, verifier), inserter, verifier
 }
 
 // postSignUp builds a POST /sign_up request carrying the given email as form
@@ -79,7 +83,7 @@ func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
 	_, tx := testutil.SetupTx(t)
-	handler, _ := newSignUpHandler(t, tx)
+	handler, _, _ := newSignUpHandler(t, tx)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignUp("new@example.com", i18n.LangJa))
@@ -110,7 +114,7 @@ func TestCreate_DuplicateEmail(t *testing.T) {
 
 	_, tx := testutil.SetupTx(t)
 	testutil.NewUserBuilder(t, tx).WithEmail("taken@example.com").Build()
-	handler, _ := newSignUpHandler(t, tx)
+	handler, _, _ := newSignUpHandler(t, tx)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignUp("taken@example.com", i18n.LangJa))
@@ -149,7 +153,7 @@ func TestCreate_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
 	_, tx := testutil.SetupTx(t)
-	handler, inserter := newSignUpHandler(t, tx)
+	handler, inserter, _ := newSignUpHandler(t, tx)
 	inserter.Err = errors.New("queue unavailable")
 
 	rec := httptest.NewRecorder()
@@ -178,5 +182,87 @@ func TestCreate_EnqueueFailure(t *testing.T) {
 	}
 	if cookie := findCookie(rec, session.EmailConfirmationCookieName); cookie != nil && cookie.Value != "" {
 		t.Error("enqueue 失敗時は受け渡し Cookie を設定すべきでない")
+	}
+}
+
+// TestCreate_TurnstileFailure verifies that when Turnstile verification does not
+// pass — a non-pass or a siteverify error — Create stops the request at the bot
+// gate: it re-renders the form with 422 and the form-wide Turnstile message,
+// echoes the email back, forwards the submitted token to the verifier, does not
+// enqueue the confirmation mail, and sets no handoff cookie.
+//
+// [Ja] TestCreate_TurnstileFailure は、Turnstile 検証が通過しないとき (非通過または
+// siteverify エラー) に Create が Bot ゲートでリクエストを止めることを検証します。
+// フォームを 422 とフォーム全体の Turnstile メッセージで再描画し、email をエコーバックし、
+// 送信されたトークンを検証器へ渡し、確認メールを投入せず、受け渡し Cookie を設定しない
+// ことを確認します。
+func TestCreate_TurnstileFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		passed bool
+		err    error
+	}{
+		{name: "非通過", passed: false, err: nil},
+		{name: "検証エラー", passed: false, err: errors.New("siteverify unavailable")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, tx := testutil.SetupTx(t)
+			handler, inserter, verifier := newSignUpHandler(t, tx)
+			verifier.Passed = tt.passed
+			verifier.Err = tt.err
+
+			form := url.Values{
+				"email":                 {"new@example.com"},
+				"cf-turnstile-response": {"submitted-token"},
+			}
+			req := httptest.NewRequest(http.MethodPost, "/sign_up", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+
+			rec := httptest.NewRecorder()
+			handler.Create(rec, req)
+
+			if rec.Code != http.StatusUnprocessableEntity {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+			}
+			body := rec.Body.String()
+			if !strings.Contains(body, "ロボットでないことの確認に失敗しました") {
+				t.Error("Turnstile 失敗のフォーム全体メッセージが描画されていない")
+			}
+			if !strings.Contains(body, `role="alert"`) {
+				t.Error("フォーム全体のエラーに role='alert' が無い")
+			}
+			// The email is echoed back so the user does not have to retype it.
+			//
+			// [Ja] ユーザーが再入力しなくて済むよう email はエコーバックされること。
+			if !strings.Contains(body, `value="new@example.com"`) {
+				t.Error("入力した email がエコーバックされていない")
+			}
+			// The submitted token reached the verifier, confirming the handler read
+			// the correct cf-turnstile-response field.
+			//
+			// [Ja] 送信されたトークンが検証器へ到達しており、ハンドラーが正しい
+			// cf-turnstile-response フィールドを読んでいることを確認する。
+			if verifier.Token != "submitted-token" {
+				t.Errorf("verifier に渡ったトークン = %q, want %q", verifier.Token, "submitted-token")
+			}
+			// The bot gate must stop the request before the UseCase, so no
+			// confirmation mail is enqueued.
+			//
+			// [Ja] Bot ゲートは UseCase の前でリクエストを止めるため、確認メールは
+			// 投入されないこと。
+			if inserter.Called {
+				t.Error("Turnstile 失敗時に確認メールが投入された (UseCase に進んでしまっている)")
+			}
+			if cookie := findCookie(rec, session.EmailConfirmationCookieName); cookie != nil && cookie.Value != "" {
+				t.Error("Turnstile 失敗時は受け渡し Cookie を設定すべきでない")
+			}
+		})
 	}
 }

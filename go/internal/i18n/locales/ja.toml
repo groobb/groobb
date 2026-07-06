@@ -293,3 +293,7 @@ other = "このパスワード再設定用リンクは既に使用されてい�
 [validation_token_expired]
 description = "パスワードリセットのトークンが期限切れのときのフォーム全体のエラー"
 other = "このパスワード再設定用リンクは有効期限が切れています。新しいリンクを申請してください"
+
+[validation_turnstile_failed]
+description = "Turnstile の Bot 検証に失敗したときのフォーム全体のエラー (再試行を促す)"
+other = "ロボットでないことの確認に失敗しました。もう一度お試しください。"

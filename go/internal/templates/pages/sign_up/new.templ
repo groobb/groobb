@@ -11,17 +11,20 @@ import (
 // FormErrors carries the validation messages: per-field messages (a missing or
 // malformed email) shown beneath the input, and a form-wide message shown at the
 // top when the request itself failed, e.g. the confirmation mail could not be
-// enqueued.
+// enqueued. TurnstileSiteKey renders the bot-protection widget; when it is empty
+// (the disabled dev / test setup) the widget is omitted entirely.
 //
 // [Ja] NewPageData はサインアップフォームページのデータです。Email は再描画
 // (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
 // バリデーションメッセージを運びます。各入力欄の下に出すフィールド別のメッセージ
 // (email の未入力・不正) と、申請自体が失敗したとき (例: 確認メールを投入できなかった)
-// に上部に出すフォーム全体のメッセージです。
+// に上部に出すフォーム全体のメッセージです。TurnstileSiteKey は Bot 対策ウィジェットを
+// 描画します。空のとき (無効化された dev / test 構成) はウィジェットを完全に省きます。
 type NewPageData struct {
-	CSRFToken  string
-	Email      string
-	FormErrors *model.ValidationError
+	CSRFToken        string
+	Email            string
+	FormErrors       *model.ValidationError
+	TurnstileSiteKey string
 }
 
 // New renders the sign-up form: a single email field that, on submit, requests a
@@ -70,6 +73,7 @@ templ New(data NewPageData) {
 				/>
 				@components.FieldErrors("email", data.FormErrors)
 			</div>
+			@components.Turnstile(data.TurnstileSiteKey)
 			<button type="submit" class="btn w-full">
 				{ templates.T(ctx, "sign_up_new_submit") }
 			</button>

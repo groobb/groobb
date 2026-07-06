@@ -8,15 +8,23 @@ import (
 
 // NewPageData is the data for the password reset request form page. Email is
 // echoed back so a re-rendered form (after a validation error) keeps what the
-// user typed, and FormErrors carries the per-field validation messages to show.
+// user typed, and FormErrors carries the validation messages: per-field messages
+// (a missing or malformed email) shown beneath the input, and a form-wide message
+// shown at the top when the bot check failed. TurnstileSiteKey renders the
+// bot-protection widget; when it is empty (the disabled dev / test setup) the
+// widget is omitted entirely.
 //
 // [Ja] NewPageData はパスワードリセット申請フォームページのデータです。Email は再描画
 // (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
-// 表示するフィールド別のバリデーションメッセージを運びます。
+// バリデーションメッセージを運びます。各入力欄の下に出すフィールド別のメッセージ
+// (email の未入力・不正) と、Bot 検証が失敗したときに上部に出すフォーム全体のメッセージ
+// です。TurnstileSiteKey は Bot 対策ウィジェットを描画します。空のとき (無効化された
+// dev / test 構成) はウィジェットを完全に省きます。
 type NewPageData struct {
-	CSRFToken  string
-	Email      string
-	FormErrors *model.ValidationError
+	CSRFToken        string
+	Email            string
+	FormErrors       *model.ValidationError
+	TurnstileSiteKey string
 }
 
 // New renders the password reset request form: a single email field that, on
@@ -65,6 +73,7 @@ templ New(data NewPageData) {
 				/>
 				@components.FieldErrors("email", data.FormErrors)
 			</div>
+			@components.Turnstile(data.TurnstileSiteKey)
 			<button type="submit" class="btn w-full">
 				{ templates.T(ctx, "password_reset_new_submit") }
 			</button>
