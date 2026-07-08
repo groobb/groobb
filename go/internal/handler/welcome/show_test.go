@@ -9,6 +9,8 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/middleware"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestShow verifies that the top page returns HTTP 200 with an HTML body that
@@ -73,5 +75,36 @@ func TestShow(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestShow_SignedInRedirectsToHome verifies that a signed-in visitor to the top
+// page is redirected to /home instead of being shown the guest welcome, so a
+// user who is already signed in lands on their home page. The user is placed in
+// the context directly (as SetUser would), so the handler runs without the auth
+// middleware or a database.
+//
+// [Ja] TestShow_SignedInRedirectsToHome は、トップページに来たサインイン済みの訪問者が
+// ゲスト向けウェルカムではなく /home へリダイレクトされることを検証します。既にサインイン
+// 済みのユーザーが自分のホームページに着地するためです。ユーザーは (SetUser がするように)
+// context に直接載せ、認証ミドルウェアや DB なしでハンドラーを走らせます。
+func TestShow_SignedInRedirectsToHome(t *testing.T) {
+	t.Parallel()
+
+	handler := welcome.NewHandler(&config.Config{Env: "dev"})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	handler.Show(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/home" {
+		t.Errorf("Location = %q, want %q", loc, "/home")
 	}
 }

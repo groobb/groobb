@@ -6,6 +6,14 @@ other = "Groobb"
 description = "デフォルトのページ説明文 (meta description)"
 other = "Groobb は掲示板サービスです。"
 
+[flash_dismiss]
+description = "フラッシュメッセージの toast を閉じるボタン (全ページ共通の UI 部品)"
+other = "閉じる"
+
+[flash_sign_out_success]
+description = "サインアウト完了時のフラッシュメッセージ"
+other = "ログアウトしました"
+
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
@@ -33,6 +41,26 @@ other = "アカウント登録"
 [welcome_show_sign_in_link]
 description = "トップページからサインイン (ログイン) へ誘導する CTA リンクのテキスト"
 other = "ログイン"
+
+[home_show_title]
+description = "ホームページのタイトル (title タグ)"
+other = "ホーム"
+
+[home_show_heading]
+description = "ホームページの見出し"
+other = "ホーム"
+
+[home_show_greeting]
+description = "ホームページのサインイン済みユーザーの atname 宛ての挨拶"
+other = "@{{.Atname}} さん、ようこそ。"
+
+[home_show_sign_out_button]
+description = "ホームページのログアウトボタン"
+other = "ログアウト"
+
+[home_show_sign_out_confirm]
+description = "ホームページからログアウトする前に表示する確認文言"
+other = "ログアウトしますか？"
 
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"

@@ -8,6 +8,7 @@ package layouts
 import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
+	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
@@ -48,7 +49,7 @@ func Default(meta viewmodel.PageMeta, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.Locale(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/default.templ`, Line: 20, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/default.templ`, Line: 21, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -75,6 +76,10 @@ func Default(meta viewmodel.PageMeta, content templ.Component) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = components.Footer().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.Flash(session.FlashFromContext(ctx)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

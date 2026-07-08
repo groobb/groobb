@@ -21,6 +21,8 @@ func TestStaticPaths(t *testing.T) {
 	}{
 		{name: "SignUpPath", got: templates.SignUpPath(), want: "/sign_up"},
 		{name: "SignInPath", got: templates.SignInPath(), want: "/sign_in"},
+		{name: "HomePath", got: templates.HomePath(), want: "/home"},
+		{name: "UserSessionPath", got: templates.UserSessionPath(), want: "/user_session"},
 	}
 
 	for _, tt := range tests {

@@ -23,6 +23,9 @@ templ Head(meta viewmodel.PageMeta) {
 	<meta charset="UTF-8"/>
 	<title>{ meta.Title }</title>
 	<meta name="description" content={ meta.Description }/>
+	if meta.NoIndex {
+		<meta name="robots" content="noindex"/>
+	}
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 	<link rel="preconnect" href="https://challenges.cloudflare.com"/>
 	<link rel="stylesheet" href={ "/static/css/style.css?v=" + meta.AssetVersion }/>
