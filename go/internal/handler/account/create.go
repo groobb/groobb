@@ -37,11 +37,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	atname := r.FormValue("atname")
 	password := r.FormValue("password")
 	passwordConfirmation := r.FormValue("password_confirmation")
 
 	accountOutput, err := h.createAccountUC.Execute(ctx, usecase.CreateAccountInput{
 		EmailConfirmationID:  id,
+		Atname:               atname,
 		Password:             password,
 		PasswordConfirmation: passwordConfirmation,
 		Locale:               i18n.GetLocale(ctx),
@@ -49,8 +51,16 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var ve *model.ValidationError
 		if errors.As(err, &ve) {
+			// Echo the submitted atname back so the user does not retype it; the
+			// password fields are deliberately not echoed (a credential-leak risk),
+			// so the user re-enters those.
+			//
+			// [Ja] 送信された atname はエコーバックしてユーザーが打ち直さずに済むようにする。
+			// パスワードフィールドは資格情報の漏えいリスクのため意図的にエコーせず、そちらは
+			// ユーザーに再入力させる。
 			h.renderNew(w, r, http.StatusUnprocessableEntity, accountpage.NewPageData{
 				CSRFToken:  middleware.CSRFTokenFromContext(ctx),
+				Atname:     atname,
 				FormErrors: ve,
 			})
 			return

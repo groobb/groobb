@@ -19,15 +19,19 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// postAccount builds a POST /account request carrying the password fields as
-// form data, attaching the handoff cookie when confirmationID is non-empty, with
-// the locale set in its context.
+// postAccount builds a POST /account request carrying the atname and password
+// fields as form data, attaching the handoff cookie when confirmationID is
+// non-empty, with the locale set in its context.
 //
-// [Ja] postAccount は password フィールドをフォームデータとして運ぶ POST /account
-// リクエストを組み立て、confirmationID が空でなければ受け渡し Cookie を付け、context に
-// ロケールを設定する。
-func postAccount(confirmationID, password, passwordConfirmation, locale string) *http.Request {
-	form := url.Values{"password": {password}, "password_confirmation": {passwordConfirmation}}
+// [Ja] postAccount は atname と password フィールドをフォームデータとして運ぶ
+// POST /account リクエストを組み立て、confirmationID が空でなければ受け渡し Cookie を
+// 付け、context にロケールを設定する。
+func postAccount(confirmationID, atname, password, passwordConfirmation, locale string) *http.Request {
+	form := url.Values{
+		"atname":                {atname},
+		"password":              {password},
+		"password_confirmation": {passwordConfirmation},
+	}
 	req := httptest.NewRequest(http.MethodPost, "/account", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if confirmationID != "" {
@@ -86,10 +90,11 @@ func TestCreate_Success(t *testing.T) {
 
 	handler := newAccountHandler(t)
 	email := fmt.Sprintf("acct-h-success-%s@example.com", uuid.NewString())
+	atname := testutil.UniqueAtname()
 	id := seedSucceededConfirmation(t, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(id.String(), atname, "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -111,7 +116,10 @@ func TestCreate_Success(t *testing.T) {
 		t.Fatalf("FindByEmail() error = %v", err)
 	}
 	if user == nil {
-		t.Error("アカウント作成後にユーザーが永続化されていない")
+		t.Fatal("アカウント作成後にユーザーが永続化されていない")
+	}
+	if user.Atname != atname {
+		t.Errorf("永続化された user.Atname = %q, want %q", user.Atname, atname)
 	}
 }
 
@@ -128,7 +136,7 @@ func TestCreate_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler := newAccountHandler(t)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount("", "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount("", testutil.UniqueAtname(), "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -152,7 +160,7 @@ func TestCreate_ValidationError(t *testing.T) {
 	id := seedSucceededConfirmation(t, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), "password123", "different456", i18n.LangJa))
+	handler.Create(rec, postAccount(id.String(), testutil.UniqueAtname(), "password123", "different456", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -163,6 +171,40 @@ func TestCreate_ValidationError(t *testing.T) {
 	}
 	if !strings.Contains(body, `aria-invalid="true"`) {
 		t.Error("エラー時の入力欄に aria-invalid='true' が無い")
+	}
+}
+
+// TestCreate_InvalidAtnameEchoesValue verifies that a validation error on the
+// atname (here, a disallowed character) re-renders the form with 422, echoes the
+// submitted atname back into its input so the user does not retype it, and marks
+// the atname field aria-invalid.
+//
+// [Ja] TestCreate_InvalidAtnameEchoesValue は、atname のバリデーションエラー (ここでは
+// 使えない文字) がフォームを 422 で再描画し、送信された atname を入力欄にエコーバック
+// してユーザーが打ち直さずに済むようにし、atname フィールドを aria-invalid にすることを
+// 検証する。
+func TestCreate_InvalidAtnameEchoesValue(t *testing.T) {
+	t.Parallel()
+
+	handler := newAccountHandler(t)
+	email := fmt.Sprintf("acct-h-badatname-%s@example.com", uuid.NewString())
+	id := seedSucceededConfirmation(t, email)
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postAccount(id.String(), "bad-name", "password123", "password123", i18n.LangJa))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "アットネームは半角英数字とアンダースコアのみ使用できます") {
+		t.Error("atname の形式エラーメッセージが描画されていない")
+	}
+	if !strings.Contains(body, `value="bad-name"`) {
+		t.Error("送信された atname がエコーバックされていない")
+	}
+	if !strings.Contains(body, `aria-invalid="true"`) {
+		t.Error("エラー時の atname 入力欄に aria-invalid='true' が無い")
 	}
 }
 
@@ -179,7 +221,7 @@ func TestCreate_StaleConfirmationRedirectsToSignUp(t *testing.T) {
 	handler := newAccountHandler(t)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(uuid.NewString(), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(uuid.NewString(), testutil.UniqueAtname(), "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)

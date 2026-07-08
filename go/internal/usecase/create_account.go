@@ -67,15 +67,16 @@ func NewCreateAccountUsecase(
 
 // CreateAccountInput is the input to Execute. EmailConfirmationID is the verified
 // confirmation's id (carried from the handoff cookie) whose email becomes the new
-// user's; Password / PasswordConfirmation are the chosen credential; Locale is
-// the request locale stored as the account default.
+// user's; Atname is the chosen @handle; Password / PasswordConfirmation are the
+// chosen credential; Locale is the request locale stored as the account default.
 //
 // [Ja] CreateAccountInput は Execute の入力です。EmailConfirmationID は検証済みの確認の
 // id (受け渡し Cookie から運ばれる) で、その email が新規ユーザーの email になります。
-// Password / PasswordConfirmation は選んだ資格情報、Locale はアカウント既定として保存
-// するリクエストのロケールです。
+// Atname は選んだ @ハンドル、Password / PasswordConfirmation は選んだ資格情報、Locale は
+// アカウント既定として保存するリクエストのロケールです。
 type CreateAccountInput struct {
 	EmailConfirmationID  model.EmailConfirmationID
+	Atname               string
 	Password             string
 	PasswordConfirmation string
 	Locale               string
@@ -126,6 +127,7 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 	}
 
 	if err := uc.accountValidator.Validate(ctx, validator.AccountCreateValidatorInput{
+		Atname:               input.Atname,
 		Password:             input.Password,
 		PasswordConfirmation: input.PasswordConfirmation,
 	}); err != nil {
@@ -137,7 +139,7 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 		return nil, fmt.Errorf("パスワードのハッシュ化に失敗: %w", err)
 	}
 
-	return uc.createAccount(ctx, confirmation.Email, input.Locale, passwordDigest)
+	return uc.createAccount(ctx, confirmation.Email, input.Atname, input.Locale, passwordDigest)
 }
 
 // createAccount creates the user and its password credential in one transaction,
@@ -148,7 +150,7 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 // [Ja] createAccount はユーザーとそのパスワード資格情報を 1 トランザクションで作成し、
 // パスワードの無いアカウント (またはその逆) が決して生じないようにします。パスワード
 // ダイジェストは事前に Execute が計算済みで、トランザクションを純粋な永続化に保ちます。
-func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, locale, passwordDigest string) (*CreateAccountOutput, error) {
+func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname, locale, passwordDigest string) (*CreateAccountOutput, error) {
 	tx, err := uc.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
@@ -160,6 +162,7 @@ func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, locale
 
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    email,
+		Atname:   atname,
 		Locale:   locale,
 		TimeZone: defaultUserTimeZone,
 	})

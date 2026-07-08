@@ -296,7 +296,8 @@ CREATE TABLE public.users (
     locale character varying NOT NULL,
     time_zone character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    atname public.citext NOT NULL
 );
 
 
@@ -416,6 +417,14 @@ ALTER TABLE ONLY public.user_sessions
 
 ALTER TABLE ONLY public.user_sessions
     ADD CONSTRAINT user_sessions_token_key UNIQUE (token);
+
+
+--
+-- Name: users users_atname_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_atname_key UNIQUE (atname);
 
 
 --
@@ -547,4 +556,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260616023735'),
     ('20260616152453'),
     ('20260617054258'),
-    ('20260704182204');
+    ('20260704182204'),
+    ('20260708015309');

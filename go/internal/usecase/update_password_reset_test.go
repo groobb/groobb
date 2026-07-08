@@ -58,7 +58,7 @@ func newUpdatePasswordResetUsecase(t *testing.T) (*usecase.UpdatePasswordResetUs
 func seedUserWithPassword(t *testing.T, ctx context.Context, userRepo *repository.UserRepository, userPasswordRepo *repository.UserPasswordRepository, email, password string) model.UserID {
 	t.Helper()
 
-	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Locale: "ja", TimeZone: "Asia/Tokyo"})
+	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(), Locale: "ja", TimeZone: "Asia/Tokyo"})
 	if err != nil {
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}

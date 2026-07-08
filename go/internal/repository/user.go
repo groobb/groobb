@@ -76,6 +76,26 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*model.
 	return r.toModel(row), nil
 }
 
+// FindByAtname returns the user with the given atname, or (nil, nil) when none
+// exists. The atname column is citext, so the match ignores letter case (the
+// same casing rule the atname UNIQUE constraint enforces). Absence is a normal
+// lookup outcome used by the uniqueness check, not an error.
+//
+// [Ja] FindByAtname は指定 atname のユーザーを返し、存在しない場合は (nil, nil) を
+// 返します。atname 列は citext のため照合は大文字小文字を無視します (atname の UNIQUE
+// 制約が強制するのと同じ大小の規則)。未存在は一意性チェックで使う正常なルックアップ結果
+// でありエラーではありません。
+func (r *UserRepository) FindByAtname(ctx context.Context, atname string) (*model.User, error) {
+	row, err := r.q.GetUserByAtname(ctx, atname)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
 // FindBySessionToken returns the user that owns the session with the given
 // token, or (nil, nil) when no session matches the token (an unknown, stale, or
 // forged cookie). It resolves the session and its user in a single JOIN so the
@@ -103,6 +123,7 @@ func (r *UserRepository) FindBySessionToken(ctx context.Context, token string) (
 // id とタイムスタンプは DB 側で採番されます。
 type CreateUserInput struct {
 	Email    string
+	Atname   string
 	Locale   string
 	TimeZone string
 }
@@ -115,6 +136,7 @@ type CreateUserInput struct {
 func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*model.User, error) {
 	row, err := r.q.CreateUser(ctx, query.CreateUserParams{
 		Email:    input.Email,
+		Atname:   input.Atname,
 		Locale:   input.Locale,
 		TimeZone: input.TimeZone,
 	})
@@ -133,6 +155,7 @@ func (r *UserRepository) toModel(row query.User) *model.User {
 	return &model.User{
 		ID:        model.UserID(row.ID),
 		Email:     row.Email,
+		Atname:    row.Atname,
 		Locale:    row.Locale,
 		TimeZone:  row.TimeZone,
 		CreatedAt: row.CreatedAt,

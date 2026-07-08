@@ -23,11 +23,12 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/account"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
 	"github.com/groobb/groobb/go/internal/handler/health"
+	"github.com/groobb/groobb/go/internal/handler/home"
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
-	"github.com/groobb/groobb/go/internal/handler/sign_out"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
+	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
@@ -107,6 +108,14 @@ func main() {
 	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
+
+	// Flash manager: reads and writes the one-off flash cookie. Its Middleware is
+	// wired globally below so any page's layout can render a pending message.
+	//
+	// [Ja] フラッシュマネージャ: 一度きりのフラッシュ Cookie を読み書きする。その Middleware を
+	// 下でグローバルに配線し、どのページのレイアウトからも保留中のメッセージを描画できるようにする。
+	flashMgr := session.NewFlashManager(cfg)
+
 	jobDispatcher := dispatcher.NewDispatcher(workerClient.Client())
 
 	// One Turnstile verifier is shared across the public-form handlers (sign-up
@@ -126,7 +135,7 @@ func main() {
 	emailConfirmationValidator := validator.NewEmailConfirmationCreateValidator(emailConfirmationRepo)
 	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(pool, emailConfirmationValidator, emailConfirmationRepo)
 
-	accountValidator := validator.NewAccountCreateValidator()
+	accountValidator := validator.NewAccountCreateValidator(userRepo)
 	createAccountUC := usecase.NewCreateAccountUsecase(pool, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 
@@ -142,14 +151,16 @@ func main() {
 
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
+	homeHandler := home.NewHandler(cfg)
 	signUpHandler := sign_up.NewHandler(cfg, sessionMgr, createSignUpUC, turnstileVerifier)
 	emailConfirmationHandler := email_confirmation.NewHandler(cfg, sessionMgr, verifyEmailConfirmationUC)
 	accountHandler := account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
 	signInHandler := sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC, turnstileVerifier)
-	signOutHandler := sign_out.NewHandler(sessionMgr, deleteSessionUC)
+	userSessionHandler := user_session.NewHandler(sessionMgr, flashMgr, deleteSessionUC)
 	passwordResetHandler := password_reset.NewHandler(cfg, createPasswordResetTokenUC, turnstileVerifier)
 	passwordHandler := password.NewHandler(cfg, updatePasswordResetUC)
 
+	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
 
 	r := chi.NewRouter()
@@ -184,6 +195,16 @@ func main() {
 	// 後に走るため、オーバーライドが検証を弱めることはない。
 	r.Use(middleware.MethodOverride)
 
+	// Read any one-off flash message from its cookie into the request context and
+	// clear the cookie, so a handler's redirect target renders it exactly once
+	// (e.g. the sign-out success toast). It wraps every route because the shared
+	// layout, which any page can render, reads the flash from the context.
+	//
+	// [Ja] 一度きりのフラッシュメッセージを Cookie からリクエスト context へ読み込み、Cookie を
+	// 消去する。これによりハンドラーのリダイレクト先で一度だけ描画される (例: サインアウト成功の
+	// toast)。フラッシュはどのページも描画しうる共通レイアウトが context から読むため、全ルートに掛ける。
+	r.Use(flashMgr.Middleware)
+
 	// Health check (no authentication required).
 	//
 	// [Ja] ヘルスチェック (認証不要)。
@@ -195,10 +216,26 @@ func main() {
 	fileServer := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
 
-	// Top page.
+	// Top page. SetUser resolves the current user from the session cookie so the
+	// handler can render by sign-in state (a signed-in visitor is redirected to
+	// /home). It is scoped to this route rather than applied globally: routes that
+	// never read the user (static assets, the health check) must not pay for a
+	// per-request session lookup, and RequireAuth-guarded routes resolve the user
+	// themselves.
 	//
-	// [Ja] トップページ。
-	r.Get("/", welcomeHandler.Show)
+	// [Ja] トップページ。SetUser がセッション Cookie から現在のユーザーを解決し、ハンドラーが
+	// サインイン状態で描画を出し分けられるようにする (サインイン済みの訪問者は /home へ
+	// リダイレクトされる)。グローバルではなくこのルートに限定して掛ける。ユーザーを読まない
+	// ルート (静的アセット・ヘルスチェック) はリクエストごとのセッション解決のコストを負う
+	// べきでなく、RequireAuth で守るルートは自身でユーザーを解決するためである。
+	r.With(authMiddleware.SetUser).Get("/", welcomeHandler.Show)
+
+	// Home: the signed-in landing page. RequireAuth redirects an anonymous
+	// visitor to /sign_in before the handler runs.
+	//
+	// [Ja] ホーム: サインイン済みの着地ページ。RequireAuth はハンドラーが走る前に
+	// 匿名の訪問者を /sign_in へリダイレクトする。
+	r.With(authMiddleware.RequireAuth).Get("/home", homeHandler.Show)
 
 	// Sign-up: show the form and accept an email to issue a confirmation code.
 	//
@@ -233,7 +270,7 @@ func main() {
 	// Sign-out: delete the current session and clear the session cookie.
 	//
 	// [Ja] サインアウト: 現在のセッションを削除しセッション Cookie を消去する。
-	r.Post("/sign_out", signOutHandler.Create)
+	r.Delete("/user_session", userSessionHandler.Delete)
 
 	// Password reset request: show the form and accept an email to issue a reset
 	// link, which is emailed to the account if one exists.

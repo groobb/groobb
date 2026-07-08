@@ -41,7 +41,7 @@ func newCreateAccountUsecase(t *testing.T) (*usecase.CreateAccountUsecase, *repo
 
 	uc := usecase.NewCreateAccountUsecase(
 		db,
-		validator.NewAccountCreateValidator(),
+		validator.NewAccountCreateValidator(userRepo),
 		emailConfirmationRepo,
 		userRepo,
 		userPasswordRepo,
@@ -86,10 +86,12 @@ func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	email := fmt.Sprintf("acct-success-%s@example.com", uuid.NewString())
+	atname := testutil.UniqueAtname()
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
 
 	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
 		EmailConfirmationID:  confirmation.ID,
+		Atname:               atname,
 		Password:             "password123",
 		PasswordConfirmation: "password123",
 		Locale:               "ja",
@@ -103,19 +105,27 @@ func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
 	if out.User.Email != email {
 		t.Errorf("out.User.Email = %q, want %q", out.User.Email, email)
 	}
+	if out.User.Atname != atname {
+		t.Errorf("out.User.Atname = %q, want %q", out.User.Atname, atname)
+	}
 	if out.User.Locale != "ja" {
 		t.Errorf("out.User.Locale = %q, want %q", out.User.Locale, "ja")
 	}
 
-	// The user and a matching password credential are persisted.
+	// The user (with the submitted atname) and a matching password credential are
+	// persisted.
 	//
-	// [Ja] ユーザーと対応するパスワード資格情報が永続化されている。
+	// [Ja] ユーザー (送信された atname を持つ) と対応するパスワード資格情報が永続化
+	// されている。
 	user, err := userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		t.Fatalf("FindByEmail() error = %v", err)
 	}
 	if user == nil {
 		t.Fatal("作成したユーザーを email で引けない")
+	}
+	if user.Atname != atname {
+		t.Errorf("永続化された user.Atname = %q, want %q", user.Atname, atname)
 	}
 	password, err := userPasswordRepo.FindByUserID(ctx, user.ID)
 	if err != nil {
@@ -199,6 +209,7 @@ func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
 
 	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
 		EmailConfirmationID:  confirmation.ID,
+		Atname:               testutil.UniqueAtname(),
 		Password:             "password123",
 		PasswordConfirmation: "different456",
 		Locale:               "ja",
@@ -216,5 +227,48 @@ func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
 	}
 	if user != nil {
 		t.Error("パスワードが不正な場合はユーザーを作成すべきでない")
+	}
+}
+
+// TestCreateAccountUsecase_Execute_EmptyAtname verifies that an empty atname (a
+// validation failure) returns a ValidationError on the atname field and creates
+// no user, even though the confirmation is verified and the password is valid.
+//
+// [Ja] TestCreateAccountUsecase_Execute_EmptyAtname は、確認が検証済みでパスワードが
+// 有効でも、空の atname (バリデーション失敗) が atname フィールドの ValidationError を
+// 返しユーザーを作成しないことを検証する。
+func TestCreateAccountUsecase_Execute_EmptyAtname(t *testing.T) {
+	t.Parallel()
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+
+	email := fmt.Sprintf("acct-noatname-%s@example.com", uuid.NewString())
+	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
+
+	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
+		EmailConfirmationID:  confirmation.ID,
+		Atname:               "",
+		Password:             "password123",
+		PasswordConfirmation: "password123",
+		Locale:               "ja",
+	})
+	if out != nil {
+		t.Errorf("Execute() output = %v, want nil", out)
+	}
+	ve := model.AsValidationError(err)
+	if ve == nil {
+		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+	}
+	if !ve.HasFieldError("atname") {
+		t.Errorf("atname フィールドのエラーが無い: %+v", ve.Fields)
+	}
+
+	user, err := userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		t.Fatalf("FindByEmail() error = %v", err)
+	}
+	if user != nil {
+		t.Error("atname が空の場合はユーザーを作成すべきでない")
 	}
 }

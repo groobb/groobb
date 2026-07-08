@@ -30,6 +30,17 @@ type PageMeta struct {
 	//
 	// [Ja] AssetVersion は CSS / JS の URL に付与するキャッシュ無効化用のクエリ値です。
 	AssetVersion string
+
+	// NoIndex, when true, renders a <meta name="robots" content="noindex"> so
+	// search engines keep the page out of their index. Set it on per-user or
+	// behind-auth pages (e.g. the home page) that should not be indexed; public
+	// pages leave it false to inherit the implicit index, follow default.
+	//
+	// [Ja] NoIndex が true のとき <meta name="robots" content="noindex"> を描画し、
+	// 検索エンジンにページをインデックスさせません。ユーザー固有 / 認証背後のページ
+	// (例: ホームページ) で設定します。公開ページは false のままとし、暗黙の
+	// index, follow の既定に従います。
+	NoIndex bool
 }
 
 // DefaultPageMeta returns the metadata used as a baseline for every page. The

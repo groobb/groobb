@@ -42,7 +42,7 @@ func newAccountHandler(t *testing.T) *account.Handler {
 	sessionMgr := session.NewManager(userRepo, cfg)
 	createAccountUC := usecase.NewCreateAccountUsecase(
 		db,
-		validator.NewAccountCreateValidator(),
+		validator.NewAccountCreateValidator(userRepo),
 		emailConfirmationRepo,
 		userRepo,
 		userPasswordRepo,
@@ -64,15 +64,15 @@ func getAccountNew(confirmationID, locale string) *http.Request {
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// TestNew verifies that GET /account/new returns HTTP 200 with the password-setup
-// form (password and password-confirmation fields and a CSRF hidden field) and
-// the localized heading for each supported locale, when the handoff cookie is
-// present.
+// TestNew verifies that GET /account/new returns HTTP 200 with the account-creation
+// form (atname, password, and password-confirmation fields and a CSRF hidden field)
+// and the localized heading and atname label for each supported locale, when the
+// handoff cookie is present.
 //
 // [Ja] TestNew は、受け渡し Cookie がある場合に GET /account/new が HTTP 200 と、
-// パスワード設定フォーム (password / password_confirmation フィールド・CSRF hidden
-// フィールド) を、サポートする各ロケールのローカライズ済み見出しとともに返すことを
-// 検証する。
+// アカウント作成フォーム (atname / password / password_confirmation フィールド・
+// CSRF hidden フィールド) を、サポートする各ロケールのローカライズ済み見出しと
+// アットネームのラベルとともに返すことを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -82,9 +82,10 @@ func TestNew(t *testing.T) {
 		name        string
 		locale      string
 		wantHeading string
+		wantLabel   string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "パスワードを設定"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Set your password"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "アカウントを作成", wantLabel: "アットネーム"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Create your account", wantLabel: "Atname"},
 	}
 
 	for _, tt := range tests {
@@ -104,9 +105,12 @@ func TestNew(t *testing.T) {
 			body := rec.Body.String()
 			wants := []string{
 				tt.wantHeading,
+				tt.wantLabel,
 				`action="/account"`,
 				`method="POST"`,
 				`name="csrf_token"`,
+				`name="atname"`,
+				`pattern="[A-Za-z0-9_]+"`,
 				`name="password"`,
 				`name="password_confirmation"`,
 				`type="password"`,

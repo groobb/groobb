@@ -1,0 +1,53 @@
+package home
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// ShowPageData is the data for the signed-in home page. Atname is the current
+// user's globally unique @handle, addressed in the greeting. CSRFToken is
+// embedded as a hidden field in the sign-out form for the double-submit-cookie
+// check.
+//
+// [Ja] ShowPageData はサインイン済みホームページのデータです。Atname は現在のユーザーの
+// グローバルに一意な @ハンドルで、挨拶で宛先にします。CSRFToken は double-submit cookie
+// 検証のためサインアウトフォームに hidden フィールドとして埋め込みます。
+type ShowPageData struct {
+	Atname    string
+	CSRFToken string
+}
+
+// Show renders the signed-in home page: a greeting addressed to the user's
+// atname and a sign-out button. The button submits a POST to /user_session
+// carrying _method=DELETE, so it drives the DELETE /user_session route through
+// the method override. A confirmation dialog guards the submit so an accidental
+// click does not sign the user out; the localized prompt is carried in
+// data-confirm and read back by the inline handler.
+//
+// [Ja] Show はサインイン済みのホームページを描画します。ユーザーの atname 宛ての挨拶と
+// サインアウトボタンです。ボタンは _method=DELETE を載せて /user_session へ POST し、
+// メソッドオーバーライド経由で DELETE /user_session ルートを動かします。確認ダイアログが
+// 送信を守り、誤クリックでサインアウトしないようにします。ローカライズされた確認文言は
+// data-confirm に載せ、インラインハンドラーが読み戻します。
+templ Show(data ShowPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "home_show_heading") }</h1>
+				<p>{ templates.T(ctx, "home_show_greeting", map[string]any{"Atname": data.Atname}) }</p>
+			</header>
+			<footer>
+				<form
+					action={ templates.UserSessionPath().SafeURL() }
+					method="POST"
+					data-confirm={ templates.T(ctx, "home_show_sign_out_confirm") }
+					onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"
+				>
+					<input type="hidden" name="_method" value="DELETE"/>
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<button type="submit" class="btn w-full" data-variant="destructive">
+						{ templates.T(ctx, "home_show_sign_out_button") }
+					</button>
+				</form>
+			</footer>
+		</div>
+	</div>
+}

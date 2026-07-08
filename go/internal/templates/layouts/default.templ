@@ -3,6 +3,7 @@ package layouts
 import (
 	"github.com/a-h/templ"
 
+	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
@@ -26,6 +27,7 @@ templ Default(meta viewmodel.PageMeta, content templ.Component) {
 				@content
 			</main>
 			@components.Footer()
+			@components.Flash(session.FlashFromContext(ctx))
 		</body>
 	</html>
 }

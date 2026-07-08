@@ -40,3 +40,19 @@ func SignUpPath() Path {
 func SignInPath() Path {
 	return Path("/sign_in")
 }
+
+// HomePath returns the path to the signed-in home page.
+//
+// [Ja] HomePath はサインイン済みユーザーのホームページのパスを返します。
+func HomePath() Path {
+	return Path("/home")
+}
+
+// UserSessionPath returns the path to the user session resource. Signing out
+// targets it with DELETE /user_session (forms reach it via the _method override).
+//
+// [Ja] UserSessionPath はユーザーセッションリソースのパスを返します。サインアウトは
+// DELETE /user_session でこれを対象とします (フォームは _method オーバーライドで到達します)。
+func UserSessionPath() Path {
+	return Path("/user_session")
+}

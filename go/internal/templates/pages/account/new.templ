@@ -6,20 +6,23 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the account-creation (password setup) page.
-// FormErrors carries the per-field validation messages: a too-short, too-long,
-// or mismatched password is shown beneath the field it belongs to. The password
-// values are deliberately not echoed back; re-rendering a password field with
-// its value is a credential-leak risk, so the user re-types on a validation
-// error.
+// NewPageData is the data for the account-creation page. Atname is the submitted
+// @handle, echoed back on a validation error so the user does not retype it (it
+// is not a credential). FormErrors carries the per-field validation messages:
+// an invalid atname or a too-short, too-long, or mismatched password is shown
+// beneath the field it belongs to. The password values are deliberately not
+// echoed back; re-rendering a password field with its value is a credential-leak
+// risk, so the user re-types those on a validation error.
 //
-// [Ja] NewPageData はアカウント作成 (パスワード設定) ページのデータです。FormErrors は
-// フィールド別のバリデーションメッセージを運び、短すぎ・長すぎ・不一致のパスワードは
-// 該当フィールドの下に表示します。パスワードの値は意図的にエコーバックしません。値付きで
-// パスワードフィールドを再描画するのは資格情報の漏えいリスクのため、バリデーション
-// エラー時はユーザーに再入力させます。
+// [Ja] NewPageData はアカウント作成ページのデータです。Atname は送信された @ハンドルで、
+// バリデーションエラー時にエコーバックしてユーザーが打ち直さずに済むようにします (資格情報
+// ではないため)。FormErrors はフィールド別のバリデーションメッセージを運び、不正な atname や
+// 短すぎ・長すぎ・不一致のパスワードは該当フィールドの下に表示します。パスワードの値は
+// 意図的にエコーバックしません。値付きでパスワードフィールドを再描画するのは資格情報の
+// 漏えいリスクのため、バリデーションエラー時はユーザーに再入力させます。
 type NewPageData struct {
 	CSRFToken  string
+	Atname     string
 	FormErrors *model.ValidationError
 }
 
@@ -48,6 +51,38 @@ templ New(data NewPageData) {
 			<div
 				role="group"
 				class="field"
+				if data.FormErrors.HasFieldError("atname") {
+					data-invalid="true"
+				}
+			>
+				<label for="atname">
+					{ templates.T(ctx, "account_new_atname_label") }
+				</label>
+				<input
+					id="atname"
+					name="atname"
+					type="text"
+					autocomplete="username"
+					autocapitalize="none"
+					spellcheck="false"
+					maxlength="20"
+					pattern="[A-Za-z0-9_]+"
+					required
+					autofocus
+					value={ data.Atname }
+					if data.FormErrors.HasFieldError("atname") {
+						aria-invalid="true"
+						aria-describedby={ "atname-hint " + components.FieldErrorsDescribedBy("atname", data.FormErrors) }
+					} else {
+						aria-describedby="atname-hint"
+					}
+				/>
+				<p id="atname-hint">{ templates.T(ctx, "account_new_atname_hint") }</p>
+				@components.FieldErrors("atname", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
 				if data.FormErrors.HasFieldError("password") {
 					data-invalid="true"
 				}
@@ -62,7 +97,6 @@ templ New(data NewPageData) {
 					autocomplete="new-password"
 					minlength="8"
 					required
-					autofocus
 					if data.FormErrors.HasFieldError("password") {
 						aria-invalid="true"
 						aria-describedby={ "password-hint " + components.FieldErrorsDescribedBy("password", data.FormErrors) }

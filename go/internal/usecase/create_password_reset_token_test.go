@@ -66,6 +66,7 @@ func seedUser(t *testing.T, ctx context.Context, userRepo *repository.UserReposi
 	email := fmt.Sprintf("pwreset-%s@example.com", uuid.NewString())
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    email,
+		Atname:   testutil.UniqueAtname(),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})

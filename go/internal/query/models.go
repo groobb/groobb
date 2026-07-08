@@ -83,25 +83,6 @@ type PasswordResetToken struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
-type RiverClient struct {
-	ID        string     `json:"id"`
-	CreatedAt time.Time  `json:"created_at"`
-	Metadata  []byte     `json:"metadata"`
-	PausedAt  *time.Time `json:"paused_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-}
-
-type RiverClientQueue struct {
-	RiverClientID    string    `json:"river_client_id"`
-	Name             string    `json:"name"`
-	CreatedAt        time.Time `json:"created_at"`
-	MaxWorkers       int64     `json:"max_workers"`
-	Metadata         []byte    `json:"metadata"`
-	NumJobsCompleted int64     `json:"num_jobs_completed"`
-	NumJobsRunning   int64     `json:"num_jobs_running"`
-	UpdatedAt        time.Time `json:"updated_at"`
-}
-
 type RiverJob struct {
 	ID           int64         `json:"id"`
 	State        RiverJobState `json:"state"`
@@ -136,6 +117,13 @@ type RiverMigration struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type RiverNotification struct {
+	ID        int64     `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Payload   string    `json:"payload"`
+	Topic     string    `json:"topic"`
+}
+
 type RiverQueue struct {
 	Name      string     `json:"name"`
 	CreatedAt time.Time  `json:"created_at"`
@@ -155,6 +143,7 @@ type User struct {
 	TimeZone  string    `json:"time_zone"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Atname    string    `json:"atname"`
 }
 
 type UserPassword struct {
