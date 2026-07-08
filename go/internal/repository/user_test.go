@@ -30,6 +30,7 @@ func TestUserRepository_Create(t *testing.T) {
 
 	user, err := repo.Create(ctx, repository.CreateUserInput{
 		Email:    "create@example.com",
+		Atname:   "createuser",
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
@@ -42,6 +43,9 @@ func TestUserRepository_Create(t *testing.T) {
 	}
 	if user.Email != "create@example.com" {
 		t.Errorf("user.Email = %q, want %q", user.Email, "create@example.com")
+	}
+	if user.Atname != "createuser" {
+		t.Errorf("user.Atname = %q, want %q", user.Atname, "createuser")
 	}
 	if user.Locale != "ja" {
 		t.Errorf("user.Locale = %q, want %q", user.Locale, "ja")
@@ -65,6 +69,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 	t.Run("存在するユーザーを取得できる", func(t *testing.T) {
 		created, err := repo.Create(ctx, repository.CreateUserInput{
 			Email:    "findbyid@example.com",
+			Atname:   "findbyiduser",
 			Locale:   "en",
 			TimeZone: "UTC",
 		})
@@ -105,6 +110,7 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 
 	if _, err := repo.Create(ctx, repository.CreateUserInput{
 		Email:    "findbyemail@example.com",
+		Atname:   "findbyemailuser",
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	}); err != nil {
@@ -197,8 +203,14 @@ func TestUserRepository_CreateRejectsDuplicateEmail(t *testing.T) {
 
 	repo, ctx := newUserRepo(t)
 
+	// The two rows carry distinct atnames so the second insert fails specifically
+	// on the users.email UNIQUE constraint, not on users.atname.
+	//
+	// [Ja] 2 行は異なる atname を持たせ、2 回目の挿入が users.atname ではなく
+	// users.email の UNIQUE 制約でこそ失敗するようにする。
 	if _, err := repo.Create(ctx, repository.CreateUserInput{
 		Email:    "dup@example.com",
+		Atname:   "dupemailone",
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	}); err != nil {
@@ -207,10 +219,96 @@ func TestUserRepository_CreateRejectsDuplicateEmail(t *testing.T) {
 
 	_, err := repo.Create(ctx, repository.CreateUserInput{
 		Email:    "DUP@example.com",
+		Atname:   "dupemailtwo",
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
 	if err == nil {
 		t.Error("重複メールアドレスの Create() はエラーになるはず")
+	}
+}
+
+// TestUserRepository_FindByAtname verifies lookup by atname: an existing atname
+// resolves the user, the match is case-insensitive via citext, and an unknown
+// atname returns (nil, nil).
+//
+// [Ja] TestUserRepository_FindByAtname は atname による取得を検証する。存在する atname は
+// ユーザーを解決し、照合は citext により大文字小文字を無視し、未知の atname は (nil, nil)
+// を返す。
+func TestUserRepository_FindByAtname(t *testing.T) {
+	t.Parallel()
+
+	repo, ctx := newUserRepo(t)
+
+	if _, err := repo.Create(ctx, repository.CreateUserInput{
+		Email:    "findbyatname@example.com",
+		Atname:   "findbyatnameuser",
+		Locale:   "ja",
+		TimeZone: "Asia/Tokyo",
+	}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	t.Run("atname でユーザーを取得できる", func(t *testing.T) {
+		user, err := repo.FindByAtname(ctx, "findbyatnameuser")
+		if err != nil {
+			t.Fatalf("FindByAtname() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("FindByAtname() = nil, want user")
+		}
+		if user.Atname != "findbyatnameuser" {
+			t.Errorf("user.Atname = %q, want %q", user.Atname, "findbyatnameuser")
+		}
+	})
+
+	t.Run("citext により大文字小文字を無視して取得できる", func(t *testing.T) {
+		user, err := repo.FindByAtname(ctx, "FindByAtnameUser")
+		if err != nil {
+			t.Fatalf("FindByAtname() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("FindByAtname() = nil, want user (citext は大文字小文字を無視するはず)")
+		}
+	})
+
+	t.Run("存在しない atname は (nil, nil) を返す", func(t *testing.T) {
+		user, err := repo.FindByAtname(ctx, "missingatname")
+		if err != nil {
+			t.Fatalf("FindByAtname() error = %v, want nil", err)
+		}
+		if user != nil {
+			t.Errorf("FindByAtname() = %v, want nil", user)
+		}
+	})
+}
+
+// TestUserRepository_CreateRejectsDuplicateAtname verifies the users.atname UNIQUE
+// constraint surfaces as an error (case-insensitive via citext).
+//
+// [Ja] TestUserRepository_CreateRejectsDuplicateAtname は users.atname の UNIQUE 制約が
+// エラーとして表面化することを確認する (citext により大文字小文字を区別しない)。
+func TestUserRepository_CreateRejectsDuplicateAtname(t *testing.T) {
+	t.Parallel()
+
+	repo, ctx := newUserRepo(t)
+
+	if _, err := repo.Create(ctx, repository.CreateUserInput{
+		Email:    "dupatname1@example.com",
+		Atname:   "dupatname",
+		Locale:   "ja",
+		TimeZone: "Asia/Tokyo",
+	}); err != nil {
+		t.Fatalf("1 回目の Create() error = %v", err)
+	}
+
+	_, err := repo.Create(ctx, repository.CreateUserInput{
+		Email:    "dupatname2@example.com",
+		Atname:   "DupAtname",
+		Locale:   "ja",
+		TimeZone: "Asia/Tokyo",
+	})
+	if err == nil {
+		t.Error("重複 atname の Create() はエラーになるはず")
 	}
 }

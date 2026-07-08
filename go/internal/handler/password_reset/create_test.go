@@ -71,6 +71,7 @@ func seedUser(t *testing.T) string {
 	userRepo := repository.NewUserRepository(query.New(testutil.GetTestDB()))
 	if _, err := userRepo.Create(context.Background(), repository.CreateUserInput{
 		Email:    email,
+		Atname:   testutil.UniqueAtname(),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	}); err != nil {

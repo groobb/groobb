@@ -126,7 +126,7 @@ func main() {
 	emailConfirmationValidator := validator.NewEmailConfirmationCreateValidator(emailConfirmationRepo)
 	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(pool, emailConfirmationValidator, emailConfirmationRepo)
 
-	accountValidator := validator.NewAccountCreateValidator()
+	accountValidator := validator.NewAccountCreateValidator(userRepo)
 	createAccountUC := usecase.NewCreateAccountUsecase(pool, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 

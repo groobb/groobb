@@ -12,19 +12,25 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, locale, time_zone)
-VALUES ($1, $2, $3)
-RETURNING id, email, locale, time_zone, created_at, updated_at
+INSERT INTO users (email, atname, locale, time_zone)
+VALUES ($1, $2, $3, $4)
+RETURNING id, email, locale, time_zone, created_at, updated_at, atname
 `
 
 type CreateUserParams struct {
 	Email    string `json:"email"`
+	Atname   string `json:"atname"`
 	Locale   string `json:"locale"`
 	TimeZone string `json:"time_zone"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.Locale, arg.TimeZone)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Email,
+		arg.Atname,
+		arg.Locale,
+		arg.TimeZone,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -33,12 +39,32 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.TimeZone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Atname,
+	)
+	return i, err
+}
+
+const getUserByAtname = `-- name: GetUserByAtname :one
+SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE atname = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByAtname, atname)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Locale,
+		&i.TimeZone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Atname,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, locale, time_zone, created_at, updated_at FROM users WHERE email = $1 LIMIT 1
+SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE email = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -51,12 +77,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.TimeZone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Atname,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, locale, time_zone, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
+SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -69,12 +96,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TimeZone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Atname,
 	)
 	return i, err
 }
 
 const getUserBySessionToken = `-- name: GetUserBySessionToken :one
-SELECT users.id, users.email, users.locale, users.time_zone, users.created_at, users.updated_at FROM users
+SELECT users.id, users.email, users.locale, users.time_zone, users.created_at, users.updated_at, users.atname FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
 WHERE user_sessions.token = $1
 LIMIT 1
@@ -90,6 +118,7 @@ func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User
 		&i.TimeZone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Atname,
 	)
 	return i, err
 }

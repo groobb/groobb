@@ -57,7 +57,7 @@ func seedResetTokenForUser(t *testing.T, password string) string {
 	tokenRepo := repository.NewPasswordResetTokenRepository(queries)
 
 	email := fmt.Sprintf("pw-h-%s@example.com", uuid.NewString())
-	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Locale: "ja", TimeZone: "Asia/Tokyo"})
+	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(), Locale: "ja", TimeZone: "Asia/Tokyo"})
 	if err != nil {
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}

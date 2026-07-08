@@ -92,20 +92,28 @@ description = "Email confirmation code entry page submit button"
 other = "Confirm"
 
 [account_new_title]
-description = "Account creation (password setup) page title (title tag)"
-other = "Set your password"
+description = "Account creation page title (title tag)"
+other = "Create your account"
 
 [account_new_description]
-description = "Account creation (password setup) page meta description"
-other = "Set a password to finish creating your account."
+description = "Account creation page meta description"
+other = "Set your atname and password to finish creating your account."
 
 [account_new_heading]
-description = "Account creation (password setup) page heading"
-other = "Set your password"
+description = "Account creation page heading"
+other = "Create your account"
 
 [account_new_lead]
-description = "Account creation (password setup) page lead text (says it is the final step)"
-other = "This is the final step. Set a password to create your account."
+description = "Account creation page lead text (says it is the final step)"
+other = "This is the final step. Set your atname and password to create your account."
+
+[account_new_atname_label]
+description = "Account creation page atname label"
+other = "Atname"
+
+[account_new_atname_hint]
+description = "Account creation page atname hint (allowed characters and length)"
+other = "Letters, numbers, and underscores, up to 20 characters"
 
 [account_new_password_label]
 description = "Account creation page password label"
@@ -253,6 +261,18 @@ other = "is not a valid email address"
 
 [validation_email_already_taken]
 description = "Duplicate email validation error"
+other = "is already taken"
+
+[validation_atname_too_long]
+description = "Validation error when the atname is too long"
+other = "must be at most 20 characters"
+
+[validation_atname_invalid_format]
+description = "Validation error when the atname contains disallowed characters"
+other = "may only contain letters, numbers, and underscores"
+
+[validation_atname_already_taken]
+description = "Duplicate atname validation error"
 other = "is already taken"
 
 [validation_code_invalid_format]

@@ -68,6 +68,7 @@ func seedUserWithPassword(t *testing.T, password string) string {
 
 	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
 		Email:    email,
+		Atname:   testutil.UniqueAtname(),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
