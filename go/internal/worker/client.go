@@ -71,15 +71,15 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	}
 
 	// Build the worker-only email dependencies from cfg and register the mail
-	// workers (email confirmation and password reset). Constructing the senders
-	// here keeps Resend configuration out of main.go's DI graph, where no
-	// request-path code needs it; both per-mail senders share the one base
-	// ResendSender.
+	// workers (email confirmation, password reset, and email-change
+	// notification). Constructing the senders here keeps Resend configuration out
+	// of main.go's DI graph, where no request-path code needs it; all per-mail
+	// senders share the one base ResendSender.
 	//
-	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認と
-	// パスワードリセット) を登録する。ここで sender を構築することで、リクエスト経路の
-	// コードが必要としない Resend 設定を main.go の DI グラフから締め出す。メール種別ごとの
-	// 2 つの sender は 1 つの基盤 ResendSender を共有する。
+	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認・
+	// パスワードリセット・メールアドレス変更通知) を登録する。ここで sender を構築する
+	// ことで、リクエスト経路のコードが必要としない Resend 設定を main.go の DI グラフから
+	// 締め出す。メール種別ごとの各 sender は 1 つの基盤 ResendSender を共有する。
 	emailSender := email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
 	confirmationSender := email.NewConfirmationSender(emailSender)
 	sendEmailConfirmationUC := usecase.NewSendEmailConfirmationUsecase(confirmationSender)
@@ -87,9 +87,13 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	passwordResetSender := email.NewPasswordResetSender(emailSender)
 	sendPasswordResetUC := usecase.NewSendPasswordResetUsecase(passwordResetSender)
 
+	emailChangeNotificationSender := email.NewEmailChangeNotificationSender(emailSender)
+	sendEmailChangeNotificationUC := usecase.NewSendEmailChangeNotificationUsecase(emailChangeNotificationSender)
+
 	workers := river.NewWorkers()
 	river.AddWorker(workers, NewSendEmailConfirmationWorker(sendEmailConfirmationUC))
 	river.AddWorker(workers, NewSendPasswordResetWorker(sendPasswordResetUC))
+	river.AddWorker(workers, NewSendEmailChangeNotificationWorker(sendEmailChangeNotificationUC))
 
 	// Logger: slog.Default() routes River's own job-execution and retry logging
 	// through the structured logger, so observability is in place before any

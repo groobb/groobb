@@ -196,3 +196,74 @@ func TestEnqueuePasswordReset(t *testing.T) {
 		t.Errorf("opts.MaxAttempts = %d, want 5", mock.opts.MaxAttempts)
 	}
 }
+
+// TestSendEmailChangeNotificationArgs_Kind pins the job kind string, since it is
+// the stable contract River uses to route persisted jobs to their worker.
+//
+// [Ja] TestSendEmailChangeNotificationArgs_Kind はジョブ種別の文字列を固定する。これは
+// River が永続化済みジョブをワーカーに振り分けるための安定した契約だからである。
+func TestSendEmailChangeNotificationArgs_Kind(t *testing.T) {
+	t.Parallel()
+
+	if got := (SendEmailChangeNotificationArgs{}).Kind(); got != "send_email_change_notification" {
+		t.Errorf("Kind() = %q, want %q", got, "send_email_change_notification")
+	}
+}
+
+// TestSendEmailChangeNotificationArgs_InsertOpts verifies the per-job defaults so
+// a transient send failure is retried rather than dropped.
+//
+// [Ja] TestSendEmailChangeNotificationArgs_InsertOpts はジョブ単位の既定値を検証し、
+// 一時的な送信失敗が捨てられずリトライされることを確認する。
+func TestSendEmailChangeNotificationArgs_InsertOpts(t *testing.T) {
+	t.Parallel()
+
+	opts := (SendEmailChangeNotificationArgs{}).InsertOpts()
+	if opts.Queue != river.QueueDefault {
+		t.Errorf("Queue = %q, want %q", opts.Queue, river.QueueDefault)
+	}
+	if opts.MaxAttempts != 5 {
+		t.Errorf("MaxAttempts = %d, want 5", opts.MaxAttempts)
+	}
+}
+
+// TestEnqueueEmailChangeNotification verifies the dispatcher hands River the right
+// Args and the InsertOpts carrying MaxAttempts (so it does not pass a nil opts
+// that would drop the retry default).
+//
+// [Ja] TestEnqueueEmailChangeNotification は dispatcher が River に正しい Args と、
+// MaxAttempts を載せた InsertOpts を渡すことを検証する (リトライ既定値を失わせる nil opts を
+// 渡さない)。
+func TestEnqueueEmailChangeNotification(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockJobInserter{}
+	d := NewDispatcher(mock)
+
+	if err := d.EnqueueEmailChangeNotification(context.Background(), "old@example.dev", "new@example.dev", "ja"); err != nil {
+		t.Fatalf("EnqueueEmailChangeNotification() error = %v", err)
+	}
+
+	if !mock.called {
+		t.Fatal("Insert が呼ばれていません")
+	}
+	args, ok := mock.args.(SendEmailChangeNotificationArgs)
+	if !ok {
+		t.Fatalf("args の型 = %T, want SendEmailChangeNotificationArgs", mock.args)
+	}
+	if args.Email != "old@example.dev" {
+		t.Errorf("args.Email = %q, want %q", args.Email, "old@example.dev")
+	}
+	if args.NewEmail != "new@example.dev" {
+		t.Errorf("args.NewEmail = %q, want %q", args.NewEmail, "new@example.dev")
+	}
+	if args.Locale != "ja" {
+		t.Errorf("args.Locale = %q, want %q", args.Locale, "ja")
+	}
+	if mock.opts == nil {
+		t.Fatal("opts が nil です (InsertOpts の既定値が失われます)")
+	}
+	if mock.opts.MaxAttempts != 5 {
+		t.Errorf("opts.MaxAttempts = %d, want 5", mock.opts.MaxAttempts)
+	}
+}

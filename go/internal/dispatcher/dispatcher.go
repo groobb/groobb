@@ -78,6 +78,41 @@ func (SendPasswordResetArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 5}
 }
 
+// SendEmailChangeNotificationArgs are the arguments for the job that notifies a
+// user's previous address that their account email was changed. Email is the
+// recipient (the old address that just lost the account); NewEmail is the address
+// the account was switched to, shown so the recipient can see where it went;
+// Locale selects the language the mail is rendered in. They are kept
+// JSON-encodable for River to persist on the queue.
+//
+// [Ja] SendEmailChangeNotificationArgs はユーザーの以前のアドレスに、アカウントの
+// メールアドレスが変更されたことを通知するジョブの引数です。Email は宛先 (アカウントを
+// 失ったばかりの旧アドレス)、NewEmail はアカウントの切り替え先アドレスで、宛先が変更先を
+// 確認できるよう示します。Locale はメールを描画する言語を選びます。River がキューに
+// 永続化できるよう JSON エンコード可能に保ちます。
+type SendEmailChangeNotificationArgs struct {
+	Email    string `json:"email"`
+	NewEmail string `json:"new_email"`
+	Locale   string `json:"locale"`
+}
+
+// Kind returns the unique job identifier River uses to route the job to its
+// worker.
+//
+// [Ja] Kind は River がジョブをワーカーに振り分けるために使う一意なジョブ識別子を
+// 返します。
+func (SendEmailChangeNotificationArgs) Kind() string { return "send_email_change_notification" }
+
+// InsertOpts sets the per-job defaults: the default queue and up to 5 attempts,
+// so a transient mail-send failure (e.g. a Resend hiccup) is retried rather than
+// lost.
+//
+// [Ja] InsertOpts はジョブ単位の既定値を設定します。既定キューと最大 5 回の試行とし、
+// 一時的なメール送信失敗 (例: Resend の不調) を失わずにリトライします。
+func (SendEmailChangeNotificationArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 5}
+}
+
 // JobInserter is the single slice of the River client the Dispatcher depends
 // on: inserting a job. *river.Client[pgx.Tx] satisfies this signature directly,
 // so the worker client can be injected without a wrapper, and tests can pass a
@@ -139,6 +174,24 @@ func (d *Dispatcher) EnqueueEmailConfirmation(ctx context.Context, email, code, 
 // InsertOpts から) 組み立てるため、呼び出し側 (UseCase) は River を import せずに済みます。
 func (d *Dispatcher) EnqueuePasswordReset(ctx context.Context, email, resetURL, locale string) error {
 	args := SendPasswordResetArgs{Email: email, ResetURL: resetURL, Locale: locale}
+	opts := args.InsertOpts()
+	_, err := d.client.Insert(ctx, args, &opts)
+	return err
+}
+
+// EnqueueEmailChangeNotification enqueues a job to notify email (the user's old
+// address) that their account email was changed to newEmail, rendered in locale.
+// Like the other Enqueue* methods it takes primitive values and assembles the
+// Args and options here (from the Args' own InsertOpts so the MaxAttempts default
+// is applied), so callers (UseCases) need not import River.
+//
+// [Ja] EnqueueEmailChangeNotification は email (ユーザーの旧アドレス) 宛に、アカウントの
+// メールアドレスが newEmail に変更されたことを locale で通知するジョブを投入します。
+// 他の Enqueue* メソッドと同様にプリミティブ値を取り、Args とオプションをここで
+// (MaxAttempts の既定値が適用されるよう Args 自身の InsertOpts から) 組み立てるため、
+// 呼び出し側 (UseCase) は River を import せずに済みます。
+func (d *Dispatcher) EnqueueEmailChangeNotification(ctx context.Context, email, newEmail, locale string) error {
+	args := SendEmailChangeNotificationArgs{Email: email, NewEmail: newEmail, Locale: locale}
 	opts := args.InsertOpts()
 	_, err := d.client.Insert(ctx, args, &opts)
 	return err
