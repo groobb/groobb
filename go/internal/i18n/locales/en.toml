@@ -14,6 +14,10 @@ other = "Dismiss"
 description = "Flash message shown after a successful sign-out"
 other = "Signed out."
 
+[flash_email_changed]
+description = "Flash message shown after a successful email address change"
+other = "Your email address has been changed."
+
 [posts_count]
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
@@ -63,6 +67,10 @@ other = "Sign out"
 description = "Confirmation prompt shown before signing out from the home page"
 other = "Are you sure you want to sign out?"
 
+[home_show_settings_link]
+description = "Link text on the home page that leads to the settings hub"
+other = "Settings"
+
 [email_confirmation_subject]
 description = "Subject line for the email confirmation code email"
 other = "[Groobb] Confirmation code"
@@ -70,6 +78,10 @@ other = "[Groobb] Confirmation code"
 [password_reset_email_subject]
 description = "Subject line for the password reset email"
 other = "[Groobb] Reset your password"
+
+[email_change_notification_subject]
+description = "Subject line for the email change notification email"
+other = "[Groobb] Your email address was changed"
 
 [sign_up_new_title]
 description = "Sign-up page title (title tag)"
@@ -279,6 +291,74 @@ other = "Update password"
 description = "Link text on the password update page that leads to the password reset request (to request a new link when the current one is invalid)"
 other = "Request a new reset link"
 
+[settings_show_title]
+description = "Settings hub page title (title tag)"
+other = "Settings"
+
+[settings_show_heading]
+description = "Settings hub page heading"
+other = "Settings"
+
+[settings_show_email_change_link]
+description = "Link text on the settings hub page that leads to the email change page"
+other = "Change email address"
+
+[settings_email_edit_title]
+description = "Email change page title (title tag)"
+other = "Change email address"
+
+[settings_email_edit_description]
+description = "Email change page meta description"
+other = "Change your email address."
+
+[settings_email_edit_heading]
+description = "Email change page heading"
+other = "Change email address"
+
+[settings_email_edit_lead]
+description = "Email change page lead text (guidance that a confirmation code is sent to the new address)"
+other = "We'll send a confirmation code to your new email address."
+
+[settings_email_edit_current_email_label]
+description = "Email change page current email label"
+other = "Current email address"
+
+[settings_email_edit_new_email_label]
+description = "Email change page new email label"
+other = "New email address"
+
+[settings_email_edit_current_password_label]
+description = "Email change page current password label"
+other = "Current password"
+
+[settings_email_edit_submit]
+description = "Email change page submit button"
+other = "Change email address"
+
+[settings_email_confirmation_new_title]
+description = "Email change confirmation-code entry page title (title tag)"
+other = "Enter confirmation code"
+
+[settings_email_confirmation_new_description]
+description = "Email change confirmation-code entry page meta description"
+other = "Enter the confirmation code sent to your new email address."
+
+[settings_email_confirmation_new_heading]
+description = "Email change confirmation-code entry page heading"
+other = "Enter confirmation code"
+
+[settings_email_confirmation_new_lead]
+description = "Email change confirmation-code entry page lead text (guidance to enter the 6-digit code sent to the new address)"
+other = "Enter the 6-digit confirmation code sent to your new email address."
+
+[settings_email_confirmation_new_code_label]
+description = "Email change confirmation-code entry page confirmation code label"
+other = "Confirmation code"
+
+[settings_email_confirmation_new_submit]
+description = "Email change confirmation-code entry page submit button"
+other = "Change email address"
+
 [validation_required]
 description = "Required field validation error"
 other = "is required"
@@ -290,6 +370,10 @@ other = "is not a valid email address"
 [validation_email_already_taken]
 description = "Duplicate email validation error"
 other = "is already taken"
+
+[validation_email_unchanged]
+description = "Validation error when the new email address is the same as the current one"
+other = "is the same as your current email address"
 
 [validation_atname_too_long]
 description = "Validation error when the atname is too long"
@@ -315,6 +399,10 @@ other = "The confirmation code is incorrect or has expired"
 description = "Form-wide error when the confirmation mail could not be enqueued (prompts a retry)"
 other = "Failed to send the confirmation code. Please try again in a moment."
 
+[validation_email_change_conflict]
+description = "Form-wide error when the new address was taken by another account just before applying the email change (prompts retrying with a different address)"
+other = "That email address is already taken. Please try again with a different address."
+
 [validation_password_too_short]
 description = "Validation error when the password is too short"
 other = "must be at least 8 characters"
@@ -330,6 +418,10 @@ other = "does not match the password"
 [validation_credentials_invalid]
 description = "Form-wide error on sign-in when the email and password do not match (without revealing which is wrong)"
 other = "The email or password is incorrect"
+
+[validation_current_password_incorrect]
+description = "Validation error when the current password does not match"
+other = "is incorrect"
 
 [validation_token_invalid]
 description = "Form-wide error when the password reset token is invalid (unknown or missing)"
