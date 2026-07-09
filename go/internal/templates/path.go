@@ -56,3 +56,45 @@ func HomePath() Path {
 func UserSessionPath() Path {
 	return Path("/user_session")
 }
+
+// SettingsPath returns the path to the settings hub.
+//
+// [Ja] SettingsPath は設定ハブのパスを返します。
+func SettingsPath() Path {
+	return Path("/settings")
+}
+
+// SettingsEmailEditPath returns the path to the email-change form.
+//
+// [Ja] SettingsEmailEditPath はメールアドレス変更フォームのパスを返します。
+func SettingsEmailEditPath() Path {
+	return Path("/settings/email/edit")
+}
+
+// SettingsEmailPath returns the path to the email resource under settings. The
+// change request targets it with PATCH /settings/email (the form reaches it via
+// the _method override).
+//
+// [Ja] SettingsEmailPath は設定配下の email リソースのパスを返します。変更申請は
+// PATCH /settings/email でこれを対象とします (フォームは _method オーバーライドで到達します)。
+func SettingsEmailPath() Path {
+	return Path("/settings/email")
+}
+
+// SettingsEmailConfirmationNewPath returns the path to the email-change
+// confirmation-code entry form.
+//
+// [Ja] SettingsEmailConfirmationNewPath はメールアドレス変更の確認コード入力フォームの
+// パスを返します。
+func SettingsEmailConfirmationNewPath() Path {
+	return Path("/settings/email/confirmation/new")
+}
+
+// SettingsEmailConfirmationPath returns the path to the email-change confirmation
+// resource. Submitting the code targets it with POST /settings/email/confirmation.
+//
+// [Ja] SettingsEmailConfirmationPath はメールアドレス変更の確認リソースのパスを返します。
+// コードの送信は POST /settings/email/confirmation でこれを対象とします。
+func SettingsEmailConfirmationPath() Path {
+	return Path("/settings/email/confirmation")
+}

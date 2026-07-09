@@ -14,6 +14,10 @@ other = "閉じる"
 description = "サインアウト完了時のフラッシュメッセージ"
 other = "ログアウトしました"
 
+[flash_email_changed]
+description = "メールアドレス変更完了時のフラッシュメッセージ"
+other = "メールアドレスを変更しました"
+
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
@@ -62,6 +66,10 @@ other = "ログアウト"
 description = "ホームページからログアウトする前に表示する確認文言"
 other = "ログアウトしますか？"
 
+[home_show_settings_link]
+description = "ホームページから設定ハブへ誘導するリンクのテキスト"
+other = "設定"
+
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"
 other = "[Groobb] 確認用コード"
@@ -69,6 +77,10 @@ other = "[Groobb] 確認用コード"
 [password_reset_email_subject]
 description = "パスワードリセットメールの件名"
 other = "[Groobb] パスワードの再設定"
+
+[email_change_notification_subject]
+description = "メールアドレス変更通知メールの件名"
+other = "[Groobb] メールアドレスが変更されました"
 
 [sign_up_new_title]
 description = "サインアップページのタイトル (title タグ)"
@@ -278,6 +290,74 @@ other = "パスワードを更新"
 description = "パスワード更新ページからパスワードリセット申請へ誘導するリンクのテキスト (リンクが無効なとき新しいリンクを申請する)"
 other = "新しい再設定用リンクを申請"
 
+[settings_show_title]
+description = "設定ハブページのタイトル (title タグ)"
+other = "設定"
+
+[settings_show_heading]
+description = "設定ハブページの見出し"
+other = "設定"
+
+[settings_show_email_change_link]
+description = "設定ハブページからメールアドレス変更ページへ誘導するリンクのテキスト"
+other = "メールアドレスの変更"
+
+[settings_email_edit_title]
+description = "メールアドレス変更ページのタイトル (title タグ)"
+other = "メールアドレスの変更"
+
+[settings_email_edit_description]
+description = "メールアドレス変更ページの meta description"
+other = "メールアドレスを変更します。"
+
+[settings_email_edit_heading]
+description = "メールアドレス変更ページの見出し"
+other = "メールアドレスの変更"
+
+[settings_email_edit_lead]
+description = "メールアドレス変更ページの説明文 (新しいアドレスに確認コードを送る案内)"
+other = "新しいメールアドレスに確認コードを送信します。"
+
+[settings_email_edit_current_email_label]
+description = "メールアドレス変更ページの現在のメールアドレスのラベル"
+other = "現在のメールアドレス"
+
+[settings_email_edit_new_email_label]
+description = "メールアドレス変更ページの新しいメールアドレスのラベル"
+other = "新しいメールアドレス"
+
+[settings_email_edit_current_password_label]
+description = "メールアドレス変更ページの現在のパスワードのラベル"
+other = "現在のパスワード"
+
+[settings_email_edit_submit]
+description = "メールアドレス変更ページの送信ボタン"
+other = "変更する"
+
+[settings_email_confirmation_new_title]
+description = "メールアドレス変更の確認コード入力ページのタイトル (title タグ)"
+other = "確認コードの入力"
+
+[settings_email_confirmation_new_description]
+description = "メールアドレス変更の確認コード入力ページの meta description"
+other = "新しいメールアドレスに送信した確認コードを入力します。"
+
+[settings_email_confirmation_new_heading]
+description = "メールアドレス変更の確認コード入力ページの見出し"
+other = "確認コードの入力"
+
+[settings_email_confirmation_new_lead]
+description = "メールアドレス変更の確認コード入力ページの説明文 (新しいアドレスに送った 6 桁コードの入力案内)"
+other = "新しいメールアドレスに送信した 6 桁の確認コードを入力してください。"
+
+[settings_email_confirmation_new_code_label]
+description = "メールアドレス変更の確認コード入力ページの確認コードのラベル"
+other = "確認コード"
+
+[settings_email_confirmation_new_submit]
+description = "メールアドレス変更の確認コード入力ページの送信ボタン"
+other = "メールアドレスを変更"
+
 [validation_required]
 description = "必須フィールドのバリデーションエラー"
 other = "入力してください"
@@ -289,6 +369,10 @@ other = "正しいメールアドレスを入力してください"
 [validation_email_already_taken]
 description = "メールアドレス重複のバリデーションエラー"
 other = "このメールアドレスは既に使用されています"
+
+[validation_email_unchanged]
+description = "新しいメールアドレスが現在のアドレスと同一のときのバリデーションエラー"
+other = "現在のメールアドレスと同じです"
 
 [validation_atname_too_long]
 description = "atname が長すぎるときのバリデーションエラー"
@@ -314,6 +398,10 @@ other = "確認コードが正しくないか、有効期限が切れていま�
 description = "確認メールの投入に失敗したときのフォーム全体のエラー (再申請を促す)"
 other = "確認コードの送信に失敗しました。時間をおいて再度お試しください。"
 
+[validation_email_change_conflict]
+description = "メールアドレス変更の確認時、適用直前に新しいアドレスが他アカウントに取得されていたときのフォーム全体のエラー (別アドレスでの再試行を促す)"
+other = "このメールアドレスは既に使用されています。別のメールアドレスでもう一度お試しください。"
+
 [validation_password_too_short]
 description = "パスワードが短すぎるときのバリデーションエラー"
 other = "パスワードは 8 文字以上で入力してください"
@@ -329,6 +417,10 @@ other = "パスワードが一致しません"
 [validation_credentials_invalid]
 description = "サインイン時に email とパスワードの組み合わせが正しくないときのフォーム全体のエラー (どちらが誤りかは明かさない)"
 other = "メールアドレスかパスワードが正しくありません"
+
+[validation_current_password_incorrect]
+description = "現在のパスワードの照合に失敗したときのバリデーションエラー"
+other = "現在のパスワードが正しくありません"
 
 [validation_token_invalid]
 description = "パスワードリセットのトークンが無効 (未知・未入力) なときのフォーム全体のエラー"

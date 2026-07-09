@@ -26,6 +26,9 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/home"
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
+	"github.com/groobb/groobb/go/internal/handler/settings"
+	"github.com/groobb/groobb/go/internal/handler/settings_email"
+	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
@@ -149,6 +152,12 @@ func main() {
 	passwordUpdateValidator := validator.NewPasswordUpdateValidator(passwordResetTokenRepo)
 	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(pool, passwordUpdateValidator, passwordResetTokenRepo, userPasswordRepo)
 
+	settingsEmailUpdateValidator := validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo)
+	createEmailChangeUC := usecase.NewCreateEmailChangeUsecase(pool, settingsEmailUpdateValidator, emailConfirmationRepo, jobDispatcher)
+
+	settingsEmailConfirmationValidator := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
+	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(pool, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
+
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -159,6 +168,9 @@ func main() {
 	userSessionHandler := user_session.NewHandler(sessionMgr, flashMgr, deleteSessionUC)
 	passwordResetHandler := password_reset.NewHandler(cfg, createPasswordResetTokenUC, turnstileVerifier)
 	passwordHandler := password.NewHandler(cfg, updatePasswordResetUC)
+	settingsHandler := settings.NewHandler(cfg)
+	settingsEmailHandler := settings_email.NewHandler(cfg, createEmailChangeUC)
+	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
@@ -289,6 +301,34 @@ func main() {
 	// PATCH を動かす。
 	r.Get("/password/edit", passwordHandler.Edit)
 	r.Patch("/password", passwordHandler.Update)
+
+	// Settings hub: the landing page that links to the individual settings screens
+	// (email change for now). It is behind RequireAuth.
+	//
+	// [Ja] 設定ハブ: 各設定画面 (今はメールアドレス変更) へリンクする着地ページ。
+	// RequireAuth の背後に置く。
+	r.With(authMiddleware.RequireAuth).Get("/settings", settingsHandler.Show)
+
+	// Settings — email change: show the change form (with the current address) and
+	// accept a new email plus the current password to issue a confirmation code.
+	// Both are behind RequireAuth; the form drives PATCH via the _method override.
+	//
+	// [Ja] 設定 — メールアドレス変更: 変更フォーム (現在のアドレス付き) を表示し、新しい
+	// email と現在のパスワードを受け付けて確認コードを発行する。どちらも RequireAuth の
+	// 背後に置き、フォームは _method オーバーライドで PATCH を動かす。
+	r.With(authMiddleware.RequireAuth).Get("/settings/email/edit", settingsEmailHandler.Edit)
+	r.With(authMiddleware.RequireAuth).Patch("/settings/email", settingsEmailHandler.Update)
+
+	// Settings — email change confirmation: show the code-entry form and verify the
+	// code emailed to the new address, which applies the change on success. Both are
+	// behind RequireAuth; the pending confirmation is resolved from the signed-in
+	// user, not a handoff cookie.
+	//
+	// [Ja] 設定 — メールアドレス変更の確認: コード入力フォームを表示し、新しいアドレスに
+	// メールしたコードを検証する。成功時に変更を適用する。どちらも RequireAuth の背後に置き、
+	// 保留中の確認は受け渡し Cookie ではなくサインイン済みユーザーから解決する。
+	r.With(authMiddleware.RequireAuth).Get("/settings/email/confirmation/new", settingsEmailConfirmationHandler.New)
+	r.With(authMiddleware.RequireAuth).Post("/settings/email/confirmation", settingsEmailConfirmationHandler.Create)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)

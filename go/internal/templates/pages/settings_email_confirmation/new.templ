@@ -1,0 +1,82 @@
+package settings_email_confirmation
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// NewPageData is the data for the email-change confirmation-code entry page. Code
+// is echoed back so a re-rendered form (after a validation error) keeps what the
+// user typed, and FormErrors carries the validation messages: a form-wide message
+// (an incorrect or expired code, or the rare address-taken race) shown at the top,
+// and a per-field message (a malformed code) shown beneath the input.
+//
+// [Ja] NewPageData はメールアドレス変更の確認コード入力ページのデータです。Code は再描画
+// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (コードが不正
+// または期限切れ、または稀なアドレス取得の競合) と、入力欄の下に出すフィールド別の
+// メッセージ (コードの形式エラー) です。
+type NewPageData struct {
+	CSRFToken  string
+	Code       string
+	FormErrors *model.ValidationError
+}
+
+// New renders the email-change confirmation-code entry form: a single six-digit
+// code field that, on submit, verifies the code emailed to the new address and
+// applies the change. The form posts to /settings/email/confirmation, and the CSRF
+// token is embedded as a hidden field for the double-submit-cookie check.
+//
+// [Ja] New はメールアドレス変更の確認コード入力フォームを描画します。送信すると新しい
+// アドレスにメール送信した 6 桁のコードを検証し変更を適用する単一の code フィールドです。
+// フォームは /settings/email/confirmation へ POST し、CSRF トークンは double-submit cookie
+// 検証のため hidden フィールドとして埋め込みます。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "settings_email_confirmation_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "settings_email_confirmation_new_lead") }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form action={ templates.SettingsEmailConfirmationPath().SafeURL() } method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("code") {
+					data-invalid="true"
+				}
+			>
+				<label for="code">
+					{ templates.T(ctx, "settings_email_confirmation_new_code_label") }
+				</label>
+				<input
+					id="code"
+					name="code"
+					type="text"
+					value={ data.Code }
+					inputmode="numeric"
+					autocomplete="one-time-code"
+					pattern="[0-9]{6}"
+					maxlength="6"
+					enterkeyhint="send"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("code") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("code", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("code", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "settings_email_confirmation_new_submit") }
+			</button>
+		</form>
+	</div>
+}

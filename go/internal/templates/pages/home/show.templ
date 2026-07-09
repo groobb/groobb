@@ -16,17 +16,17 @@ type ShowPageData struct {
 }
 
 // Show renders the signed-in home page: a greeting addressed to the user's
-// atname and a sign-out button. The button submits a POST to /user_session
-// carrying _method=DELETE, so it drives the DELETE /user_session route through
-// the method override. A confirmation dialog guards the submit so an accidental
-// click does not sign the user out; the localized prompt is carried in
-// data-confirm and read back by the inline handler.
+// atname, a link to the settings hub, and a sign-out button. The sign-out button
+// submits a POST to /user_session carrying _method=DELETE, so it drives the
+// DELETE /user_session route through the method override. A confirmation dialog
+// guards the submit so an accidental click does not sign the user out; the
+// localized prompt is carried in data-confirm and read back by the inline handler.
 //
-// [Ja] Show はサインイン済みのホームページを描画します。ユーザーの atname 宛ての挨拶と
-// サインアウトボタンです。ボタンは _method=DELETE を載せて /user_session へ POST し、
-// メソッドオーバーライド経由で DELETE /user_session ルートを動かします。確認ダイアログが
-// 送信を守り、誤クリックでサインアウトしないようにします。ローカライズされた確認文言は
-// data-confirm に載せ、インラインハンドラーが読み戻します。
+// [Ja] Show はサインイン済みのホームページを描画します。ユーザーの atname 宛ての挨拶、
+// 設定ハブへのリンク、そしてサインアウトボタンです。サインアウトボタンは _method=DELETE を
+// 載せて /user_session へ POST し、メソッドオーバーライド経由で DELETE /user_session ルートを
+// 動かします。確認ダイアログが送信を守り、誤クリックでサインアウトしないようにします。
+// ローカライズされた確認文言は data-confirm に載せ、インラインハンドラーが読み戻します。
 templ Show(data ShowPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="card text-center">
@@ -34,7 +34,10 @@ templ Show(data ShowPageData) {
 				<h1 class="card-title">{ templates.T(ctx, "home_show_heading") }</h1>
 				<p>{ templates.T(ctx, "home_show_greeting", map[string]any{"Atname": data.Atname}) }</p>
 			</header>
-			<footer>
+			<footer class="flex-col gap-2">
+				<a href={ templates.SettingsPath().SafeURL() } class="btn w-full" data-variant="outline">
+					{ templates.T(ctx, "home_show_settings_link") }
+				</a>
 				<form
 					action={ templates.UserSessionPath().SafeURL() }
 					method="POST"

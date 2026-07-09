@@ -71,6 +71,7 @@ type EmailConfirmation struct {
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 	FailedAttemptsCount int32      `json:"failed_attempts_count"`
+	UserID              *uuid.UUID `json:"user_id"`
 }
 
 type PasswordResetToken struct {

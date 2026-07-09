@@ -1,0 +1,15 @@
+package email_change_notification
+
+import "github.com/groobb/groobb/go/internal/templates/emails/layouts"
+
+// EnHTML renders the English HTML body, wrapping the content in the shared email
+// layout (which supplies the document scaffold and Groobb footer).
+//
+// [Ja] EnHTML は英語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobb フッターを供給する) で内容を包みます。
+templ EnHTML(data Data) {
+	@layouts.Default("en", "Email address changed") {
+		<p>The email address for your account has been changed to { data.NewEmail }.</p>
+		<p>If you did not make this change, please contact us.</p>
+	}
+}

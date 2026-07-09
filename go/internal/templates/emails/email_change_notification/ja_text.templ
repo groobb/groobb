@@ -1,0 +1,24 @@
+package email_change_notification
+
+import (
+	"fmt"
+
+	"github.com/a-h/templ"
+)
+
+// JaText renders the Japanese plain-text body. It is built with templ.Raw from a
+// formatted string so the line breaks survive verbatim: templ's default
+// expression output is for HTML (it escapes and collapses whitespace), which
+// would mangle a plain-text email.
+//
+// [Ja] JaText は日本語のプレーンテキスト本文を描画します。整形済み文字列から
+// templ.Raw で組み立て、改行をそのまま保ちます。templ の既定の式出力は HTML 向け
+// (エスケープと空白の畳み込みを行う) で、プレーンテキストメールでは崩れてしまうためです。
+templ JaText(data Data) {
+	@templ.Raw(fmt.Sprintf(
+		"あなたのアカウントのメールアドレスが %s に変更されました。\n\n"+
+			"この変更に心当たりが無い場合は、お手数ですがお問い合わせください。\n\n"+
+			"Groobb\n",
+		data.NewEmail,
+	))
+}

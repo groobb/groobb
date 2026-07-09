@@ -146,6 +146,24 @@ func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*mo
 	return r.toModel(row), nil
 }
 
+// UpdateEmail changes the user's email to the given address and bumps
+// updated_at. The email column is citext + UNIQUE, so if another account has
+// claimed the same address between validation and this update, the write fails
+// with a UNIQUE-violation error the caller must handle (e.g. as a validation
+// failure) rather than a silent overwrite.
+//
+// [Ja] UpdateEmail はユーザーの email を指定アドレスに変更し、updated_at を更新します。
+// email 列は citext + UNIQUE のため、検証からこの更新までの間に別アカウントが同じ
+// アドレスを取得していた場合、この書き込みは暗黙の上書きではなく UNIQUE 制約違反の
+// エラーで失敗します。呼び出し側はこれを (バリデーション失敗などとして) 扱う必要が
+// あります。
+func (r *UserRepository) UpdateEmail(ctx context.Context, id model.UserID, email string) error {
+	return r.q.UpdateUserEmail(ctx, query.UpdateUserEmailParams{
+		ID:    uuid.UUID(id),
+		Email: email,
+	})
+}
+
 // toModel converts a query.User row into a model.User, casting the raw uuid into
 // the typed UserID at the repository boundary.
 //

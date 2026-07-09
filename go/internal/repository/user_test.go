@@ -312,3 +312,72 @@ func TestUserRepository_CreateRejectsDuplicateAtname(t *testing.T) {
 		t.Error("重複 atname の Create() はエラーになるはず")
 	}
 }
+
+// TestUserRepository_UpdateEmail verifies UpdateEmail rewrites the user's email
+// and that moving to an address already taken by another account fails on the
+// users.email UNIQUE constraint (case-insensitive via citext).
+//
+// [Ja] TestUserRepository_UpdateEmail は UpdateEmail がユーザーの email を書き換えること、
+// および別アカウントが既に使用しているアドレスへの変更が users.email の UNIQUE 制約で失敗
+// することを検証する (citext により大文字小文字を区別しない)。
+func TestUserRepository_UpdateEmail(t *testing.T) {
+	t.Parallel()
+
+	repo, ctx := newUserRepo(t)
+
+	t.Run("メールアドレスを更新できる", func(t *testing.T) {
+		created, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "before@example.com",
+			Atname:   "updateemailuser",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		if err := repo.UpdateEmail(ctx, created.ID, "after@example.com"); err != nil {
+			t.Fatalf("UpdateEmail() error = %v", err)
+		}
+
+		user, err := repo.FindByID(ctx, created.ID)
+		if err != nil {
+			t.Fatalf("FindByID() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("FindByID() = nil, want user")
+		}
+		if user.Email != "after@example.com" {
+			t.Errorf("user.Email = %q, want %q", user.Email, "after@example.com")
+		}
+	})
+
+	t.Run("既存アカウントと重複するアドレスへの更新はエラー", func(t *testing.T) {
+		// Another account already holds taken@example.com, so moving to it fails
+		// on the users.email UNIQUE constraint (citext, case-insensitive).
+		//
+		// [Ja] 別アカウントが taken@example.com を先に使用しているため、そのアドレスへの
+		// 更新は users.email の UNIQUE 制約 (citext) で失敗する。
+		if _, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "taken@example.com",
+			Atname:   "takenemailuser",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		}); err != nil {
+			t.Fatalf("既存ユーザーの Create() error = %v", err)
+		}
+		mover, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "mover@example.com",
+			Atname:   "moveremailuser",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		if err := repo.UpdateEmail(ctx, mover.ID, "Taken@Example.com"); err == nil {
+			t.Error("重複アドレスへの UpdateEmail() はエラーになるはず")
+		}
+	})
+}
