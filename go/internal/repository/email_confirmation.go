@@ -151,16 +151,107 @@ func (r *EmailConfirmationRepository) IncrementFailedAttempts(ctx context.Contex
 	return r.q.IncrementEmailConfirmationFailedAttempts(ctx, uuid.UUID(id))
 }
 
+// CreateEmailChangeInput holds the attributes needed to create an email-change
+// confirmation. Unlike a sign-up confirmation it carries the requesting user's
+// id, and Email is the new address the user wants to switch to. The event is
+// fixed to email_change by the query; id, started_at, and the timestamps are
+// assigned by the database, and succeeded_at starts NULL.
+//
+// [Ja] CreateEmailChangeInput はメール変更の確認の作成に必要な属性を保持します。
+// サインアップの確認と違い申請したユーザーの id を持ち、Email はユーザーが切り替えたい
+// 新しいアドレスです。event はクエリ側で email_change に固定され、id / started_at /
+// タイムスタンプは DB 側で採番され、succeeded_at は NULL で始まります。
+type CreateEmailChangeInput struct {
+	UserID model.UserID
+	Email  string
+	Code   string
+}
+
+// CreateEmailChange inserts an email-change confirmation for the given user and
+// new address, returning it with the database-assigned id and timestamps
+// populated.
+//
+// [Ja] CreateEmailChange は指定ユーザーと新しいアドレスに対するメール変更の確認を挿入し、
+// DB が採番した id とタイムスタンプを設定した状態で返します。
+func (r *EmailConfirmationRepository) CreateEmailChange(ctx context.Context, input CreateEmailChangeInput) (*model.EmailConfirmation, error) {
+	userID := uuid.UUID(input.UserID)
+	row, err := r.q.CreateEmailChangeConfirmation(ctx, query.CreateEmailChangeConfirmationParams{
+		UserID: &userID,
+		Email:  input.Email,
+		Code:   input.Code,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// FindActiveEmailChangeByUserID returns the user's still-usable email-change
+// confirmation, or (nil, nil) when none qualifies. "Active" is decided in SQL:
+// the event is email_change, not yet succeeded, still inside the 15-minute window
+// measured from started_at, and under the 5-attempt limit — the same expiry and
+// brute-force rules the sign-up lookup uses. It is keyed by user_id rather than
+// the primary key because the email-change confirm step identifies the pending
+// confirmation from the session's user, not from a handoff cookie;
+// DeleteUnusedEmailChangesByUserID keeps at most one active per user, and ORDER
+// BY started_at DESC returns the newest should that invariant ever fail to hold.
+// A missing, already-succeeded, expired, or attempt-exhausted confirmation all
+// surface as (nil, nil); a non-nil error is reserved for a genuine query failure.
+//
+// [Ja] FindActiveEmailChangeByUserID は指定ユーザーのまだ使えるメール変更の確認を返し、
+// 該当が無ければ (nil, nil) を返します。"active" の判定は SQL 側で行います。event が
+// email_change で、未確認、started_at から測った 15 分のウィンドウ内、かつ 5 回の試行上限
+// 未満であること — サインアップのルックアップと同じ有効期限・総当たりの規則です。主キー
+// ではなく user_id をキーにするのは、メール変更の確認ステップが handoff Cookie ではなく
+// セッションのユーザーから保留中の確認を特定するためです。DeleteUnusedEmailChangesByUserID
+// がユーザーごとに active を高々 1 件に保ち、万一その不変条件が崩れても ORDER BY
+// started_at DESC が最新を返します。該当なし・確認済み・期限切れ・試行超過の確認はいずれも
+// (nil, nil) として表れ、非 nil のエラーは本物のクエリ失敗のためにのみ用います。
+func (r *EmailConfirmationRepository) FindActiveEmailChangeByUserID(ctx context.Context, userID model.UserID) (*model.EmailConfirmation, error) {
+	id := uuid.UUID(userID)
+	row, err := r.q.GetActiveEmailChangeConfirmationByUserID(ctx, &id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// DeleteUnusedEmailChangesByUserID deletes the user's not-yet-succeeded
+// email-change confirmations, so issuing a new request starts from a clean slate
+// and at most one pending confirmation exists per user. Already-succeeded
+// confirmations are left untouched as a record that a change completed. It is a
+// no-op when the user has no pending email-change confirmation.
+//
+// [Ja] DeleteUnusedEmailChangesByUserID は指定ユーザーの未確認のメール変更の確認を削除し、
+// 新しい申請の発行がまっさらな状態から始まり、ユーザーごとに保留中の確認が高々 1 件に
+// なるようにします。確認済みのものは変更が成立した記録として残します。ユーザーに保留中の
+// メール変更の確認が無ければ何もしません。
+func (r *EmailConfirmationRepository) DeleteUnusedEmailChangesByUserID(ctx context.Context, userID model.UserID) error {
+	id := uuid.UUID(userID)
+	return r.q.DeleteUnusedEmailChangeConfirmationsByUserID(ctx, &id)
+}
+
 // toModel converts a query.EmailConfirmation row into a model.EmailConfirmation,
 // casting the raw uuid, event string, and int32 count into their typed forms at
-// the repository boundary.
+// the repository boundary. UserID stays nil for sign-up confirmations (the
+// column is NULL) and becomes a typed *UserID for email-change confirmations.
 //
 // [Ja] toModel は query.EmailConfirmation を model.EmailConfirmation に変換し、
 // リポジトリの境界で生の uuid・event 文字列・int32 のカウントを型付きの形に
-// キャストします。
+// キャストします。UserID はサインアップの確認では nil のまま (列が NULL)、メール変更の
+// 確認では型付きの *UserID になります。
 func (r *EmailConfirmationRepository) toModel(row query.EmailConfirmation) *model.EmailConfirmation {
+	var userID *model.UserID
+	if row.UserID != nil {
+		id := model.UserID(*row.UserID)
+		userID = &id
+	}
 	return &model.EmailConfirmation{
 		ID:                  model.EmailConfirmationID(row.ID),
+		UserID:              userID,
 		Email:               row.Email,
 		Event:               model.EmailConfirmationEvent(row.Event),
 		Code:                row.Code,

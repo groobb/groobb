@@ -22,6 +22,7 @@ import (
 type EmailConfirmationBuilder struct {
 	t                   *testing.T
 	tx                  pgx.Tx
+	userID              *uuid.UUID
 	email               string
 	event               model.EmailConfirmationEvent
 	code                string
@@ -45,6 +46,19 @@ func NewEmailConfirmationBuilder(t *testing.T, tx pgx.Tx) *EmailConfirmationBuil
 		event: model.EmailConfirmationEventSignUp,
 		code:  "123456",
 	}
+}
+
+// WithUserID ties the confirmation to a user, as an email-change confirmation
+// is. Left unset, user_id stays NULL (the default for a sign-up confirmation,
+// which is issued before the user exists).
+//
+// [Ja] WithUserID は確認をユーザーに紐付けます (メール変更の確認がそうであるように)。
+// 未設定なら user_id は NULL のまま (ユーザーが存在する前に発行されるサインアップの確認の
+// 既定) です。
+func (b *EmailConfirmationBuilder) WithUserID(userID model.UserID) *EmailConfirmationBuilder {
+	id := uuid.UUID(userID)
+	b.userID = &id
+	return b
 }
 
 // WithEmail sets the email being confirmed.
@@ -103,13 +117,16 @@ func (b *EmailConfirmationBuilder) WithFailedAttemptsCount(count int) *EmailConf
 // overrode it (to build an expired confirmation). failed_attempts_count is
 // always supplied, defaulting to 0 (the same as the database default) unless
 // WithFailedAttemptsCount overrode it (to build an attempt-exhausted confirmation).
+// user_id is always supplied too, defaulting to NULL unless WithUserID set it (to
+// build an email-change confirmation tied to a user).
 //
 // [Ja] Build は確認を挿入し、DB が採番した ID を返します。エラー時はテストを失敗
 // させます。id とタイムスタンプは DB の既定値に任せ、succeeded_at は NULL で始まり
 // ます。started_at も WithStartedAt で上書きしない限り既定値に委ねます (上書きは
 // 期限切れの確認を作るため)。failed_attempts_count は常に渡し、WithFailedAttemptsCount
 // で上書きしない限り 0 (DB の既定値と同じ) を既定とします (上書きは試行回数を使い切った
-// 確認を作るため)。
+// 確認を作るため)。user_id も常に渡し、WithUserID で設定しない限り NULL を既定とします
+// (設定はユーザーに紐付いたメール変更の確認を作るため)。
 func (b *EmailConfirmationBuilder) Build() model.EmailConfirmationID {
 	b.t.Helper()
 
@@ -117,13 +134,13 @@ func (b *EmailConfirmationBuilder) Build() model.EmailConfirmationID {
 	var err error
 	if b.startedAt != nil {
 		err = b.tx.QueryRow(context.Background(),
-			`INSERT INTO email_confirmations (email, event, code, started_at, failed_attempts_count) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			b.email, string(b.event), b.code, *b.startedAt, b.failedAttemptsCount,
+			`INSERT INTO email_confirmations (user_id, email, event, code, started_at, failed_attempts_count) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			b.userID, b.email, string(b.event), b.code, *b.startedAt, b.failedAttemptsCount,
 		).Scan(&id)
 	} else {
 		err = b.tx.QueryRow(context.Background(),
-			`INSERT INTO email_confirmations (email, event, code, failed_attempts_count) VALUES ($1, $2, $3, $4) RETURNING id`,
-			b.email, string(b.event), b.code, b.failedAttemptsCount,
+			`INSERT INTO email_confirmations (user_id, email, event, code, failed_attempts_count) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			b.userID, b.email, string(b.event), b.code, b.failedAttemptsCount,
 		).Scan(&id)
 	}
 	if err != nil {
