@@ -33,13 +33,14 @@ func TestShow(t *testing.T) {
 	handler := home.NewHandler(&config.Config{Env: "dev"})
 
 	tests := []struct {
-		name           string
-		locale         string
-		wantHeading    string
-		wantSignOutBtn string
+		name             string
+		locale           string
+		wantHeading      string
+		wantSignOutBtn   string
+		wantSettingsLink string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "ホーム", wantSignOutBtn: "ログアウト"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Home", wantSignOutBtn: "Sign out"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "ホーム", wantSignOutBtn: "ログアウト", wantSettingsLink: "設定"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Home", wantSignOutBtn: "Sign out", wantSettingsLink: "Settings"},
 	}
 
 	for _, tt := range tests {
@@ -66,6 +67,8 @@ func TestShow(t *testing.T) {
 			wants := []string{
 				tt.wantHeading,
 				tt.wantSignOutBtn,
+				tt.wantSettingsLink,
+				`href="/settings"`,
 				"@alice",
 				`action="/user_session"`,
 				`method="POST"`,
