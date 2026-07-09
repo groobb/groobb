@@ -11,10 +11,40 @@ import (
 	"github.com/google/uuid"
 )
 
+const createEmailChangeConfirmation = `-- name: CreateEmailChangeConfirmation :one
+INSERT INTO email_confirmations (user_id, email, event, code)
+VALUES ($1, $2, 'email_change', $3)
+RETURNING id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id
+`
+
+type CreateEmailChangeConfirmationParams struct {
+	UserID *uuid.UUID `json:"user_id"`
+	Email  string     `json:"email"`
+	Code   string     `json:"code"`
+}
+
+func (q *Queries) CreateEmailChangeConfirmation(ctx context.Context, arg CreateEmailChangeConfirmationParams) (EmailConfirmation, error) {
+	row := q.db.QueryRow(ctx, createEmailChangeConfirmation, arg.UserID, arg.Email, arg.Code)
+	var i EmailConfirmation
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Event,
+		&i.Code,
+		&i.StartedAt,
+		&i.SucceededAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FailedAttemptsCount,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const createEmailConfirmation = `-- name: CreateEmailConfirmation :one
 INSERT INTO email_confirmations (email, event, code)
 VALUES ($1, $2, $3)
-RETURNING id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count
+RETURNING id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id
 `
 
 type CreateEmailConfirmationParams struct {
@@ -36,12 +66,54 @@ func (q *Queries) CreateEmailConfirmation(ctx context.Context, arg CreateEmailCo
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FailedAttemptsCount,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const deleteUnusedEmailChangeConfirmationsByUserID = `-- name: DeleteUnusedEmailChangeConfirmationsByUserID :exec
+DELETE FROM email_confirmations
+WHERE user_id = $1
+  AND event = 'email_change'
+  AND succeeded_at IS NULL
+`
+
+func (q *Queries) DeleteUnusedEmailChangeConfirmationsByUserID(ctx context.Context, userID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUnusedEmailChangeConfirmationsByUserID, userID)
+	return err
+}
+
+const getActiveEmailChangeConfirmationByUserID = `-- name: GetActiveEmailChangeConfirmationByUserID :one
+SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
+WHERE user_id = $1
+  AND event = 'email_change'
+  AND succeeded_at IS NULL
+  AND started_at > NOW() - INTERVAL '15 minutes'
+  AND failed_attempts_count < 5
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetActiveEmailChangeConfirmationByUserID(ctx context.Context, userID *uuid.UUID) (EmailConfirmation, error) {
+	row := q.db.QueryRow(ctx, getActiveEmailChangeConfirmationByUserID, userID)
+	var i EmailConfirmation
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Event,
+		&i.Code,
+		&i.StartedAt,
+		&i.SucceededAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FailedAttemptsCount,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getActiveEmailConfirmationByID = `-- name: GetActiveEmailConfirmationByID :one
-SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count FROM email_confirmations
+SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
 WHERE id = $1
   AND succeeded_at IS NULL
   AND started_at > NOW() - INTERVAL '15 minutes'
@@ -62,12 +134,13 @@ func (q *Queries) GetActiveEmailConfirmationByID(ctx context.Context, id uuid.UU
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FailedAttemptsCount,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getSucceededEmailConfirmationByID = `-- name: GetSucceededEmailConfirmationByID :one
-SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count FROM email_confirmations
+SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
 WHERE id = $1
   AND succeeded_at IS NOT NULL
 LIMIT 1
@@ -86,6 +159,7 @@ func (q *Queries) GetSucceededEmailConfirmationByID(ctx context.Context, id uuid
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FailedAttemptsCount,
+		&i.UserID,
 	)
 	return i, err
 }

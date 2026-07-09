@@ -17,3 +17,8 @@ LIMIT 1;
 INSERT INTO users (email, atname, locale, time_zone)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
+
+-- name: UpdateUserEmail :exec
+UPDATE users
+SET email = $2, updated_at = NOW()
+WHERE id = $1;

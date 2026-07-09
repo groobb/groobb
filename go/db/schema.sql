@@ -107,7 +107,8 @@ CREATE TABLE public.email_confirmations (
     succeeded_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    failed_attempts_count integer DEFAULT 0 NOT NULL
+    failed_attempts_count integer DEFAULT 0 NOT NULL,
+    user_id uuid
 );
 
 
@@ -444,6 +445,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: index_email_confirmations_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_email_confirmations_on_user_id ON public.email_confirmations USING btree (user_id);
+
+
+--
 -- Name: index_password_reset_tokens_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -514,6 +522,14 @@ CREATE INDEX user_sessions_user_id_idx ON public.user_sessions USING btree (user
 
 
 --
+-- Name: email_confirmations email_confirmations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.email_confirmations
+    ADD CONSTRAINT email_confirmations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: password_reset_tokens password_reset_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -557,4 +573,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260616152453'),
     ('20260617054258'),
     ('20260704182204'),
-    ('20260708015309');
+    ('20260708015309'),
+    ('20260709011939');
