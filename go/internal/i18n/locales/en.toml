@@ -367,6 +367,14 @@ other = "Settings"
 description = "Link text on the settings hub page that leads to the email change page"
 other = "Change email address"
 
+[settings_show_two_factor_auth_link]
+description = "Link text on the settings hub page that leads to the two-factor authentication setup page"
+other = "Two-factor authentication"
+
+[settings_show_withdrawal_link]
+description = "Link text on the settings hub page that leads to the account withdrawal page"
+other = "Delete account"
+
 [settings_email_edit_title]
 description = "Email change page title (title tag)"
 other = "Change email address"

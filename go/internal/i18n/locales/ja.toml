@@ -366,6 +366,14 @@ other = "設定"
 description = "設定ハブページからメールアドレス変更ページへ誘導するリンクのテキスト"
 other = "メールアドレスの変更"
 
+[settings_show_two_factor_auth_link]
+description = "設定ハブページから 2 段階認証の設定ページへ誘導するリンクのテキスト"
+other = "2 段階認証"
+
+[settings_show_withdrawal_link]
+description = "設定ハブページから退会ページへ誘導するリンクのテキスト"
+other = "退会"
+
 [settings_email_edit_title]
 description = "メールアドレス変更ページのタイトル (title タグ)"
 other = "メールアドレスの変更"
