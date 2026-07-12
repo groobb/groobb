@@ -99,6 +99,19 @@ func (r *UserSessionRepository) DeleteByToken(ctx context.Context, token string)
 	return r.q.DeleteUserSessionByToken(ctx, token)
 }
 
+// DeleteByUserID removes every session owned by the given user, signing them out
+// on all devices at once. It is used by the withdrawal flow so a withdrawn user's
+// live sessions cannot keep resolving to their account. Deleting when the user has
+// no sessions is not an error, so callers need not check first.
+//
+// [Ja] DeleteByUserID は指定ユーザーが所有する全セッションを削除し、全端末で一括
+// サインアウトさせます。退会フローで使い、退会済みユーザーの有効なセッションが
+// アカウントに解決し続けないようにします。ユーザーがセッションを持たないときに削除しても
+// エラーにならないため、呼び出し側で事前確認は不要です。
+func (r *UserSessionRepository) DeleteByUserID(ctx context.Context, userID model.UserID) error {
+	return r.q.DeleteUserSessionsByUserID(ctx, uuid.UUID(userID))
+}
+
 // toModel converts a query.UserSession row into a model.UserSession, casting the
 // raw uuids into the typed IDs at the repository boundary.
 //

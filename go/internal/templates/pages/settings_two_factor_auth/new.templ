@@ -1,0 +1,113 @@
+package settings_two_factor_auth
+
+import (
+	"github.com/a-h/templ"
+
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// NewPageData is the data for the two-factor authentication setup (enrollment)
+// page. QRCodeDataURI is the server-rendered QR code as a PNG data URI, dropped
+// straight into an <img src>; Secret is the same enrollment secret shown as text so
+// a user who cannot scan can type it into their authenticator app. Neither is
+// echoed form input — both come from the resolved enrollment. FormErrors surfaces a
+// missing, malformed, or incorrect code beneath the code field (a form-wide message
+// when the enrollment could not be resolved). The typed code is deliberately not
+// echoed back, since a TOTP code is single-use and the user reads a fresh one from
+// the app on retry.
+//
+// [Ja] NewPageData は 2 段階認証の設定 (登録) ページのデータです。QRCodeDataURI は
+// サーバーが描画した QR コードの PNG data URI で、<img src> にそのまま入れます。Secret は
+// 同じ登録用 secret をテキストで表示したもので、スキャンできないユーザーが認証アプリに
+// 入力できるようにします。どちらもフォーム入力のエコーバックではなく、解決した登録から
+// 得ます。FormErrors はコードの未入力・不正・不一致を code フィールドの下に出します
+// (登録を解決できなかったときはフォーム全体のメッセージ)。入力されたコードは意図的に
+// エコーバックしません。TOTP コードは 1 回使い切りで、再試行時はユーザーがアプリから新しい
+// コードを読むためです。
+type NewPageData struct {
+	CSRFToken     string
+	QRCodeDataURI string
+	Secret        string
+	FormErrors    *model.ValidationError
+}
+
+// New renders the two-factor authentication setup form: the QR code encoding the
+// otpauth URI, the secret shown as text for manual entry, and a code field where
+// the user confirms a code from their authenticator app to enable 2FA. The QR image
+// is given a white background and padding because the generated code has no quiet
+// zone of its own, and a scanner needs that light margin around the code. The form
+// posts to /settings/two_factor_auth (POST, no method override) with the CSRF token
+// embedded as a hidden field.
+//
+// [Ja] New は 2 段階認証の設定フォームを描画します。otpauth URI をエンコードした QR コード、
+// 手動入力用にテキスト表示した secret、そしてユーザーが認証アプリのコードを確認して 2FA を
+// 有効化する code フィールドです。生成した QR コードは自前のクワイエットゾーン (静穏帯) を
+// 持たず、スキャナーはコードの周囲にその明るい余白を必要とするため、QR 画像に白背景と
+// パディングを与えます。フォームは CSRF トークンを hidden フィールドとして埋め込み、
+// /settings/two_factor_auth へ POST します (メソッドオーバーライドなし)。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "settings_two_factor_auth_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "settings_two_factor_auth_new_lead") }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<div class="flex flex-col items-center gap-3">
+			<img
+				src={ templ.SafeURL(data.QRCodeDataURI) }
+				alt={ templates.T(ctx, "settings_two_factor_auth_new_qr_alt") }
+				width="256"
+				height="256"
+				class="rounded-md bg-white p-3"
+			/>
+			<div class="flex flex-col items-center gap-1">
+				<span class="text-sm text-muted-foreground">
+					{ templates.T(ctx, "settings_two_factor_auth_new_secret_label") }
+				</span>
+				<code class="rounded bg-muted px-2 py-1 font-mono text-sm tracking-widest break-all">
+					{ data.Secret }
+				</code>
+			</div>
+		</div>
+		<form action={ templates.SettingsTwoFactorAuthPath().SafeURL() } method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("code") {
+					data-invalid="true"
+				}
+			>
+				<label for="code">
+					{ templates.T(ctx, "settings_two_factor_auth_new_code_label") }
+				</label>
+				<input
+					id="code"
+					name="code"
+					type="text"
+					inputmode="numeric"
+					autocomplete="one-time-code"
+					pattern="[0-9]*"
+					maxlength="6"
+					enterkeyhint="done"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("code") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("code", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("code", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "settings_two_factor_auth_new_submit") }
+			</button>
+		</form>
+	</div>
+}

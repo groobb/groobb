@@ -3,13 +3,17 @@ package settings
 import "github.com/groobb/groobb/go/internal/templates"
 
 // Show renders the settings hub: a heading and a list of links to the individual
-// settings screens. Email change is the only entry for now; the hub is a link list
-// so further settings can be added as sibling links without restructuring. There is
-// no form, so no CSRF token is needed.
+// settings screens (email change, two-factor authentication, account withdrawal).
+// The hub is a link list so further settings can be added as sibling links without
+// restructuring. The withdrawal link is a plain navigation entry styled like its
+// siblings; the destructive variant is reserved for the actual delete submit on the
+// withdrawal page. There is no form, so no CSRF token is needed.
 //
-// [Ja] Show は設定ハブを描画します。見出しと、各設定画面へのリンクの一覧です。
-// 現時点ではメールアドレス変更のみですが、後から設定項目を兄弟リンクとして追加
-// できるようリンクの一覧として作ります。フォームが無いため CSRF トークンは不要です。
+// [Ja] Show は設定ハブを描画します。見出しと、各設定画面 (メールアドレス変更・2 段階認証・
+// 退会) へのリンクの一覧です。後から設定項目を兄弟リンクとして追加できるようリンクの一覧
+// として作ります。退会リンクは兄弟と同じスタイルの素朴なナビゲーションリンクで、destructive
+// のバリアントは退会ページ側の実際の削除 submit のために予約します。フォームが無いため
+// CSRF トークンは不要です。
 templ Show() {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">
@@ -20,6 +24,12 @@ templ Show() {
 		<nav class="flex flex-col gap-2">
 			<a href={ templates.SettingsEmailEditPath().SafeURL() } class="btn w-full" data-variant="outline">
 				{ templates.T(ctx, "settings_show_email_change_link") }
+			</a>
+			<a href={ templates.SettingsTwoFactorAuthNewPath().SafeURL() } class="btn w-full" data-variant="outline">
+				{ templates.T(ctx, "settings_show_two_factor_auth_link") }
+			</a>
+			<a href={ templates.SettingsWithdrawalNewPath().SafeURL() } class="btn w-full" data-variant="outline">
+				{ templates.T(ctx, "settings_show_withdrawal_link") }
 			</a>
 		</nav>
 	</div>

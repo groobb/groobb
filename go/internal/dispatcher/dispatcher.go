@@ -113,6 +113,40 @@ func (SendEmailChangeNotificationArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 5}
 }
 
+// PurgeWithdrawnUsersArgs are the arguments for the job that physically deletes
+// users whose withdrawal grace period has elapsed. The job needs no arguments (the
+// cutoff is derived from the current time inside the UseCase), so the struct is
+// empty; it exists to carry Kind and InsertOpts. Unlike the mail jobs there is no
+// Enqueue* method: this job is not enqueued from a UseCase but registered as a
+// River periodic job (see worker.NewClient), so River inserts it on a schedule.
+//
+// [Ja] PurgeWithdrawnUsersArgs は、退会の猶予期間を過ぎたユーザーを物理削除するジョブの
+// 引数です。ジョブに引数は不要なため (cutoff は UseCase 内で現在時刻から導出する) 構造体は
+// 空で、Kind と InsertOpts を運ぶために存在します。メールジョブと違い Enqueue* メソッドは
+// ありません。このジョブは UseCase から投入するのではなく River の定期ジョブとして登録し
+// (worker.NewClient を参照)、River がスケジュールに従って投入します。
+type PurgeWithdrawnUsersArgs struct{}
+
+// Kind returns the unique job identifier River uses to route the job to its
+// worker.
+//
+// [Ja] Kind は River がジョブをワーカーに振り分けるために使う一意なジョブ識別子を
+// 返します。
+func (PurgeWithdrawnUsersArgs) Kind() string { return "purge_withdrawn_users" }
+
+// InsertOpts sets the per-job defaults: the default queue and up to 3 attempts.
+// Fewer retries than the mail jobs (5) are warranted because the purge is
+// idempotent (DELETE ... WHERE deleted_at < cutoff) and periodic: if a run is
+// exhausted, the next scheduled run catches up on everything still overdue.
+//
+// [Ja] InsertOpts はジョブ単位の既定値を設定します。既定キューと最大 3 回の試行とします。
+// メールジョブ (5 回) より試行回数を少なくしているのは、パージが冪等
+// (DELETE ... WHERE deleted_at < cutoff) かつ定期実行のためです。ある実行が試行を使い切っても、
+// 次の定期実行が期限を過ぎた残りをまとめて処理します。
+func (PurgeWithdrawnUsersArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: river.QueueDefault, MaxAttempts: 3}
+}
+
 // JobInserter is the single slice of the River client the Dispatcher depends
 // on: inserting a job. *river.Client[pgx.Tx] satisfies this signature directly,
 // so the worker client can be injected without a wrapper, and tests can pass a

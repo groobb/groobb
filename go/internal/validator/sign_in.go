@@ -22,21 +22,42 @@ import (
 // パスワードリポジトリを必要とします。パスワードダイジェストは users ではなく
 // user_passwords にあるためです。
 type SignInCreateValidator struct {
-	userRepo         *repository.UserRepository
-	userPasswordRepo *repository.UserPasswordRepository
+	userRepo              *repository.UserRepository
+	userPasswordRepo      *repository.UserPasswordRepository
+	userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository
 }
 
-// NewSignInCreateValidator creates a SignInCreateValidator.
+// NewSignInCreateValidator creates a SignInCreateValidator. The two-factor repo
+// lets it report, alongside the authenticated user, whether that account has 2FA
+// enabled, so the sign-in flow can require a challenge before issuing a session.
 //
-// [Ja] NewSignInCreateValidator は SignInCreateValidator を生成します。
+// [Ja] NewSignInCreateValidator は SignInCreateValidator を生成します。2 段階認証
+// リポジトリにより、認証されたユーザーと併せてそのアカウントで 2FA が有効かを報告でき、
+// サインインフローがセッション発行の前にチャレンジを要求できます。
 func NewSignInCreateValidator(
 	userRepo *repository.UserRepository,
 	userPasswordRepo *repository.UserPasswordRepository,
+	userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository,
 ) *SignInCreateValidator {
 	return &SignInCreateValidator{
-		userRepo:         userRepo,
-		userPasswordRepo: userPasswordRepo,
+		userRepo:              userRepo,
+		userPasswordRepo:      userPasswordRepo,
+		userTwoFactorAuthRepo: userTwoFactorAuthRepo,
 	}
+}
+
+// SignInCreateValidateOutput is the result of a successful sign-in validation:
+// the authenticated user, and their enabled two-factor setting when they have one
+// (nil otherwise). The sign-in flow uses UserTwoFactorAuth to decide whether to
+// sign in outright or divert to a TOTP / recovery-code challenge.
+//
+// [Ja] SignInCreateValidateOutput はサインイン検証の成功結果です。認証されたユーザーと、
+// 2 段階認証が有効な場合はその設定 (無ければ nil) を持ちます。サインインフローは
+// UserTwoFactorAuth を見て、そのままサインインさせるか TOTP / リカバリーコードの
+// チャレンジへ迂回させるかを決めます。
+type SignInCreateValidateOutput struct {
+	User              *model.User
+	UserTwoFactorAuth *model.UserTwoFactorAuth
 }
 
 // SignInCreateValidatorInput is the input to SignInCreateValidator.Validate.
@@ -47,24 +68,26 @@ type SignInCreateValidatorInput struct {
 	Password string
 }
 
-// Validate checks the submitted credentials and returns the matching user on
-// success, a *model.ValidationError on any input problem, or a plain error on a
-// genuine system failure (e.g. the database is unreachable). Format problems
-// (missing or malformed email, missing password) are reported per field. A
-// failed credential check — unknown email, an account without a password, or a
-// wrong password — is deliberately reported with a single global message that
-// does not reveal which of the two was wrong, so the form does not become an
-// account-enumeration oracle. The email match is case-insensitive because
-// users.email is citext.
+// Validate checks the submitted credentials and, on success, returns the
+// authenticated user together with their enabled two-factor setting (nil when the
+// account has none). It returns a *model.ValidationError on any input problem, or
+// a plain error on a genuine system failure (e.g. the database is unreachable).
+// Format problems (missing or malformed email, missing password) are reported per
+// field. A failed credential check — unknown email, an account without a
+// password, or a wrong password — is deliberately reported with a single global
+// message that does not reveal which of the two was wrong, so the form does not
+// become an account-enumeration oracle. The email match is case-insensitive
+// because users.email is citext.
 //
-// [Ja] Validate は送信された資格情報を検証し、成功時は一致するユーザーを、入力に問題が
-// あれば *model.ValidationError を、本物のシステム障害 (例: データベースに到達できない)
-// では素の error を返します。形式の問題 (email の未入力・不正、パスワードの未入力) は
-// フィールド別に報告します。資格情報チェックの失敗 (未知の email・パスワードの無い
-// アカウント・誤ったパスワード) は、どちらが誤りかを明かさない単一のグローバル
-// メッセージで意図的に報告し、フォームがアカウント列挙のオラクルにならないようにします。
-// email の照合は users.email が citext のため大文字小文字を区別しません。
-func (v *SignInCreateValidator) Validate(ctx context.Context, input SignInCreateValidatorInput) (*model.User, error) {
+// [Ja] Validate は送信された資格情報を検証し、成功時は認証されたユーザーと、有効な
+// 2 段階認証設定 (アカウントに無ければ nil) を併せて返します。入力に問題があれば
+// *model.ValidationError を、本物のシステム障害 (例: データベースに到達できない) では素の
+// error を返します。形式の問題 (email の未入力・不正、パスワードの未入力) はフィールド別に
+// 報告します。資格情報チェックの失敗 (未知の email・パスワードの無いアカウント・誤った
+// パスワード) は、どちらが誤りかを明かさない単一のグローバルメッセージで意図的に報告し、
+// フォームがアカウント列挙のオラクルにならないようにします。email の照合は users.email が
+// citext のため大文字小文字を区別しません。
+func (v *SignInCreateValidator) Validate(ctx context.Context, input SignInCreateValidatorInput) (*SignInCreateValidateOutput, error) {
 	ve := model.NewValidationError()
 
 	v.validateEmail(ctx, ve, input.Email)
@@ -109,7 +132,26 @@ func (v *SignInCreateValidator) Validate(ctx context.Context, input SignInCreate
 		return nil, ve
 	}
 
-	return user, nil
+	// Only once the password matches, look up whether this account has 2FA enabled
+	// (an enrolling-but-not-enabled setting counts as none). A non-nil setting
+	// tells the sign-in flow to hold the session and require a TOTP / recovery-code
+	// challenge rather than signing in outright. Looking it up here, past the
+	// credential check, keeps the query off the path of a failed sign-in.
+	//
+	// [Ja] パスワードが一致した後にのみ、このアカウントで 2FA が有効かを引く (登録中で
+	// 未有効化の設定は無しと数える)。非 nil の設定は、サインインフローに対し、そのまま
+	// サインインさせる代わりにセッションを保留して TOTP / リカバリーコードのチャレンジを
+	// 要求すべきことを伝える。資格情報チェックを通った後にここで引くことで、失敗した
+	// サインインの経路ではこのクエリを走らせない。
+	twoFactorAuth, err := v.userTwoFactorAuthRepo.FindEnabledByUserID(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SignInCreateValidateOutput{
+		User:              user,
+		UserTwoFactorAuth: twoFactorAuth,
+	}, nil
 }
 
 // validateEmail records a field error when the email is missing or malformed.

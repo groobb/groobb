@@ -138,13 +138,14 @@ type SchemaMigration struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	Locale    string    `json:"locale"`
-	TimeZone  string    `json:"time_zone"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Atname    string    `json:"atname"`
+	ID        uuid.UUID  `json:"id"`
+	Email     string     `json:"email"`
+	Locale    string     `json:"locale"`
+	TimeZone  string     `json:"time_zone"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	Atname    string     `json:"atname"`
+	DeletedAt *time.Time `json:"deleted_at"`
 }
 
 type UserPassword struct {
@@ -164,4 +165,15 @@ type UserSession struct {
 	SignedInAt time.Time `json:"signed_in_at"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type UserTwoFactorAuth struct {
+	ID            uuid.UUID  `json:"id"`
+	UserID        uuid.UUID  `json:"user_id"`
+	Secret        string     `json:"secret"`
+	Enabled       bool       `json:"enabled"`
+	EnabledAt     *time.Time `json:"enabled_at"`
+	RecoveryCodes []string   `json:"recovery_codes"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }

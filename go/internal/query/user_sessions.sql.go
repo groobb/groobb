@@ -54,6 +54,15 @@ func (q *Queries) DeleteUserSessionByToken(ctx context.Context, token string) er
 	return err
 }
 
+const deleteUserSessionsByUserID = `-- name: DeleteUserSessionsByUserID :exec
+DELETE FROM user_sessions WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserSessionsByUserID, userID)
+	return err
+}
+
 const getUserSessionByToken = `-- name: GetUserSessionByToken :one
 SELECT id, user_id, token, ip_address, user_agent, signed_in_at, created_at, updated_at FROM user_sessions WHERE token = $1 LIMIT 1
 `

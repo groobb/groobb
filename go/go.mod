@@ -5,10 +5,12 @@ go 1.26.3
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/a-h/templ v0.3.1020
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
+	github.com/pquerna/otp v1.5.0
 	github.com/resend/resend-go/v2 v2.28.0
 	github.com/riverqueue/river v0.40.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0

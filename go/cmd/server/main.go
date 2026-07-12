@@ -29,7 +29,11 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/settings"
 	"github.com/groobb/groobb/go/internal/handler/settings_email"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
+	"github.com/groobb/groobb/go/internal/handler/settings_two_factor_auth"
+	"github.com/groobb/groobb/go/internal/handler/settings_withdrawal"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
+	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor"
+	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor_recovery"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
@@ -109,6 +113,7 @@ func main() {
 	userSessionRepo := repository.NewUserSessionRepository(queries)
 	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
 	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -142,9 +147,15 @@ func main() {
 	createAccountUC := usecase.NewCreateAccountUsecase(pool, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 
-	signInValidator := validator.NewSignInCreateValidator(userRepo, userPasswordRepo)
+	signInValidator := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
 	createSignInUC := usecase.NewCreateSignInUsecase(signInValidator)
 	deleteSessionUC := usecase.NewDeleteSessionUsecase(userSessionRepo)
+
+	signInTwoFactorValidator := validator.NewSignInTwoFactorCreateValidator(userTwoFactorAuthRepo)
+	createSignInTwoFactorUC := usecase.NewCreateSignInTwoFactorUsecase(signInTwoFactorValidator)
+
+	signInTwoFactorRecoveryValidator := validator.NewSignInTwoFactorRecoveryCreateValidator(userTwoFactorAuthRepo)
+	createSignInTwoFactorRecoveryUC := usecase.NewCreateSignInTwoFactorRecoveryUsecase(pool, signInTwoFactorRecoveryValidator, userTwoFactorAuthRepo, userSessionRepo)
 
 	passwordResetValidator := validator.NewPasswordResetCreateValidator()
 	createPasswordResetTokenUC := usecase.NewCreatePasswordResetTokenUsecase(pool, passwordResetValidator, userRepo, passwordResetTokenRepo, jobDispatcher, cfg)
@@ -158,6 +169,15 @@ func main() {
 	settingsEmailConfirmationValidator := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
 	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(pool, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
 
+	settingsWithdrawalDeleteValidator := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
+	deleteAccountUC := usecase.NewDeleteAccountUsecase(pool, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
+
+	settingsTwoFactorAuthCreateValidator := validator.NewSettingsTwoFactorAuthCreateValidator(userTwoFactorAuthRepo)
+	settingsTwoFactorAuthDeleteValidator := validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, userTwoFactorAuthRepo)
+	prepareTwoFactorAuthUC := usecase.NewPrepareTwoFactorAuthUsecase(userTwoFactorAuthRepo)
+	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
+	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
+
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -165,12 +185,16 @@ func main() {
 	emailConfirmationHandler := email_confirmation.NewHandler(cfg, sessionMgr, verifyEmailConfirmationUC)
 	accountHandler := account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
 	signInHandler := sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC, turnstileVerifier)
+	signInTwoFactorHandler := sign_in_two_factor.NewHandler(cfg, sessionMgr, createSignInTwoFactorUC, createSessionUC)
+	signInTwoFactorRecoveryHandler := sign_in_two_factor_recovery.NewHandler(cfg, sessionMgr, createSignInTwoFactorRecoveryUC)
 	userSessionHandler := user_session.NewHandler(sessionMgr, flashMgr, deleteSessionUC)
 	passwordResetHandler := password_reset.NewHandler(cfg, createPasswordResetTokenUC, turnstileVerifier)
 	passwordHandler := password.NewHandler(cfg, updatePasswordResetUC)
 	settingsHandler := settings.NewHandler(cfg)
 	settingsEmailHandler := settings_email.NewHandler(cfg, createEmailChangeUC)
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
+	settingsTwoFactorAuthHandler := settings_two_factor_auth.NewHandler(cfg, flashMgr, prepareTwoFactorAuthUC, enableTwoFactorAuthUC, disableTwoFactorAuthUC)
+	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
@@ -279,6 +303,33 @@ func main() {
 	r.Get("/sign_in", signInHandler.New)
 	r.Post("/sign_in", signInHandler.Create)
 
+	// Sign-in two-factor challenge: show the TOTP code-entry form and verify the
+	// code to finish signing in a 2FA-enabled account, issuing the session on
+	// success. These are public routes reached mid-sign-in; the pending user is
+	// resolved from the short-lived two-factor cookie set by the password step, not
+	// a session.
+	//
+	// [Ja] サインインの 2 段階認証チャレンジ: TOTP コード入力フォームを表示し、コードを検証して
+	// 2FA 有効なアカウントのサインインを完了させ、成功時にセッションを発行する。これらは
+	// サインインの途中で通る公開ルートで、保留中ユーザーはセッションではなくパスワードのステップが
+	// 設定した短命の 2 段階認証 Cookie から解決する。
+	r.Get("/sign_in/two_factor/new", signInTwoFactorHandler.New)
+	r.Post("/sign_in/two_factor", signInTwoFactorHandler.Create)
+
+	// Sign-in two-factor recovery-code challenge: show the recovery-code entry form
+	// and verify a code to finish signing in when the authenticator app is
+	// unavailable, consuming the one-time code and issuing the session on success.
+	// Like the TOTP challenge, these are public routes reached mid-sign-in; the
+	// pending user is resolved from the short-lived two-factor cookie, not a session.
+	//
+	// [Ja] サインインの 2 段階認証リカバリーコードチャレンジ: 認証アプリを使えないときに
+	// リカバリーコード入力フォームを表示し、コードを検証してサインインを完了させ、成功時に
+	// 1 回使い切りのコードを消費してセッションを発行する。TOTP チャレンジと同様、これらは
+	// サインインの途中で通る公開ルートで、保留中ユーザーはセッションではなく短命の 2 段階認証
+	// Cookie から解決する。
+	r.Get("/sign_in/two_factor/recovery/new", signInTwoFactorRecoveryHandler.New)
+	r.Post("/sign_in/two_factor/recovery", signInTwoFactorRecoveryHandler.Create)
+
 	// Sign-out: delete the current session and clear the session cookie.
 	//
 	// [Ja] サインアウト: 現在のセッションを削除しセッション Cookie を消去する。
@@ -329,6 +380,37 @@ func main() {
 	// 保留中の確認は受け渡し Cookie ではなくサインイン済みユーザーから解決する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/email/confirmation/new", settingsEmailConfirmationHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/settings/email/confirmation", settingsEmailConfirmationHandler.Create)
+
+	// Settings — two-factor authentication: show the enrollment form (QR code and
+	// manual-entry key) and enable 2FA after the user confirms a TOTP code, which
+	// activates the setting and shows the one-time recovery codes. Both are behind
+	// RequireAuth; the setup (GET) shows the enrollment form when 2FA is off or the
+	// disable confirmation form when it is on, the enable (POST) is a plain POST (no
+	// method override), and the disable (DELETE) is reached from the disable form via
+	// the _method override.
+	//
+	// [Ja] 設定 — 2 段階認証: 2FA が無効なら登録フォーム (QR コードと手動入力キー) を、有効なら
+	// 無効化の確認フォームを表示し、ユーザーが TOTP コードを確認した後に 2FA を有効化する。
+	// 有効化は設定をアクティブにし、1 回使い切りのリカバリーコードを表示する。無効化は再認証
+	// (現在のパスワードか現在の TOTP コード) の後に設定を削除する。すべて RequireAuth の背後に
+	// 置き、設定 (GET) は登録 / 無効化フォームを、有効化 (POST) は素の POST、無効化 (DELETE) は
+	// 無効化フォームから _method オーバーライドで到達する。
+	r.With(authMiddleware.RequireAuth).Get("/settings/two_factor_auth/new", settingsTwoFactorAuthHandler.New)
+	r.With(authMiddleware.RequireAuth).Post("/settings/two_factor_auth", settingsTwoFactorAuthHandler.Create)
+	r.With(authMiddleware.RequireAuth).Delete("/settings/two_factor_auth", settingsTwoFactorAuthHandler.Delete)
+
+	// Settings — account withdrawal: show the confirmation form (with the current-
+	// password field) and execute the withdrawal, which soft-deletes and anonymizes
+	// the account and deletes all of its sessions. Both are behind RequireAuth; the
+	// form drives DELETE via the _method override. The settings hub does not link
+	// here yet (added in a later task), so the page is reached only by direct URL.
+	//
+	// [Ja] 設定 — 退会: 確認フォーム (現在のパスワードフィールド付き) を表示し、退会を実行する。
+	// 退会の実行はアカウントを論理削除・匿名化し、その全セッションを削除する。どちらも
+	// RequireAuth の背後に置き、フォームは _method オーバーライドで DELETE を動かす。設定ハブ
+	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
+	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
+	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)

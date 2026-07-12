@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,12 +19,13 @@ import (
 // [Ja] UserBuilder はテスト用の users 行を fluent API で組み立てます。妥当な既定値を
 // 適用するため、テストは関心のあるフィールドだけを設定すれば済みます。
 type UserBuilder struct {
-	t        *testing.T
-	tx       pgx.Tx
-	email    string
-	atname   string
-	locale   string
-	timeZone string
+	t         *testing.T
+	tx        pgx.Tx
+	email     string
+	atname    string
+	locale    string
+	timeZone  string
+	deletedAt *time.Time
 }
 
 // NewUserBuilder creates a UserBuilder. The default email and atname each embed a
@@ -95,18 +97,32 @@ func (b *UserBuilder) WithTimeZone(timeZone string) *UserBuilder {
 	return b
 }
 
+// WithDeletedAt soft-deletes the user at the given time, so tests can exercise
+// how a withdrawn user is treated (e.g. that authentication lookups exclude it).
+// Left unset, Build creates an active user (deleted_at NULL).
+//
+// [Ja] WithDeletedAt は指定時刻でユーザーを論理削除し、退会済みユーザーの扱い
+// (例: 認証ルックアップが除外すること) をテストで再現できるようにします。未設定なら
+// Build はアクティブなユーザー (deleted_at が NULL) を作ります。
+func (b *UserBuilder) WithDeletedAt(deletedAt time.Time) *UserBuilder {
+	b.deletedAt = &deletedAt
+	return b
+}
+
 // Build inserts the user and returns its database-assigned ID, failing the test
-// on error. id and timestamps are left to the database defaults.
+// on error. id and timestamps are left to the database defaults. deleted_at is
+// NULL unless WithDeletedAt set it (a nil *time.Time binds as NULL).
 //
 // [Ja] Build はユーザーを挿入し、DB が採番した ID を返します。エラー時はテストを
-// 失敗させます。id とタイムスタンプは DB の既定値に任せます。
+// 失敗させます。id とタイムスタンプは DB の既定値に任せます。deleted_at は WithDeletedAt で
+// 設定しない限り NULL です (nil の *time.Time は NULL としてバインドされます)。
 func (b *UserBuilder) Build() model.UserID {
 	b.t.Helper()
 
 	var id uuid.UUID
 	err := b.tx.QueryRow(context.Background(),
-		`INSERT INTO users (email, atname, locale, time_zone) VALUES ($1, $2, $3, $4) RETURNING id`,
-		b.email, b.atname, b.locale, b.timeZone,
+		`INSERT INTO users (email, atname, locale, time_zone, deleted_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		b.email, b.atname, b.locale, b.timeZone, b.deletedAt,
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーの作成に失敗: %v", err)

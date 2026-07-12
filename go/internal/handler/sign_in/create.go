@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
 	signinpage "github.com/groobb/groobb/go/internal/templates/pages/sign_in"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
@@ -86,6 +87,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 		slog.ErrorContext(ctx, "サインインに失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// A 2FA-enabled account does not sign in from the password alone. Hold the
+	// authenticated user in a short-lived pending cookie (no session issued yet)
+	// and send them to the TOTP challenge, which completes the sign-in on a valid
+	// code. Accounts without 2FA fall through and get a session immediately.
+	//
+	// [Ja] 2FA 有効なアカウントはパスワードだけではサインインしない。認証済みユーザーを
+	// 短命の pending Cookie に保持し (この時点ではセッションを発行しない)、TOTP チャレンジへ
+	// 送る。チャレンジが正しいコードでサインインを完了させる。2FA 無しのアカウントはここを
+	// 素通りして即座にセッションを得る。
+	if signInOutput.UserTwoFactorAuth != nil {
+		h.sessionMgr.SetTwoFactorPendingUserID(w, signInOutput.User.ID)
+		http.Redirect(w, r, templates.SignInTwoFactorNewPath().String(), http.StatusSeeOther)
 		return
 	}
 

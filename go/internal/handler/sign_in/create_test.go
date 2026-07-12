@@ -45,10 +45,11 @@ func newSignInHandler(t *testing.T) (*sign_in.Handler, *testutil.FakeTurnstileVe
 	queries := query.New(testutil.GetTestDB())
 	userRepo := repository.NewUserRepository(queries)
 	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
 	userSessionRepo := repository.NewUserSessionRepository(queries)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
-	createSignInUC := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo))
+	createSignInUC := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo))
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 	verifier := &testutil.FakeTurnstileVerifier{Passed: true}
 	return sign_in.NewHandler(cfg, sessionMgr, createSignInUC, createSessionUC, verifier), verifier
@@ -85,6 +86,58 @@ func seedUserWithPassword(t *testing.T, password string) string {
 		PasswordDigest: digest,
 	}); err != nil {
 		t.Fatalf("パスワード資格情報の作成に失敗: %v", err)
+	}
+	return email
+}
+
+// seedUserWithTwoFactor creates a committed user with a password credential and
+// an enabled 2FA setting, returning the email so a handler test can sign in as it
+// and hit the two-factor challenge branch.
+//
+// [Ja] seedUserWithTwoFactor はパスワード資格情報と有効な 2FA 設定を持つユーザーを
+// コミットして作成し、ハンドラーテストがそれとしてサインインして 2 段階認証チャレンジの
+// 分岐へ到達できるよう email を返す。
+func seedUserWithTwoFactor(t *testing.T, password string) string {
+	t.Helper()
+
+	ctx := context.Background()
+	queries := query.New(testutil.GetTestDB())
+	email := fmt.Sprintf("signin-h-2fa-%s@example.com", uuid.NewString())
+
+	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
+		Email:    email,
+		Atname:   testutil.UniqueAtname(),
+		Locale:   i18n.LangJa,
+		TimeZone: "Asia/Tokyo",
+	})
+	if err != nil {
+		t.Fatalf("ユーザーの作成に失敗: %v", err)
+	}
+
+	digest, err := auth.HashPassword(password)
+	if err != nil {
+		t.Fatalf("パスワードのハッシュ化に失敗: %v", err)
+	}
+	if _, err := repository.NewUserPasswordRepository(queries).Create(ctx, repository.CreateUserPasswordInput{
+		UserID:         user.ID,
+		PasswordDigest: digest,
+	}); err != nil {
+		t.Fatalf("パスワード資格情報の作成に失敗: %v", err)
+	}
+
+	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(queries)
+	if _, err := twoFactorRepo.Create(ctx, repository.CreateUserTwoFactorAuthInput{
+		UserID: user.ID,
+		Secret: testutil.DefaultBuilderTOTPSecret,
+	}); err != nil {
+		t.Fatalf("2 段階認証設定の作成に失敗: %v", err)
+	}
+	enabled, err := twoFactorRepo.Enable(ctx, user.ID, []string{"recoverycode1"})
+	if err != nil {
+		t.Fatalf("2 段階認証の有効化に失敗: %v", err)
+	}
+	if !enabled {
+		t.Fatal("2 段階認証を有効化できなかった (未有効化の行が見つからない)")
 	}
 	return email
 }
@@ -135,6 +188,50 @@ func TestCreate_Success(t *testing.T) {
 	}
 	if sessionCookie := findCookie(rec, session.CookieName); sessionCookie == nil || sessionCookie.Value == "" {
 		t.Error("サインイン後にセッション Cookie が設定されていない")
+	}
+	// A user without 2FA is signed in outright, so no pending cookie is set.
+	//
+	// [Ja] 2FA 無しのユーザーはそのままサインインするため、pending Cookie は設定されない。
+	if findCookie(rec, session.TwoFactorPendingCookieName) != nil {
+		t.Error("2FA 無しのサインインで pending Cookie が設定されている")
+	}
+}
+
+// TestCreate_TwoFactorEnabled verifies that a 2FA-enabled account is not signed
+// in from the password alone: the password step passes but Create issues no
+// session, sets the short-lived pending cookie, and redirects to the TOTP
+// challenge instead of the top page.
+//
+// [Ja] TestCreate_TwoFactorEnabled は、2FA 有効なアカウントがパスワードだけでは
+// サインインしないことを検証する。パスワードのステップは通るが Create はセッションを
+// 発行せず、短命の pending Cookie を設定し、トップページではなく TOTP チャレンジへ
+// リダイレクトする。
+func TestCreate_TwoFactorEnabled(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSignInHandler(t)
+	email := seedUserWithTwoFactor(t, "password123")
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postSignIn(email, "password123", i18n.LangJa))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/sign_in/two_factor/new" {
+		t.Errorf("Location = %q, want %q", loc, "/sign_in/two_factor/new")
+	}
+	// The password matched but 2FA is required, so no session is issued yet;
+	// instead the pending user is held in the two-factor cookie for the challenge.
+	//
+	// [Ja] パスワードは一致したが 2FA が必要なため、この時点ではセッションを発行しない。
+	// 代わりに保留中のユーザーをチャレンジ用の 2 段階認証 Cookie に保持する。
+	if findCookie(rec, session.CookieName) != nil {
+		t.Error("2FA 必須なのにセッション Cookie が設定されている (パスワードだけでサインインしてしまっている)")
+	}
+	pending := findCookie(rec, session.TwoFactorPendingCookieName)
+	if pending == nil || pending.Value == "" {
+		t.Fatal("2 段階認証の pending Cookie が設定されていない")
 	}
 }
 

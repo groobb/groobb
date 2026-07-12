@@ -1,0 +1,190 @@
+package repository
+
+import (
+	"context"
+	"errors"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/query"
+)
+
+// UserTwoFactorAuthRepository reads and writes user_two_factor_auths through
+// sqlc-generated queries.
+//
+// [Ja] UserTwoFactorAuthRepository は sqlc 生成のクエリ経由で user_two_factor_auths を
+// 読み書きします。
+type UserTwoFactorAuthRepository struct {
+	q *query.Queries
+}
+
+// NewUserTwoFactorAuthRepository creates a UserTwoFactorAuthRepository backed by
+// the given queries.
+//
+// [Ja] NewUserTwoFactorAuthRepository は与えられた queries を使う
+// UserTwoFactorAuthRepository を生成します。
+func NewUserTwoFactorAuthRepository(q *query.Queries) *UserTwoFactorAuthRepository {
+	return &UserTwoFactorAuthRepository{q: q}
+}
+
+// WithTx returns a new UserTwoFactorAuthRepository whose queries run inside tx,
+// so a UseCase can enlist this repository in its transaction (e.g. to consume a
+// recovery code and issue a session atomically). The receiver is left unchanged.
+//
+// [Ja] WithTx は queries を tx 内で実行する新しい UserTwoFactorAuthRepository を返し、
+// UseCase が本リポジトリを自身のトランザクションに参加させられる (例: リカバリーコードの
+// 消費とセッション発行をアトミックに行う) ようにします。レシーバ自身は変更しません。
+func (r *UserTwoFactorAuthRepository) WithTx(tx pgx.Tx) *UserTwoFactorAuthRepository {
+	return &UserTwoFactorAuthRepository{q: r.q.WithTx(tx)}
+}
+
+// FindByUserID returns the 2FA setting of the user with the given ID, or
+// (nil, nil) when none exists (the user has never started enrolling). Absence is
+// a normal lookup outcome, not an error; the caller decides whether to treat it
+// as a business-level failure.
+//
+// [Ja] FindByUserID は指定 ID のユーザーの 2FA 設定を返し、存在しない場合 (登録を一度も
+// 開始していないユーザー) は (nil, nil) を返します。未存在は正常なルックアップ結果であり
+// エラーではありません。業務上の失敗として扱うかは呼び出し側が判断します。
+func (r *UserTwoFactorAuthRepository) FindByUserID(ctx context.Context, userID model.UserID) (*model.UserTwoFactorAuth, error) {
+	row, err := r.q.GetUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// FindEnabledByUserID returns the user's 2FA setting only when it is enabled, or
+// (nil, nil) when the user has no setting or is still enrolling. Sign-in uses
+// this to decide whether to require a TOTP challenge, so a not-yet-enabled row is
+// treated the same as none.
+//
+// [Ja] FindEnabledByUserID はユーザーの 2FA 設定が有効な場合のみ返し、設定が無いか
+// まだ登録中の場合は (nil, nil) を返します。サインインは TOTP チャレンジを要求するか
+// どうかの判定にこれを使うため、未有効化の行は設定なしと同じ扱いになります。
+func (r *UserTwoFactorAuthRepository) FindEnabledByUserID(ctx context.Context, userID model.UserID) (*model.UserTwoFactorAuth, error) {
+	row, err := r.q.GetEnabledUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// CreateUserTwoFactorAuthInput holds the attributes needed to start enrolling a
+// user in 2FA. id and the timestamps are assigned by the database, and the row
+// starts disabled with no recovery codes; Enable activates it once the user
+// confirms a TOTP code.
+//
+// [Ja] CreateUserTwoFactorAuthInput はユーザーの 2FA 登録を開始するために必要な属性を
+// 保持します。id とタイムスタンプは DB 側で採番され、行は無効かつリカバリーコード無しで
+// 始まります。ユーザーが TOTP コードを確認した時点で Enable が有効化します。
+type CreateUserTwoFactorAuthInput struct {
+	UserID model.UserID
+	Secret string
+}
+
+// Create inserts a not-yet-enabled 2FA setting (the enrollment secret) and
+// returns it with the database-assigned id and timestamps populated. The insert
+// is ON CONFLICT (user_id) DO NOTHING, so when the user already has a row (e.g. a
+// concurrent first-time setup request inserted first) nothing is inserted and it
+// returns (nil, nil); the caller re-fetches and reuses that existing enrollment.
+// This keeps get-or-create idempotent under concurrent setup without ever
+// violating the user_id unique constraint.
+//
+// [Ja] Create は未有効化の 2FA 設定 (登録用 secret) を挿入し、DB が採番した id と
+// タイムスタンプを設定した状態で返します。挿入は ON CONFLICT (user_id) DO NOTHING の
+// ため、ユーザーの行が既に存在するとき (例: 同時の初回設定リクエストが先に挿入したとき) は
+// 何も挿入せず (nil, nil) を返します。呼び出し側はその既存の登録を取り直して再利用します。
+// これにより、設定が同時に走っても user_id の unique 制約に一切違反せず get-or-create を
+// 冪等に保ちます。
+func (r *UserTwoFactorAuthRepository) Create(ctx context.Context, input CreateUserTwoFactorAuthInput) (*model.UserTwoFactorAuth, error) {
+	row, err := r.q.CreateUserTwoFactorAuth(ctx, query.CreateUserTwoFactorAuthParams{
+		UserID: uuid.UUID(input.UserID),
+		Secret: input.Secret,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// Enable activates the user's not-yet-enabled 2FA setting: it marks the setting
+// enabled, stamps enabled_at, and stores the generated recovery codes, all in one
+// update guarded by enabled = false. It returns whether a row was actually enabled:
+// false means no not-yet-enabled row matched (2FA was already enabled — e.g. a
+// concurrent enable won the race — or the user never enrolled), so the caller's
+// recovery codes were not stored and must not be shown. The guard makes enabling
+// idempotent and stops a second concurrent enable from overwriting the stored
+// recovery codes.
+//
+// [Ja] Enable はユーザーの未有効化の 2FA 設定を有効化します。設定を enabled にし、
+// enabled_at を打刻し、生成したリカバリーコードを保存する処理を、enabled = false で
+// ガードした 1 回の更新で行います。実際に行を有効化したかを返します。false は未有効化の行が
+// 一致しなかった (2FA が既に有効 — 例えば同時の有効化が競合に勝った — か、ユーザーが登録して
+// いない) ことを意味し、その場合呼び出し側のリカバリーコードは保存されておらず表示しては
+// なりません。このガードにより有効化は冪等になり、2 つ目の同時有効化が保存済みリカバリー
+// コードを上書きするのを防ぎます。
+func (r *UserTwoFactorAuthRepository) Enable(ctx context.Context, userID model.UserID, recoveryCodes []string) (bool, error) {
+	rows, err := r.q.EnableUserTwoFactorAuth(ctx, query.EnableUserTwoFactorAuthParams{
+		UserID:        uuid.UUID(userID),
+		RecoveryCodes: recoveryCodes,
+	})
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
+// UpdateRecoveryCodes replaces the user's stored recovery codes with the given
+// slice (and bumps updated_at). Sign-in with a recovery code uses this to write
+// back the remaining codes after consuming one.
+//
+// [Ja] UpdateRecoveryCodes はユーザーの保存済みリカバリーコードを与えられたスライスで
+// 置き換えます (updated_at も更新)。リカバリーコードでのサインインが、1 つ消費した後に
+// 残りのコードを書き戻すために使います。
+func (r *UserTwoFactorAuthRepository) UpdateRecoveryCodes(ctx context.Context, userID model.UserID, recoveryCodes []string) error {
+	return r.q.UpdateUserTwoFactorAuthRecoveryCodes(ctx, query.UpdateUserTwoFactorAuthRecoveryCodesParams{
+		UserID:        uuid.UUID(userID),
+		RecoveryCodes: recoveryCodes,
+	})
+}
+
+// Delete removes the user's 2FA setting, disabling two-factor authentication and
+// discarding the secret and recovery codes with the row. Deleting when the user
+// has no setting is not an error, so disabling is idempotent.
+//
+// [Ja] Delete はユーザーの 2FA 設定を削除し、2 段階認証を無効化して secret と
+// リカバリーコードを行ごと破棄します。設定が無いときに削除してもエラーにならないため、
+// 無効化は冪等です。
+func (r *UserTwoFactorAuthRepository) Delete(ctx context.Context, userID model.UserID) error {
+	return r.q.DeleteUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+}
+
+// toModel converts a query.UserTwoFactorAuth row into a model.UserTwoFactorAuth,
+// casting the raw uuids into the typed IDs at the repository boundary.
+//
+// [Ja] toModel は query.UserTwoFactorAuth を model.UserTwoFactorAuth に変換し、
+// リポジトリの境界で生の uuid を型付き ID にキャストします。
+func (r *UserTwoFactorAuthRepository) toModel(row query.UserTwoFactorAuth) *model.UserTwoFactorAuth {
+	return &model.UserTwoFactorAuth{
+		ID:            model.UserTwoFactorAuthID(row.ID),
+		UserID:        model.UserID(row.UserID),
+		Secret:        row.Secret,
+		Enabled:       row.Enabled,
+		EnabledAt:     row.EnabledAt,
+		RecoveryCodes: row.RecoveryCodes,
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+	}
+}
