@@ -37,6 +37,20 @@ const CookieName = "groobb_session_token"
 // 識別子の命名規約に従いプロジェクト接頭辞を付けています。
 const EmailConfirmationCookieName = "groobb_email_confirmation_id"
 
+// TwoFactorPendingCookieName is the name of the cookie that carries the pending
+// user's id across the two-factor sign-in handoff: after the password check
+// passes for a 2FA-enabled account, sign-in stores the user's id here instead of
+// issuing a session, and the TOTP / recovery-code challenge reads it back to know
+// whose second factor to verify. It carries the project prefix per the identifier
+// naming convention.
+//
+// [Ja] TwoFactorPendingCookieName は、2 段階認証のサインインの受け渡しをまたいで保留中の
+// ユーザーの id を運ぶ Cookie の名前です。2FA 有効なアカウントでパスワード検証が通った後、
+// サインインはセッションを発行する代わりにユーザーの id をここに保存し、TOTP / リカバリー
+// コードのチャレンジがこれを読み戻して誰の第 2 要素を検証すべきかを知ります。識別子の
+// 命名規約に従いプロジェクト接頭辞を付けています。
+const TwoFactorPendingCookieName = "groobb_two_factor_pending"
+
 // emailConfirmationCookieMaxAge is the email-confirmation cookie lifetime in
 // seconds (15 minutes). It matches the confirmation code's own expiry window
 // (the Korylus convention is 15 minutes), so the cookie does not outlive the
@@ -46,6 +60,17 @@ const EmailConfirmationCookieName = "groobb_email_confirmation_id"
 // 確認コード自体の有効期限ウィンドウ (Korylus の慣行は 15 分) に揃え、Cookie が指す先の
 // コードより長く生存しないようにします。
 const emailConfirmationCookieMaxAge = 15 * 60
+
+// twoFactorPendingCookieMaxAge is the two-factor pending cookie lifetime in
+// seconds (10 minutes). The window is deliberately short: it only needs to span
+// entering a TOTP or recovery code right after the password step, and a short
+// life limits how long a leaked pending cookie stays useful.
+//
+// [Ja] twoFactorPendingCookieMaxAge は 2 段階認証の pending Cookie の有効期間 (秒、10 分)
+// です。ウィンドウは意図的に短くしています。パスワードのステップ直後に TOTP または
+// リカバリーコードを入力する間だけを賄えればよく、短い寿命は漏えいした pending Cookie が
+// 有用でいられる時間を抑えます。
+const twoFactorPendingCookieMaxAge = 10 * 60
 
 // sessionCookieMaxAge is the session cookie lifetime in seconds. Sessions have
 // no server-side expiry column (a row in user_sessions lives until explicit
@@ -197,6 +222,73 @@ func (m *Manager) GetEmailConfirmationID(r *http.Request) (model.EmailConfirmati
 func (m *Manager) DeleteEmailConfirmationID(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     EmailConfirmationCookieName,
+		Value:    "",
+		Path:     "/",
+		Secure:   m.cfg.IsProduction(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+// SetTwoFactorPendingUserID writes the pending user's id to its cookie so the
+// TOTP / recovery-code challenge can read whose second factor to verify. No
+// session is issued yet: this cookie only marks that the password step passed for
+// a 2FA-enabled user, and the challenge exchanges it for a real session on a
+// valid code. The cookie is HttpOnly because the id is server-side state the
+// browser only relays; the other attributes mirror the session cookie's policy
+// (Secure only in production, SameSite=Lax).
+//
+// [Ja] SetTwoFactorPendingUserID は保留中のユーザーの id を専用 Cookie に書き込み、
+// TOTP / リカバリーコードのチャレンジが誰の第 2 要素を検証すべきかを読めるようにします。
+// この時点ではまだセッションを発行しません。この Cookie は 2FA 有効なユーザーでパスワードの
+// ステップが通ったことを示すだけで、チャレンジが正しいコードと引き換えに本物のセッションへ
+// 交換します。id はブラウザが中継するだけのサーバー側の状態のため Cookie は HttpOnly とし、
+// 他の属性はセッション Cookie の方針 (Secure は本番のみ・SameSite=Lax) に揃えます。
+func (m *Manager) SetTwoFactorPendingUserID(w http.ResponseWriter, id model.UserID) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     TwoFactorPendingCookieName,
+		Value:    id.String(),
+		Path:     "/",
+		Secure:   m.cfg.IsProduction(),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   twoFactorPendingCookieMaxAge,
+	})
+}
+
+// GetTwoFactorPendingUserID returns the pending user id stored in the request
+// cookie. The second return value is false when the cookie is absent or its value
+// is not a valid UUID (e.g. a corrupt or forged cookie), so callers treat a
+// malformed cookie the same as no cookie.
+//
+// [Ja] GetTwoFactorPendingUserID はリクエスト Cookie に格納された保留中のユーザー id を
+// 返します。Cookie が無い、または値が妥当な UUID でない (壊れた / 偽造された Cookie など)
+// 場合は第 2 戻り値が false になり、呼び出し側は不正な Cookie を Cookie 無しと同じに
+// 扱えます。
+func (m *Manager) GetTwoFactorPendingUserID(r *http.Request) (model.UserID, bool) {
+	cookie, err := r.Cookie(TwoFactorPendingCookieName)
+	if err != nil {
+		return model.UserID{}, false
+	}
+	parsed, err := uuid.Parse(cookie.Value)
+	if err != nil {
+		return model.UserID{}, false
+	}
+	return model.UserID(parsed), true
+}
+
+// DeleteTwoFactorPendingUserID clears the two-factor pending cookie by setting a
+// matching cookie with MaxAge < 0, so a completed or abandoned challenge does not
+// linger. The attributes mirror SetTwoFactorPendingUserID so the browser matches
+// and removes it.
+//
+// [Ja] DeleteTwoFactorPendingUserID は MaxAge < 0 の同名 Cookie を設定して 2 段階認証の
+// pending Cookie を消去し、完了または放棄されたチャレンジが残らないようにします。属性は
+// SetTwoFactorPendingUserID と揃え、ブラウザが一致して削除できるようにします。
+func (m *Manager) DeleteTwoFactorPendingUserID(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     TwoFactorPendingCookieName,
 		Value:    "",
 		Path:     "/",
 		Secure:   m.cfg.IsProduction(),

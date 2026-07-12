@@ -1,0 +1,52 @@
+package settings_two_factor_auth
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// CreatePageData is the data for the page shown right after 2FA is enabled. It
+// carries the freshly generated recovery codes, which are displayed here once and
+// never again, so the user can record them before leaving the page.
+//
+// [Ja] CreatePageData は 2FA を有効化した直後に表示するページのデータです。生成したての
+// リカバリーコードを運びます。ここで一度だけ表示され二度と表示されないため、ユーザーは
+// ページを離れる前に控えられます。
+type CreatePageData struct {
+	RecoveryCodes []string
+}
+
+// Create renders the confirmation shown after two-factor authentication is enabled:
+// a heading, an explanation that the recovery codes are for signing in when the
+// authenticator app is unavailable, a warning to save them now (they are shown only
+// once), the codes themselves, and a link back to the settings hub. There is no
+// form, so no CSRF token is needed.
+//
+// [Ja] Create は 2 段階認証を有効化した後に表示する確認画面を描画します。見出し、認証アプリを
+// 使えないときにサインインするためのリカバリーコードだという説明、今すぐ保存するよう促す警告
+// (一度だけ表示される)、コードそのもの、そして設定ハブへ戻るリンクです。フォームが無いため
+// CSRF トークンは不要です。
+templ Create(data CreatePageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "settings_two_factor_auth_create_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "settings_two_factor_auth_create_lead") }
+			</p>
+		</div>
+		<div class="alert" data-variant="destructive" role="alert">
+			<h2>{ templates.T(ctx, "settings_two_factor_auth_create_recovery_codes_warning") }</h2>
+		</div>
+		<ul class="grid grid-cols-2 gap-2">
+			for _, code := range data.RecoveryCodes {
+				<li>
+					<code class="block rounded bg-muted px-2 py-1 text-center font-mono text-sm tracking-widest">
+						{ code }
+					</code>
+				</li>
+			}
+		</ul>
+		<a href={ templates.SettingsPath().SafeURL() } class="btn w-full">
+			{ templates.T(ctx, "settings_two_factor_auth_create_done") }
+		</a>
+	</div>
+}

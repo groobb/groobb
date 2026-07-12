@@ -22,6 +22,10 @@ other = "メールアドレスを変更しました"
 description = "退会完了時のフラッシュメッセージ"
 other = "退会しました"
 
+[flash_two_factor_auth_disabled]
+description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
+other = "2 段階認証を無効にしました"
+
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
@@ -210,6 +214,62 @@ other = "アカウントを新規登録"
 description = "サインインページからパスワードリセット申請へ誘導するリンクのテキスト"
 other = "パスワードを忘れた場合"
 
+[sign_in_two_factor_new_title]
+description = "サインイン時の 2 段階認証チャレンジページのタイトル (title タグ)"
+other = "2 段階認証"
+
+[sign_in_two_factor_new_description]
+description = "サインイン時の 2 段階認証チャレンジページの meta description"
+other = "認証アプリのコードを入力してサインインを完了します。"
+
+[sign_in_two_factor_new_heading]
+description = "サインイン時の 2 段階認証チャレンジページの見出し"
+other = "2 段階認証"
+
+[sign_in_two_factor_new_lead]
+description = "サインイン時の 2 段階認証チャレンジページの説明文 (認証アプリのコード入力を促す)"
+other = "認証アプリに表示されている 6 桁のコードを入力してください。"
+
+[sign_in_two_factor_new_code_label]
+description = "サインイン時の 2 段階認証チャレンジページの認証コードのラベル"
+other = "認証コード"
+
+[sign_in_two_factor_new_submit]
+description = "サインイン時の 2 段階認証チャレンジページの送信ボタン (サインインを完了する)"
+other = "ログイン"
+
+[sign_in_two_factor_new_use_recovery_link]
+description = "サインイン時の 2 段階認証チャレンジページからリカバリーコードチャレンジへのリンク"
+other = "リカバリーコードを使う"
+
+[sign_in_two_factor_recovery_new_title]
+description = "サインイン時のリカバリーコードチャレンジページのタイトル (title タグ)"
+other = "リカバリーコード"
+
+[sign_in_two_factor_recovery_new_description]
+description = "サインイン時のリカバリーコードチャレンジページの meta description"
+other = "リカバリーコードを入力してサインインを完了します。"
+
+[sign_in_two_factor_recovery_new_heading]
+description = "サインイン時のリカバリーコードチャレンジページの見出し"
+other = "リカバリーコード"
+
+[sign_in_two_factor_recovery_new_lead]
+description = "サインイン時のリカバリーコードチャレンジページの説明文 (保存済みリカバリーコードの入力を促す)"
+other = "2 段階認証を有効化したときに保存したリカバリーコードのいずれか 1 つを入力してください。"
+
+[sign_in_two_factor_recovery_new_code_label]
+description = "サインイン時のリカバリーコードチャレンジページのリカバリーコードのラベル"
+other = "リカバリーコード"
+
+[sign_in_two_factor_recovery_new_submit]
+description = "サインイン時のリカバリーコードチャレンジページの送信ボタン (サインインを完了する)"
+other = "ログイン"
+
+[sign_in_two_factor_recovery_new_use_authenticator_link]
+description = "サインイン時のリカバリーコードチャレンジページから認証アプリ (TOTP) チャレンジへ戻るリンク"
+other = "認証アプリのコードを使う"
+
 [password_reset_new_title]
 description = "パスワードリセット申請ページのタイトル (title タグ)"
 other = "パスワードの再設定"
@@ -390,6 +450,102 @@ other = "本当に退会しますか？"
 description = "退会確認ページの送信ボタン"
 other = "退会する"
 
+[settings_two_factor_auth_new_title]
+description = "2 段階認証の設定 (登録) ページのタイトル (title タグ)"
+other = "2 段階認証の設定"
+
+[settings_two_factor_auth_new_description]
+description = "2 段階認証の設定 (登録) ページの meta description"
+other = "認証アプリを登録して 2 段階認証を有効にします。"
+
+[settings_two_factor_auth_new_heading]
+description = "2 段階認証の設定 (登録) ページの見出し"
+other = "2 段階認証の設定"
+
+[settings_two_factor_auth_new_lead]
+description = "2 段階認証の設定 (登録) ページの説明文 (QR 読み取り / 手動入力とコード入力の案内)"
+other = "認証アプリで QR コードを読み取るか、下のキーを手動で入力してから、アプリに表示された 6 桁のコードを入力してください。"
+
+[settings_two_factor_auth_new_qr_alt]
+description = "2 段階認証の設定 (登録) ページの QR コード画像の代替テキスト"
+other = "認証アプリ登録用の QR コード"
+
+[settings_two_factor_auth_new_secret_label]
+description = "2 段階認証の設定 (登録) ページで、QR を読み取れない場合に手動入力するキーのラベル"
+other = "手動で入力する場合のキー"
+
+[settings_two_factor_auth_new_code_label]
+description = "2 段階認証の設定 (登録) ページの認証コードのラベル"
+other = "認証コード"
+
+[settings_two_factor_auth_new_submit]
+description = "2 段階認証の設定 (登録) ページの送信ボタン (有効化する)"
+other = "有効にする"
+
+[settings_two_factor_auth_create_title]
+description = "2 段階認証の有効化完了 (リカバリーコード表示) ページのタイトル (title タグ)"
+other = "リカバリーコード"
+
+[settings_two_factor_auth_create_description]
+description = "2 段階認証の有効化完了 (リカバリーコード表示) ページの meta description"
+other = "2 段階認証のリカバリーコードです。"
+
+[settings_two_factor_auth_create_heading]
+description = "2 段階認証の有効化完了 (リカバリーコード表示) ページの見出し"
+other = "2 段階認証を有効にしました"
+
+[settings_two_factor_auth_create_lead]
+description = "2 段階認証の有効化完了ページの説明文 (リカバリーコードの用途)"
+other = "認証アプリを使えないときは、以下のリカバリーコードでサインインできます。"
+
+[settings_two_factor_auth_create_recovery_codes_warning]
+description = "2 段階認証の有効化完了ページで、リカバリーコードを今すぐ保存するよう促す警告 (一度しか表示されない)"
+other = "各コードは 1 回だけ使えます。この画面を離れると二度と表示されないため、今すぐ安全な場所に保存してください。"
+
+[settings_two_factor_auth_create_done]
+description = "2 段階認証の有効化完了ページから設定ハブへ戻るリンク / ボタンのテキスト"
+other = "設定に戻る"
+
+[settings_two_factor_auth_delete_title]
+description = "2 段階認証の無効化 (確認) ページのタイトル (title タグ)"
+other = "2 段階認証の無効化"
+
+[settings_two_factor_auth_delete_description]
+description = "2 段階認証の無効化 (確認) ページの meta description"
+other = "2 段階認証を無効にします。"
+
+[settings_two_factor_auth_delete_heading]
+description = "2 段階認証の無効化 (確認) ページの見出し"
+other = "2 段階認証の無効化"
+
+[settings_two_factor_auth_delete_lead]
+description = "2 段階認証の無効化 (確認) ページの説明文 (無効化で何が起きるかと再認証の案内)"
+other = "2 段階認証を無効にすると、サインイン時に認証コードを求められなくなります。続けるには、現在のパスワードか認証アプリの認証コードのどちらか一方を入力してください。"
+
+[settings_two_factor_auth_delete_reauth_legend]
+description = "2 段階認証の無効化 (確認) ページの再認証 fieldset (現在のパスワード / 認証コード) を示す legend"
+other = "本人確認"
+
+[settings_two_factor_auth_delete_reauth_hint]
+description = "2 段階認証の無効化 (確認) ページで、パスワードとコードのどちらか一方を入力すればよいことを伝えるヒント"
+other = "どちらか一方だけ入力してください。"
+
+[settings_two_factor_auth_delete_current_password_label]
+description = "2 段階認証の無効化 (確認) ページの現在のパスワードのラベル"
+other = "現在のパスワード"
+
+[settings_two_factor_auth_delete_code_label]
+description = "2 段階認証の無効化 (確認) ページの認証コードのラベル"
+other = "認証コード"
+
+[settings_two_factor_auth_delete_confirm]
+description = "2 段階認証を無効化する前にブラウザの confirm() で表示する最終確認の文言"
+other = "2 段階認証を無効にしますか？"
+
+[settings_two_factor_auth_delete_submit]
+description = "2 段階認証の無効化 (確認) ページの送信ボタン"
+other = "無効にする"
+
 [validation_required]
 description = "必須フィールドのバリデーションエラー"
 other = "入力してください"
@@ -453,6 +609,38 @@ other = "メールアドレスかパスワードが正しくありません"
 [validation_current_password_incorrect]
 description = "現在のパスワードの照合に失敗したときのバリデーションエラー"
 other = "現在のパスワードが正しくありません"
+
+[validation_totp_code_invalid_format]
+description = "2 段階認証の認証コードの形式が不正なときのバリデーションエラー"
+other = "認証コードは 6 桁の数字で入力してください"
+
+[validation_totp_code_incorrect]
+description = "2 段階認証の認証コードが認証アプリの生成値と一致しないときのバリデーションエラー"
+other = "認証コードが正しくありません"
+
+[validation_totp_setup_invalid]
+description = "2 段階認証の有効化時に登録中の設定が見つからない (未開始・既に有効) ときのフォーム全体のエラー"
+other = "2 段階認証の設定が見つかりませんでした。もう一度やり直してください"
+
+[validation_two_factor_disable_reauth_required]
+description = "2 段階認証の無効化で、現在のパスワードも認証コードも入力されていないときのフォーム全体のエラー"
+other = "現在のパスワードか認証コードを入力してください"
+
+[validation_two_factor_disable_reauth_incorrect]
+description = "2 段階認証の無効化で、入力された現在のパスワード / 認証コードが正しくないときのフォーム全体のエラー"
+other = "現在のパスワードか認証コードが正しくありません"
+
+[validation_two_factor_challenge_invalid]
+description = "サインイン時の 2 段階認証チャレンジで、保留中ユーザーの有効な 2FA 設定が見つからない (Cookie が失効・不正、または途中で無効化) ときのフォーム全体のエラー (再サインインを促す)"
+other = "2 段階認証を完了できませんでした。お手数ですが、もう一度サインインしてください"
+
+[validation_recovery_code_invalid_format]
+description = "リカバリーコードの形式が不正なときのバリデーションエラー"
+other = "リカバリーコードは 8 文字の英数字で入力してください"
+
+[validation_recovery_code_incorrect]
+description = "リカバリーコードが保存済みのいずれのコードとも一致しないときのバリデーションエラー"
+other = "リカバリーコードが正しくありません"
 
 [validation_token_invalid]
 description = "パスワードリセットのトークンが無効 (未知・未入力) なときのフォーム全体のエラー"

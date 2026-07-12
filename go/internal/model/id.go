@@ -107,3 +107,17 @@ type PasswordResetTokenID uuid.UUID
 //
 // [Ja] String は PasswordResetTokenID を正準の UUID 文字列形式で返します。
 func (id PasswordResetTokenID) String() string { return uuid.UUID(id).String() }
+
+// UserTwoFactorAuthID is the typed identifier for a user's two-factor
+// authentication setting. Like UserID it wraps uuid.UUID so 2FA IDs cannot be
+// mixed up with other entities' IDs.
+//
+// [Ja] UserTwoFactorAuthID はユーザーの 2 段階認証設定の型付き識別子です。UserID と
+// 同様に uuid.UUID をラップし、2FA ID を他エンティティの ID と取り違えられないように
+// します。
+type UserTwoFactorAuthID uuid.UUID
+
+// String returns the canonical UUID string form of the UserTwoFactorAuthID.
+//
+// [Ja] String は UserTwoFactorAuthID を正準の UUID 文字列形式で返します。
+func (id UserTwoFactorAuthID) String() string { return uuid.UUID(id).String() }

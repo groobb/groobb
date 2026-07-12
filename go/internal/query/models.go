@@ -166,3 +166,14 @@ type UserSession struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+
+type UserTwoFactorAuth struct {
+	ID            uuid.UUID  `json:"id"`
+	UserID        uuid.UUID  `json:"user_id"`
+	Secret        string     `json:"secret"`
+	Enabled       bool       `json:"enabled"`
+	EnabledAt     *time.Time `json:"enabled_at"`
+	RecoveryCodes []string   `json:"recovery_codes"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}

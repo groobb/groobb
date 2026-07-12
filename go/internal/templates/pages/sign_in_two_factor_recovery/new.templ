@@ -1,0 +1,93 @@
+package sign_in_two_factor_recovery
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// NewPageData is the data for the sign-in recovery-code challenge page. Code is
+// echoed back so a re-rendered form (after a validation error) keeps what the user
+// typed, and FormErrors carries the validation messages: a form-wide message (a
+// gone challenge that asks the user to sign in again) shown at the top, and a
+// per-field message (a malformed or unknown code) shown beneath the input.
+//
+// [Ja] NewPageData はサインイン時のリカバリーコードチャレンジページのデータです。Code は
+// 再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (失われたチャレンジ
+// で再サインインを促すもの) と、入力欄の下に出すフィールド別のメッセージ (コードの形式エラー・
+// 未知のコード) です。
+type NewPageData struct {
+	CSRFToken  string
+	Code       string
+	FormErrors *model.ValidationError
+}
+
+// New renders the sign-in recovery-code challenge form: a single recovery-code
+// field that, on submit, verifies the code against the pending user's stored codes
+// and completes sign-in (consuming the used code). The form posts to
+// /sign_in/two_factor/recovery, and the CSRF token is embedded as a hidden field
+// for the double-submit-cookie check. A link back to the authenticator-code
+// challenge lets a user who can reach their app switch away from recovery codes.
+//
+// [Ja] New はサインイン時のリカバリーコードチャレンジフォームを描画します。送信すると保留中
+// ユーザーの保存済みコードに対してコードを検証しサインインを完了させる (使用したコードを消費
+// する) 単一のリカバリーコードフィールドです。フォームは /sign_in/two_factor/recovery へ POST
+// し、CSRF トークンは double-submit cookie 検証のため hidden フィールドとして埋め込みます。
+// 認証アプリのコードチャレンジへ戻るリンクにより、アプリを使えるユーザーはリカバリーコードから
+// 切り替えられます。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "sign_in_two_factor_recovery_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "sign_in_two_factor_recovery_new_lead") }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form action={ templates.SignInTwoFactorRecoveryPath().SafeURL() } method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("code") {
+					data-invalid="true"
+				}
+			>
+				<label for="code">
+					{ templates.T(ctx, "sign_in_two_factor_recovery_new_code_label") }
+				</label>
+				<input
+					id="code"
+					name="code"
+					type="text"
+					value={ data.Code }
+					autocomplete="one-time-code"
+					autocapitalize="none"
+					autocorrect="off"
+					spellcheck="false"
+					pattern="[a-z0-9]{8}"
+					maxlength="8"
+					enterkeyhint="go"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("code") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("code", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("code", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "sign_in_two_factor_recovery_new_submit") }
+			</button>
+		</form>
+		<p class="text-center text-sm">
+			<a href={ templates.SignInTwoFactorNewPath().SafeURL() } class="underline">
+				{ templates.T(ctx, "sign_in_two_factor_recovery_new_use_authenticator_link") }
+			</a>
+		</p>
+	</div>
+}

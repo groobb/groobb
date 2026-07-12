@@ -28,7 +28,8 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	db, tx := testutil.SetupTx(t)
 	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
 	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	v := validator.NewSignInCreateValidator(userRepo, userPasswordRepo)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	v := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// Seed an account with a password to sign in against.
@@ -44,29 +45,72 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	// サインインできないことを確かめる。
 	testutil.NewUserBuilder(t, tx).WithEmail("nopass@example.com").Build()
 
-	t.Run("正常系: 正しい資格情報はユーザーを返す", func(t *testing.T) {
-		user, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
+	t.Run("正常系: 正しい資格情報はユーザーを返す (2FA 無しなので設定は nil)", func(t *testing.T) {
+		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "member@example.com",
 			Password: "password123",
 		})
 		if err != nil {
 			t.Fatalf("Validate() error = %v, want nil", err)
 		}
-		if user == nil || user.ID != userID {
-			t.Fatalf("Validate() user = %v, want id %v", user, userID)
+		if output.User == nil || output.User.ID != userID {
+			t.Fatalf("Validate() user = %v, want id %v", output.User, userID)
+		}
+		if output.UserTwoFactorAuth != nil {
+			t.Errorf("Validate() UserTwoFactorAuth = %v, want nil (2FA 未設定のため)", output.UserTwoFactorAuth)
 		}
 	})
 
 	t.Run("正常系: 大文字違いの email でもサインインできる (citext)", func(t *testing.T) {
-		user, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
+		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "MEMBER@example.com",
 			Password: "password123",
 		})
 		if err != nil {
 			t.Fatalf("Validate() error = %v, want nil", err)
 		}
-		if user == nil || user.ID != userID {
-			t.Fatalf("Validate() user = %v, want id %v", user, userID)
+		if output.User == nil || output.User.ID != userID {
+			t.Fatalf("Validate() user = %v, want id %v", output.User, userID)
+		}
+	})
+
+	t.Run("正常系: 2FA 有効なユーザーは有効な 2FA 設定を併せて返す", func(t *testing.T) {
+		twoFAUserID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-on@example.com").Build()
+		testutil.NewUserPasswordBuilder(t, tx).WithUserID(twoFAUserID).WithPassword("password123").Build()
+		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(twoFAUserID).WithEnabled(true).Build()
+
+		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
+			Email:    "2fa-on@example.com",
+			Password: "password123",
+		})
+		if err != nil {
+			t.Fatalf("Validate() error = %v, want nil", err)
+		}
+		if output.User == nil || output.User.ID != twoFAUserID {
+			t.Fatalf("Validate() user = %v, want id %v", output.User, twoFAUserID)
+		}
+		if output.UserTwoFactorAuth == nil {
+			t.Fatal("Validate() UserTwoFactorAuth = nil, want 有効な 2FA 設定")
+		}
+		if !output.UserTwoFactorAuth.Enabled {
+			t.Error("返された 2FA 設定が enabled でない")
+		}
+	})
+
+	t.Run("正常系: 登録中 (未有効化) の 2FA は無しとして扱う", func(t *testing.T) {
+		enrollingUserID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-enrolling@example.com").Build()
+		testutil.NewUserPasswordBuilder(t, tx).WithUserID(enrollingUserID).WithPassword("password123").Build()
+		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(enrollingUserID).WithEnabled(false).Build()
+
+		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
+			Email:    "2fa-enrolling@example.com",
+			Password: "password123",
+		})
+		if err != nil {
+			t.Fatalf("Validate() error = %v, want nil", err)
+		}
+		if output.UserTwoFactorAuth != nil {
+			t.Errorf("Validate() UserTwoFactorAuth = %v, want nil (未有効化のため)", output.UserTwoFactorAuth)
 		}
 	})
 
@@ -93,9 +137,9 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	}
 	for _, tt := range fieldErrorTests {
 		t.Run(tt.name, func(t *testing.T) {
-			user, err := v.Validate(ctx, tt.input)
-			if user != nil {
-				t.Errorf("Validate() user = %v, want nil", user)
+			output, err := v.Validate(ctx, tt.input)
+			if output != nil {
+				t.Errorf("Validate() output = %v, want nil", output)
 			}
 			ve := model.AsValidationError(err)
 			if ve == nil {
@@ -126,9 +170,9 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	}
 	for _, tt := range globalErrorTests {
 		t.Run(tt.name, func(t *testing.T) {
-			user, err := v.Validate(ctx, tt.input)
-			if user != nil {
-				t.Errorf("Validate() user = %v, want nil", user)
+			output, err := v.Validate(ctx, tt.input)
+			if output != nil {
+				t.Errorf("Validate() output = %v, want nil", output)
 			}
 			ve := model.AsValidationError(err)
 			if ve == nil {

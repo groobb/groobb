@@ -24,6 +24,22 @@ func TestUserID_String(t *testing.T) {
 	}
 }
 
+// TestUserTwoFactorAuthID_String verifies that a UserTwoFactorAuthID stringifies
+// to the canonical UUID form of the uuid.UUID it wraps.
+//
+// [Ja] TestUserTwoFactorAuthID_String は UserTwoFactorAuthID がラップする uuid.UUID の
+// 正準 UUID 形式で文字列化されることを検証します。
+func TestUserTwoFactorAuthID_String(t *testing.T) {
+	t.Parallel()
+
+	u := uuid.New()
+	id := model.UserTwoFactorAuthID(u)
+
+	if got, want := id.String(), u.String(); got != want {
+		t.Errorf("UserTwoFactorAuthID.String() = %q, want %q", got, want)
+	}
+}
+
 // TestUserIDSliceConversion verifies that converting UserIDs to uuid.UUIDs and
 // back yields the original values in order.
 //

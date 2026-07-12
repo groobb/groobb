@@ -21,6 +21,10 @@ func TestStaticPaths(t *testing.T) {
 	}{
 		{name: "SignUpPath", got: templates.SignUpPath(), want: "/sign_up"},
 		{name: "SignInPath", got: templates.SignInPath(), want: "/sign_in"},
+		{name: "SignInTwoFactorNewPath", got: templates.SignInTwoFactorNewPath(), want: "/sign_in/two_factor/new"},
+		{name: "SignInTwoFactorPath", got: templates.SignInTwoFactorPath(), want: "/sign_in/two_factor"},
+		{name: "SignInTwoFactorRecoveryNewPath", got: templates.SignInTwoFactorRecoveryNewPath(), want: "/sign_in/two_factor/recovery/new"},
+		{name: "SignInTwoFactorRecoveryPath", got: templates.SignInTwoFactorRecoveryPath(), want: "/sign_in/two_factor/recovery"},
 		{name: "HomePath", got: templates.HomePath(), want: "/home"},
 		{name: "UserSessionPath", got: templates.UserSessionPath(), want: "/user_session"},
 	}

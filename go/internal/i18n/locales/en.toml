@@ -22,6 +22,10 @@ other = "Your email address has been changed."
 description = "Flash message shown after a successful account withdrawal"
 other = "Your account has been deleted."
 
+[flash_two_factor_auth_disabled]
+description = "Flash message shown on the settings hub after two-factor authentication is disabled"
+other = "Two-factor authentication is now off."
+
 [posts_count]
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
@@ -211,6 +215,62 @@ other = "Create an account"
 description = "Link text on the sign-in page that leads to the password reset request"
 other = "Forgot your password?"
 
+[sign_in_two_factor_new_title]
+description = "Sign-in two-factor authentication challenge page title (title tag)"
+other = "Two-factor authentication"
+
+[sign_in_two_factor_new_description]
+description = "Sign-in two-factor authentication challenge page meta description"
+other = "Enter your authenticator code to finish signing in."
+
+[sign_in_two_factor_new_heading]
+description = "Sign-in two-factor authentication challenge page heading"
+other = "Two-factor authentication"
+
+[sign_in_two_factor_new_lead]
+description = "Sign-in two-factor authentication challenge page lead text (prompts for the authenticator code)"
+other = "Enter the 6-digit code shown in your authenticator app."
+
+[sign_in_two_factor_new_code_label]
+description = "Sign-in two-factor authentication challenge page authentication code label"
+other = "Authentication code"
+
+[sign_in_two_factor_new_submit]
+description = "Sign-in two-factor authentication challenge page submit button (completes sign-in)"
+other = "Sign in"
+
+[sign_in_two_factor_new_use_recovery_link]
+description = "Link from the sign-in two-factor authentication challenge page to the recovery-code challenge"
+other = "Use a recovery code instead"
+
+[sign_in_two_factor_recovery_new_title]
+description = "Sign-in recovery-code challenge page title (title tag)"
+other = "Recovery code"
+
+[sign_in_two_factor_recovery_new_description]
+description = "Sign-in recovery-code challenge page meta description"
+other = "Enter a recovery code to finish signing in."
+
+[sign_in_two_factor_recovery_new_heading]
+description = "Sign-in recovery-code challenge page heading"
+other = "Recovery code"
+
+[sign_in_two_factor_recovery_new_lead]
+description = "Sign-in recovery-code challenge page lead text (prompts for a saved recovery code)"
+other = "Enter one of the recovery codes you saved when you enabled two-factor authentication."
+
+[sign_in_two_factor_recovery_new_code_label]
+description = "Sign-in recovery-code challenge page recovery code label"
+other = "Recovery code"
+
+[sign_in_two_factor_recovery_new_submit]
+description = "Sign-in recovery-code challenge page submit button (completes sign-in)"
+other = "Sign in"
+
+[sign_in_two_factor_recovery_new_use_authenticator_link]
+description = "Link from the sign-in recovery-code challenge page back to the authenticator (TOTP) challenge"
+other = "Use your authenticator app instead"
+
 [password_reset_new_title]
 description = "Password reset request page title (title tag)"
 other = "Reset your password"
@@ -391,6 +451,102 @@ other = "Are you sure you want to delete your account?"
 description = "Account withdrawal confirmation page submit button"
 other = "Delete account"
 
+[settings_two_factor_auth_new_title]
+description = "Two-factor authentication setup (enrollment) page title (title tag)"
+other = "Set up two-factor authentication"
+
+[settings_two_factor_auth_new_description]
+description = "Two-factor authentication setup (enrollment) page meta description"
+other = "Register an authenticator app to enable two-factor authentication."
+
+[settings_two_factor_auth_new_heading]
+description = "Two-factor authentication setup (enrollment) page heading"
+other = "Set up two-factor authentication"
+
+[settings_two_factor_auth_new_lead]
+description = "Two-factor authentication setup (enrollment) page lead text (scan QR / manual entry and enter the code)"
+other = "Scan the QR code with your authenticator app, or enter the key below manually, then enter the 6-digit code the app shows."
+
+[settings_two_factor_auth_new_qr_alt]
+description = "Alt text for the QR code image on the two-factor authentication setup (enrollment) page"
+other = "QR code for registering an authenticator app"
+
+[settings_two_factor_auth_new_secret_label]
+description = "Label for the key to enter manually when the QR code cannot be scanned, on the two-factor authentication setup (enrollment) page"
+other = "Key for manual entry"
+
+[settings_two_factor_auth_new_code_label]
+description = "Two-factor authentication setup (enrollment) page authentication code label"
+other = "Authentication code"
+
+[settings_two_factor_auth_new_submit]
+description = "Two-factor authentication setup (enrollment) page submit button (enable)"
+other = "Enable"
+
+[settings_two_factor_auth_create_title]
+description = "Two-factor authentication enabled (recovery codes) page title (title tag)"
+other = "Recovery codes"
+
+[settings_two_factor_auth_create_description]
+description = "Two-factor authentication enabled (recovery codes) page meta description"
+other = "Your two-factor authentication recovery codes."
+
+[settings_two_factor_auth_create_heading]
+description = "Two-factor authentication enabled (recovery codes) page heading"
+other = "Two-factor authentication is on"
+
+[settings_two_factor_auth_create_lead]
+description = "Two-factor authentication enabled page lead text (what recovery codes are for)"
+other = "If you cannot use your authenticator app, you can sign in with one of the recovery codes below."
+
+[settings_two_factor_auth_create_recovery_codes_warning]
+description = "Warning on the two-factor authentication enabled page prompting the user to save the recovery codes now (they are shown only once)"
+other = "Each code can be used only once. They will not be shown again after you leave this page, so save them somewhere safe now."
+
+[settings_two_factor_auth_create_done]
+description = "Link / button text from the two-factor authentication enabled page back to the settings hub"
+other = "Back to settings"
+
+[settings_two_factor_auth_delete_title]
+description = "Two-factor authentication disable (confirmation) page title (title tag)"
+other = "Disable two-factor authentication"
+
+[settings_two_factor_auth_delete_description]
+description = "Two-factor authentication disable (confirmation) page meta description"
+other = "Disable two-factor authentication."
+
+[settings_two_factor_auth_delete_heading]
+description = "Two-factor authentication disable (confirmation) page heading"
+other = "Disable two-factor authentication"
+
+[settings_two_factor_auth_delete_lead]
+description = "Two-factor authentication disable (confirmation) page lead text (what disabling does and the re-authentication requirement)"
+other = "Disabling two-factor authentication means you will no longer be asked for a code when you sign in. To continue, enter either your current password or a code from your authenticator app."
+
+[settings_two_factor_auth_delete_reauth_legend]
+description = "Legend labelling the re-authentication fieldset (current password / authentication code) on the two-factor authentication disable (confirmation) page"
+other = "Confirm your identity"
+
+[settings_two_factor_auth_delete_reauth_hint]
+description = "Hint on the two-factor authentication disable (confirmation) page that only one of the password or code is needed"
+other = "Enter only one of these."
+
+[settings_two_factor_auth_delete_current_password_label]
+description = "Two-factor authentication disable (confirmation) page current password label"
+other = "Current password"
+
+[settings_two_factor_auth_delete_code_label]
+description = "Two-factor authentication disable (confirmation) page authentication code label"
+other = "Authentication code"
+
+[settings_two_factor_auth_delete_confirm]
+description = "Final confirmation text shown by the browser confirm() dialog before disabling two-factor authentication"
+other = "Disable two-factor authentication?"
+
+[settings_two_factor_auth_delete_submit]
+description = "Two-factor authentication disable (confirmation) page submit button"
+other = "Disable"
+
 [validation_required]
 description = "Required field validation error"
 other = "is required"
@@ -454,6 +610,38 @@ other = "The email or password is incorrect"
 [validation_current_password_incorrect]
 description = "Validation error when the current password does not match"
 other = "is incorrect"
+
+[validation_totp_code_invalid_format]
+description = "Validation error when the two-factor authentication code has an invalid format"
+other = "The code must be 6 digits."
+
+[validation_totp_code_incorrect]
+description = "Validation error when the two-factor authentication code does not match the authenticator app's value"
+other = "The code is incorrect."
+
+[validation_totp_setup_invalid]
+description = "Form-wide error when enabling two-factor authentication but no in-progress setup exists (not started, or already enabled)"
+other = "We couldn't find your two-factor authentication setup. Please start again."
+
+[validation_two_factor_disable_reauth_required]
+description = "Form-wide error when disabling two-factor authentication but neither the current password nor an authentication code was entered"
+other = "Enter your current password or an authentication code"
+
+[validation_two_factor_disable_reauth_incorrect]
+description = "Form-wide error when disabling two-factor authentication but the entered current password / authentication code is incorrect"
+other = "Your current password or authentication code is incorrect"
+
+[validation_two_factor_challenge_invalid]
+description = "Form-wide error on the sign-in two-factor challenge when the pending user has no enabled 2FA setting (a stale or forged cookie, or 2FA disabled mid-flight); prompts signing in again"
+other = "Two-factor authentication could not be completed. Please sign in again."
+
+[validation_recovery_code_invalid_format]
+description = "Validation error when the recovery code has an invalid format"
+other = "The code must be 8 characters (letters and digits)."
+
+[validation_recovery_code_incorrect]
+description = "Validation error when the recovery code matches none of the stored codes"
+other = "The recovery code is incorrect."
 
 [validation_token_invalid]
 description = "Form-wide error when the password reset token is invalid (unknown or missing)"

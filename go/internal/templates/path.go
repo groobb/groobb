@@ -41,6 +41,47 @@ func SignInPath() Path {
 	return Path("/sign_in")
 }
 
+// SignInTwoFactorNewPath returns the path to the sign-in TOTP challenge form,
+// where a 2FA-enabled account enters an authenticator code to finish signing in
+// after the password step.
+//
+// [Ja] SignInTwoFactorNewPath はサインイン時の TOTP チャレンジフォーム (2FA 有効な
+// アカウントがパスワードのステップの後に認証アプリのコードを入力してサインインを完了する)
+// のパスを返します。
+func SignInTwoFactorNewPath() Path {
+	return Path("/sign_in/two_factor/new")
+}
+
+// SignInTwoFactorPath returns the path to the sign-in two-factor challenge
+// resource. Submitting the code targets it with POST /sign_in/two_factor.
+//
+// [Ja] SignInTwoFactorPath はサインイン 2 段階認証チャレンジのリソースのパスを返します。
+// コードの送信は POST /sign_in/two_factor でこれを対象とします。
+func SignInTwoFactorPath() Path {
+	return Path("/sign_in/two_factor")
+}
+
+// SignInTwoFactorRecoveryNewPath returns the path to the sign-in recovery-code
+// challenge form, the fallback where a 2FA-enabled account enters a saved recovery
+// code to finish signing in when the authenticator app is unavailable.
+//
+// [Ja] SignInTwoFactorRecoveryNewPath はサインイン時のリカバリーコードチャレンジフォーム
+// (認証アプリを使えないとき、2FA 有効なアカウントが保存済みのリカバリーコードを入力して
+// サインインを完了する) のパスを返します。
+func SignInTwoFactorRecoveryNewPath() Path {
+	return Path("/sign_in/two_factor/recovery/new")
+}
+
+// SignInTwoFactorRecoveryPath returns the path to the sign-in recovery-code
+// challenge resource. Submitting the code targets it with POST
+// /sign_in/two_factor/recovery.
+//
+// [Ja] SignInTwoFactorRecoveryPath はサインイン時のリカバリーコードチャレンジのリソースの
+// パスを返します。コードの送信は POST /sign_in/two_factor/recovery でこれを対象とします。
+func SignInTwoFactorRecoveryPath() Path {
+	return Path("/sign_in/two_factor/recovery")
+}
+
 // HomePath returns the path to the signed-in home page.
 //
 // [Ja] HomePath はサインイン済みユーザーのホームページのパスを返します。
@@ -97,6 +138,25 @@ func SettingsEmailConfirmationNewPath() Path {
 // コードの送信は POST /settings/email/confirmation でこれを対象とします。
 func SettingsEmailConfirmationPath() Path {
 	return Path("/settings/email/confirmation")
+}
+
+// SettingsTwoFactorAuthNewPath returns the path to the two-factor authentication
+// setup form (which issues the enrollment secret and shows the QR code).
+//
+// [Ja] SettingsTwoFactorAuthNewPath は 2 段階認証の設定フォーム (登録用 secret を発行し
+// QR コードを表示する) のパスを返します。
+func SettingsTwoFactorAuthNewPath() Path {
+	return Path("/settings/two_factor_auth/new")
+}
+
+// SettingsTwoFactorAuthPath returns the path to the two-factor authentication
+// resource under settings. Enabling it targets this with POST
+// /settings/two_factor_auth.
+//
+// [Ja] SettingsTwoFactorAuthPath は設定配下の 2 段階認証リソースのパスを返します。
+// 有効化は POST /settings/two_factor_auth でこれを対象とします。
+func SettingsTwoFactorAuthPath() Path {
+	return Path("/settings/two_factor_auth")
 }
 
 // SettingsWithdrawalNewPath returns the path to the account-withdrawal

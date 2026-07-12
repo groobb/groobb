@@ -39,13 +39,18 @@ type CreateSignInInput struct {
 	Password string
 }
 
-// CreateSignInOutput carries the authenticated user so the handler can issue a
-// session for it.
+// CreateSignInOutput carries the authenticated user and, when the account has
+// two-factor authentication enabled, its setting. The handler issues a session
+// for the user when UserTwoFactorAuth is nil, and otherwise diverts to the TOTP /
+// recovery-code challenge instead of signing in.
 //
-// [Ja] CreateSignInOutput は認証されたユーザーを運び、ハンドラーがそのユーザーの
-// セッションを発行できるようにします。
+// [Ja] CreateSignInOutput は認証されたユーザーと、アカウントで 2 段階認証が有効な場合は
+// その設定を運びます。ハンドラーは UserTwoFactorAuth が nil のときにそのユーザーの
+// セッションを発行し、そうでなければサインインせず TOTP / リカバリーコードのチャレンジへ
+// 迂回させます。
 type CreateSignInOutput struct {
-	User *model.User
+	User              *model.User
+	UserTwoFactorAuth *model.UserTwoFactorAuth
 }
 
 // Execute validates the submitted credentials and returns the authenticated
@@ -56,7 +61,7 @@ type CreateSignInOutput struct {
 // のエラー (不正入力なら *model.ValidationError、システム障害なら素の error) は、
 // ハンドラーが分類できるようそのまま返します。
 func (uc *CreateSignInUsecase) Execute(ctx context.Context, input CreateSignInInput) (*CreateSignInOutput, error) {
-	user, err := uc.signInValidator.Validate(ctx, validator.SignInCreateValidatorInput{
+	output, err := uc.signInValidator.Validate(ctx, validator.SignInCreateValidatorInput{
 		Email:    input.Email,
 		Password: input.Password,
 	})
@@ -64,5 +69,8 @@ func (uc *CreateSignInUsecase) Execute(ctx context.Context, input CreateSignInIn
 		return nil, err
 	}
 
-	return &CreateSignInOutput{User: user}, nil
+	return &CreateSignInOutput{
+		User:              output.User,
+		UserTwoFactorAuth: output.UserTwoFactorAuth,
+	}, nil
 }
