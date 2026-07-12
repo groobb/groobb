@@ -2,7 +2,9 @@ package repository_test
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -311,6 +313,164 @@ func TestUserRepository_CreateRejectsDuplicateAtname(t *testing.T) {
 	if err == nil {
 		t.Error("重複 atname の Create() はエラーになるはず")
 	}
+}
+
+// TestUserRepository_SoftDeletedUsersAreExcludedFromLookups verifies that a user
+// whose deleted_at is set (a withdrawn account) is resolved by none of the
+// authentication lookups. This is the lookup-level defense that stops a withdrawn
+// user from signing in or being resolved from a still-present session, on top of
+// the withdrawal flow deleting the session rows.
+//
+// [Ja] TestUserRepository_SoftDeletedUsersAreExcludedFromLookups は deleted_at が
+// セットされたユーザー (退会済みアカウント) が、いずれの認証系ルックアップでも解決され
+// ないことを検証する。これは退会フローがセッション行を削除することに加えた、ルックアップ
+// 層での防御であり、退会済みユーザーがサインインしたり、残存セッションから解決されたり
+// するのを防ぐ。
+func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	repo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	ctx := context.Background()
+
+	// A time in the past stands in for the moment the user withdrew; the exact
+	// value does not matter, only that deleted_at is non-null.
+	//
+	// [Ja] 過去の時刻をユーザーが退会した時点の代わりに使う。deleted_at が非 NULL である
+	// ことだけが重要で、具体的な値は問わない。
+	deletedAt := time.Now().Add(-24 * time.Hour)
+
+	t.Run("FindByID は論理削除済みユーザーを除外する", func(t *testing.T) {
+		id := testutil.NewUserBuilder(t, tx).WithDeletedAt(deletedAt).Build()
+
+		user, err := repo.FindByID(ctx, id)
+		if err != nil {
+			t.Fatalf("FindByID() error = %v", err)
+		}
+		if user != nil {
+			t.Errorf("FindByID() = %v, want nil (論理削除済みは除外されるはず)", user)
+		}
+	})
+
+	t.Run("FindByEmail は論理削除済みユーザーを除外する", func(t *testing.T) {
+		email := "softdeleted-findbyemail@example.com"
+		testutil.NewUserBuilder(t, tx).WithEmail(email).WithDeletedAt(deletedAt).Build()
+
+		user, err := repo.FindByEmail(ctx, email)
+		if err != nil {
+			t.Fatalf("FindByEmail() error = %v", err)
+		}
+		if user != nil {
+			t.Errorf("FindByEmail() = %v, want nil (論理削除済みは除外されるはず)", user)
+		}
+	})
+
+	t.Run("FindByAtname は論理削除済みユーザーを除外する", func(t *testing.T) {
+		atname := "softdeletedatname"
+		testutil.NewUserBuilder(t, tx).WithAtname(atname).WithDeletedAt(deletedAt).Build()
+
+		user, err := repo.FindByAtname(ctx, atname)
+		if err != nil {
+			t.Fatalf("FindByAtname() error = %v", err)
+		}
+		if user != nil {
+			t.Errorf("FindByAtname() = %v, want nil (論理削除済みは除外されるはず)", user)
+		}
+	})
+
+	t.Run("FindBySessionToken は論理削除済みユーザーのセッションを解決しない", func(t *testing.T) {
+		userID := testutil.NewUserBuilder(t, tx).WithDeletedAt(deletedAt).Build()
+		testutil.NewUserSessionBuilder(t, tx).
+			WithUserID(userID).
+			WithToken("soft-deleted-token").
+			Build()
+
+		user, err := repo.FindBySessionToken(ctx, "soft-deleted-token")
+		if err != nil {
+			t.Fatalf("FindBySessionToken() error = %v", err)
+		}
+		if user != nil {
+			t.Errorf("FindBySessionToken() = %v, want nil (論理削除済みは除外されるはず)", user)
+		}
+	})
+}
+
+// TestUserRepository_SoftDeleteAndAnonymize verifies the withdrawal write: it
+// stamps deleted_at and overwrites email and atname with the given anonymized
+// values, the soft-deleted row drops out of the authentication lookups, and the
+// original email and atname are freed for another account to reclaim.
+//
+// [Ja] TestUserRepository_SoftDeleteAndAnonymize は退会の書き込みを検証する。deleted_at を
+// 打ち、email と atname を与えられた匿名値で上書きし、論理削除された行が認証系ルックアップ
+// から外れ、元の email と atname が別アカウントの再取得のために解放されることを確かめる。
+func TestUserRepository_SoftDeleteAndAnonymize(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	repo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	ctx := context.Background()
+
+	created, err := repo.Create(ctx, repository.CreateUserInput{
+		Email:    "withdraw-me@example.com",
+		Atname:   "withdrawme",
+		Locale:   "ja",
+		TimeZone: "Asia/Tokyo",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	anonEmail := "deleted-" + created.ID.String() + "@deleted.invalid"
+	anonAtname := "deleted_" + strings.ReplaceAll(created.ID.String(), "-", "")
+
+	if err := repo.SoftDeleteAndAnonymize(ctx, created.ID, anonEmail, anonAtname); err != nil {
+		t.Fatalf("SoftDeleteAndAnonymize() error = %v", err)
+	}
+
+	t.Run("deleted_at がセットされ email/atname が匿名値になる", func(t *testing.T) {
+		// The row is queried directly (not via FindByID, which filters deleted_at)
+		// so the soft-deleted, anonymized values are observable.
+		//
+		// [Ja] 行は (deleted_at で絞る FindByID ではなく) 直接クエリするため、論理削除・
+		// 匿名化された値を観測できる。
+		var deletedAt *time.Time
+		var email, atname string
+		if err := tx.QueryRow(ctx,
+			`SELECT deleted_at, email, atname FROM users WHERE id = $1`, uuid.UUID(created.ID),
+		).Scan(&deletedAt, &email, &atname); err != nil {
+			t.Fatalf("行の取得に失敗: %v", err)
+		}
+		if deletedAt == nil {
+			t.Error("deleted_at がセットされていない")
+		}
+		if email != anonEmail {
+			t.Errorf("email = %q, want %q", email, anonEmail)
+		}
+		if atname != anonAtname {
+			t.Errorf("atname = %q, want %q", atname, anonAtname)
+		}
+	})
+
+	t.Run("論理削除後は FindByID から外れる", func(t *testing.T) {
+		user, err := repo.FindByID(ctx, created.ID)
+		if err != nil {
+			t.Fatalf("FindByID() error = %v", err)
+		}
+		if user != nil {
+			t.Error("論理削除後の FindByID() は nil を返すはず")
+		}
+	})
+
+	t.Run("解放された email と atname は別アカウントが再取得できる", func(t *testing.T) {
+		if _, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "withdraw-me@example.com",
+			Atname:   "withdrawme",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		}); err != nil {
+			t.Errorf("解放された email/atname での Create() error = %v, want nil (再取得できるはず)", err)
+		}
+	})
 }
 
 // TestUserRepository_UpdateEmail verifies UpdateEmail rewrites the user's email

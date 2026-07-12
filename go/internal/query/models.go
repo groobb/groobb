@@ -138,13 +138,14 @@ type SchemaMigration struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	Locale    string    `json:"locale"`
-	TimeZone  string    `json:"time_zone"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Atname    string    `json:"atname"`
+	ID        uuid.UUID  `json:"id"`
+	Email     string     `json:"email"`
+	Locale    string     `json:"locale"`
+	TimeZone  string     `json:"time_zone"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	Atname    string     `json:"atname"`
+	DeletedAt *time.Time `json:"deleted_at"`
 }
 
 type UserPassword struct {

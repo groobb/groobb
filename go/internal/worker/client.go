@@ -22,9 +22,23 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/email"
+	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
+
+// purgeWithdrawnUsersInterval is how often the purge job runs. Daily is frequent
+// enough for a retention-window cleanup: the query deletes everything already past
+// the cutoff, so the exact cadence only bounds how long a purge-eligible row lingers,
+// not whether it is eventually removed.
+//
+// [Ja] purgeWithdrawnUsersInterval はパージジョブの実行間隔です。保持期間の
+// クリーンアップには日次で十分です。クエリは cutoff を過ぎたものをすべて削除するため、
+// 正確な周期はパージ対象の行が残る最長時間を決めるだけで、いずれ削除されるかどうかには
+// 影響しません。
+const purgeWithdrawnUsersInterval = 24 * time.Hour
 
 // Client wraps the River client together with the pgx pool it owns, so the two
 // can be started and shut down as a single unit.
@@ -90,10 +104,47 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	emailChangeNotificationSender := email.NewEmailChangeNotificationSender(emailSender)
 	sendEmailChangeNotificationUC := usecase.NewSendEmailChangeNotificationUsecase(emailChangeNotificationSender)
 
+	// Build the withdrawn-user purge UseCase over the worker pool. Unlike the mail
+	// jobs it needs database access, so a repository is built here from the worker
+	// pool; it is a worker-only dependency (only the periodic purge job uses it) and
+	// so stays out of main.go's request-path DI graph.
+	//
+	// [Ja] 退会済みユーザーのパージ UseCase をワーカー用プール上に構築する。メールジョブと
+	// 違い DB アクセスが必要なため、リポジトリをここでワーカー用プールから構築する。これは
+	// ワーカー専用の依存 (定期パージジョブだけが使う) のため、main.go のリクエスト経路の
+	// DI グラフには載せない。
+	purgeUserRepo := repository.NewUserRepository(query.New(pool))
+	purgeWithdrawnUsersUC := usecase.NewPurgeWithdrawnUsersUsecase(purgeUserRepo)
+
 	workers := river.NewWorkers()
 	river.AddWorker(workers, NewSendEmailConfirmationWorker(sendEmailConfirmationUC))
 	river.AddWorker(workers, NewSendPasswordResetWorker(sendPasswordResetUC))
 	river.AddWorker(workers, NewSendEmailChangeNotificationWorker(sendEmailChangeNotificationUC))
+	river.AddWorker(workers, NewPurgeWithdrawnUsersWorker(purgeWithdrawnUsersUC))
+
+	// Register the purge job as a daily periodic job. The constructor returns the
+	// Args together with their own InsertOpts, so the MaxAttempts default is applied
+	// (returning nil opts would drop it). RunOnStart is left off (nil opts on the
+	// periodic job): there is nothing urgent to purge at boot, so the job simply
+	// waits for its first scheduled tick rather than running on every restart or
+	// leader election.
+	//
+	// [Ja] パージジョブを日次の定期ジョブとして登録する。コンストラクタは Args を自身の
+	// InsertOpts と一緒に返すため、MaxAttempts の既定値が適用される (nil の opts を返すと
+	// 失われる)。RunOnStart は付けない (定期ジョブの opts は nil): 起動時に急いでパージする
+	// ものは無いため、ジョブは再起動やリーダー選出のたびに走らず、最初のスケジュール刻みを
+	// 待つだけにする。
+	periodicJobs := []*river.PeriodicJob{
+		river.NewPeriodicJob(
+			river.PeriodicInterval(purgeWithdrawnUsersInterval),
+			func() (river.JobArgs, *river.InsertOpts) {
+				args := dispatcher.PurgeWithdrawnUsersArgs{}
+				opts := args.InsertOpts()
+				return args, &opts
+			},
+			nil,
+		),
+	}
 
 	// Logger: slog.Default() routes River's own job-execution and retry logging
 	// through the structured logger, so observability is in place before any
@@ -103,9 +154,10 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	// ロガー経由で出力する。これでワーカー追加前から観測性が確保され、ワーカーの Work
 	// メソッドはエラーを返すだけでよくなる。
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 10}},
-		Workers: workers,
-		Logger:  slog.Default(),
+		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 10}},
+		Workers:      workers,
+		Logger:       slog.Default(),
+		PeriodicJobs: periodicJobs,
 	})
 	if err != nil {
 		pool.Close()

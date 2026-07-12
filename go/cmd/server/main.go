@@ -29,6 +29,7 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/settings"
 	"github.com/groobb/groobb/go/internal/handler/settings_email"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
+	"github.com/groobb/groobb/go/internal/handler/settings_withdrawal"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
@@ -158,6 +159,9 @@ func main() {
 	settingsEmailConfirmationValidator := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
 	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(pool, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
 
+	settingsWithdrawalDeleteValidator := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
+	deleteAccountUC := usecase.NewDeleteAccountUsecase(pool, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
+
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -171,6 +175,7 @@ func main() {
 	settingsHandler := settings.NewHandler(cfg)
 	settingsEmailHandler := settings_email.NewHandler(cfg, createEmailChangeUC)
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
+	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
@@ -329,6 +334,19 @@ func main() {
 	// 保留中の確認は受け渡し Cookie ではなくサインイン済みユーザーから解決する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/email/confirmation/new", settingsEmailConfirmationHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/settings/email/confirmation", settingsEmailConfirmationHandler.Create)
+
+	// Settings — account withdrawal: show the confirmation form (with the current-
+	// password field) and execute the withdrawal, which soft-deletes and anonymizes
+	// the account and deletes all of its sessions. Both are behind RequireAuth; the
+	// form drives DELETE via the _method override. The settings hub does not link
+	// here yet (added in a later task), so the page is reached only by direct URL.
+	//
+	// [Ja] 設定 — 退会: 確認フォーム (現在のパスワードフィールド付き) を表示し、退会を実行する。
+	// 退会の実行はアカウントを論理削除・匿名化し、その全セッションを削除する。どちらも
+	// RequireAuth の背後に置き、フォームは _method オーバーライドで DELETE を動かす。設定ハブ
+	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
+	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
+	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)

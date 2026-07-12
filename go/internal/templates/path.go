@@ -98,3 +98,22 @@ func SettingsEmailConfirmationNewPath() Path {
 func SettingsEmailConfirmationPath() Path {
 	return Path("/settings/email/confirmation")
 }
+
+// SettingsWithdrawalNewPath returns the path to the account-withdrawal
+// confirmation form.
+//
+// [Ja] SettingsWithdrawalNewPath は退会確認フォームのパスを返します。
+func SettingsWithdrawalNewPath() Path {
+	return Path("/settings/withdrawal/new")
+}
+
+// SettingsWithdrawalPath returns the path to the withdrawal resource under
+// settings. Executing the withdrawal targets it with DELETE /settings/withdrawal
+// (the form reaches it via the _method override).
+//
+// [Ja] SettingsWithdrawalPath は設定配下の退会リソースのパスを返します。退会の実行は
+// DELETE /settings/withdrawal でこれを対象とします (フォームは _method オーバーライドで
+// 到達します)。
+func SettingsWithdrawalPath() Path {
+	return Path("/settings/withdrawal")
+}

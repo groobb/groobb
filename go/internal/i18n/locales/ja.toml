@@ -18,6 +18,10 @@ other = "ログアウトしました"
 description = "メールアドレス変更完了時のフラッシュメッセージ"
 other = "メールアドレスを変更しました"
 
+[flash_account_withdrawn]
+description = "退会完了時のフラッシュメッセージ"
+other = "退会しました"
+
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
@@ -357,6 +361,34 @@ other = "確認コード"
 [settings_email_confirmation_new_submit]
 description = "メールアドレス変更の確認コード入力ページの送信ボタン"
 other = "メールアドレスを変更"
+
+[settings_withdrawal_new_title]
+description = "退会確認ページのタイトル (title タグ)"
+other = "退会"
+
+[settings_withdrawal_new_description]
+description = "退会確認ページの meta description"
+other = "アカウントを退会します。"
+
+[settings_withdrawal_new_heading]
+description = "退会確認ページの見出し"
+other = "退会"
+
+[settings_withdrawal_new_lead]
+description = "退会確認ページの説明文 (退会で何が起きるかの案内)"
+other = "退会すると元に戻せません。サインアウトされ、メールアドレスとユーザー名は解放されて再び使えるようになります。続けるには現在のパスワードを入力してください。"
+
+[settings_withdrawal_new_current_password_label]
+description = "退会確認ページの現在のパスワードのラベル"
+other = "現在のパスワード"
+
+[settings_withdrawal_new_confirm]
+description = "退会を実行する前にブラウザの confirm() で表示する最終確認の文言"
+other = "本当に退会しますか？"
+
+[settings_withdrawal_new_submit]
+description = "退会確認ページの送信ボタン"
+other = "退会する"
 
 [validation_required]
 description = "必須フィールドのバリデーションエラー"

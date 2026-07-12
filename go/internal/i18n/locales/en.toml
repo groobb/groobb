@@ -18,6 +18,10 @@ other = "Signed out."
 description = "Flash message shown after a successful email address change"
 other = "Your email address has been changed."
 
+[flash_account_withdrawn]
+description = "Flash message shown after a successful account withdrawal"
+other = "Your account has been deleted."
+
 [posts_count]
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
@@ -358,6 +362,34 @@ other = "Confirmation code"
 [settings_email_confirmation_new_submit]
 description = "Email change confirmation-code entry page submit button"
 other = "Change email address"
+
+[settings_withdrawal_new_title]
+description = "Account withdrawal confirmation page title (title tag)"
+other = "Delete account"
+
+[settings_withdrawal_new_description]
+description = "Account withdrawal confirmation page meta description"
+other = "Delete your account."
+
+[settings_withdrawal_new_heading]
+description = "Account withdrawal confirmation page heading"
+other = "Delete account"
+
+[settings_withdrawal_new_lead]
+description = "Account withdrawal confirmation page lead text (guidance on what withdrawal does)"
+other = "Deleting your account cannot be undone. You will be signed out, and your email address and username will be released for reuse. Enter your current password to continue."
+
+[settings_withdrawal_new_current_password_label]
+description = "Account withdrawal confirmation page current password label"
+other = "Current password"
+
+[settings_withdrawal_new_confirm]
+description = "Final confirmation text shown by the browser confirm() dialog before executing the withdrawal"
+other = "Are you sure you want to delete your account?"
+
+[settings_withdrawal_new_submit]
+description = "Account withdrawal confirmation page submit button"
+other = "Delete account"
 
 [validation_required]
 description = "Required field validation error"

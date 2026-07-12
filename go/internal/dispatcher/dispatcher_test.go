@@ -227,6 +227,37 @@ func TestSendEmailChangeNotificationArgs_InsertOpts(t *testing.T) {
 	}
 }
 
+// TestPurgeWithdrawnUsersArgs_Kind pins the job kind string, since it is the stable
+// contract River uses to route persisted jobs to their worker.
+//
+// [Ja] TestPurgeWithdrawnUsersArgs_Kind はジョブ種別の文字列を固定する。これは River が
+// 永続化済みジョブをワーカーに振り分けるための安定した契約だからである。
+func TestPurgeWithdrawnUsersArgs_Kind(t *testing.T) {
+	t.Parallel()
+
+	if got := (PurgeWithdrawnUsersArgs{}).Kind(); got != "purge_withdrawn_users" {
+		t.Errorf("Kind() = %q, want %q", got, "purge_withdrawn_users")
+	}
+}
+
+// TestPurgeWithdrawnUsersArgs_InsertOpts verifies the per-job defaults: the purge
+// runs on the default queue with fewer attempts than the mail jobs, since it is
+// idempotent and periodic.
+//
+// [Ja] TestPurgeWithdrawnUsersArgs_InsertOpts はジョブ単位の既定値を検証する。パージは
+// 冪等かつ定期実行のため、既定キューでメールジョブより少ない試行回数で走る。
+func TestPurgeWithdrawnUsersArgs_InsertOpts(t *testing.T) {
+	t.Parallel()
+
+	opts := (PurgeWithdrawnUsersArgs{}).InsertOpts()
+	if opts.Queue != river.QueueDefault {
+		t.Errorf("Queue = %q, want %q", opts.Queue, river.QueueDefault)
+	}
+	if opts.MaxAttempts != 3 {
+		t.Errorf("MaxAttempts = %d, want 3", opts.MaxAttempts)
+	}
+}
+
 // TestEnqueueEmailChangeNotification verifies the dispatcher hands River the right
 // Args and the InsertOpts carrying MaxAttempts (so it does not pass a nil opts
 // that would drop the retry default).

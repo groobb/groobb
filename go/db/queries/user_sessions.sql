@@ -8,3 +8,6 @@ RETURNING *;
 
 -- name: DeleteUserSessionByToken :exec
 DELETE FROM user_sessions WHERE token = $1;
+
+-- name: DeleteUserSessionsByUserID :exec
+DELETE FROM user_sessions WHERE user_id = $1;

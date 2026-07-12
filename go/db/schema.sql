@@ -298,7 +298,8 @@ CREATE TABLE public.users (
     time_zone character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    atname public.citext NOT NULL
+    atname public.citext NOT NULL,
+    deleted_at timestamp with time zone
 );
 
 
@@ -459,6 +460,13 @@ CREATE INDEX index_password_reset_tokens_on_user_id ON public.password_reset_tok
 
 
 --
+-- Name: index_users_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_users_on_deleted_at ON public.users USING btree (deleted_at) WHERE (deleted_at IS NOT NULL);
+
+
+--
 -- Name: river_job_args_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -574,4 +582,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260617054258'),
     ('20260704182204'),
     ('20260708015309'),
-    ('20260709011939');
+    ('20260709011939'),
+    ('20260709160424');

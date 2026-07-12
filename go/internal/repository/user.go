@@ -10,6 +10,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -164,6 +165,50 @@ func (r *UserRepository) UpdateEmail(ctx context.Context, id model.UserID, email
 	})
 }
 
+// SoftDeleteAndAnonymize withdraws the user in one write: it stamps deleted_at
+// with the current time and overwrites email and atname with the given anonymized
+// values, bumping updated_at. Setting deleted_at makes the account inert
+// immediately (authentication lookups exclude soft-deleted rows), while replacing
+// email and atname frees those unique values so another account can reclaim them
+// before the row is physically purged. The caller supplies collision-free
+// anonymized values derived from the user id, so this stays a plain UPDATE with
+// no risk of violating the email/atname UNIQUE constraints.
+//
+// [Ja] SoftDeleteAndAnonymize はユーザーを 1 回の書き込みで退会させます。deleted_at に
+// 現在時刻を打ち、email と atname を与えられた匿名値で上書きし、updated_at を更新します。
+// deleted_at のセットでアカウントを即座に無効化し (認証ルックアップは論理削除済みの行を
+// 除外する)、email と atname の置き換えでそれらの一意な値を解放して、行が物理削除される
+// 前に別アカウントが再取得できるようにします。呼び出し側はユーザー id 由来の衝突しない
+// 匿名値を渡すため、本処理は email / atname の UNIQUE 制約違反の恐れがない素の UPDATE に
+// 留まります。
+func (r *UserRepository) SoftDeleteAndAnonymize(ctx context.Context, id model.UserID, email, atname string) error {
+	return r.q.SoftDeleteAndAnonymizeUser(ctx, query.SoftDeleteAndAnonymizeUserParams{
+		ID:     uuid.UUID(id),
+		Email:  email,
+		Atname: atname,
+	})
+}
+
+// PurgeDeletedBefore physically deletes every user soft-deleted before cutoff
+// (deleted_at < cutoff), returning how many rows were removed. Each user's child
+// rows go with it via ON DELETE CASCADE. This is the second, asynchronous stage of
+// withdrawal: the withdrawal request only soft-deletes and anonymizes, and a
+// periodic job calls this later to reclaim the storage once the retention window
+// has passed. The deleted_at IS NOT NULL predicate lets the query use the partial
+// index on deleted_at. The caller passes a time.Time; the pointer the generated
+// query expects (deleted_at is a nullable column) is confined to this boundary.
+//
+// [Ja] PurgeDeletedBefore は cutoff より前に論理削除されたユーザー (deleted_at < cutoff)
+// をすべて物理削除し、削除した行数を返します。各ユーザーの子行は ON DELETE CASCADE で
+// 一緒に消えます。これは退会の第 2 段階 (非同期) です。退会リクエストは論理削除と匿名化
+// だけを行い、保持期間の経過後に定期ジョブが本メソッドを呼んでストレージを回収します。
+// deleted_at IS NOT NULL の述語により、クエリは deleted_at の部分インデックスを使えます。
+// 呼び出し側は time.Time を渡し、生成クエリが要求するポインタ (deleted_at は nullable な
+// カラム) はこの境界に閉じ込めます。
+func (r *UserRepository) PurgeDeletedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	return r.q.PurgeUsersDeletedBefore(ctx, &cutoff)
+}
+
 // toModel converts a query.User row into a model.User, casting the raw uuid into
 // the typed UserID at the repository boundary.
 //
@@ -176,6 +221,7 @@ func (r *UserRepository) toModel(row query.User) *model.User {
 		Atname:    row.Atname,
 		Locale:    row.Locale,
 		TimeZone:  row.TimeZone,
+		DeletedAt: row.DeletedAt,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 	}

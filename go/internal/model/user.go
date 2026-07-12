@@ -25,11 +25,26 @@ import "time"
 // ユーザーの表示名としても用いる。パスワードダイジェストは別の資格情報テーブルに保持する
 // ため、ここには無い。
 type User struct {
-	ID        UserID
-	Email     string
-	Atname    string
-	Locale    string
-	TimeZone  string
+	ID       UserID
+	Email    string
+	Atname   string
+	Locale   string
+	TimeZone string
+
+	// DeletedAt marks a withdrawn account: nil means the account is active, and a
+	// non-nil time is the moment the user withdrew. Withdrawal soft-deletes the row
+	// (setting this alongside anonymizing email/atname) so the account is inert
+	// right away, while the physical delete is left to a later purge job.
+	// Authentication lookups exclude rows where this is non-nil, so a withdrawn
+	// user never resolves back into a session.
+	//
+	// [Ja] DeletedAt は退会済みアカウントを表す。nil はアカウントがアクティブであること、
+	// 非 nil はユーザーが退会した時刻を意味する。退会はこの値をセットして (email / atname の
+	// 匿名化と同時に) 行を論理削除し、アカウントを即座に無効化する。物理削除は後続のパージ
+	// ジョブに委ねる。認証系のルックアップはこの値が非 nil の行を除外するため、退会済み
+	// ユーザーがセッションとして再び解決されることはない。
+	DeletedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -1,0 +1,88 @@
+package settings_withdrawal
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// NewPageData is the data for the account-withdrawal confirmation page. It carries
+// only the CSRF token and the validation messages; there is no field to echo back,
+// since the sole input is the current password and re-rendering a password field
+// with its value is a credential-leak risk. FormErrors surfaces a missing or
+// incorrect current password beneath the field.
+//
+// [Ja] NewPageData は退会確認ページのデータです。運ぶのは CSRF トークンと
+// バリデーションメッセージだけです。エコーバックするフィールドはありません。唯一の入力は
+// 現在のパスワードであり、値付きでパスワードフィールドを再描画するのは資格情報の漏えい
+// リスクのためです。FormErrors は現在のパスワードの未入力・不一致をフィールドの下に出します。
+type NewPageData struct {
+	CSRFToken  string
+	FormErrors *model.ValidationError
+}
+
+// New renders the account-withdrawal confirmation form: an explanation of what
+// withdrawal does (irreversible; sign-out; email/atname released), a
+// current-password field for re-authentication, and a destructive submit button.
+// The form posts to /settings/withdrawal with a hidden _method=DELETE so the HTML
+// form drives the DELETE route, and the CSRF token is embedded as a hidden field.
+// An onsubmit confirm() dialog guards against an accidental click; it is only a
+// supplement, since the current-password re-authentication is the real gate.
+//
+// [Ja] New は退会確認フォームを描画します。退会で何が起きるか (不可逆・サインアウト・
+// email / atname の解放) の説明、再認証のための現在のパスワードフィールド、そして
+// destructive な送信ボタンです。フォームは hidden な _method=DELETE を付けて
+// /settings/withdrawal へ POST し、HTML フォームから DELETE ルートを動かします。CSRF
+// トークンは hidden フィールドとして埋め込みます。onsubmit の confirm() ダイアログが誤
+// クリックを防ぎますが、それは補助にすぎず、現在のパスワードによる再認証が本質的なゲートです。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "settings_withdrawal_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "settings_withdrawal_new_lead") }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form
+			action={ templates.SettingsWithdrawalPath().SafeURL() }
+			method="POST"
+			data-confirm={ templates.T(ctx, "settings_withdrawal_new_confirm") }
+			onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"
+			class="flex flex-col gap-4"
+		>
+			<input type="hidden" name="_method" value="DELETE"/>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("current_password") {
+					data-invalid="true"
+				}
+			>
+				<label for="current_password">
+					{ templates.T(ctx, "settings_withdrawal_new_current_password_label") }
+				</label>
+				<input
+					id="current_password"
+					name="current_password"
+					type="password"
+					autocomplete="current-password"
+					enterkeyhint="send"
+					required
+					autofocus
+					if data.FormErrors.HasFieldError("current_password") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("current_password", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("current_password", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full" data-variant="destructive">
+				{ templates.T(ctx, "settings_withdrawal_new_submit") }
+			</button>
+		</form>
+	</div>
+}

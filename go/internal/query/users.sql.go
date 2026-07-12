@@ -7,6 +7,7 @@ package query
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
 VALUES ($1, $2, $3, $4)
-RETURNING id, email, locale, time_zone, created_at, updated_at, atname
+RETURNING id, email, locale, time_zone, created_at, updated_at, atname, deleted_at
 `
 
 type CreateUserParams struct {
@@ -40,12 +41,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Atname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByAtname = `-- name: GetUserByAtname :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE atname = $1 LIMIT 1
+SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE atname = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, error) {
@@ -59,12 +61,13 @@ func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Atname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE email = $1 LIMIT 1
+SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -78,12 +81,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Atname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname FROM users WHERE id = $1 LIMIT 1
+SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -97,14 +101,15 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Atname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserBySessionToken = `-- name: GetUserBySessionToken :one
-SELECT users.id, users.email, users.locale, users.time_zone, users.created_at, users.updated_at, users.atname FROM users
+SELECT users.id, users.email, users.locale, users.time_zone, users.created_at, users.updated_at, users.atname, users.deleted_at FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
-WHERE user_sessions.token = $1
+WHERE user_sessions.token = $1 AND users.deleted_at IS NULL
 LIMIT 1
 `
 
@@ -119,8 +124,39 @@ func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Atname,
+		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const purgeUsersDeletedBefore = `-- name: PurgeUsersDeletedBefore :execrows
+DELETE FROM users
+WHERE deleted_at IS NOT NULL AND deleted_at < $1
+`
+
+func (q *Queries) PurgeUsersDeletedBefore(ctx context.Context, deletedAt *time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeUsersDeletedBefore, deletedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const softDeleteAndAnonymizeUser = `-- name: SoftDeleteAndAnonymizeUser :exec
+UPDATE users
+SET deleted_at = NOW(), email = $2, atname = $3, updated_at = NOW()
+WHERE id = $1
+`
+
+type SoftDeleteAndAnonymizeUserParams struct {
+	ID     uuid.UUID `json:"id"`
+	Email  string    `json:"email"`
+	Atname string    `json:"atname"`
+}
+
+func (q *Queries) SoftDeleteAndAnonymizeUser(ctx context.Context, arg SoftDeleteAndAnonymizeUserParams) error {
+	_, err := q.db.Exec(ctx, softDeleteAndAnonymizeUser, arg.ID, arg.Email, arg.Atname)
+	return err
 }
 
 const updateUserEmail = `-- name: UpdateUserEmail :exec

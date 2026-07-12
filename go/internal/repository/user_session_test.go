@@ -142,6 +142,73 @@ func TestUserSessionRepository_DeleteByToken(t *testing.T) {
 	})
 }
 
+// TestUserSessionRepository_DeleteByUserID verifies that DeleteByUserID removes
+// every session owned by the target user, leaves other users' sessions untouched,
+// and is a harmless no-op when the user has no sessions.
+//
+// [Ja] TestUserSessionRepository_DeleteByUserID は DeleteByUserID が対象ユーザーの全
+// セッションを削除し、他ユーザーのセッションには手を触れず、ユーザーがセッションを
+// 持たないときは無害な no-op になることを確認する。
+func TestUserSessionRepository_DeleteByUserID(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	repo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	ctx := context.Background()
+
+	// The target user with two sessions, plus another user whose session must
+	// survive the delete.
+	//
+	// [Ja] 2 つのセッションを持つ対象ユーザーと、削除を生き延びるべきセッションを持つ
+	// 別ユーザー。
+	userID := testutil.NewUserBuilder(t, tx).Build()
+	for _, token := range []string{"del-by-user-1", "del-by-user-2"} {
+		if _, err := repo.Create(ctx, repository.CreateUserSessionInput{
+			UserID: userID, Token: token, IPAddress: "203.0.113.6", UserAgent: "agent",
+		}); err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+	}
+	otherUserID := testutil.NewUserBuilder(t, tx).Build()
+	if _, err := repo.Create(ctx, repository.CreateUserSessionInput{
+		UserID: otherUserID, Token: "other-user-token", IPAddress: "203.0.113.7", UserAgent: "agent",
+	}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	if err := repo.DeleteByUserID(ctx, userID); err != nil {
+		t.Fatalf("DeleteByUserID() error = %v", err)
+	}
+
+	t.Run("対象ユーザーの全セッションが削除される", func(t *testing.T) {
+		for _, token := range []string{"del-by-user-1", "del-by-user-2"} {
+			session, err := repo.FindByToken(ctx, token)
+			if err != nil {
+				t.Fatalf("FindByToken() error = %v", err)
+			}
+			if session != nil {
+				t.Errorf("token %q は削除後に残っている", token)
+			}
+		}
+	})
+
+	t.Run("他ユーザーのセッションは残る", func(t *testing.T) {
+		session, err := repo.FindByToken(ctx, "other-user-token")
+		if err != nil {
+			t.Fatalf("FindByToken() error = %v", err)
+		}
+		if session == nil {
+			t.Error("他ユーザーのセッションが削除された")
+		}
+	})
+
+	t.Run("セッションを持たないユーザーの削除はエラーにならない", func(t *testing.T) {
+		if err := repo.DeleteByUserID(ctx, userID); err != nil {
+			t.Errorf("セッションが無いユーザーの DeleteByUserID() error = %v, want nil", err)
+		}
+	})
+}
+
 // TestUserSessionRepository_CreateRejectsDuplicateToken verifies the
 // user_sessions.token UNIQUE constraint surfaces as an error.
 //
