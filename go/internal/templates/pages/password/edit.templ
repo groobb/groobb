@@ -63,9 +63,7 @@ templ Edit(data EditPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="password">
-					{ templates.T(ctx, "password_edit_password_label") }
-				</label>
+				@components.RequiredFieldLabel("password", templates.T(ctx, "password_edit_password_label"))
 				<input
 					id="password"
 					name="password"
@@ -91,9 +89,7 @@ templ Edit(data EditPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="password_confirmation">
-					{ templates.T(ctx, "password_edit_password_confirmation_label") }
-				</label>
+				@components.RequiredFieldLabel("password_confirmation", templates.T(ctx, "password_edit_password_confirmation_label"))
 				<input
 					id="password_confirmation"
 					name="password_confirmation"

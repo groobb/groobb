@@ -1,0 +1,117 @@
+package community
+
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// NewPageData is the data for the community-creation page. Name and Identifier
+// are the submitted values, echoed back on a validation error so the user does
+// not retype them. FormErrors carries the per-field validation messages: a
+// missing or too-long name, and a missing, too-long, malformed, reserved, or
+// already-taken identifier, are shown beneath the field they belong to.
+//
+// [Ja] NewPageData はコミュニティ作成ページのデータです。Name と Identifier は送信された
+// 値で、バリデーションエラー時にエコーバックしてユーザーが打ち直さずに済むようにします。
+// FormErrors はフィールド別のバリデーションメッセージを運び、名前の未入力・長すぎ、識別子の
+// 未入力・長すぎ・形式不正・予約語・使用済みは該当フィールドの下に表示します。
+type NewPageData struct {
+	CSRFToken  string
+	Name       string
+	Identifier string
+	FormErrors *model.ValidationError
+}
+
+// New renders the community-creation form: a name and a URL-identifier field
+// that, on submit, create the community and make the creator its administrator.
+// The identifier's maxlength and pattern attributes mirror the validator's
+// constants so the browser rejects the obvious cases before a round trip; the
+// server-side checks remain the authority. The CSRF token is embedded as a
+// hidden field for the double-submit-cookie check.
+//
+// [Ja] New はコミュニティ作成フォームを描画します。送信するとコミュニティを作成し、作成者を
+// その管理者にする、名前と URL 識別子のフィールドです。識別子の maxlength と pattern 属性は
+// バリデーターの定数をミラーし、明らかなケースを往復の前にブラウザが弾けるようにします。判断の
+// 権威はサーバー側のチェックのままです。CSRF トークンは double-submit cookie 検証のため
+// hidden フィールドとして埋め込みます。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "community_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "community_new_lead") }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form action={ templates.CommunityListPath().SafeURL() } method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("name") {
+					data-invalid="true"
+				}
+			>
+				@components.RequiredFieldLabel("name", templates.T(ctx, "community_new_name_label"))
+				<input
+					id="name"
+					name="name"
+					type="text"
+					autocomplete="off"
+					required
+					if !data.FormErrors.HasFieldError("identifier") || data.FormErrors.HasFieldError("name") {
+						autofocus
+					}
+					value={ data.Name }
+					if data.FormErrors.HasFieldError("name") {
+						aria-invalid="true"
+						aria-describedby={ "name-hint " + components.FieldErrorsDescribedBy("name", data.FormErrors) }
+					} else {
+						aria-describedby="name-hint"
+					}
+				/>
+				<p id="name-hint">{ templates.T(ctx, "community_new_name_hint") }</p>
+				@components.FieldErrors("name", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("identifier") {
+					data-invalid="true"
+				}
+			>
+				@components.RequiredFieldLabel("identifier", templates.T(ctx, "community_new_identifier_label"))
+				<input
+					id="identifier"
+					name="identifier"
+					type="text"
+					autocomplete="off"
+					autocapitalize="none"
+					spellcheck="false"
+					maxlength="20"
+					pattern="[A-Za-z0-9-]+"
+					enterkeyhint="send"
+					required
+					if data.FormErrors.HasFieldError("identifier") && !data.FormErrors.HasFieldError("name") {
+						autofocus
+					}
+					value={ data.Identifier }
+					if data.FormErrors.HasFieldError("identifier") {
+						aria-invalid="true"
+						aria-describedby={ "identifier-hint " + components.FieldErrorsDescribedBy("identifier", data.FormErrors) }
+					} else {
+						aria-describedby="identifier-hint"
+					}
+				/>
+				<p id="identifier-hint">{ templates.T(ctx, "community_new_identifier_hint") }</p>
+				@components.FieldErrors("identifier", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "community_new_submit") }
+			</button>
+		</form>
+	</div>
+}

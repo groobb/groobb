@@ -6,6 +6,14 @@ other = "Groobb"
 description = "デフォルトのページ説明文 (meta description)"
 other = "Groobb は掲示板サービスです。"
 
+[error_not_found_message]
+description = "リクエストされた URL に対応するものが存在しないときに 404 で返す説明文"
+other = "ページが見つかりません"
+
+[field_required]
+description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通の UI 部品)"
+other = "必須"
+
 [flash_dismiss]
 description = "フラッシュメッセージの toast を閉じるボタン (全ページ共通の UI 部品)"
 other = "閉じる"
@@ -25,6 +33,10 @@ other = "退会しました"
 [flash_two_factor_auth_disabled]
 description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
 other = "2 段階認証を無効にしました"
+
+[flash_community_created]
+description = "コミュニティを作成したときに作成先のコミュニティ画面で表示するフラッシュメッセージ"
+other = "コミュニティを作成しました"
 
 [posts_count]
 description = "UI に表示する投稿数"
@@ -77,6 +89,10 @@ other = "ログアウトしますか？"
 [home_show_settings_link]
 description = "ホームページから設定ハブへ誘導するリンクのテキスト"
 other = "設定"
+
+[home_show_create_community_link]
+description = "ホームページからコミュニティ作成ページへ誘導するリンクのテキスト"
+other = "コミュニティを作る"
 
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"
@@ -554,6 +570,46 @@ other = "2 段階認証を無効にしますか？"
 description = "2 段階認証の無効化 (確認) ページの送信ボタン"
 other = "無効にする"
 
+[community_new_title]
+description = "コミュニティ作成ページのタイトル (title タグ)"
+other = "コミュニティを作る"
+
+[community_new_description]
+description = "コミュニティ作成ページの meta description"
+other = "新しいコミュニティを作成します。"
+
+[community_new_heading]
+description = "コミュニティ作成ページの見出し"
+other = "コミュニティを作る"
+
+[community_new_lead]
+description = "コミュニティ作成ページの説明文 (入力する項目を伝える)"
+other = "コミュニティ名と URL 識別子を決めてください。"
+
+[community_new_name_label]
+description = "コミュニティ作成ページのコミュニティ名のラベル"
+other = "コミュニティ名"
+
+[community_new_name_hint]
+description = "コミュニティ作成ページのコミュニティ名のヒント (文字数)"
+other = "30 文字以内で入力してください"
+
+[community_new_identifier_label]
+description = "コミュニティ作成ページの URL 識別子のラベル"
+other = "URL 識別子"
+
+[community_new_identifier_hint]
+description = "コミュニティ作成ページの URL 識別子のヒント (用途・使用可能な文字と文字数)"
+other = "コミュニティの URL に使われます。半角英数字とハイフンが使えます (最大 20 文字)"
+
+[community_new_submit]
+description = "コミュニティ作成ページの送信ボタン"
+other = "作成する"
+
+[community_show_description]
+description = "コミュニティ画面の meta description (コミュニティ名を含む)"
+other = "{{.Name}}のコミュニティです。"
+
 [validation_required]
 description = "必須フィールドのバリデーションエラー"
 other = "入力してください"
@@ -665,3 +721,23 @@ other = "このパスワード再設定用リンクは有効期限が切れて�
 [validation_turnstile_failed]
 description = "Turnstile の Bot 検証に失敗したときのフォーム全体のエラー (再試行を促す)"
 other = "ロボットでないことの確認に失敗しました。もう一度お試しください。"
+
+[validation_community_name_too_long]
+description = "コミュニティ名が長すぎるときのバリデーションエラー"
+other = "コミュニティ名は 30 文字以内で入力してください"
+
+[validation_community_identifier_too_long]
+description = "コミュニティの URL 識別子が長すぎるときのバリデーションエラー"
+other = "URL 識別子は 20 文字以内で入力してください"
+
+[validation_community_identifier_invalid_format]
+description = "コミュニティの URL 識別子に使えない文字が含まれるときのバリデーションエラー"
+other = "URL 識別子は半角英数字とハイフンのみ使用できます"
+
+[validation_community_identifier_reserved]
+description = "コミュニティの URL 識別子が予約語のときのバリデーションエラー"
+other = "この URL 識別子は使用できません"
+
+[validation_community_identifier_already_taken]
+description = "コミュニティの URL 識別子の重複のバリデーションエラー"
+other = "この URL 識別子は既に使用されています"

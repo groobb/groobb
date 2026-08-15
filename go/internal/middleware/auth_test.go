@@ -130,13 +130,43 @@ func TestAuth_RequireAuth(t *testing.T) {
 		if captured.ID != userID {
 			t.Errorf("user.ID = %v, want %v", captured.ID, userID)
 		}
+		assertPrivateNoCache(t, rec)
 	})
 
-	t.Run("未サインインのとき /sign_in へリダイレクトする", func(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run("未サインインの "+method+" は元の URL を return_to に載せて /sign_in へリダイレクトする", func(t *testing.T) {
+			var captured *model.User
+			var called bool
+
+			req := httptest.NewRequest(method, "/c/groobb?tab=posts", nil)
+			rec := httptest.NewRecorder()
+
+			auth.RequireAuth(newRecordingHandler(&captured, &called)).ServeHTTP(rec, req)
+
+			if called {
+				t.Fatal("未サインインなのに次のハンドラーが呼ばれた")
+			}
+			if rec.Code != http.StatusSeeOther {
+				t.Errorf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+			}
+			want := "/sign_in?return_to=%2Fc%2Fgroobb%3Ftab%3Dposts"
+			if loc := rec.Header().Get("Location"); loc != want {
+				t.Errorf("Location = %q, want %q", loc, want)
+			}
+			assertPrivateNoCache(t, rec)
+		})
+	}
+
+	// A POST target replayed as a GET landing page is not where the visitor asked
+	// to go, so an unsafe method falls back to the bare sign-in path.
+	//
+	// [Ja] POST の宛先を後から GET で開いても訪問者が求めた場所ではないため、安全でない
+	// メソッドは素のサインインパスにフォールバックする。
+	t.Run("未サインインの POST は return_to を載せずに /sign_in へリダイレクトする", func(t *testing.T) {
 		var captured *model.User
 		var called bool
 
-		req := httptest.NewRequest(http.MethodGet, "/home", nil)
+		req := httptest.NewRequest(http.MethodPost, "/communities", nil)
 		rec := httptest.NewRecorder()
 
 		auth.RequireAuth(newRecordingHandler(&captured, &called)).ServeHTTP(rec, req)
@@ -150,6 +180,7 @@ func TestAuth_RequireAuth(t *testing.T) {
 		if loc := rec.Header().Get("Location"); loc != "/sign_in" {
 			t.Errorf("Location = %q, want %q", loc, "/sign_in")
 		}
+		assertPrivateNoCache(t, rec)
 	})
 
 	t.Run("ユーザー解決が失敗したとき 500 を返す", func(t *testing.T) {
@@ -175,6 +206,66 @@ func TestAuth_RequireAuth(t *testing.T) {
 		}
 		if rec.Code != http.StatusInternalServerError {
 			t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+		}
+		assertPrivateNoCache(t, rec)
+	})
+
+	// The policy is set before the handler runs, so it has to survive whatever the
+	// handler writes afterwards. The community page answers an unclaimed identifier
+	// with http.Error and a non-canonical spelling with http.Redirect, and both
+	// helpers rewrite headers of their own on the way out.
+	//
+	// [Ja] 方針はハンドラーが走る前に設定するため、その後ハンドラーが何を書いても残る
+	// 必要がある。コミュニティ画面は誰も取得していない識別子に http.Error、正規でない
+	// 表記に http.Redirect で応答し、どちらのヘルパーも出ていく際に自前でヘッダーを
+	// 書き換える。
+	for _, tt := range []struct {
+		name    string
+		handler http.HandlerFunc
+	}{
+		{
+			name: "http.Error で 404 を書いても",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "not found", http.StatusNotFound)
+			},
+		},
+		{
+			name: "http.Redirect で 301 を書いても",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "/c/groobb", http.StatusMovedPermanently)
+			},
+		},
+	} {
+		t.Run("ハンドラーが "+tt.name+"キャッシュ方針が残る", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/c/Groobb", nil)
+			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "valid-token"})
+			rec := httptest.NewRecorder()
+
+			auth.RequireAuth(tt.handler).ServeHTTP(rec, req)
+
+			assertPrivateNoCache(t, rec)
+		})
+	}
+
+	// settings_two_factor_auth replaces the value with no-store because its pages
+	// show a plaintext secret and recovery codes. The default set here must not be
+	// what those responses end up carrying.
+	//
+	// [Ja] settings_two_factor_auth は平文の secret とリカバリーコードを表示するページの
+	// ため、値を no-store で置き換える。ここで設定する既定が、それらのレスポンスに残る
+	// 値であってはならない。
+	t.Run("ハンドラーがより厳しいキャッシュ方針で上書きできる", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/settings/two_factor_auth/new", nil)
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "valid-token"})
+		rec := httptest.NewRecorder()
+
+		auth.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusOK)
+		})).ServeHTTP(rec, req)
+
+		if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, want %q", got, "no-store")
 		}
 	})
 }
@@ -212,6 +303,24 @@ func setupAuthTest(t *testing.T) (*middleware.Auth, model.UserID) {
 		Build()
 
 	return auth, userID
+}
+
+// assertPrivateNoCache fails the test unless the response carries the cache
+// policy RequireAuth puts on everything it answers. Each case that produces a
+// response asserts it, because the policy is only guaranteed for a guarded route
+// if it holds on every path out of the middleware, not just the one that renders
+// a page.
+//
+// [Ja] assertPrivateNoCache は RequireAuth が応答するすべてに付けるキャッシュ方針が
+// レスポンスに載っていなければテストを失敗させる。レスポンスを返す各ケースで検証するのは、
+// ページを描画する経路だけでなくミドルウェアから出るすべての経路で成り立って初めて、
+// 保護されたルートの方針が保証されるためである。
+func assertPrivateNoCache(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if got := rec.Header().Get("Cache-Control"); got != "private, no-cache" {
+		t.Errorf("Cache-Control = %q, want %q", got, "private, no-cache")
+	}
 }
 
 // newRecordingHandler returns a handler that records whether it ran and the user

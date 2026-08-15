@@ -23,6 +23,18 @@ help: ## Show this help. [Ja] このヘルプを表示
 run: ## Start the HTTP server. [Ja] HTTP サーバーを起動
 	$(OP_RUN_DEV) go run ./cmd/server
 
+.PHONY: browse-login
+browse-login: ## Log in to the dev site in a browser (other user: make browse-login BROWSE_USER=2). [Ja] dev サイトへブラウザでログイン (別ユーザーは make browse-login BROWSE_USER=2)
+	$(OP_RUN_DEV) bash scripts/browse.sh login $(BROWSE_USER)
+
+.PHONY: browse-shot
+browse-shot: ## Open a page with the logged-in session and screenshot it (e.g. make browse-shot URL=/). [Ja] ログイン済みセッションでページを開きスクショ (例: make browse-shot URL=/)
+	bash scripts/browse.sh shot "$(URL)"
+
+.PHONY: browse-close
+browse-close: ## Close the browser session and remove its credentials, origin file and profile (screenshots are kept). [Ja] ブラウザセッションを閉じ、資格情報・origin ファイル・profile を削除 (スクショは残す)
+	bash scripts/browse.sh close
+
 .PHONY: build
 build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
 	go build -o bin/server ./cmd/server

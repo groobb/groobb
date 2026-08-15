@@ -95,6 +95,59 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: communities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.communities (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    name character varying NOT NULL,
+    identifier public.citext NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: community_member_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.community_member_roles (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    community_id uuid NOT NULL,
+    community_member_id uuid NOT NULL,
+    community_role_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: community_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.community_members (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    community_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: community_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.community_roles (
+    id uuid DEFAULT public.generate_ulid() NOT NULL,
+    community_id uuid NOT NULL,
+    name character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: email_confirmations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -334,6 +387,86 @@ ALTER TABLE ONLY public.river_notification ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: communities communities_identifier_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.communities
+    ADD CONSTRAINT communities_identifier_key UNIQUE (identifier);
+
+
+--
+-- Name: communities communities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.communities
+    ADD CONSTRAINT communities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: community_member_roles community_member_roles_community_member_id_community_role_i_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_member_roles
+    ADD CONSTRAINT community_member_roles_community_member_id_community_role_i_key UNIQUE (community_member_id, community_role_id);
+
+
+--
+-- Name: community_member_roles community_member_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_member_roles
+    ADD CONSTRAINT community_member_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: community_members community_members_community_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_members
+    ADD CONSTRAINT community_members_community_id_id_key UNIQUE (community_id, id);
+
+
+--
+-- Name: community_members community_members_community_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_members
+    ADD CONSTRAINT community_members_community_id_user_id_key UNIQUE (community_id, user_id);
+
+
+--
+-- Name: community_members community_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_members
+    ADD CONSTRAINT community_members_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: community_roles community_roles_community_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_roles
+    ADD CONSTRAINT community_roles_community_id_id_key UNIQUE (community_id, id);
+
+
+--
+-- Name: community_roles community_roles_community_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_roles
+    ADD CONSTRAINT community_roles_community_id_name_key UNIQUE (community_id, name);
+
+
+--
+-- Name: community_roles community_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_roles
+    ADD CONSTRAINT community_roles_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: email_confirmations email_confirmations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -478,6 +611,27 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: index_community_member_roles_on_community_and_member; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_community_member_roles_on_community_and_member ON public.community_member_roles USING btree (community_id, community_member_id);
+
+
+--
+-- Name: index_community_member_roles_on_community_and_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_community_member_roles_on_community_and_role ON public.community_member_roles USING btree (community_id, community_role_id);
+
+
+--
+-- Name: index_community_members_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_community_members_on_user_id ON public.community_members USING btree (user_id);
+
+
+--
 -- Name: index_email_confirmations_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -562,6 +716,46 @@ CREATE INDEX user_sessions_user_id_idx ON public.user_sessions USING btree (user
 
 
 --
+-- Name: community_member_roles community_member_roles_community_id_community_member_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_member_roles
+    ADD CONSTRAINT community_member_roles_community_id_community_member_id_fkey FOREIGN KEY (community_id, community_member_id) REFERENCES public.community_members(community_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: community_member_roles community_member_roles_community_id_community_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_member_roles
+    ADD CONSTRAINT community_member_roles_community_id_community_role_id_fkey FOREIGN KEY (community_id, community_role_id) REFERENCES public.community_roles(community_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: community_members community_members_community_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_members
+    ADD CONSTRAINT community_members_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id) ON DELETE CASCADE;
+
+
+--
+-- Name: community_members community_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_members
+    ADD CONSTRAINT community_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: community_roles community_roles_community_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.community_roles
+    ADD CONSTRAINT community_roles_community_id_fkey FOREIGN KEY (community_id) REFERENCES public.communities(id) ON DELETE CASCADE;
+
+
+--
 -- Name: email_confirmations email_confirmations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -624,4 +818,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260708015309'),
     ('20260709011939'),
     ('20260709160424'),
-    ('20260710063911');
+    ('20260710063911'),
+    ('20260803050939'),
+    ('20260803083845'),
+    ('20260803151008'),
+    ('20260803151009');

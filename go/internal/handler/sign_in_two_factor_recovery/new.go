@@ -27,13 +27,22 @@ import (
 func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// The TOTP challenge forwards return_to here, so both the form and the link
+	// back to the TOTP challenge below keep the destination the visitor was
+	// originally headed for.
+	//
+	// [Ja] TOTP チャレンジが return_to をここへ引き継ぐため、フォームも下の TOTP
+	// チャレンジへ戻るリンクも、訪問者が本来向かっていた遷移先を保てる。
+	returnTo := middleware.SanitizeReturnTo(r.URL.Query().Get(templates.ReturnToParam))
+
 	if _, ok := h.sessionMgr.GetTwoFactorPendingUserID(r); !ok {
-		http.Redirect(w, r, templates.SignInPath().String(), http.StatusSeeOther)
+		http.Redirect(w, r, templates.SignInPath().WithReturnTo(returnTo).String(), http.StatusSeeOther)
 		return
 	}
 
 	h.renderNew(w, r, http.StatusOK, signintwofactorrecoverypage.NewPageData{
 		CSRFToken: middleware.CSRFTokenFromContext(ctx),
+		ReturnTo:  returnTo,
 	})
 }
 

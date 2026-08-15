@@ -1,0 +1,26 @@
+package community
+
+// ShowPageData is the data for a community's own page. Name is the community's
+// display name, which is the whole of what the page shows until boards and posts
+// exist beneath it.
+//
+// [Ja] ShowPageData はコミュニティ自身の画面のデータです。Name はコミュニティの表示名で、
+// 配下に掲示板と投稿ができるまではこれがページの内容のすべてです。
+type ShowPageData struct {
+	Name string
+}
+
+// Show renders a community's page. The name is the page's only heading, so it is
+// the h1 that opens the document outline.
+//
+// [Ja] Show はコミュニティの画面を描画します。名前がこのページで唯一の見出しであるため、
+// ドキュメントのアウトラインを開始する h1 とします。
+templ Show(data ShowPageData) {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ data.Name }</h1>
+			</header>
+		</div>
+	</div>
+}

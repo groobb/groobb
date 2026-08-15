@@ -10,17 +10,22 @@ import (
 // so a re-rendered form (after a validation error) keeps what the user typed, and
 // FormErrors carries the validation messages: a form-wide message (a gone challenge
 // that asks the user to sign in again) shown at the top, and a per-field message (a
-// malformed or incorrect code) shown beneath the input.
+// malformed or incorrect code) shown beneath the input. ReturnTo carries where
+// the visitor was headed when a guarded route turned them away, handed over by
+// the password step, and travels on through this form and the recovery link.
 //
 // [Ja] NewPageData はサインイン時の TOTP チャレンジページのデータです。Code は再描画
 // (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
 // バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (失われたチャレンジ
 // で再サインインを促すもの) と、入力欄の下に出すフィールド別のメッセージ (コードの形式エラー・
-// 不一致) です。
+// 不一致) です。ReturnTo は保護されたルートに追い返されたとき訪問者が向かっていた先を運び、
+// パスワードのステップから引き渡され、このフォームとリカバリーコードへのリンクを通じてさらに
+// 引き継がれます。
 type NewPageData struct {
 	CSRFToken  string
 	Code       string
 	FormErrors *model.ValidationError
+	ReturnTo   string
 }
 
 // New renders the sign-in TOTP challenge form: a single six-digit code field that,
@@ -45,6 +50,9 @@ templ New(data NewPageData) {
 		@components.FormErrors(data.FormErrors)
 		<form action={ templates.SignInTwoFactorPath().SafeURL() } method="POST" class="flex flex-col gap-4">
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			if data.ReturnTo != "" {
+				<input type="hidden" name={ templates.ReturnToParam } value={ data.ReturnTo }/>
+			}
 			<div
 				role="group"
 				class="field"
@@ -52,9 +60,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="code">
-					{ templates.T(ctx, "sign_in_two_factor_new_code_label") }
-				</label>
+				@components.RequiredFieldLabel("code", templates.T(ctx, "sign_in_two_factor_new_code_label"))
 				<input
 					id="code"
 					name="code"
@@ -79,7 +85,7 @@ templ New(data NewPageData) {
 			</button>
 		</form>
 		<p class="text-center text-sm">
-			<a href={ templates.SignInTwoFactorRecoveryNewPath().SafeURL() } class="underline">
+			<a href={ templates.SignInTwoFactorRecoveryNewPath().WithReturnTo(data.ReturnTo).SafeURL() } class="underline">
 				{ templates.T(ctx, "sign_in_two_factor_new_use_recovery_link") }
 			</a>
 		</p>

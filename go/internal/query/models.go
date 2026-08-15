@@ -61,6 +61,39 @@ func (ns NullRiverJobState) Value() (driver.Value, error) {
 	return string(ns.RiverJobState), nil
 }
 
+type Community struct {
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	Identifier string    `json:"identifier"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type CommunityMember struct {
+	ID          uuid.UUID `json:"id"`
+	CommunityID uuid.UUID `json:"community_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type CommunityMemberRole struct {
+	ID                uuid.UUID `json:"id"`
+	CommunityID       uuid.UUID `json:"community_id"`
+	CommunityMemberID uuid.UUID `json:"community_member_id"`
+	CommunityRoleID   uuid.UUID `json:"community_role_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type CommunityRole struct {
+	ID          uuid.UUID `json:"id"`
+	CommunityID uuid.UUID `json:"community_id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type EmailConfirmation struct {
 	ID                  uuid.UUID  `json:"id"`
 	Email               string     `json:"email"`
