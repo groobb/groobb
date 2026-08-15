@@ -54,9 +54,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="email">
-					{ templates.T(ctx, "password_reset_new_email_label") }
-				</label>
+				@components.RequiredFieldLabel("email", templates.T(ctx, "password_reset_new_email_label"))
 				<input
 					id="email"
 					name="email"

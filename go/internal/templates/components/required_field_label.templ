@@ -1,0 +1,28 @@
+package components
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// RequiredFieldLabel renders the <label> of a required control: the field's own
+// label text, followed by a marker stating that the field is required. The
+// marker is both visual (smaller, muted) and textual, so the requirement reaches
+// sighted users and screen-reader users alike rather than relying on the
+// required attribute alone. label is the already-translated text; only the
+// marker's wording belongs to this component.
+//
+// field is the control's id, matching the field name used by FieldErrors, so a
+// control's label, errors, and name all key off the same string.
+//
+// [Ja] RequiredFieldLabel は必須の入力欄の <label> を描画します。そのフィールド自身の
+// ラベル文言に続けて、必須であることを示すマーカーを置きます。マーカーは視覚的 (小さく
+// 抑えた色) とテキストの両方であり、required 属性だけに頼らず、目で見る利用者にも
+// スクリーンリーダーの利用者にも必須であることが届きます。label は翻訳済みのテキストで、
+// 本コンポーネントが持つのはマーカーの文言だけです。
+//
+// field は入力欄の id で、FieldErrors が使うフィールド名と一致します。ラベル・エラー・
+// name のすべてが同じ文字列を鍵にします。
+templ RequiredFieldLabel(field string, label string) {
+	<label for={ field } class="items-baseline gap-1">
+		<span>{ label }</span>
+		<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
+	</label>
+}

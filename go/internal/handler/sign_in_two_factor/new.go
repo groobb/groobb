@@ -27,13 +27,22 @@ import (
 func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// The password step forwards return_to here, so both the form and the
+	// recovery-code link below keep the destination the visitor was originally
+	// headed for.
+	//
+	// [Ja] パスワードのステップが return_to をここへ引き継ぐため、フォームも下の
+	// リカバリーコードへのリンクも、訪問者が本来向かっていた遷移先を保てる。
+	returnTo := middleware.SanitizeReturnTo(r.URL.Query().Get(templates.ReturnToParam))
+
 	if _, ok := h.sessionMgr.GetTwoFactorPendingUserID(r); !ok {
-		http.Redirect(w, r, templates.SignInPath().String(), http.StatusSeeOther)
+		http.Redirect(w, r, templates.SignInPath().WithReturnTo(returnTo).String(), http.StatusSeeOther)
 		return
 	}
 
 	h.renderNew(w, r, http.StatusOK, signintwofactorpage.NewPageData{
 		CSRFToken: middleware.CSRFTokenFromContext(ctx),
+		ReturnTo:  returnTo,
 	})
 }
 

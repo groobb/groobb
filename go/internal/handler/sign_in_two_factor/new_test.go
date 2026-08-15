@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -90,16 +91,14 @@ func seedUserWithEnabledTwoFactor(t *testing.T) model.UserID {
 	return user.ID
 }
 
-// getNew builds a GET /sign_in/two_factor/new request, attaching the pending cookie
-// when pendingUserID is non-empty, with the locale set in its context.
+// getNew builds a GET /sign_in/two_factor/new request carrying pendingUserID in
+// the pending cookie, with the locale set in its context.
 //
-// [Ja] getNew は GET /sign_in/two_factor/new リクエストを組み立て、pendingUserID が空でなければ
-// pending Cookie を付け、context にロケールを設定する。
+// [Ja] getNew は pendingUserID を pending Cookie に載せた GET /sign_in/two_factor/new
+// リクエストを組み立て、context にロケールを設定する。
 func getNew(pendingUserID, locale string) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/sign_in/two_factor/new", nil)
-	if pendingUserID != "" {
-		req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: pendingUserID})
-	}
+	req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: pendingUserID})
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
@@ -164,23 +163,121 @@ func TestNew(t *testing.T) {
 
 // TestNew_NoCookieRedirectsToSignIn verifies that GET /sign_in/two_factor/new
 // without the pending cookie redirects to sign-in, since there is no pending
-// challenge to complete.
+// challenge to complete, and that the redirect keeps the destination when the
+// request carried one.
 //
 // [Ja] TestNew_NoCookieRedirectsToSignIn は、pending Cookie の無い
-// GET /sign_in/two_factor/new がサインインへリダイレクトすることを検証する。完了すべき
-// 保留中のチャレンジが無いためである。
+// GET /sign_in/two_factor/new がサインインへリダイレクトすること (完了すべき保留中の
+// チャレンジが無いため)、そしてリクエストが遷移先を運んでいたときはリダイレクトがそれを
+// 保つことを検証する。
 func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 	t.Parallel()
 
 	handler := newSignInTwoFactorHandler(t)
 
-	rec := httptest.NewRecorder()
-	handler.New(rec, getNew("", i18n.LangJa))
-
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	tests := []struct {
+		name         string
+		target       string
+		wantLocation string
+	}{
+		{
+			name:         "遷移先なし",
+			target:       "/sign_in/two_factor/new",
+			wantLocation: "/sign_in",
+		},
+		// The visitor's destination has not changed just because the challenge was
+		// lost, so the restart carries it instead of dropping them on the home page.
+		//
+		// [Ja] チャレンジが失われても訪問者の目的の画面は変わらないため、やり直しでも遷移先を
+		// 運び、ホームに着地させない。
+		{
+			name:         "遷移先あり",
+			target:       "/sign_in/two_factor/new?return_to=%2Fc%2Fgroobb",
+			wantLocation: "/sign_in?return_to=%2Fc%2Fgroobb",
+		},
 	}
-	if loc := rec.Header().Get("Location"); loc != "/sign_in" {
-		t.Errorf("Location = %q, want %q", loc, "/sign_in")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			rec := httptest.NewRecorder()
+
+			handler.New(rec, req)
+
+			if rec.Code != http.StatusSeeOther {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+			}
+			if loc := rec.Header().Get("Location"); loc != tt.wantLocation {
+				t.Errorf("Location = %q, want %q", loc, tt.wantLocation)
+			}
+		})
+	}
+}
+
+// TestNew_ReturnTo verifies that the TOTP challenge page keeps the destination the
+// password step handed over: it rides along in the form's hidden field and in the
+// link to the recovery-code challenge, so switching to recovery codes does not lose
+// where the visitor was headed. A destination naming another origin is dropped from
+// both, so neither can hand an open redirect on to the step that issues the session.
+//
+// [Ja] TestNew_ReturnTo は、TOTP チャレンジページがパスワードのステップから引き渡された
+// 遷移先を保つことを検証する。遷移先はフォームの hidden フィールドと、リカバリーコード
+// チャレンジへのリンクの両方に載るため、リカバリーコードへ切り替えても訪問者の向かっていた
+// 先を失わない。別オリジンを指す遷移先は両方から落ちるため、どちらもセッションを発行する
+// ステップへオープンリダイレクトを引き渡せない。
+func TestNew_ReturnTo(t *testing.T) {
+	t.Parallel()
+
+	handler := newSignInTwoFactorHandler(t)
+
+	tests := []struct {
+		name       string
+		returnTo   string
+		wantHidden bool
+		wantLink   string
+	}{
+		{
+			name:       "同一オリジンの相対パスは引き継ぐ",
+			returnTo:   "/c/groobb",
+			wantHidden: true,
+			wantLink:   `href="/sign_in/two_factor/recovery/new?return_to=%2Fc%2Fgroobb"`,
+		},
+		{
+			name:       "別オリジンを指す値は引き継がない",
+			returnTo:   "https://evil.example.com/c/groobb",
+			wantHidden: false,
+			wantLink:   `href="/sign_in/two_factor/recovery/new"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			target := "/sign_in/two_factor/new?return_to=" + url.QueryEscape(tt.returnTo)
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: uuid.NewString()})
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			rec := httptest.NewRecorder()
+
+			handler.New(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+			}
+			body := rec.Body.String()
+			if got := strings.Contains(body, `name="return_to"`); got != tt.wantHidden {
+				t.Errorf("return_to の hidden フィールドの有無 = %v, want %v", got, tt.wantHidden)
+			}
+			if tt.wantHidden && !strings.Contains(body, `value="/c/groobb"`) {
+				t.Error(`body does not contain value="/c/groobb"`)
+			}
+			if !strings.Contains(body, tt.wantLink) {
+				t.Errorf("body does not contain %q", tt.wantLink)
+			}
+		})
 	}
 }

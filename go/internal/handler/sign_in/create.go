@@ -31,6 +31,15 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
+	// Where to land once a session is issued. The form carries it from the guarded
+	// route the visitor was turned away from, so it is validated here before it is
+	// used as a redirect target or handed to the next step of the flow.
+	//
+	// [Ja] セッション発行後の着地先。訪問者が追い返された保護ルートからフォームが運んで
+	// くるため、リダイレクト先として使う前、そしてフローの次のステップへ渡す前にここで
+	// 検証する。
+	returnTo := middleware.SanitizeReturnTo(r.FormValue(templates.ReturnToParam))
+
 	// Verify the Turnstile token before the UseCase, as a request-level bot gate:
 	// a non-pass (an unsolved / bot-forged widget) and a siteverify failure both
 	// stop the request here so it never reaches the UseCase (no credential check
@@ -62,10 +71,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		slog.WarnContext(ctx, "Turnstile 検証を通過しなかったためサインインを受け付けない", attrs...)
 		formErrors := model.NewValidationError()
 		formErrors.AddGlobal(i18n.T(ctx, "validation_turnstile_failed"))
-		h.renderNew(w, r, http.StatusUnprocessableEntity, signinpage.NewPageData{
+		h.renderNew(w, r, http.StatusUnprocessableEntity, false, signinpage.NewPageData{
 			CSRFToken:  middleware.CSRFTokenFromContext(ctx),
 			Email:      email,
 			FormErrors: formErrors,
+			ReturnTo:   returnTo,
 		})
 		return
 	}
@@ -77,10 +87,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var ve *model.ValidationError
 		if errors.As(err, &ve) {
-			h.renderNew(w, r, http.StatusUnprocessableEntity, signinpage.NewPageData{
+			h.renderNew(w, r, http.StatusUnprocessableEntity, false, signinpage.NewPageData{
 				CSRFToken:  middleware.CSRFTokenFromContext(ctx),
 				Email:      email,
 				FormErrors: ve,
+				ReturnTo:   returnTo,
 			})
 			return
 		}
@@ -101,7 +112,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 素通りして即座にセッションを得る。
 	if signInOutput.UserTwoFactorAuth != nil {
 		h.sessionMgr.SetTwoFactorPendingUserID(w, signInOutput.User.ID)
-		http.Redirect(w, r, templates.SignInTwoFactorNewPath().String(), http.StatusSeeOther)
+		http.Redirect(w, r, templates.SignInTwoFactorNewPath().WithReturnTo(returnTo).String(), http.StatusSeeOther)
 		return
 	}
 
@@ -125,5 +136,5 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	h.sessionMgr.SetSessionCookie(w, sessionOutput.Token)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, templates.AfterSignInPath(returnTo).String(), http.StatusSeeOther)
 }

@@ -35,9 +35,16 @@ import (
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Where to land once the challenge completes. The form carries it from the
+	// password step, so it is validated here before it is used as a redirect target.
+	//
+	// [Ja] チャレンジ完了後の着地先。パスワードのステップからフォームが運んでくるため、
+	// リダイレクト先として使う前にここで検証する。
+	returnTo := middleware.SanitizeReturnTo(r.FormValue(templates.ReturnToParam))
+
 	userID, ok := h.sessionMgr.GetTwoFactorPendingUserID(r)
 	if !ok {
-		http.Redirect(w, r, templates.SignInPath().String(), http.StatusSeeOther)
+		http.Redirect(w, r, templates.SignInPath().WithReturnTo(returnTo).String(), http.StatusSeeOther)
 		return
 	}
 
@@ -56,6 +63,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 				CSRFToken:  middleware.CSRFTokenFromContext(ctx),
 				Code:       code,
 				FormErrors: ve,
+				ReturnTo:   returnTo,
 			})
 			return
 		}
@@ -75,5 +83,5 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	h.sessionMgr.SetSessionCookie(w, output.Token)
 	h.sessionMgr.DeleteTwoFactorPendingUserID(w)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, templates.AfterSignInPath(returnTo).String(), http.StatusSeeOther)
 }

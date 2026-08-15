@@ -3,6 +3,7 @@ package sign_in_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -13,25 +14,31 @@ import (
 
 // TestNew verifies that GET /sign_in returns HTTP 200 with an HTML form carrying
 // the email and password fields and the CSRF hidden field, with the localized
-// heading for each supported locale. New does not touch the session manager,
-// UseCases, or the Turnstile verifier, so they are left nil here.
+// heading and required marker for each supported locale, while keeping the bare
+// sign-in URL indexable. New does not touch the session manager, UseCases, or the
+// Turnstile verifier, so they are left nil here. This page stands in for the
+// forms sharing components.RequiredFieldLabel: it confirms the shared marker
+// reaches a page through the layout and the locale of the request.
 //
 // [Ja] TestNew は GET /sign_in が HTTP 200 と、email・password フィールド・CSRF hidden
-// フィールドを持つ HTML フォームを、サポートする各ロケールのローカライズ済み見出しと
-// ともに返すことを検証します。New はセッションマネージャ・UseCase・Turnstile 検証器に
-// 触れないため、ここでは nil にします。
+// フィールドを持つ HTML フォームを、サポートする各ロケールのローカライズ済み見出しと必須
+// マーカーとともに返し、素のサインイン URL をインデックス対象に保つことを検証します。New は
+// セッションマネージャ・UseCase・Turnstile 検証器に触れないため、ここでは nil にします。
+// 本ページは components.RequiredFieldLabel を共有するフォームの代表であり、共通マーカーが
+// レイアウトとリクエストのロケールを通してページに届くことを確認します。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	handler := sign_in.NewHandler(&config.Config{Env: "test"}, nil, nil, nil, nil)
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
+		name         string
+		locale       string
+		wantHeading  string
+		wantRequired string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb にログイン"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Sign in to Groobb"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb にログイン", wantRequired: "必須"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Sign in to Groobb", wantRequired: "Required"},
 	}
 
 	for _, tt := range tests {
@@ -54,6 +61,9 @@ func TestNew(t *testing.T) {
 			body := rec.Body.String()
 			for _, want := range []string{
 				tt.wantHeading,
+				tt.wantRequired,
+				`<label for="email"`,
+				`<label for="password"`,
 				`name="email"`,
 				`name="password"`,
 				`name="csrf_token"`,
@@ -62,6 +72,9 @@ func TestNew(t *testing.T) {
 				if !strings.Contains(body, want) {
 					t.Errorf("body does not contain %q", want)
 				}
+			}
+			if strings.Contains(body, `name="robots" content="noindex"`) {
+				t.Error("素の /sign_in に noindex が含まれている")
 			}
 		})
 	}
@@ -107,5 +120,78 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("response body does not contain %q", want)
 		}
+	}
+}
+
+// TestNew_ReturnTo verifies that every GET /sign_in URL carrying return_to is
+// noindex, while only a destination accepted for redirect is echoed into the form
+// as a hidden field.
+//
+// [Ja] TestNew_ReturnTo は、return_to を持つすべての GET /sign_in URL が noindex になり、
+// リダイレクト先として受理された遷移先だけが hidden フィールドとしてフォームに
+// エコーバックされることを検証します。
+func TestNew_ReturnTo(t *testing.T) {
+	t.Parallel()
+
+	handler := sign_in.NewHandler(&config.Config{Env: "test"}, nil, nil, nil, nil)
+
+	tests := []struct {
+		name          string
+		returnTo      string
+		wantHidden    bool
+		wantAttribute string
+	}{
+		{
+			name:          "同一オリジンの相対パスは hidden フィールドで引き継ぐ",
+			returnTo:      "/c/groobb",
+			wantHidden:    true,
+			wantAttribute: `value="/c/groobb"`,
+		},
+		{
+			name:       "別オリジンを指す値は引き継がない",
+			returnTo:   "https://evil.example.com/c/groobb",
+			wantHidden: false,
+		},
+		{
+			name:       "空値は引き継がない",
+			returnTo:   "",
+			wantHidden: false,
+		},
+	}
+
+	// A URL carrying return_to is a duplicate of the same form even when its value
+	// is rejected, so every parameterized variant is noindex; the bare /sign_in
+	// checked by TestNew stays indexable.
+	//
+	// [Ja] return_to を持つ URL は、値が拒否される場合も同じフォームの重複であるため、
+	// パラメータ付きの全バリアントを noindex とする。TestNew が確認する素の /sign_in は
+	// インデックス対象のままである。
+	const noIndexTag = `name="robots" content="noindex"`
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			target := "/sign_in?return_to=" + url.QueryEscape(tt.returnTo)
+			req := httptest.NewRequest(http.MethodGet, target, nil)
+			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			rec := httptest.NewRecorder()
+
+			handler.New(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+			}
+			body := rec.Body.String()
+			if got := strings.Contains(body, `name="return_to"`); got != tt.wantHidden {
+				t.Errorf("return_to の hidden フィールドの有無 = %v, want %v", got, tt.wantHidden)
+			}
+			if tt.wantHidden && !strings.Contains(body, tt.wantAttribute) {
+				t.Errorf("body does not contain %q", tt.wantAttribute)
+			}
+			if !strings.Contains(body, noIndexTag) {
+				t.Error("return_to 付きの /sign_in に noindex が含まれていない")
+			}
+		})
 	}
 }

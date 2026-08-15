@@ -167,10 +167,10 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 }
 
 // TestCreate_Success verifies that valid credentials sign the user in (a session
-// cookie is set) and redirect to the top page.
+// cookie is set) and redirect to the home page.
 //
 // [Ja] TestCreate_Success は、有効な資格情報がユーザーをサインインさせ (セッション
-// Cookie を設定)、トップページへリダイレクトすることを検証する。
+// Cookie を設定)、ホームへリダイレクトすることを検証する。
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
@@ -183,8 +183,8 @@ func TestCreate_Success(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	if loc := rec.Header().Get("Location"); loc != "/" {
-		t.Errorf("Location = %q, want %q", loc, "/")
+	if loc := rec.Header().Get("Location"); loc != "/home" {
+		t.Errorf("Location = %q, want %q", loc, "/home")
 	}
 	if sessionCookie := findCookie(rec, session.CookieName); sessionCookie == nil || sessionCookie.Value == "" {
 		t.Error("サインイン後にセッション Cookie が設定されていない")
@@ -200,11 +200,11 @@ func TestCreate_Success(t *testing.T) {
 // TestCreate_TwoFactorEnabled verifies that a 2FA-enabled account is not signed
 // in from the password alone: the password step passes but Create issues no
 // session, sets the short-lived pending cookie, and redirects to the TOTP
-// challenge instead of the top page.
+// challenge instead of the home page.
 //
 // [Ja] TestCreate_TwoFactorEnabled は、2FA 有効なアカウントがパスワードだけでは
 // サインインしないことを検証する。パスワードのステップは通るが Create はセッションを
-// 発行せず、短命の pending Cookie を設定し、トップページではなく TOTP チャレンジへ
+// 発行せず、短命の pending Cookie を設定し、ホームではなく TOTP チャレンジへ
 // リダイレクトする。
 func TestCreate_TwoFactorEnabled(t *testing.T) {
 	t.Parallel()
@@ -292,18 +292,25 @@ func TestCreate_MissingEmail(t *testing.T) {
 // TestCreate_TurnstileFailure verifies that when Turnstile verification does not
 // pass — a non-pass or a siteverify error — Create stops the request at the bot
 // gate: it re-renders the form with 422 and the form-wide Turnstile message,
-// echoes the email back, forwards the submitted token to the verifier, and
-// neither authenticates nor issues a session. Valid credentials are supplied on
-// purpose, so a gate bypass would sign the user in (303 + session cookie); the 422
-// and the absent session cookie confirm the gate ran before authentication.
+// echoes the email and the destination back, forwards the submitted token to the
+// verifier, and neither authenticates nor issues a session. Valid credentials are
+// supplied on purpose, so a gate bypass would sign the user in (303 + session
+// cookie); the 422 and the absent session cookie confirm the gate ran before
+// authentication. The bot gate is a separate branch from the credential-check
+// re-render covered by TestCreate_ReturnToSurvivesValidationError, so the
+// destination is checked on this path too: losing it here would drop the visitor
+// on home after a retry that succeeds.
 //
 // [Ja] TestCreate_TurnstileFailure は、Turnstile 検証が通過しないとき (非通過または
 // siteverify エラー) に Create が Bot ゲートでリクエストを止めることを検証する。
-// フォームを 422 とフォーム全体の Turnstile メッセージで再描画し、email をエコーバックし、
-// 送信されたトークンを検証器へ渡し、認証もセッション発行もしないことを確認する。有効な
-// 資格情報をあえて与えているため、ゲートが迂回されればユーザーはサインインしてしまう
-// (303 + セッション Cookie)。422 とセッション Cookie の不在が、ゲートが認証の前で走った
-// ことを裏付ける。
+// フォームを 422 とフォーム全体の Turnstile メッセージで再描画し、email と遷移先を
+// エコーバックし、送信されたトークンを検証器へ渡し、認証もセッション発行もしないことを
+// 確認する。有効な資格情報をあえて与えているため、ゲートが迂回されればユーザーは
+// サインインしてしまう (303 + セッション Cookie)。422 とセッション Cookie の不在が、
+// ゲートが認証の前で走ったことを裏付ける。Bot ゲートは
+// TestCreate_ReturnToSurvivesValidationError が見る資格情報チェックの再描画とは別の分岐で
+// あるため、遷移先の残存もこの経路で確認する。ここで遷移先を落とすと、再試行に成功しても
+// 訪問者はホームに着地してしまう。
 func TestCreate_TurnstileFailure(t *testing.T) {
 	t.Parallel()
 
@@ -329,6 +336,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 				"email":                 {email},
 				"password":              {"password123"},
 				"cf-turnstile-response": {"submitted-token"},
+				"return_to":             {"/c/groobb"},
 			}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -360,6 +368,14 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 			if !strings.Contains(body, email) {
 				t.Error("入力した email が再描画フォームにエコーバックされていない")
 			}
+			// The destination survives the bot gate, so a successful retry still
+			// lands the visitor where they were headed.
+			//
+			// [Ja] 遷移先は Bot ゲートを越えて残り、再試行に成功した訪問者は向かっていた
+			// 先へ着地できること。
+			if !strings.Contains(body, `value="/c/groobb"`) {
+				t.Error("再描画したフォームに return_to が残っていない")
+			}
 			// The submitted token reached the verifier, confirming the handler read
 			// the correct cf-turnstile-response field.
 			//
@@ -377,5 +393,109 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 				t.Error("Turnstile 失敗時にセッション Cookie が設定された (認証に進んでしまっている)")
 			}
 		})
+	}
+}
+
+// postSignInWithReturnTo builds a POST /sign_in request that also carries a
+// return_to destination, as the form does when the visitor arrived from a route
+// that turned them away.
+//
+// [Ja] postSignInWithReturnTo は return_to の遷移先も併せて運ぶ POST /sign_in リクエストを
+// 組み立てる。訪問者が追い返されたルートから来たときにフォームが送る形と同じである。
+func postSignInWithReturnTo(email, password, returnTo, locale string) *http.Request {
+	form := url.Values{"email": {email}, "password": {password}, "return_to": {returnTo}}
+	req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return req.WithContext(i18n.SetLocale(req.Context(), locale))
+}
+
+// TestCreate_ReturnTo verifies that a sign-in carrying a destination lands the
+// user there instead of on the home page, and that a destination naming another
+// origin is discarded so the sign-in flow cannot be used as an open redirect.
+//
+// [Ja] TestCreate_ReturnTo は、遷移先を伴うサインインがユーザーをホームではなく
+// その遷移先へ着地させること、そして別オリジンを指す遷移先は破棄され、サインインフローが
+// オープンリダイレクトとして使えないことを検証する。
+func TestCreate_ReturnTo(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		returnTo     string
+		wantLocation string
+	}{
+		{name: "同一オリジンの相対パスへ戻す", returnTo: "/c/groobb", wantLocation: "/c/groobb"},
+		{name: "別オリジンを指す値はホームへフォールバックする", returnTo: "//evil.example.com/c/groobb", wantLocation: "/home"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := newSignInHandler(t)
+			email := seedUserWithPassword(t, "password123")
+
+			rec := httptest.NewRecorder()
+			handler.Create(rec, postSignInWithReturnTo(email, "password123", tt.returnTo, i18n.LangJa))
+
+			if rec.Code != http.StatusSeeOther {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+			}
+			if loc := rec.Header().Get("Location"); loc != tt.wantLocation {
+				t.Errorf("Location = %q, want %q", loc, tt.wantLocation)
+			}
+			if sessionCookie := findCookie(rec, session.CookieName); sessionCookie == nil || sessionCookie.Value == "" {
+				t.Error("サインイン後にセッション Cookie が設定されていない")
+			}
+		})
+	}
+}
+
+// TestCreate_TwoFactorEnabledForwardsReturnTo verifies that a 2FA-enabled account
+// keeps its destination across the challenge hop: the redirect to the TOTP form
+// carries return_to, so the code-entry form can hand it on to the step that
+// finally issues the session.
+//
+// [Ja] TestCreate_TwoFactorEnabledForwardsReturnTo は、2FA 有効なアカウントがチャレンジの
+// ホップを跨いで遷移先を保つことを検証する。TOTP フォームへのリダイレクトが return_to を運ぶ
+// ため、コード入力フォームは最終的にセッションを発行するステップへそれを引き渡せる。
+func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSignInHandler(t)
+	email := seedUserWithTwoFactor(t, "password123")
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/c/groobb", i18n.LangJa))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	want := "/sign_in/two_factor/new?return_to=%2Fc%2Fgroobb"
+	if loc := rec.Header().Get("Location"); loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+}
+
+// TestCreate_ReturnToSurvivesValidationError verifies that a failed sign-in
+// re-renders the form with the destination still in it, so the retry that follows
+// still lands the user where they were headed.
+//
+// [Ja] TestCreate_ReturnToSurvivesValidationError は、サインイン失敗時の再描画でも遷移先が
+// フォームに残ることを検証する。これにより続く再試行でもユーザーは向かっていた先へ着地できる。
+func TestCreate_ReturnToSurvivesValidationError(t *testing.T) {
+	t.Parallel()
+
+	handler, _ := newSignInHandler(t)
+	email := seedUserWithPassword(t, "password123")
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/c/groobb", i18n.LangJa))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	if !strings.Contains(rec.Body.String(), `value="/c/groobb"`) {
+		t.Error("再描画したフォームに return_to が残っていない")
 	}
 }

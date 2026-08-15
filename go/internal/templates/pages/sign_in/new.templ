@@ -14,7 +14,9 @@ import (
 // beneath each input. The password is deliberately not echoed back, since
 // re-rendering a password field with its value is a credential-leak risk.
 // TurnstileSiteKey renders the bot-protection widget; when it is empty (the
-// disabled dev / test setup) the widget is omitted entirely.
+// disabled dev / test setup) the widget is omitted entirely. ReturnTo carries
+// where the visitor was headed when a guarded route turned them away, and is
+// submitted along with the credentials so the flow can land them there.
 //
 // [Ja] NewPageData はサインインフォームページのデータです。Email は再描画
 // (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
@@ -23,12 +25,14 @@ import (
 // メッセージ (email の未入力・不正、パスワードの未入力) です。パスワードは意図的に
 // エコーバックしません。値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスクの
 // ためです。TurnstileSiteKey は Bot 対策ウィジェットを描画します。空のとき (無効化された
-// dev / test 構成) はウィジェットを完全に省きます。
+// dev / test 構成) はウィジェットを完全に省きます。ReturnTo は保護されたルートに追い返された
+// とき訪問者が向かっていた先を運び、そこへ着地させられるよう資格情報と一緒に送信します。
 type NewPageData struct {
 	CSRFToken        string
 	Email            string
 	FormErrors       *model.ValidationError
 	TurnstileSiteKey string
+	ReturnTo         string
 }
 
 // New renders the sign-in form: an email and a password field that, on submit,
@@ -51,8 +55,11 @@ templ New(data NewPageData) {
 			</p>
 		</div>
 		@components.FormErrors(data.FormErrors)
-		<form action="/sign_in" method="POST" class="flex flex-col gap-4">
+		<form action={ templates.SignInPath().SafeURL() } method="POST" class="flex flex-col gap-4">
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			if data.ReturnTo != "" {
+				<input type="hidden" name={ templates.ReturnToParam } value={ data.ReturnTo }/>
+			}
 			<div
 				role="group"
 				class="field"
@@ -60,9 +67,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="email">
-					{ templates.T(ctx, "sign_in_new_email_label") }
-				</label>
+				@components.RequiredFieldLabel("email", templates.T(ctx, "sign_in_new_email_label"))
 				<input
 					id="email"
 					name="email"
@@ -85,9 +90,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="password">
-					{ templates.T(ctx, "sign_in_new_password_label") }
-				</label>
+				@components.RequiredFieldLabel("password", templates.T(ctx, "sign_in_new_password_label"))
 				<input
 					id="password"
 					name="password"
@@ -113,7 +116,7 @@ templ New(data NewPageData) {
 			</a>
 		</p>
 		<p class="text-center text-sm text-muted-foreground">
-			<a href="/sign_up" class="font-medium text-foreground underline underline-offset-4">
+			<a href={ templates.SignUpPath().SafeURL() } class="font-medium text-foreground underline underline-offset-4">
 				{ templates.T(ctx, "sign_in_new_sign_up_link") }
 			</a>
 		</p>

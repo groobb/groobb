@@ -1,8 +1,22 @@
 package templates
 
 import (
+	"net/url"
+
 	"github.com/a-h/templ"
 )
+
+// ReturnToParam is the query and form parameter that carries where to send a
+// visitor once they finish signing in. RequireAuth writes it when it turns an
+// anonymous request away, and the sign-in forms hand it along until a session is
+// issued. Its value is only ever trusted after middleware.SanitizeReturnTo has
+// accepted it.
+//
+// [Ja] ReturnToParam はサインインを終えた訪問者をどこへ送るかを運ぶクエリ / フォーム
+// パラメータです。RequireAuth が匿名リクエストを追い返すときに書き込み、サインイン系の
+// フォームがセッション発行まで引き継ぎます。値は middleware.SanitizeReturnTo を通った
+// ものだけを信頼します。
+const ReturnToParam = "return_to"
 
 // Path represents a URL path within the application. Centralizing path strings
 // here lets templates link to routes without hard-coding literals, so a route
@@ -25,6 +39,70 @@ func (p Path) String() string {
 // [Ja] SafeURL はパスを href / action 属性で使うための templ.SafeURL として返します。
 func (p Path) SafeURL() templ.SafeURL {
 	return templ.SafeURL(p)
+}
+
+// WithReturnTo returns the path carrying returnTo in the return_to query
+// parameter. RequireAuth builds the first such URL when it turns an anonymous
+// request away, and each later hop rebuilds it — the password step on to the TOTP
+// challenge, the links between the TOTP and recovery-code challenges, and the
+// restart back to sign-in when a challenge is gone — so the destination the
+// visitor was originally headed for survives to the step that issues the session.
+// An empty returnTo leaves the path untouched, which is how a flow that carries
+// no destination stays on the bare path. The caller passes a value that
+// middleware.SanitizeReturnTo has already accepted; this method builds the URL
+// and does not re-check it. The receiver must be a path without a query string,
+// as the route helpers in this file return: the parameter is appended after a
+// literal "?", so a receiver that already carries a query would produce two.
+// AfterSignInPath is the one helper here that does not qualify, since it hands
+// back the caller's destination unchanged and that may carry a query.
+//
+// [Ja] WithReturnTo は returnTo を return_to クエリパラメータに載せたパスを返します。
+// 最初のこの URL は RequireAuth が匿名リクエストを追い返すときに組み立て、以降の各ホップ
+// (パスワードのステップから TOTP チャレンジへ、TOTP とリカバリーコードのチャレンジを
+// 行き来するリンク、チャレンジが失われたときのサインインへのやり直し) が組み立て直します。
+// これにより、訪問者が本来向かっていた遷移先はセッションを発行するステップまで残ります。
+// returnTo が空のときはパスをそのまま返し、遷移先を持たないフローは素のパスのままになり
+// ます。呼び出し側は middleware.SanitizeReturnTo が受け付け済みの値を渡します。本メソッド
+// は URL を組み立てるだけで、値の再検証は行いません。レシーバーは、本ファイルのルート
+// ヘルパーが返すとおりクエリを持たないパスであることを前提とします。パラメータはリテラルの
+// "?" の後ろに連結するため、既にクエリを持つレシーバーでは "?" が 2 つ並んでしまいます。
+// 本ファイルで唯一これに当てはまらないのが AfterSignInPath で、呼び出し側の遷移先を
+// そのまま返すためクエリを含みうります。
+func (p Path) WithReturnTo(returnTo string) Path {
+	if returnTo == "" {
+		return p
+	}
+
+	return Path(string(p) + "?" + url.Values{ReturnToParam: {returnTo}}.Encode())
+}
+
+// RootPath returns the path to the top page.
+//
+// [Ja] RootPath はトップページのパスを返します。
+func RootPath() Path {
+	return Path("/")
+}
+
+// AfterSignInPath returns where to send a visitor once their session is issued:
+// the destination the sign-in flow carried in returnTo, or the home page when the
+// flow carried none. The three routes that issue a session (password, TOTP, and
+// recovery code) share it so they land the visitor in the same place. Home rather
+// than the top page, because the top page turns a signed-in visitor away to home
+// anyway; sending them there directly saves that extra redirect hop. returnTo is
+// a value middleware.SanitizeReturnTo has already accepted.
+//
+// [Ja] AfterSignInPath はセッション発行後に訪問者を送る先を返します。サインインフローが
+// returnTo で運んできた遷移先、運んでこなかったときはホームです。セッションを発行する
+// 3 つのルート (パスワード・TOTP・リカバリーコード) がこれを共有し、訪問者を同じ場所へ
+// 着地させます。トップページではなくホームなのは、トップページがサインイン済みの訪問者を
+// 結局ホームへ送るためです。直接ホームへ送ればその 1 段分のリダイレクトを省けます。
+// returnTo は middleware.SanitizeReturnTo が受け付け済みの値です。
+func AfterSignInPath(returnTo string) Path {
+	if returnTo == "" {
+		return HomePath()
+	}
+
+	return Path(returnTo)
 }
 
 // SignUpPath returns the path to the sign-up form.
@@ -176,4 +254,36 @@ func SettingsWithdrawalNewPath() Path {
 // 到達します)。
 func SettingsWithdrawalPath() Path {
 	return Path("/settings/withdrawal")
+}
+
+// CommunityNewPath returns the path to the community-creation form.
+//
+// [Ja] CommunityNewPath はコミュニティ作成フォームのパスを返します。
+func CommunityNewPath() Path {
+	return Path("/communities/new")
+}
+
+// CommunityListPath returns the path to the community collection. Creating a
+// community targets it with POST /communities.
+//
+// [Ja] CommunityListPath はコミュニティのコレクションのパスを返します。コミュニティの
+// 作成は POST /communities でこれを対象とします。
+func CommunityListPath() Path {
+	return Path("/communities")
+}
+
+// CommunityPath returns the path to a community's own page. Pages belonging to a
+// community live under the short /c/ prefix rather than /communities, so the URL
+// stays short as boards and posts nest beneath it and no identifier can collide
+// with a route in the collection namespace. identifier is a value the
+// community-creation validator has accepted (ASCII letters, digits, and hyphens),
+// so it needs no escaping here.
+//
+// [Ja] CommunityPath はコミュニティ自身の画面のパスを返します。コミュニティに属する画面は
+// /communities ではなく短縮した /c/ 接頭辞の下に置き、掲示板や投稿がその下に入れ子に
+// なっても URL を短く保ち、識別子がコレクション名前空間のルートと衝突しないようにします。
+// identifier はコミュニティ作成のバリデーターが受け付けた値 (ASCII 英数字とハイフン) の
+// ため、ここでのエスケープは不要です。
+func CommunityPath(identifier string) Path {
+	return Path("/c/" + identifier)
 }

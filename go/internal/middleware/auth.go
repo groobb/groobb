@@ -44,21 +44,49 @@ func NewAuth(sessionMgr *session.Manager) *Auth {
 
 // RequireAuth guards routes that require an authenticated user. It resolves the
 // current user from the session cookie and, when signed in, stores it in the
-// request context before handing off to next. An anonymous request (no cookie,
-// or an unknown or stale token) is redirected to /sign_in instead of reaching
-// the handler. Unlike SetUser, a genuine lookup failure (e.g. the database is
-// unreachable) is treated as fatal and answered with 500, because a protected
-// page cannot be rendered safely without knowing who the visitor is.
+// request context before handing off to next. An anonymous GET or HEAD request
+// (no cookie, or an unknown or stale token) is redirected to /sign_in instead of
+// reaching the handler, with the requested URL attached as return_to so the
+// visitor lands back on it once signed in — a guarded page whose link is shared
+// publicly is otherwise unreachable for whoever follows it signed out. Other
+// methods fall back to bare /sign_in because their targets cannot be safely
+// replayed as GET landing pages. Unlike SetUser, a genuine lookup failure (e.g.
+// the database is unreachable) is treated as fatal and answered with 500,
+// because a protected page cannot be rendered safely without knowing who the
+// visitor is. Every response it produces is marked Cache-Control: private,
+// no-cache.
 //
 // [Ja] RequireAuth は認証済みユーザーを要求するルートを保護する。セッション Cookie
 // から現在のユーザーを解決し、サインイン済みのときは next へ渡す前にリクエスト context
-// に格納する。匿名リクエスト (Cookie が無い / token が未知・失効) はハンドラーに到達
-// させず /sign_in へリダイレクトする。SetUser と異なり、本物の解決失敗 (例: データ
-// ベースに到達できない) は致命的として 500 で応答する。保護されたページは訪問者が誰か
-// わからないまま安全に描画できないためである。
+// に格納する。匿名の GET / HEAD リクエスト (Cookie が無い / token が未知・失効) は
+// ハンドラーに到達させず /sign_in へリダイレクトし、サインイン後に元の URL へ戻れるよう
+// リクエスト先を return_to として載せる。そうしないと、保護されたページの共有リンクを
+// 未サインインで踏んだ人はそのページに辿り着けない。その他のメソッドは、宛先をサインイン後に
+// GET で安全に再現できないため、素の /sign_in へフォールバックする。SetUser と異なり、
+// 本物の解決失敗 (例: データベースに到達できない) は致命的として 500 で応答する。保護された
+// ページは訪問者が誰かわからないまま安全に描画できないためである。本ミドルウェアが返す
+// すべてのレスポンスには Cache-Control: private, no-cache を付ける。
 func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		// What a guarded route answers depends on who is asking — the page itself
+		// for a signed-in visitor, a redirect to sign-in for anyone else — so no
+		// response leaving here may be held by a shared cache or reused without
+		// revalidation. Setting it here rather than in each handler means a route
+		// added later carries the policy by being guarded at all, and the value
+		// reaches the redirect and the 500 as well as the page. A handler needing a
+		// stricter policy replaces the value (settings_two_factor_auth uses
+		// no-store for the plaintext secret and the recovery codes).
+		//
+		// [Ja] 保護されたルートの応答は誰が要求したかで変わる (サインイン済みならページ
+		// 自身、それ以外はサインインへのリダイレクト) ため、ここを出るどのレスポンスも
+		// 共有キャッシュに保持されたり再検証なしで再利用されたりしてはならない。各
+		// ハンドラーではなくここで設定することで、後から追加したルートも保護されている
+		// こと自体で方針を備え、値はページだけでなくリダイレクトと 500 にも届く。より
+		// 厳しい方針が要るハンドラーは値を置き換える (settings_two_factor_auth は平文の
+		// secret とリカバリーコードのために no-store を使う)。
+		w.Header().Set("Cache-Control", "private, no-cache")
 
 		user, err := a.sessionMgr.GetCurrentUser(ctx, r)
 		if err != nil {
@@ -68,7 +96,7 @@ func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		if user == nil {
-			http.Redirect(w, r, "/sign_in", http.StatusSeeOther)
+			http.Redirect(w, r, signInPathWithReturnTo(r), http.StatusSeeOther)
 			return
 		}
 

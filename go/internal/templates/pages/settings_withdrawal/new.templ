@@ -62,9 +62,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="current_password">
-					{ templates.T(ctx, "settings_withdrawal_new_current_password_label") }
-				</label>
+				@components.RequiredFieldLabel("current_password", templates.T(ctx, "settings_withdrawal_new_current_password_label"))
 				<input
 					id="current_password"
 					name="current_password"

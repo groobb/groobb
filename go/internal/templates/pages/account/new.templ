@@ -55,9 +55,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="atname">
-					{ templates.T(ctx, "account_new_atname_label") }
-				</label>
+				@components.RequiredFieldLabel("atname", templates.T(ctx, "account_new_atname_label"))
 				<input
 					id="atname"
 					name="atname"
@@ -87,9 +85,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="password">
-					{ templates.T(ctx, "account_new_password_label") }
-				</label>
+				@components.RequiredFieldLabel("password", templates.T(ctx, "account_new_password_label"))
 				<input
 					id="password"
 					name="password"
@@ -114,9 +110,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="password_confirmation">
-					{ templates.T(ctx, "account_new_password_confirmation_label") }
-				</label>
+				@components.RequiredFieldLabel("password_confirmation", templates.T(ctx, "account_new_password_confirmation_label"))
 				<input
 					id="password_confirmation"
 					name="password_confirmation"

@@ -121,3 +121,54 @@ type UserTwoFactorAuthID uuid.UUID
 //
 // [Ja] String は UserTwoFactorAuthID を正準の UUID 文字列形式で返します。
 func (id UserTwoFactorAuthID) String() string { return uuid.UUID(id).String() }
+
+// CommunityID is the typed identifier for a community. Like UserID it wraps
+// uuid.UUID so community IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] CommunityID はコミュニティの型付き識別子です。UserID と同様に uuid.UUID を
+// ラップし、コミュニティ ID を他エンティティの ID と取り違えられないようにします。
+type CommunityID uuid.UUID
+
+// String returns the canonical UUID string form of the CommunityID.
+//
+// [Ja] String は CommunityID を正準の UUID 文字列形式で返します。
+func (id CommunityID) String() string { return uuid.UUID(id).String() }
+
+// CommunityRoleID is the typed identifier for a community role. Like UserID it
+// wraps uuid.UUID so role IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] CommunityRoleID はコミュニティロールの型付き識別子です。UserID と同様に
+// uuid.UUID をラップし、ロール ID を他エンティティの ID と取り違えられないようにします。
+type CommunityRoleID uuid.UUID
+
+// String returns the canonical UUID string form of the CommunityRoleID.
+//
+// [Ja] String は CommunityRoleID を正準の UUID 文字列形式で返します。
+func (id CommunityRoleID) String() string { return uuid.UUID(id).String() }
+
+// CommunityMemberID is the typed identifier for a community membership. Like
+// UserID it wraps uuid.UUID so membership IDs cannot be mixed up with other
+// entities' IDs.
+//
+// [Ja] CommunityMemberID はコミュニティのメンバーシップの型付き識別子です。UserID と
+// 同様に uuid.UUID をラップし、メンバーシップ ID を他エンティティの ID と取り違えられない
+// ようにします。
+type CommunityMemberID uuid.UUID
+
+// String returns the canonical UUID string form of the CommunityMemberID.
+//
+// [Ja] String は CommunityMemberID を正準の UUID 文字列形式で返します。
+func (id CommunityMemberID) String() string { return uuid.UUID(id).String() }
+
+// CommunityMemberRoleID is the typed identifier for a role assignment. Like
+// UserID it wraps uuid.UUID so assignment IDs cannot be mixed up with other
+// entities' IDs.
+//
+// [Ja] CommunityMemberRoleID はロール割当の型付き識別子です。UserID と同様に uuid.UUID を
+// ラップし、割当 ID を他エンティティの ID と取り違えられないようにします。
+type CommunityMemberRoleID uuid.UUID
+
+// String returns the canonical UUID string form of the CommunityMemberRoleID.
+//
+// [Ja] String は CommunityMemberRoleID を正準の UUID 文字列形式で返します。
+func (id CommunityMemberRoleID) String() string { return uuid.UUID(id).String() }

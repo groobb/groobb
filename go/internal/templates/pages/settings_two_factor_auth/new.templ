@@ -84,9 +84,7 @@ templ New(data NewPageData) {
 					data-invalid="true"
 				}
 			>
-				<label for="code">
-					{ templates.T(ctx, "settings_two_factor_auth_new_code_label") }
-				</label>
+				@components.RequiredFieldLabel("code", templates.T(ctx, "settings_two_factor_auth_new_code_label"))
 				<input
 					id="code"
 					name="code"
