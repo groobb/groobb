@@ -45,8 +45,10 @@ func postCreate(user *model.User, code, locale string) *http.Request {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	h, repo, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).Build()
+	db := testutil.SetupDB(t)
+
+	h, repo, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -101,8 +103,10 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	h, repo, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).Build()
+	db := testutil.SetupDB(t)
+
+	h, repo, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).Build()
 
 	// A well-formed code deliberately not equal to the current one.
 	//
@@ -165,8 +169,10 @@ func TestCreate_ValidationError(t *testing.T) {
 func TestCreate_AlreadyEnabled(t *testing.T) {
 	t.Parallel()
 
-	h, _, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).WithEnabled(true).Build()
+	db := testutil.SetupDB(t)
+
+	h, _, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {

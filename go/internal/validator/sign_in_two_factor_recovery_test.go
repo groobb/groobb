@@ -4,12 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -23,15 +20,15 @@ import (
 var seededRecoveryCodes = []string{"abcd1234", "efgh5678"}
 
 // newSignInTwoFactorRecoveryValidator builds a
-// SignInTwoFactorRecoveryCreateValidator over the test transaction so its 2FA
-// lookup runs inside the rolled-back transaction.
+// SignInTwoFactorRecoveryCreateValidator over the test's own database so its 2FA
+// lookup reads the rows the test seeded there.
 //
-// [Ja] newSignInTwoFactorRecoveryValidator はテスト用トランザクション上に
-// SignInTwoFactorRecoveryCreateValidator を組み立て、その 2FA ルックアップが
-// ロールバックされるトランザクション内で走るようにする。
-func newSignInTwoFactorRecoveryValidator(t *testing.T, db *pgxpool.Pool, tx pgx.Tx) *validator.SignInTwoFactorRecoveryCreateValidator {
+// [Ja] newSignInTwoFactorRecoveryValidator はテスト専用のデータベース上に
+// SignInTwoFactorRecoveryCreateValidator を組み立て、その 2FA ルックアップがそこへ
+// 仕込んだ行を読むようにする。
+func newSignInTwoFactorRecoveryValidator(t *testing.T, db *database.DB) *validator.SignInTwoFactorRecoveryCreateValidator {
 	t.Helper()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	return validator.NewSignInTwoFactorRecoveryCreateValidator(repo)
 }
 
@@ -45,17 +42,17 @@ func newSignInTwoFactorRecoveryValidator(t *testing.T, db *pgxpool.Pool, tx pgx.
 func TestSignInTwoFactorRecoveryCreateValidator_Validate_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-rc-v@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-rc-v@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).
 		WithUserID(userID).
 		WithEnabled(true).
 		WithRecoveryCodes(seededRecoveryCodes).
 		Build()
 
-	v := newSignInTwoFactorRecoveryValidator(t, db, tx)
+	v := newSignInTwoFactorRecoveryValidator(t, db)
 	out, err := v.Validate(ctx, validator.SignInTwoFactorRecoveryCreateValidatorInput{UserID: userID, Code: "abcd1234"})
 	if err != nil {
 		t.Fatalf("Validate() error = %v, want nil", err)
@@ -78,11 +75,11 @@ func TestSignInTwoFactorRecoveryCreateValidator_Validate_Success(t *testing.T) {
 func TestSignInTwoFactorRecoveryCreateValidator_Validate_FieldErrors(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-rc-v-bad@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-rc-v-bad@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).
 		WithUserID(userID).
 		WithEnabled(true).
 		WithRecoveryCodes(seededRecoveryCodes).
@@ -102,7 +99,7 @@ func TestSignInTwoFactorRecoveryCreateValidator_Validate_FieldErrors(t *testing.
 		{name: "未知のコード", code: "zzzz9999"},
 	}
 
-	v := newSignInTwoFactorRecoveryValidator(t, db, tx)
+	v := newSignInTwoFactorRecoveryValidator(t, db)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -133,7 +130,7 @@ func TestSignInTwoFactorRecoveryCreateValidator_Validate_FieldErrors(t *testing.
 func TestSignInTwoFactorRecoveryCreateValidator_Validate_NoEnabledTwoFactor(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// A user whose 2FA is only enrolling (not enabled) counts as no enabled 2FA, so
@@ -141,10 +138,10 @@ func TestSignInTwoFactorRecoveryCreateValidator_Validate_NoEnabledTwoFactor(t *t
 	//
 	// [Ja] 2FA が登録中 (未有効化) のみのユーザーは有効な 2FA 無しと数えるため、形式の
 	// 整ったコードでも受理できない。
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-rc-v-none@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-rc-v-none@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
-	v := newSignInTwoFactorRecoveryValidator(t, db, tx)
+	v := newSignInTwoFactorRecoveryValidator(t, db)
 	out, err := v.Validate(ctx, validator.SignInTwoFactorRecoveryCreateValidatorInput{UserID: userID, Code: "abcd1234"})
 	if out != nil {
 		t.Error("有効な 2FA が無いのに設定を返している")

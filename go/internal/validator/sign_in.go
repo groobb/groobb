@@ -77,7 +77,7 @@ type SignInCreateValidatorInput struct {
 // password, or a wrong password — is deliberately reported with a single global
 // message that does not reveal which of the two was wrong, so the form does not
 // become an account-enumeration oracle. The email match is case-insensitive
-// because users.email is citext.
+// because users.email collates NOCASE.
 //
 // [Ja] Validate は送信された資格情報を検証し、成功時は認証されたユーザーと、有効な
 // 2 段階認証設定 (アカウントに無ければ nil) を併せて返します。入力に問題があれば
@@ -86,7 +86,7 @@ type SignInCreateValidatorInput struct {
 // 報告します。資格情報チェックの失敗 (未知の email・パスワードの無いアカウント・誤った
 // パスワード) は、どちらが誤りかを明かさない単一のグローバルメッセージで意図的に報告し、
 // フォームがアカウント列挙のオラクルにならないようにします。email の照合は users.email が
-// citext のため大文字小文字を区別しません。
+// NOCASE 照合のため大文字小文字を区別しません。
 func (v *SignInCreateValidator) Validate(ctx context.Context, input SignInCreateValidatorInput) (*SignInCreateValidateOutput, error) {
 	ve := model.NewValidationError()
 

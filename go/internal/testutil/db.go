@@ -1,141 +1,204 @@
-// Package testutil provides shared helpers for tests, such as a pooled test
-// database connection and per-test transaction setup.
+// Package testutil provides shared helpers for tests, such as a per-test SQLite
+// database and the builders that seed rows into it.
 //
-// [Ja] testutil パッケージは、テスト用の共有ヘルパー (プール化したテスト DB 接続や
-// テストごとのトランザクションのセットアップなど) を提供します。
+// [Ja] testutil パッケージは、テスト用の共有ヘルパー (テストごとの SQLite データベースと、
+// そこへ行を投入するビルダーなど) を提供します。
 package testutil
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 )
 
-// testPool is the pgx connection pool shared across all tests in a package. It
-// is established exactly once via testPoolOnce.
+// databaseFileName is the name given to every test database file. Each one
+// lives in a directory of its own, so the name only has to be recognizable in
+// a stack trace or a leftover temporary directory.
 //
-// [Ja] testPool はパッケージ内の全テストで共有する pgx 接続プールです。
-// testPoolOnce によりちょうど一度だけ確立されます。
+// [Ja] databaseFileName はすべてのテスト用データベースファイルに付ける名前です。
+// どのファイルもそれぞれ専用のディレクトリに置かれるため、名前に求められるのは
+// スタックトレースや残った一時ディレクトリの中で見分けが付くことだけです。
+const databaseFileName = "groobb.sqlite"
+
+// schemaSnapshot holds an empty database file that has every migration applied,
+// built once per test binary and copied for each test that asks for a database.
+//
+// [Ja] schemaSnapshot は、マイグレーションをすべて適用した空のデータベースファイルを
+// 保持します。テストバイナリごとに 1 度だけ構築し、データベースを要求するテストごとに
+// 複製します。
 var (
-	testPool     *pgxpool.Pool
-	testPoolOnce sync.Once
+	schemaSnapshot     []byte
+	schemaSnapshotErr  error
+	schemaSnapshotOnce sync.Once
 )
 
-// SetupTestMain initializes the shared pool eagerly from a package's TestMain
-// and returns the exit code to pass to os.Exit. It is optional: SetupTx and
-// GetTestDB both lazily initialize the pool, so a main_test.go is only needed
-// when eager initialization is desired.
+// SetupDB gives the test a migrated SQLite database of its own and returns its
+// connection pools, closing them when the test finishes.
 //
-// Usage:
+// Each test gets a separate database file instead of sharing one and rolling
+// back a transaction per test, because SQLite allows a single writer at a time
+// for the whole file: parallel tests each holding a write transaction would
+// serialize on that one writer. The database is a file rather than an in-memory
+// one so that tests exercise the WAL mode and lock contention that production
+// runs on.
 //
-//	func TestMain(m *testing.M) {
-//	    os.Exit(testutil.SetupTestMain(m))
-//	}
+// [Ja] SetupDB はテストに専用のマイグレーション済み SQLite データベースを与え、その
+// 接続プールを返します。プールはテストの終了時にクローズします。
 //
-// [Ja] SetupTestMain はパッケージの TestMain から共有プールを eager に初期化し、
-// os.Exit に渡す終了コードを返します。SetupTx / GetTestDB はいずれもプールを遅延
-// 初期化するため本関数は任意で、eager 初期化したい場合にのみ main_test.go を置きます。
-// 使用例は上記の Usage を参照してください。
-func SetupTestMain(m *testing.M) int {
-	initTestPool()
-	return m.Run()
-}
-
-// SetupTx begins a test transaction on the shared pool and registers a cleanup
-// that rolls it back when the test finishes, isolating each test's writes. Use
-// it for Repository, Validator, and Handler tests.
-//
-// [Ja] SetupTx は共有プール上でテスト用トランザクションを開始し、テスト終了時に
-// ロールバックする cleanup を登録して各テストの書き込みを分離します。Repository /
-// Validator / Handler のテストで使います。
-func SetupTx(t *testing.T) (*pgxpool.Pool, pgx.Tx) {
+// 1 つのデータベースを共有してテストごとにトランザクションをロールバックするのではなく、
+// テストごとにファイルを分けるのは、SQLite がファイル全体で同時に 1 つのライターしか
+// 許さないためです。並行するテストがそれぞれ書き込みトランザクションを保持すると、その
+// 1 つのライター上で直列化されてしまいます。インメモリではなくファイルにするのは、本番が
+// 動作するのと同じ WAL モードとロック競合をテストでも通るようにするためです。
+func SetupDB(t *testing.T) *database.DB {
 	t.Helper()
 
-	initTestPool()
+	path := SetupDBPath(t)
 
-	tx, err := testPool.Begin(context.Background())
+	db, err := database.Open(context.Background(), path)
 	if err != nil {
-		t.Fatalf("トランザクションの開始に失敗: %v", err)
+		t.Fatalf("failed to open the test database: %v", err)
 	}
 
 	t.Cleanup(func() {
-		// A Rollback after a successful Commit returns pgx.ErrTxClosed, which is
-		// expected for committing tests and is not a failure.
-		//
-		// [Ja] Commit 成功後の Rollback は pgx.ErrTxClosed を返す。コミットする
-		// テストでは想定どおりで、失敗ではない。
-		if err := tx.Rollback(context.Background()); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			t.Errorf("トランザクションのロールバックに失敗: %v", err)
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close the test database: %v", err)
 		}
 	})
 
-	return testPool, tx
+	return db
 }
 
-// GetTestDB returns the shared pgx connection pool. Use it for UseCase tests
-// that manage their own transactions: wrapping such a test in an outer
-// transaction would hide the seeded data from the UseCase's inner transaction,
-// so the data must be committed to the pool directly instead.
+// SetupDBPath gives the test a migrated SQLite database file of its own and
+// returns its path, for a caller that opens the file itself rather than taking
+// the pools SetupDB returns (the worker client, which owns its own connection).
 //
-// [Ja] GetTestDB は共有 pgx 接続プールを返します。自前でトランザクションを管理する
-// UseCase のテストで使います。そうしたテストを外側のトランザクションで包むと、投入
-// した前提データが UseCase の内側のトランザクションから見えなくなるため、プールに
-// 直接コミットする必要があります。
-func GetTestDB() *pgxpool.Pool {
-	initTestPool()
-	return testPool
-}
+// [Ja] SetupDBPath はテストに専用のマイグレーション済み SQLite データベースファイルを
+// 与え、そのパスを返します。SetupDB が返すプールを受け取るのではなく、ファイルを自分で
+// 開く呼び出し元 (自身の接続を所有するワーカークライアント) のためのものです。
+func SetupDBPath(t *testing.T) string {
+	t.Helper()
 
-// DatabaseURL returns the test database connection string: DATABASE_URL if set
-// (provided by the test harness), otherwise the local/CI default. It is the
-// single source of truth for how tests resolve the DSN, so callers that need
-// the URL string rather than the pool (such as the worker client, which takes a
-// URL instead of a *pgxpool.Pool) resolve it the same way GetTestDB's pool does.
-//
-// [Ja] DatabaseURL はテスト DB の接続文字列を返す。DATABASE_URL (テストハーネスが
-// 設定) があればそれを、無ければローカル / CI の既定値を返す。テストが DSN をどう
-// 解決するかの正本であり、プールではなく URL 文字列を必要とする呼び出し元 (URL を
-// 受け取る worker クライアントなど) も、GetTestDB のプールと同じ方法で解決できる。
-func DatabaseURL() string {
-	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
-		return dsn
+	snapshot, err := prepareSchemaSnapshot()
+	if err != nil {
+		t.Fatalf("failed to prepare the test database schema: %v", err)
 	}
-	return "postgres://postgres:postgres@postgresql:5432/groobb_test?sslmode=disable"
+
+	// t.TempDir gives each test a directory that is removed when it ends, which
+	// takes the database file with it. Its removal is registered before any
+	// cleanup the caller adds, so it runs after the caller closes what it opened.
+	//
+	// [Ja] t.TempDir はテストごとに、そのテストの終了時に削除されるディレクトリを
+	// 与える。データベースファイルもそれと共に消える。ディレクトリの削除は呼び出し元が
+	// 登録する cleanup より先に登録されるため、実行は呼び出し元が開いたものを閉じた後になる。
+	path := filepath.Join(t.TempDir(), databaseFileName)
+	if err := os.WriteFile(path, snapshot, 0o600); err != nil {
+		t.Fatalf("failed to write the test database file: %v", err)
+	}
+
+	return path
 }
 
-// initTestPool establishes the shared pool exactly once. Whichever of
-// SetupTestMain / SetupTx / GetTestDB is called first triggers it, and all
-// callers share the same pool.
+// prepareSchemaSnapshot returns the snapshot every test database is copied
+// from, building it on the first call.
 //
-// [Ja] initTestPool は共有プールをちょうど一度だけ確立します。SetupTestMain /
-// SetupTx / GetTestDB のうち最初に呼ばれたものが起点となり、すべての呼び出し元が
-// 同じプールを共有します。
-func initTestPool() {
-	testPoolOnce.Do(func() {
-		// Lower the bcrypt cost so password hashing in tests is fast
-		// (DefaultCost 10 -> MinCost 4 is roughly 64x faster).
-		//
-		// [Ja] テストでのパスワードハッシュ化を高速化するため bcrypt コストを下げる
-		// (DefaultCost 10 → MinCost 4 で約 64 倍高速)。
-		auth.BcryptCost = auth.TestBcryptCost
+// The first call also lowers the bcrypt cost, which is a package-level variable
+// that parallel tests would otherwise race to write. Both belong to the same
+// one-time setup: a test that calls SetupDB is a test that runs against the
+// database, and hashing a password at the production cost dominates such a
+// test's runtime.
+//
+// [Ja] prepareSchemaSnapshot は、すべてのテスト用データベースの複製元となる
+// スナップショットを返します。最初の呼び出しで構築します。
+//
+// 最初の呼び出しでは bcrypt のコストも下げます。これはパッケージレベルの変数であり、
+// そうしなければ並行するテストが競合して書き込むことになります。どちらも同じ 1 度きりの
+// セットアップに属します。SetupDB を呼ぶテストはデータベースを相手にするテストであり、
+// 本番のコストでパスワードをハッシュ化するとそのテストの実行時間の大半を占めるためです。
+func prepareSchemaSnapshot() ([]byte, error) {
+	schemaSnapshotOnce.Do(func() {
+		lowerBcryptCost()
 
-		pool, err := pgxpool.New(context.Background(), DatabaseURL())
-		if err != nil {
-			panic(fmt.Sprintf("テスト用データベースへの接続に失敗: %v", err))
-		}
-
-		if err := pool.Ping(context.Background()); err != nil {
-			panic(fmt.Sprintf("テスト用データベースへの ping に失敗: %v", err))
-		}
-
-		testPool = pool
+		schemaSnapshot, schemaSnapshotErr = buildSchemaSnapshot()
 	})
+
+	return schemaSnapshot, schemaSnapshotErr
+}
+
+// buildSchemaSnapshot migrates a throwaway database and returns the resulting
+// file.
+//
+// Copying this snapshot is how each test gets its schema, rather than migrating
+// its database directly: writing the file costs about a fifth of what applying
+// the migrations does, and the gap widens as migrations accumulate, since goose
+// reads and applies all of them every time.
+//
+// The snapshot is kept in memory rather than as a file on disk because such a
+// file would have to outlive every test that copies it, and a test binary has
+// no point at which it can remove it afterwards.
+//
+// [Ja] buildSchemaSnapshot は使い捨てのデータベースをマイグレートし、その結果の
+// ファイルを返します。
+//
+// 各テストがスキーマを得る手段を、データベースを直接マイグレートすることではなく、この
+// スナップショットの複製にしているのは、ファイルの書き出しにかかるコストが
+// マイグレーションの適用の約 5 分の 1 であり、しかも goose が毎回すべてのマイグレーションを
+// 読んで適用する以上、その差はマイグレーションが増えるほど開いていくためです。
+//
+// スナップショットをディスク上のファイルではなくメモリに持つのは、ファイルにすると
+// それを複製するすべてのテストより長く生存させる必要があり、テストバイナリには後から
+// それを削除できる地点が無いためです。
+func buildSchemaSnapshot() ([]byte, error) {
+	ctx := context.Background()
+
+	dir, err := os.MkdirTemp("", "groobb-schema-snapshot-")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the snapshot directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+
+	path := filepath.Join(dir, databaseFileName)
+
+	db, err := database.Open(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the snapshot database: %w", err)
+	}
+
+	if err := database.Migrate(ctx, db.Writer); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate the snapshot database: %w", err)
+	}
+
+	// Close before reading the file: in WAL mode the migrations live in the
+	// write-ahead log, and SQLite folds them into the database file when the
+	// last connection closes. Reading it earlier would yield a file whose copy
+	// is an empty database.
+	//
+	// [Ja] ファイルを読む前にクローズする。WAL モードではマイグレーションは
+	// write-ahead log 上にあり、SQLite が最後のコネクションのクローズでそれを
+	// データベースファイルへ畳み込むため。それより早く読むと、複製しても空の
+	// データベースにしかならないファイルが得られる。
+	if err := db.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close the snapshot database: %w", err)
+	}
+
+	// The path is the temporary directory this function just created joined with
+	// a constant file name, so it never comes from outside, and gosec G304 (a
+	// file read from a variable path) is a false positive here.
+	//
+	// [Ja] path は本関数が今作った一時ディレクトリと定数のファイル名を結合したもので、
+	// 外部から渡されることはないため、gosec G304 (変数のパスからのファイル読み込みの
+	// 指摘) はここでは false positive である。
+	//nolint:gosec // G304
+	snapshot, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the snapshot database: %w", err)
+	}
+
+	return snapshot, nil
 }

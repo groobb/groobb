@@ -148,12 +148,12 @@ func (PurgeWithdrawnUsersArgs) InsertOpts() river.InsertOpts {
 }
 
 // JobInserter is the single slice of the River client the Dispatcher depends
-// on: inserting a job. *river.Client[pgx.Tx] satisfies this signature directly,
+// on: inserting a job. *river.Client[*sql.Tx] satisfies this signature directly,
 // so the worker client can be injected without a wrapper, and tests can pass a
 // mock to assert which job and options were enqueued.
 //
 // [Ja] JobInserter は Dispatcher が依存する River クライアントの機能 (ジョブの投入) を
-// 1 つだけ切り出したインターフェース。*river.Client[pgx.Tx] がこのシグネチャをそのまま
+// 1 つだけ切り出したインターフェース。*river.Client[*sql.Tx] がこのシグネチャをそのまま
 // 満たすため、ラッパーなしで worker クライアントを注入でき、テストではモックを渡して
 // どのジョブ・オプションで投入されたかを検証できる。
 type JobInserter interface {

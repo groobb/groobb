@@ -4,28 +4,24 @@ import (
 	"context"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newPrepareTwoFactorAuthUsecase builds a PrepareTwoFactorAuthUsecase bound to the
-// test transaction and creates a user, returning the usecase, the repository (for
-// assertions), the user ID, and a context. The usecase opens no transaction of its
-// own, so the WithTx repository keeps every write inside the rolled-back test
-// transaction.
+// newPrepareTwoFactorAuthUsecase builds a PrepareTwoFactorAuthUsecase over the
+// test's own database and creates a user, returning the usecase, the repository
+// (for assertions), the user ID, and a context.
 //
-// [Ja] newPrepareTwoFactorAuthUsecase はテスト用トランザクションに束ねた
+// [Ja] newPrepareTwoFactorAuthUsecase はテスト専用のデータベース上に
 // PrepareTwoFactorAuthUsecase を作りユーザーを作成して、usecase・(検証用の) リポジトリ・
-// ユーザー ID・context を返す。usecase は自前のトランザクションを開かないため、WithTx
-// リポジトリがすべての書き込みをロールバックされるテストトランザクション内に保つ。
-func newPrepareTwoFactorAuthUsecase(t *testing.T) (*usecase.PrepareTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID, context.Context) {
+// ユーザー ID・context を返す。
+func newPrepareTwoFactorAuthUsecase(t *testing.T, db *database.DB) (*usecase.PrepareTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	return usecase.NewPrepareTwoFactorAuthUsecase(repo), repo, userID, context.Background()
 }
 
@@ -38,7 +34,9 @@ func newPrepareTwoFactorAuthUsecase(t *testing.T) (*usecase.PrepareTwoFactorAuth
 func TestPrepareTwoFactorAuthUsecase_Execute_CreatesEnrollment(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userID, ctx := newPrepareTwoFactorAuthUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userID, ctx := newPrepareTwoFactorAuthUsecase(t, db)
 
 	out, err := uc.Execute(ctx, usecase.PrepareTwoFactorAuthInput{UserID: userID})
 	if err != nil {
@@ -75,13 +73,13 @@ func TestPrepareTwoFactorAuthUsecase_Execute_CreatesEnrollment(t *testing.T) {
 func TestPrepareTwoFactorAuthUsecase_Execute_ReusesInProgress(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewPrepareTwoFactorAuthUsecase(repo)
 	ctx := context.Background()
 
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 	out, err := uc.Execute(ctx, usecase.PrepareTwoFactorAuthInput{UserID: userID})
 	if err != nil {
@@ -103,13 +101,13 @@ func TestPrepareTwoFactorAuthUsecase_Execute_ReusesInProgress(t *testing.T) {
 func TestPrepareTwoFactorAuthUsecase_Execute_AlreadyEnabled(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewPrepareTwoFactorAuthUsecase(repo)
 	ctx := context.Background()
 
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 	out, err := uc.Execute(ctx, usecase.PrepareTwoFactorAuthInput{UserID: userID})
 	if err != nil {

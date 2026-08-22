@@ -5,39 +5,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newPasswordResetTokenRepo builds a PasswordResetTokenRepository bound to the
-// test transaction, exercising WithTx so writes roll back when the test
-// finishes. It returns the transaction too so a test can seed a user (the FK
-// target) and count rows directly.
+// newPasswordResetTokenRepo builds a PasswordResetTokenRepository over the
+// database the test owns, which the caller keeps as well so it can seed a user
+// (the FK target) and count rows directly.
 //
-// [Ja] newPasswordResetTokenRepo はテスト用トランザクションに束ねた
-// PasswordResetTokenRepository を作る。WithTx を通すことで、テスト終了時に書き込みが
-// ロールバックされる。テストが (FK の対象となる) ユーザーを仕込み、行を直接数えられるよう
-// トランザクションも返す。
-func newPasswordResetTokenRepo(t *testing.T) (*repository.PasswordResetTokenRepository, pgx.Tx, context.Context) {
+// [Ja] newPasswordResetTokenRepo はテストが所有するデータベース上に
+// PasswordResetTokenRepository を作る。呼び出し側はその db を手元に持ち続け、
+// (FK の対象となる) ユーザーを仕込んだり行を直接数えたりする。
+func newPasswordResetTokenRepo(t *testing.T, db *database.DB) (*repository.PasswordResetTokenRepository, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	return repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx), tx, context.Background()
+	return repository.NewPasswordResetTokenRepository(db), context.Background()
 }
 
 // countTokens returns how many password_reset_tokens rows exist for the user in
-// the test transaction.
+// the test's database.
 //
-// [Ja] countTokens はテスト用トランザクション内で、そのユーザーの
+// [Ja] countTokens はテストのデータベース内で、そのユーザーの
 // password_reset_tokens 行数を返す。
-func countTokens(t *testing.T, tx pgx.Tx, ctx context.Context, userID model.UserID) int {
+func countTokens(t *testing.T, db *database.DB, ctx context.Context, userID model.UserID) int {
 	t.Helper()
 	var count int
-	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = $1", uuid.UUID(userID)).Scan(&count); err != nil {
+	if err := db.Writer.QueryRowContext(ctx, "SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = ?", int64(userID)).Scan(&count); err != nil {
 		t.Fatalf("トークン数の取得に失敗: %v", err)
 	}
 	return count
@@ -53,8 +47,10 @@ func countTokens(t *testing.T, tx pgx.Tx, ctx context.Context, userID model.User
 func TestPasswordResetTokenRepository_Create(t *testing.T) {
 	t.Parallel()
 
-	repo, tx, ctx := newPasswordResetTokenRepo(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	db := testutil.SetupDB(t)
+
+	repo, ctx := newPasswordResetTokenRepo(t, db)
+	userID := testutil.NewUserBuilder(t, db).Build()
 
 	expiresAt := time.Now().Add(model.PasswordResetTokenExpirationDuration)
 	token, err := repo.Create(ctx, repository.CreatePasswordResetTokenInput{
@@ -66,7 +62,7 @@ func TestPasswordResetTokenRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if token.ID == (model.PasswordResetTokenID{}) {
+	if token.ID == 0 {
 		t.Error("Create() token.ID は DB 採番で空でないはず")
 	}
 	if token.UserID != userID {
@@ -75,13 +71,13 @@ func TestPasswordResetTokenRepository_Create(t *testing.T) {
 	if token.TokenDigest != "digest-abc" {
 		t.Errorf("token.TokenDigest = %q, want %q", token.TokenDigest, "digest-abc")
 	}
-	// Postgres timestamptz keeps microsecond precision, so the round-tripped value
-	// can differ from the nanosecond-precision input by up to a microsecond;
+	// Timestamps are stored with a fixed three-digit fraction, so the round-tripped
+	// value can differ from the nanosecond-precision input by up to a millisecond;
 	// compare within that tolerance rather than for exact equality.
 	//
-	// [Ja] Postgres の timestamptz はマイクロ秒精度のため、往復した値はナノ秒精度の入力と
-	// 最大 1 マイクロ秒ずれうる。完全一致ではなくその許容差で比較する。
-	if diff := token.ExpiresAt.Sub(expiresAt); diff < -time.Microsecond || diff > time.Microsecond {
+	// [Ja] 時刻は小数部 3 桁固定で保存されるため、往復した値はナノ秒精度の入力と最大
+	// 1 ミリ秒ずれうる。完全一致ではなくその許容差で比較する。
+	if diff := token.ExpiresAt.Sub(expiresAt); diff < -time.Millisecond || diff > time.Millisecond {
 		t.Errorf("token.ExpiresAt = %v, want ~%v (diff %v)", token.ExpiresAt, expiresAt, diff)
 	}
 	if token.UsedAt != nil {
@@ -105,8 +101,10 @@ func TestPasswordResetTokenRepository_Create(t *testing.T) {
 func TestPasswordResetTokenRepository_FindByTokenDigest(t *testing.T) {
 	t.Parallel()
 
-	repo, tx, ctx := newPasswordResetTokenRepo(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	db := testutil.SetupDB(t)
+
+	repo, ctx := newPasswordResetTokenRepo(t, db)
+	userID := testutil.NewUserBuilder(t, db).Build()
 	created, err := repo.Create(ctx, repository.CreatePasswordResetTokenInput{
 		UserID:      userID,
 		TokenDigest: "lookup-digest",
@@ -153,8 +151,10 @@ func TestPasswordResetTokenRepository_FindByTokenDigest(t *testing.T) {
 func TestPasswordResetTokenRepository_MarkAsUsed(t *testing.T) {
 	t.Parallel()
 
-	repo, tx, ctx := newPasswordResetTokenRepo(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	db := testutil.SetupDB(t)
+
+	repo, ctx := newPasswordResetTokenRepo(t, db)
+	userID := testutil.NewUserBuilder(t, db).Build()
 	created, err := repo.Create(ctx, repository.CreatePasswordResetTokenInput{
 		UserID:      userID,
 		TokenDigest: "to-be-used",
@@ -195,8 +195,10 @@ func TestPasswordResetTokenRepository_MarkAsUsed(t *testing.T) {
 func TestPasswordResetTokenRepository_DeleteUnusedByUserID(t *testing.T) {
 	t.Parallel()
 
-	repo, tx, ctx := newPasswordResetTokenRepo(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	db := testutil.SetupDB(t)
+
+	repo, ctx := newPasswordResetTokenRepo(t, db)
+	userID := testutil.NewUserBuilder(t, db).Build()
 	expiresAt := time.Now().Add(model.PasswordResetTokenExpirationDuration)
 
 	// Two unused tokens and one already-used token for the same user.
@@ -219,11 +221,11 @@ func TestPasswordResetTokenRepository_DeleteUnusedByUserID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if _, err := tx.Exec(ctx, "UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1", uuid.UUID(usedToken.ID)); err != nil {
+	if _, err := db.Writer.ExecContext(ctx, "UPDATE password_reset_tokens SET used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?", int64(usedToken.ID)); err != nil {
 		t.Fatalf("使用済みトークンの打刻に失敗: %v", err)
 	}
 
-	if got := countTokens(t, tx, ctx, userID); got != 3 {
+	if got := countTokens(t, db, ctx, userID); got != 3 {
 		t.Fatalf("削除前のトークン数 = %d, want 3", got)
 	}
 
@@ -234,7 +236,7 @@ func TestPasswordResetTokenRepository_DeleteUnusedByUserID(t *testing.T) {
 	// Only the used token survives.
 	//
 	// [Ja] 残るのは使用済みトークンだけ。
-	if got := countTokens(t, tx, ctx, userID); got != 1 {
+	if got := countTokens(t, db, ctx, userID); got != 1 {
 		t.Errorf("削除後のトークン数 = %d, want 1 (使用済みのみ残る)", got)
 	}
 }

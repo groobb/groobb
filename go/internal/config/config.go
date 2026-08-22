@@ -15,6 +15,27 @@ import (
 	"time"
 )
 
+// ContinuationTokenMinimumKeyLength is the shortest ContinuationTokenKey that is
+// accepted, in bytes. A length of 32 bytes matches SHA-256's 256-bit output.
+// The configured value must still come from a cryptographically secure random
+// source: this length check rejects short keys but cannot establish their
+// entropy.
+//
+// It lives here rather than beside the signing code because Load rejects a short
+// key at startup while the signing code fails closed on one, and both must draw
+// the bound from the same place: raising it in only one of the two would leave a
+// key that starts the application but signs nothing.
+//
+// [Ja] ContinuationTokenMinimumKeyLength は受け付ける ContinuationTokenKey の最小長
+// (バイト) です。32 バイトは SHA-256 の 256 bit の出力長に対応します。設定値自体は
+// 暗号学的に安全な乱数源から生成する必要があり、この長さ検査は短い鍵を拒否しますが、
+// エントロピーまでは保証できません。
+//
+// 署名処理の隣ではなくここに置くのは、Load が起動時に短い鍵を拒否し、署名処理側は短い鍵で
+// fail-closed になるという 2 つの判定が同じ値を見る必要があるためです。片方だけを引き上げ
+// ると、アプリケーションは起動するのに何も署名できない鍵が生まれます。
+const ContinuationTokenMinimumKeyLength = 32
+
 // Config holds the application settings.
 //
 // [Ja] Config はアプリケーションの設定を保持します。
@@ -24,10 +45,30 @@ type Config struct {
 	// [Ja] Env は実行環境 ("dev" / "test" / "prod") を表します。
 	Env string
 
-	// DatabaseURL is the PostgreSQL connection string.
+	// ContinuationTokenKey signs the short-lived cookies that carry server-side
+	// state between steps of the email-confirmation and two-factor sign-in flows.
+	// It must be a stable, secret value of at least 32 bytes: changing it
+	// invalidates outstanding continuation tokens, while exposing it lets an
+	// attacker forge authentication state.
 	//
-	// [Ja] DatabaseURL は PostgreSQL の接続文字列です。
-	DatabaseURL string
+	// [Ja] ContinuationTokenKey はメール確認と 2 段階認証サインインの各ステップ間で
+	// サーバー側状態を運ぶ短命 Cookie に署名します。32 バイト以上の安定した秘密値で
+	// なければなりません。変更すると発行済み continuation token が無効になり、漏えいすると
+	// 攻撃者が認証状態を偽造できるためです。
+	ContinuationTokenKey string
+
+	// DatabasePath is the filesystem path of the SQLite database file. It holds
+	// every piece of state an instance keeps, so it is required rather than
+	// defaulted: a plausible-looking default would let a misconfigured instance
+	// start on an empty database of its own making instead of reporting that it
+	// does not know where its data is.
+	//
+	// [Ja] DatabasePath は SQLite データベースファイルのファイルシステム上のパスです。
+	// インスタンスが保持する状態はすべてこのファイルにあるため、既定値を持たせず必須と
+	// します。それらしい既定値を置くと、設定を誤ったインスタンスが「データの在り処が
+	// 分からない」と報告する代わりに、自分で作った空のデータベースの上で起動して
+	// しまうためです。
+	DatabasePath string
 
 	// Port is the TCP port the HTTP server listens on.
 	//
@@ -134,9 +175,17 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("required environment variable GROOBB_PORT is not set")
 	}
 
-	cfg.DatabaseURL = os.Getenv("DATABASE_URL")
-	if cfg.DatabaseURL == "" {
-		return nil, fmt.Errorf("required environment variable DATABASE_URL is not set")
+	cfg.DatabasePath = os.Getenv("GROOBB_DATABASE_PATH")
+	if cfg.DatabasePath == "" {
+		return nil, fmt.Errorf("required environment variable GROOBB_DATABASE_PATH is not set")
+	}
+
+	cfg.ContinuationTokenKey = os.Getenv("GROOBB_CONTINUATION_TOKEN_KEY")
+	if cfg.ContinuationTokenKey == "" {
+		return nil, fmt.Errorf("required environment variable GROOBB_CONTINUATION_TOKEN_KEY is not set")
+	}
+	if len(cfg.ContinuationTokenKey) < ContinuationTokenMinimumKeyLength {
+		return nil, fmt.Errorf("GROOBB_CONTINUATION_TOKEN_KEY must be at least %d bytes", ContinuationTokenMinimumKeyLength)
 	}
 
 	// Pin the asset version to the current commit so that non-dev environments

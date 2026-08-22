@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 )
 
@@ -21,27 +19,27 @@ import (
 // セッションは常に既存ユーザーに属するため、所有ユーザーは必須で既定値はありません。
 type UserSessionBuilder struct {
 	t         *testing.T
-	tx        pgx.Tx
+	db        *database.DB
 	userID    model.UserID
 	token     string
 	ipAddress string
 	userAgent string
 }
 
-// NewUserSessionBuilder creates a UserSessionBuilder. The default token embeds a
-// random UUID so concurrent tests (t.Parallel) do not collide on the
-// user_sessions.token UNIQUE constraint without each test having to pick a
-// distinct token.
+// NewUserSessionBuilder creates a UserSessionBuilder. The default token carries
+// the test's next sequence number, so a test that builds several sessions does
+// not have to name each token to keep them apart on the user_sessions.token
+// UNIQUE constraint.
 //
-// [Ja] NewUserSessionBuilder は UserSessionBuilder を生成します。既定の token には
-// ランダムな UUID を埋め込み、並行テスト (t.Parallel) が各自で別 token を選ばずとも
-// user_sessions.token の UNIQUE 制約で衝突しないようにします。
-func NewUserSessionBuilder(t *testing.T, tx pgx.Tx) *UserSessionBuilder {
+// [Ja] NewUserSessionBuilder は UserSessionBuilder を生成します。既定の token はその
+// テストの次の連番を持つため、複数のセッションを作るテストが user_sessions.token の
+// UNIQUE 制約で互いを区別するために token を一つずつ決める必要はありません。
+func NewUserSessionBuilder(t *testing.T, db *database.DB) *UserSessionBuilder {
 	t.Helper()
 	return &UserSessionBuilder{
 		t:         t,
-		tx:        tx,
-		token:     fmt.Sprintf("test-token-%s", uuid.NewString()),
+		db:        db,
+		token:     fmt.Sprintf("test-token-%d", nextSequence(db)),
 		ipAddress: "127.0.0.1",
 		userAgent: "test-user-agent",
 	}
@@ -89,14 +87,14 @@ func (b *UserSessionBuilder) WithUserAgent(userAgent string) *UserSessionBuilder
 func (b *UserSessionBuilder) Build() model.UserSessionID {
 	b.t.Helper()
 
-	if b.userID == (model.UserID{}) {
+	if b.userID == 0 {
 		b.t.Fatal("UserSessionBuilder にはユーザー ID が必要です (WithUserID で設定してください)")
 	}
 
-	var id uuid.UUID
-	err := b.tx.QueryRow(context.Background(),
-		`INSERT INTO user_sessions (user_id, token, ip_address, user_agent) VALUES ($1, $2, $3, $4) RETURNING id`,
-		uuid.UUID(b.userID), b.token, b.ipAddress, b.userAgent,
+	var id int64
+	err := b.db.Writer.QueryRowContext(context.Background(),
+		`INSERT INTO user_sessions (user_id, token, ip_address, user_agent) VALUES (?, ?, ?, ?) RETURNING id`,
+		int64(b.userID), b.token, b.ipAddress, b.userAgent,
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーセッションの作成に失敗: %v", err)

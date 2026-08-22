@@ -7,25 +7,23 @@ package query
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createUserSession = `-- name: CreateUserSession :one
 INSERT INTO user_sessions (user_id, token, ip_address, user_agent)
-VALUES ($1, $2, $3, $4)
+VALUES (?, ?, ?, ?)
 RETURNING id, user_id, token, ip_address, user_agent, signed_in_at, created_at, updated_at
 `
 
 type CreateUserSessionParams struct {
-	UserID    uuid.UUID `json:"user_id"`
-	Token     string    `json:"token"`
-	IpAddress string    `json:"ip_address"`
-	UserAgent string    `json:"user_agent"`
+	UserID    int64  `json:"user_id"`
+	Token     string `json:"token"`
+	IpAddress string `json:"ip_address"`
+	UserAgent string `json:"user_agent"`
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionParams) (UserSession, error) {
-	row := q.db.QueryRow(ctx, createUserSession,
+	row := q.db.QueryRowContext(ctx, createUserSession,
 		arg.UserID,
 		arg.Token,
 		arg.IpAddress,
@@ -46,29 +44,29 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 }
 
 const deleteUserSessionByToken = `-- name: DeleteUserSessionByToken :exec
-DELETE FROM user_sessions WHERE token = $1
+DELETE FROM user_sessions WHERE token = ?
 `
 
 func (q *Queries) DeleteUserSessionByToken(ctx context.Context, token string) error {
-	_, err := q.db.Exec(ctx, deleteUserSessionByToken, token)
+	_, err := q.db.ExecContext(ctx, deleteUserSessionByToken, token)
 	return err
 }
 
 const deleteUserSessionsByUserID = `-- name: DeleteUserSessionsByUserID :exec
-DELETE FROM user_sessions WHERE user_id = $1
+DELETE FROM user_sessions WHERE user_id = ?
 `
 
-func (q *Queries) DeleteUserSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUserSessionsByUserID, userID)
+func (q *Queries) DeleteUserSessionsByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUserSessionsByUserID, userID)
 	return err
 }
 
 const getUserSessionByToken = `-- name: GetUserSessionByToken :one
-SELECT id, user_id, token, ip_address, user_agent, signed_in_at, created_at, updated_at FROM user_sessions WHERE token = $1 LIMIT 1
+SELECT id, user_id, token, ip_address, user_agent, signed_in_at, created_at, updated_at FROM user_sessions WHERE token = ? LIMIT 1
 `
 
 func (q *Queries) GetUserSessionByToken(ctx context.Context, token string) (UserSession, error) {
-	row := q.db.QueryRow(ctx, getUserSessionByToken, token)
+	row := q.db.QueryRowContext(ctx, getUserSessionByToken, token)
 	var i UserSession
 	err := row.Scan(
 		&i.ID,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,15 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/settings_withdrawal"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -28,28 +25,25 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSettingsWithdrawalHandler wires a settings_withdrawal Handler over the shared
-// pool. The DeleteAccountUsecase opens its own transaction, so its tests commit
-// rows and use unique identifiers (the test database is reset by make test) rather
-// than the rolled-back transaction pattern.
+// newSettingsWithdrawalHandler wires a settings_withdrawal Handler over the test
+// database's repositories, so a handler test drives the DeleteAccountUsecase and
+// the transaction it opens against a real database.
 //
-// [Ja] newSettingsWithdrawalHandler は共有プール上に settings_withdrawal Handler を
-// 組み立てます。DeleteAccountUsecase は自前のトランザクションを開くため、そのテストは
-// ロールバックされるトランザクションパターンではなく、行をコミットしユニークな識別子を
-// 使います (テスト DB は make test がリセットする)。
-func newSettingsWithdrawalHandler(t *testing.T) *settings_withdrawal.Handler {
+// [Ja] newSettingsWithdrawalHandler はテスト用データベースのリポジトリで
+// settings_withdrawal Handler を組み立てます。ハンドラーテストが DeleteAccountUsecase
+// と、それが開くトランザクションを実 DB に対して駆動できるようにするためです。
+func newSettingsWithdrawalHandler(t *testing.T, db *database.DB) *settings_withdrawal.Handler {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	flashMgr := session.NewFlashManager(cfg)
 	deleteAccountUC := usecase.NewDeleteAccountUsecase(
-		testutil.GetTestDB(),
+		db.Writer,
 		validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo),
 		userRepo,
 		userSessionRepo,
@@ -66,18 +60,17 @@ func newSettingsWithdrawalHandler(t *testing.T) *settings_withdrawal.Handler {
 // コミット済みユーザーを作成し、ユーザーモデル (テストが RequireAuth のように context に
 // 載せられるよう) とセッショントークン (リクエストが一致するセッション Cookie を運べるよう)
 // を返します。
-func seedWithdrawalUser(t *testing.T) (*model.User, string) {
+func seedWithdrawalUser(t *testing.T, db *database.DB) (*model.User, string) {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
-		Email:    fmt.Sprintf("wd-h-%s@example.com", uuid.NewString()),
-		Atname:   testutil.UniqueAtname(),
+		Email:    "wd-h@example.com",
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -94,7 +87,7 @@ func seedWithdrawalUser(t *testing.T) (*model.User, string) {
 	}); err != nil {
 		t.Fatalf("テスト用パスワードの作成に失敗: %v", err)
 	}
-	token := "wd-h-token-" + uuid.NewString()
+	token := "wd-h-token"
 	if _, err := userSessionRepo.Create(ctx, repository.CreateUserSessionInput{
 		UserID:    user.ID,
 		Token:     token,
@@ -184,8 +177,10 @@ func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMes
 func TestDelete_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newSettingsWithdrawalHandler(t)
-	user, token := seedWithdrawalUser(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSettingsWithdrawalHandler(t, db)
+	user, token := seedWithdrawalUser(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Delete(rec, deleteWithdrawal(user, "password123", token, i18n.LangJa))
@@ -221,8 +216,8 @@ func TestDelete_Success(t *testing.T) {
 	// [Ja] ユーザー行が論理削除される。行は (deleted_at で絞るルックアップではなく) 直接
 	// クエリするため、論理削除されたユーザーも観測できる。
 	var deletedAt *time.Time
-	if err := testutil.GetTestDB().QueryRow(context.Background(),
-		`SELECT deleted_at FROM users WHERE id = $1`, uuid.UUID(user.ID),
+	if err := db.Reader.QueryRowContext(context.Background(),
+		`SELECT deleted_at FROM users WHERE id = ?`, int64(user.ID),
 	).Scan(&deletedAt); err != nil {
 		t.Fatalf("退会後のユーザー行の取得に失敗: %v", err)
 	}
@@ -233,7 +228,7 @@ func TestDelete_Success(t *testing.T) {
 	// The session row is gone (all devices signed out by the UseCase).
 	//
 	// [Ja] セッション行が消えている (UseCase が全端末をサインアウトさせた)。
-	if got := countUserSessions(t, user.ID); got != 0 {
+	if got := countUserSessions(t, db, user.ID); got != 0 {
 		t.Errorf("退会後のセッション数 = %d, want 0", got)
 	}
 }
@@ -248,8 +243,10 @@ func TestDelete_Success(t *testing.T) {
 func TestDelete_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	handler := newSettingsWithdrawalHandler(t)
-	user, _ := seedWithdrawalUser(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSettingsWithdrawalHandler(t, db)
+	user, _ := seedWithdrawalUser(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Delete(rec, deleteWithdrawal(user, "wrongpassword", "wd-h-token-unused", i18n.LangJa))
@@ -280,15 +277,15 @@ func TestDelete_ValidationError(t *testing.T) {
 	//
 	// [Ja] アカウントは無傷: 論理削除されず、セッションも残る。
 	var deletedAt *time.Time
-	if err := testutil.GetTestDB().QueryRow(context.Background(),
-		`SELECT deleted_at FROM users WHERE id = $1`, uuid.UUID(user.ID),
+	if err := db.Reader.QueryRowContext(context.Background(),
+		`SELECT deleted_at FROM users WHERE id = ?`, int64(user.ID),
 	).Scan(&deletedAt); err != nil {
 		t.Fatalf("ユーザー行の取得に失敗: %v", err)
 	}
 	if deletedAt != nil {
 		t.Error("バリデーション失敗時にユーザーが論理削除された")
 	}
-	if got := countUserSessions(t, user.ID); got != 1 {
+	if got := countUserSessions(t, db, user.ID); got != 1 {
 		t.Errorf("バリデーション失敗時のセッション数 = %d, want 1 (削除されるべきでない)", got)
 	}
 }
@@ -298,12 +295,12 @@ func TestDelete_ValidationError(t *testing.T) {
 //
 // [Ja] countUserSessions は指定ユーザーがまだ所有するセッション数を返す。退会が
 // それらを消したこと (または拒否された退会がそれらを残したこと) を検証するために使う。
-func countUserSessions(t *testing.T, userID model.UserID) int {
+func countUserSessions(t *testing.T, db *database.DB, userID model.UserID) int {
 	t.Helper()
 
 	var count int
-	if err := testutil.GetTestDB().QueryRow(context.Background(),
-		`SELECT count(*) FROM user_sessions WHERE user_id = $1`, uuid.UUID(userID),
+	if err := db.Reader.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM user_sessions WHERE user_id = ?`, int64(userID),
 	).Scan(&count); err != nil {
 		t.Fatalf("セッション件数の取得に失敗: %v", err)
 	}

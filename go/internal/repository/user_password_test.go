@@ -4,26 +4,23 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newUserPasswordRepo builds a UserPasswordRepository bound to the test
-// transaction (via WithTx) and creates a user to own the password, returning the
-// user ID so writes roll back when the test finishes.
+// newUserPasswordRepo builds a UserPasswordRepository over the database the test
+// owns and creates a user to own the password, returning the user ID so each
+// test can attach its password to an existing owner.
 //
-// [Ja] newUserPasswordRepo はテスト用トランザクションに束ねた (WithTx を通した)
-// UserPasswordRepository を作り、パスワードの所有ユーザーを作成してその ID を返す。
-// テスト終了時に書き込みはロールバックされる。
+// [Ja] newUserPasswordRepo はテストが所有するデータベース上に UserPasswordRepository を
+// 作り、パスワードの所有ユーザーを作成してその ID を返す。各テストが既存の所有者に
+// パスワードを紐付けられるようにするためである。
 func newUserPasswordRepo(t *testing.T) (*repository.UserPasswordRepository, model.UserID, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserPasswordRepository(db)
 	return repo, userID, context.Background()
 }
 
@@ -40,7 +37,7 @@ func TestUserPasswordRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if userPassword.ID == (model.UserPasswordID{}) {
+	if userPassword.ID == 0 {
 		t.Error("Create() userPassword.ID は DB 採番で空でないはず")
 	}
 	if userPassword.UserID != userID {
@@ -86,7 +83,7 @@ func TestUserPasswordRepository_FindByUserID(t *testing.T) {
 	})
 
 	t.Run("パスワードを持たない user_id は (nil, nil) を返す", func(t *testing.T) {
-		userPassword, err := repo.FindByUserID(ctx, model.UserID(uuid.New()))
+		userPassword, err := repo.FindByUserID(ctx, model.UserID(testutil.UnusedID))
 		if err != nil {
 			t.Fatalf("FindByUserID() error = %v, want nil", err)
 		}

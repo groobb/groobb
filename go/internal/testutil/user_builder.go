@@ -3,14 +3,12 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // UserBuilder builds a users row for tests via a fluent API, applying sensible
@@ -20,7 +18,7 @@ import (
 // 適用するため、テストは関心のあるフィールドだけを設定すれば済みます。
 type UserBuilder struct {
 	t         *testing.T
-	tx        pgx.Tx
+	db        *database.DB
 	email     string
 	atname    string
 	locale    string
@@ -28,41 +26,54 @@ type UserBuilder struct {
 	deletedAt *time.Time
 }
 
-// NewUserBuilder creates a UserBuilder. The default email and atname each embed a
-// random UUID so concurrent tests (t.Parallel) do not collide on the users.email
-// or users.atname UNIQUE constraint without each test having to pick a distinct
-// value. The default atname strips the UUID's hyphens and truncates it to stay
-// within the atname format (ASCII letters/digits/underscore, 20 chars max).
+// NewUserBuilder creates a UserBuilder. The default email and atname each carry
+// the database's next sequence number, so a test that builds several users does
+// not have to name each one to keep them apart on the users.email or users.atname
+// UNIQUE constraint.
 //
-// [Ja] NewUserBuilder は UserBuilder を生成します。既定の email と atname はそれぞれ
-// ランダムな UUID を埋め込み、並行テスト (t.Parallel) が各自で別値を選ばずとも
-// users.email / users.atname の UNIQUE 制約で衝突しないようにします。既定の atname は
-// UUID のハイフンを除き切り詰めて、atname の形式 (ASCII 英数字 / アンダースコア・最大
-// 20 文字) に収めます。
-func NewUserBuilder(t *testing.T, tx pgx.Tx) *UserBuilder {
+// [Ja] NewUserBuilder は UserBuilder を生成します。既定の email と atname はそのデータ
+// ベースの次の連番を持つため、複数のユーザーを作るテストが users.email / users.atname の
+// UNIQUE 制約で互いを区別するために一つずつ名前を決める必要はありません。
+func NewUserBuilder(t *testing.T, db *database.DB) *UserBuilder {
 	t.Helper()
+
+	sequence := nextSequence(db)
 	return &UserBuilder{
 		t:        t,
-		tx:       tx,
-		email:    fmt.Sprintf("test-%s@example.com", uuid.NewString()),
-		atname:   UniqueAtname(),
+		db:       db,
+		email:    fmt.Sprintf("test-%d@example.com", sequence),
+		atname:   fmt.Sprintf("u%d", sequence),
 		locale:   "ja",
 		timeZone: "Asia/Tokyo",
 	}
 }
 
-// UniqueAtname returns a random, format-compliant atname (a leading letter plus
-// 15 hex chars, 16 total) for tests that create users directly (not via
-// UserBuilder) and commit the rows, so they do not collide on the users.atname
-// UNIQUE constraint. It strips the UUID's hyphens and truncates it to stay within
-// the atname format (ASCII letters/digits/underscore, 20 chars max).
+// UniqueAtname returns a format-compliant atname (a leading letter plus the
+// database's next sequence number) for tests that create users directly rather
+// than through UserBuilder, so several users in one database do not collide on
+// the users.atname UNIQUE constraint. The leading letter is what keeps the value
+// inside the atname format, which allows ASCII letters, digits, and underscore.
 //
-// [Ja] UniqueAtname は形式適合のランダムな atname (先頭の英字 + 16 進 15 文字の計 16
-// 文字) を返す。UserBuilder を介さず直接ユーザーを作成し行をコミットするテストが
-// users.atname の UNIQUE 制約で衝突しないようにするためのもの。UUID のハイフンを除き
-// 切り詰めて atname の形式 (ASCII 英数字 / アンダースコア・最大 20 文字) に収める。
-func UniqueAtname() string {
-	return "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:15]
+// [Ja] UniqueAtname は形式に適合する atname (先頭の英字 + そのデータベースの次の連番) を
+// 返します。UserBuilder を介さず直接ユーザーを作成するテストが、1 つのデータベース内の
+// 複数ユーザーで users.atname の UNIQUE 制約に衝突しないようにするためのものです。値を
+// atname の形式 (ASCII 英数字とアンダースコアを許す) の内側に保つのが先頭の英字です。
+func UniqueAtname(db *database.DB) string {
+	return fmt.Sprintf("u%d", nextSequence(db))
+}
+
+// UniqueEmail returns an email address carrying the database's next sequence
+// number, for tests that create users directly rather than through UserBuilder
+// and need several addresses in one database to stay apart on the users.email
+// UNIQUE constraint. The prefix names what the address is for, so a failing
+// assertion still says which fixture it came from.
+//
+// [Ja] UniqueEmail はそのデータベースの次の連番を持つメールアドレスを返します。
+// UserBuilder を介さず直接ユーザーを作成し、1 つのデータベース内で複数のアドレスを
+// users.email の UNIQUE 制約に衝突させずに保つ必要があるテストのためのものです。prefix は
+// そのアドレスが何のためのものかを表すため、失敗した検証はどのフィクスチャ由来かを示せます。
+func UniqueEmail(db *database.DB, prefix string) string {
+	return fmt.Sprintf("%s-%d@example.com", prefix, nextSequence(db))
 }
 
 // WithEmail sets the email.
@@ -111,18 +122,18 @@ func (b *UserBuilder) WithDeletedAt(deletedAt time.Time) *UserBuilder {
 
 // Build inserts the user and returns its database-assigned ID, failing the test
 // on error. id and timestamps are left to the database defaults. deleted_at is
-// NULL unless WithDeletedAt set it (a nil *time.Time binds as NULL).
+// NULL unless WithDeletedAt set it (a nil timestamp binds as NULL).
 //
 // [Ja] Build はユーザーを挿入し、DB が採番した ID を返します。エラー時はテストを
 // 失敗させます。id とタイムスタンプは DB の既定値に任せます。deleted_at は WithDeletedAt で
-// 設定しない限り NULL です (nil の *time.Time は NULL としてバインドされます)。
+// 設定しない限り NULL です (nil の時刻は NULL としてバインドされます)。
 func (b *UserBuilder) Build() model.UserID {
 	b.t.Helper()
 
-	var id uuid.UUID
-	err := b.tx.QueryRow(context.Background(),
-		`INSERT INTO users (email, atname, locale, time_zone, deleted_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		b.email, b.atname, b.locale, b.timeZone, b.deletedAt,
+	var id int64
+	err := b.db.Writer.QueryRowContext(context.Background(),
+		`INSERT INTO users (email, atname, locale, time_zone, deleted_at) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+		b.email, b.atname, b.locale, b.timeZone, sqlitetime.Ptr(b.deletedAt),
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーの作成に失敗: %v", err)

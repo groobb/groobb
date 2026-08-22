@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/testutil"
 )
 
 // postCreate builds a POST /sign_in/two_factor/recovery request carrying the
@@ -53,11 +53,13 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorRecoveryHandler(t)
-	userID := seedUserWithRecoveryCodes(t, seededHandlerRecoveryCodes)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
+	userID := seedUserWithRecoveryCodes(t, db, seededHandlerRecoveryCodes)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), "abcd1234", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), "abcd1234", "", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -77,6 +79,35 @@ func TestCreate_Success(t *testing.T) {
 	}
 }
 
+// TestCreate_UnsignedNumericCookieCannotCompleteSignIn verifies that a known user
+// id and valid recovery code cannot complete sign-in without the signed token from
+// the preceding password step.
+//
+// [Ja] TestCreate_UnsignedNumericCookieCannotCompleteSignIn は、既知の user id と正しい
+// リカバリーコードがあっても、直前のパスワードステップが発行する署名付き token が無ければ
+// サインインを完了できないことを検証する。
+func TestCreate_UnsignedNumericCookieCannotCompleteSignIn(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
+	userID := seedUserWithRecoveryCodes(t, db, seededHandlerRecoveryCodes)
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postCreate(userID.String(), "abcd1234", "", i18n.LangJa))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/sign_in" {
+		t.Errorf("Location = %q, want %q", loc, "/sign_in")
+	}
+	if findCookie(rec, session.CookieName) != nil {
+		t.Error("未署名の連番 id Cookie でセッション Cookie が設定されている")
+	}
+}
+
 // TestCreate_WrongCode verifies that a well-formed but unknown recovery code
 // re-renders the form with 422 and the incorrect-code message, echoes the entered
 // code back, preserves the requested destination, and issues no session.
@@ -87,8 +118,10 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorRecoveryHandler(t)
-	userID := seedUserWithRecoveryCodes(t, seededHandlerRecoveryCodes)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
+	userID := seedUserWithRecoveryCodes(t, db, seededHandlerRecoveryCodes)
 
 	// Well-formed (eight lowercase-alphanumeric) but not among the stored codes.
 	//
@@ -96,7 +129,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	wrongCode := "zzzz9999"
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), wrongCode, "/settings", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), wrongCode, "/settings", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -127,11 +160,13 @@ func TestCreate_WrongCode(t *testing.T) {
 func TestCreate_InvalidFormat(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorRecoveryHandler(t)
-	userID := seedUserWithRecoveryCodes(t, seededHandlerRecoveryCodes)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
+	userID := seedUserWithRecoveryCodes(t, db, seededHandlerRecoveryCodes)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), "abc", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), "abc", "", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -155,7 +190,9 @@ func TestCreate_InvalidFormat(t *testing.T) {
 func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorRecoveryHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	// A random user id that has no enabled 2FA setting: the challenge cannot succeed.
@@ -164,7 +201,7 @@ func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 	//
 	// [Ja] 有効な 2FA 設定を持たないランダムなユーザー id: チャレンジは成功しえない。
 	// コードは形式が整っているため、先に形式で失敗せず有効な 2FA のルックアップまで到達する。
-	handler.Create(rec, postCreate(uuid.NewString(), "abcd1234", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), "abcd1234", "", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -189,7 +226,9 @@ func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorRecoveryHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorRecoveryHandler(t, db)
 
 	tests := []struct {
 		name         string
@@ -209,7 +248,7 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 		{
 			name:         "遷移先あり",
 			returnTo:     "/settings",
-			wantLocation: "/sign_in?return_to=%2Fc%2Fgroobb",
+			wantLocation: "/sign_in?return_to=%2Fsettings",
 		},
 	}
 
@@ -248,6 +287,8 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 func TestCreate_ReturnTo(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name         string
 		returnTo     string
@@ -261,13 +302,13 @@ func TestCreate_ReturnTo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler := newSignInTwoFactorRecoveryHandler(t)
-			userID := seedUserWithRecoveryCodes(t, seededHandlerRecoveryCodes)
+			handler := newSignInTwoFactorRecoveryHandler(t, db)
+			userID := seedUserWithRecoveryCodes(t, db, seededHandlerRecoveryCodes)
 
 			form := url.Values{"code": {"abcd1234"}, "return_to": {tt.returnTo}}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in/two_factor/recovery", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: userID.String()})
+			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: twoFactorPendingToken(t, userID)})
 			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
 			rec := httptest.NewRecorder()
 

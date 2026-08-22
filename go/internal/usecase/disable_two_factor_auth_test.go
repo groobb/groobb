@@ -4,10 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -15,25 +13,20 @@ import (
 )
 
 // newDisableTwoFactorAuthUsecase builds a DisableTwoFactorAuthUsecase (and its
-// validator) bound to the test transaction and creates a user, returning the usecase,
-// the 2FA repository (for assertions), the user ID, and the transaction so a test can
-// seed the enabled setting and a password. The usecase opens no transaction of its
-// own, so the WithTx repositories keep every write inside the rolled-back test
-// transaction.
+// validator) over the test's own database and creates a user, returning the
+// usecase, the 2FA repository (for assertions), and the user ID so a test can seed
+// the enabled setting and a password for that user.
 //
-// [Ja] newDisableTwoFactorAuthUsecase はテスト用トランザクションに束ねた
+// [Ja] newDisableTwoFactorAuthUsecase はテスト専用のデータベース上に
 // DisableTwoFactorAuthUsecase (とその validator) を作り、ユーザーを作成して、usecase・
-// (検証用の) 2FA リポジトリ・ユーザー ID・(有効な設定とパスワードを投入するための)
-// トランザクションを返す。usecase は自前のトランザクションを開かないため、WithTx リポジトリが
-// すべての書き込みをロールバックされるテストトランザクション内に保つ。
-func newDisableTwoFactorAuthUsecase(t *testing.T) (*usecase.DisableTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID, pgx.Tx) {
+// (検証用の) 2FA リポジトリ・(有効な設定とパスワードを投入するための) ユーザー ID を返す。
+func newDisableTwoFactorAuthUsecase(t *testing.T, db *database.DB) (*usecase.DisableTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	v := validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, repo)
-	return usecase.NewDisableTwoFactorAuthUsecase(v, repo), repo, userID, tx
+	return usecase.NewDisableTwoFactorAuthUsecase(v, repo), repo, userID
 }
 
 // TestDisableTwoFactorAuthUsecase_Execute_Success verifies that a correct current
@@ -45,9 +38,11 @@ func newDisableTwoFactorAuthUsecase(t *testing.T) (*usecase.DisableTwoFactorAuth
 func TestDisableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userID, tx := newDisableTwoFactorAuthUsecase(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
+	db := testutil.SetupDB(t)
+
+	uc, repo, userID := newDisableTwoFactorAuthUsecase(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
 	ctx := context.Background()
 	if err := uc.Execute(ctx, usecase.DisableTwoFactorAuthInput{
@@ -74,9 +69,11 @@ func TestDisableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 func TestDisableTwoFactorAuthUsecase_Execute_InvalidReauth(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userID, tx := newDisableTwoFactorAuthUsecase(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
+	db := testutil.SetupDB(t)
+
+	uc, repo, userID := newDisableTwoFactorAuthUsecase(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
 	ctx := context.Background()
 	err := uc.Execute(ctx, usecase.DisableTwoFactorAuthInput{

@@ -1,33 +1,36 @@
 -- name: GetUserByID :one
-SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
+SELECT * FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserByEmail :one
-SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1;
+SELECT * FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserByAtname :one
-SELECT * FROM users WHERE atname = $1 AND deleted_at IS NULL LIMIT 1;
+SELECT * FROM users WHERE atname = ? AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserBySessionToken :one
 SELECT users.* FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
-WHERE user_sessions.token = $1 AND users.deleted_at IS NULL
+WHERE user_sessions.token = ? AND users.deleted_at IS NULL
 LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
-VALUES ($1, $2, $3, $4)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateUserEmail :exec
 UPDATE users
-SET email = $2, updated_at = NOW()
-WHERE id = $1;
+SET email = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?;
 
 -- name: SoftDeleteAndAnonymizeUser :exec
 UPDATE users
-SET deleted_at = NOW(), email = $2, atname = $3, updated_at = NOW()
-WHERE id = $1;
+SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    email = ?,
+    atname = ?,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?;
 
 -- name: PurgeUsersDeletedBefore :execrows
 DELETE FROM users
-WHERE deleted_at IS NOT NULL AND deleted_at < $1;
+WHERE deleted_at IS NOT NULL AND deleted_at < ?;

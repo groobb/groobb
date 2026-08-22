@@ -10,8 +10,7 @@ package session
 import (
 	"context"
 	"net/http"
-
-	"github.com/google/uuid"
+	"time"
 
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/model"
@@ -25,30 +24,29 @@ import (
 // 識別子の命名規約に従いプロジェクト接頭辞を付けています。
 const CookieName = "groobb_session_token"
 
-// EmailConfirmationCookieName is the name of the cookie that carries the pending
-// email confirmation's id across the sign-up handoff: sign-up issues a
-// confirmation and stores its id here, and the code-entry step reads it back to
-// know which confirmation to verify. It carries the project prefix per the
-// identifier naming convention.
+// EmailConfirmationCookieName is the name of the cookie that carries a signed
+// continuation token for the pending email confirmation across the sign-up
+// handoff. The token binds the confirmation id, purpose, and expiry so the
+// code-entry step can identify the confirmation without trusting a browser-
+// supplied id. It carries the project prefix per the identifier naming
+// convention.
 //
 // [Ja] EmailConfirmationCookieName は、サインアップの受け渡しをまたいで保留中のメール
-// 確認の id を運ぶ Cookie の名前です。サインアップは確認を発行してその id をここに
-// 保存し、コード入力のステップがこれを読み戻してどの確認を検証すべきかを知ります。
-// 識別子の命名規約に従いプロジェクト接頭辞を付けています。
-const EmailConfirmationCookieName = "groobb_email_confirmation_id"
+// 確認用の署名付き continuation token を運ぶ Cookie の名前です。token は確認 id・用途・
+// 有効期限を結び付け、コード入力のステップがブラウザー提供の id を信頼せず確認を特定
+// できるようにします。識別子の命名規約に従いプロジェクト接頭辞を付けています。
+const EmailConfirmationCookieName = "groobb_email_confirmation"
 
-// TwoFactorPendingCookieName is the name of the cookie that carries the pending
-// user's id across the two-factor sign-in handoff: after the password check
-// passes for a 2FA-enabled account, sign-in stores the user's id here instead of
-// issuing a session, and the TOTP / recovery-code challenge reads it back to know
-// whose second factor to verify. It carries the project prefix per the identifier
-// naming convention.
+// TwoFactorPendingCookieName is the name of the cookie that carries a signed
+// continuation token across the two-factor sign-in handoff. After the password
+// check passes, the token binds the pending user's id, purpose, and expiry; the
+// TOTP / recovery-code challenge verifies it before choosing whose second factor
+// to check. It carries the project prefix per the identifier naming convention.
 //
-// [Ja] TwoFactorPendingCookieName は、2 段階認証のサインインの受け渡しをまたいで保留中の
-// ユーザーの id を運ぶ Cookie の名前です。2FA 有効なアカウントでパスワード検証が通った後、
-// サインインはセッションを発行する代わりにユーザーの id をここに保存し、TOTP / リカバリー
-// コードのチャレンジがこれを読み戻して誰の第 2 要素を検証すべきかを知ります。識別子の
-// 命名規約に従いプロジェクト接頭辞を付けています。
+// [Ja] TwoFactorPendingCookieName は、2 段階認証のサインイン受け渡しをまたいで署名付き
+// continuation token を運ぶ Cookie の名前です。パスワード検証後に token が保留中ユーザーの
+// id・用途・有効期限を結び付け、TOTP / リカバリーコードのチャレンジは誰の第 2 要素を調べるか
+// 選ぶ前にそれを検証します。識別子の命名規約に従いプロジェクト接頭辞を付けています。
 const TwoFactorPendingCookieName = "groobb_two_factor_pending"
 
 // emailConfirmationCookieMaxAge is the email-confirmation cookie lifetime in
@@ -168,20 +166,23 @@ func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// SetEmailConfirmationID writes the pending confirmation's id to its cookie so
-// the next step (code entry) can read which confirmation to verify. The cookie
-// is HttpOnly because the id is server-side state the browser only relays; the
-// other attributes mirror the session cookie's policy (Secure only in
-// production, SameSite=Lax).
+// SetEmailConfirmationID writes a signed, purpose-bound continuation token for
+// the pending confirmation to its cookie. Its signed expiry matches MaxAge so
+// expiry is enforced by the server as well as the browser. The cookie is
+// HttpOnly because it carries server-side state; the other attributes mirror the
+// session cookie's policy (Secure only in production, SameSite=Lax).
 //
-// [Ja] SetEmailConfirmationID は保留中の確認の id を専用 Cookie に書き込み、次の
-// ステップ (コード入力) がどの確認を検証すべきかを読めるようにします。id はブラウザが
-// 中継するだけのサーバー側の状態のため Cookie は HttpOnly とし、他の属性はセッション
-// Cookie の方針 (Secure は本番のみ・SameSite=Lax) に揃えます。
+// [Ja] SetEmailConfirmationID は保留中の確認用に、署名され用途を結び付けた continuation
+// token を専用 Cookie へ書き込みます。署名対象の有効期限を MaxAge と揃え、ブラウザーだけで
+// なくサーバー側でも期限を強制します。サーバー側状態を運ぶため Cookie は HttpOnly とし、
+// 他の属性はセッション Cookie の方針 (Secure は本番のみ・SameSite=Lax) に揃えます。
 func (m *Manager) SetEmailConfirmationID(w http.ResponseWriter, id model.EmailConfirmationID) {
+	expiresAt := time.Now().Add(emailConfirmationCookieMaxAge * time.Second)
+	token := signContinuationToken(m.cfg.ContinuationTokenKey, emailConfirmationTokenPurpose, int64(id), expiresAt)
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     EmailConfirmationCookieName,
-		Value:    id.String(),
+		Value:    token,
 		Path:     "/",
 		Secure:   m.cfg.IsProduction(),
 		HttpOnly: true,
@@ -190,25 +191,23 @@ func (m *Manager) SetEmailConfirmationID(w http.ResponseWriter, id model.EmailCo
 	})
 }
 
-// GetEmailConfirmationID returns the pending confirmation id stored in the
-// request cookie. The second return value is false when the cookie is absent or
-// its value is not a valid UUID (e.g. a corrupt or forged cookie), so callers
-// treat a malformed cookie the same as no cookie.
+// GetEmailConfirmationID returns the pending confirmation id authenticated by
+// the request cookie's continuation token. The second return value is false when
+// the cookie is absent, malformed, forged, for another purpose, or expired.
 //
-// [Ja] GetEmailConfirmationID はリクエスト Cookie に格納された保留中の確認 id を
-// 返します。Cookie が無い、または値が妥当な UUID でない (壊れた / 偽造された Cookie
-// など) 場合は第 2 戻り値が false になり、呼び出し側は不正な Cookie を Cookie 無しと
-// 同じに扱えます。
+// [Ja] GetEmailConfirmationID はリクエスト Cookie の continuation token で認証された
+// 保留中の確認 id を返します。Cookie が無い、形式不正、偽造、別用途、期限切れの場合は
+// 第 2 戻り値が false になります。
 func (m *Manager) GetEmailConfirmationID(r *http.Request) (model.EmailConfirmationID, bool) {
 	cookie, err := r.Cookie(EmailConfirmationCookieName)
 	if err != nil {
-		return model.EmailConfirmationID{}, false
+		return 0, false
 	}
-	parsed, err := uuid.Parse(cookie.Value)
-	if err != nil {
-		return model.EmailConfirmationID{}, false
+	id, ok := verifyContinuationToken(m.cfg.ContinuationTokenKey, emailConfirmationTokenPurpose, cookie.Value, time.Now())
+	if !ok {
+		return 0, false
 	}
-	return model.EmailConfirmationID(parsed), true
+	return model.EmailConfirmationID(id), true
 }
 
 // DeleteEmailConfirmationID clears the email-confirmation cookie by setting a
@@ -231,24 +230,26 @@ func (m *Manager) DeleteEmailConfirmationID(w http.ResponseWriter) {
 	})
 }
 
-// SetTwoFactorPendingUserID writes the pending user's id to its cookie so the
-// TOTP / recovery-code challenge can read whose second factor to verify. No
-// session is issued yet: this cookie only marks that the password step passed for
-// a 2FA-enabled user, and the challenge exchanges it for a real session on a
-// valid code. The cookie is HttpOnly because the id is server-side state the
-// browser only relays; the other attributes mirror the session cookie's policy
-// (Secure only in production, SameSite=Lax).
+// SetTwoFactorPendingUserID writes a signed, purpose-bound continuation token for
+// the pending user to its cookie. No session is issued yet: this token marks that
+// the password step passed for a 2FA-enabled user, and the challenge exchanges it
+// for a real session on a valid code. Its signed expiry matches MaxAge. The
+// cookie is HttpOnly because it carries server-side state; the other attributes
+// mirror the session cookie's policy (Secure only in production, SameSite=Lax).
 //
-// [Ja] SetTwoFactorPendingUserID は保留中のユーザーの id を専用 Cookie に書き込み、
-// TOTP / リカバリーコードのチャレンジが誰の第 2 要素を検証すべきかを読めるようにします。
-// この時点ではまだセッションを発行しません。この Cookie は 2FA 有効なユーザーでパスワードの
-// ステップが通ったことを示すだけで、チャレンジが正しいコードと引き換えに本物のセッションへ
-// 交換します。id はブラウザが中継するだけのサーバー側の状態のため Cookie は HttpOnly とし、
-// 他の属性はセッション Cookie の方針 (Secure は本番のみ・SameSite=Lax) に揃えます。
+// [Ja] SetTwoFactorPendingUserID は保留中ユーザー用に、署名され用途を結び付けた
+// continuation token を専用 Cookie へ書き込みます。この時点ではまだセッションを発行せず、
+// token は 2FA 有効なユーザーでパスワードのステップが通ったことを示し、正しいコードと
+// 引き換えに本物のセッションへ交換されます。署名対象の有効期限は MaxAge と揃えます。
+// サーバー側状態を運ぶため Cookie は HttpOnly とし、他の属性はセッション Cookie の方針
+// (Secure は本番のみ・SameSite=Lax) に揃えます。
 func (m *Manager) SetTwoFactorPendingUserID(w http.ResponseWriter, id model.UserID) {
+	expiresAt := time.Now().Add(twoFactorPendingCookieMaxAge * time.Second)
+	token := signContinuationToken(m.cfg.ContinuationTokenKey, twoFactorPendingTokenPurpose, int64(id), expiresAt)
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     TwoFactorPendingCookieName,
-		Value:    id.String(),
+		Value:    token,
 		Path:     "/",
 		Secure:   m.cfg.IsProduction(),
 		HttpOnly: true,
@@ -257,25 +258,23 @@ func (m *Manager) SetTwoFactorPendingUserID(w http.ResponseWriter, id model.User
 	})
 }
 
-// GetTwoFactorPendingUserID returns the pending user id stored in the request
-// cookie. The second return value is false when the cookie is absent or its value
-// is not a valid UUID (e.g. a corrupt or forged cookie), so callers treat a
-// malformed cookie the same as no cookie.
+// GetTwoFactorPendingUserID returns the pending user id authenticated by the
+// request cookie's continuation token. The second return value is false when the
+// cookie is absent, malformed, forged, for another purpose, or expired.
 //
-// [Ja] GetTwoFactorPendingUserID はリクエスト Cookie に格納された保留中のユーザー id を
-// 返します。Cookie が無い、または値が妥当な UUID でない (壊れた / 偽造された Cookie など)
-// 場合は第 2 戻り値が false になり、呼び出し側は不正な Cookie を Cookie 無しと同じに
-// 扱えます。
+// [Ja] GetTwoFactorPendingUserID はリクエスト Cookie の continuation token で認証された
+// 保留中のユーザー id を返します。Cookie が無い、形式不正、偽造、別用途、期限切れの場合は
+// 第 2 戻り値が false になります。
 func (m *Manager) GetTwoFactorPendingUserID(r *http.Request) (model.UserID, bool) {
 	cookie, err := r.Cookie(TwoFactorPendingCookieName)
 	if err != nil {
-		return model.UserID{}, false
+		return 0, false
 	}
-	parsed, err := uuid.Parse(cookie.Value)
-	if err != nil {
-		return model.UserID{}, false
+	id, ok := verifyContinuationToken(m.cfg.ContinuationTokenKey, twoFactorPendingTokenPurpose, cookie.Value, time.Now())
+	if !ok {
+		return 0, false
 	}
-	return model.UserID(parsed), true
+	return model.UserID(id), true
 }
 
 // DeleteTwoFactorPendingUserID clears the two-factor pending cookie by setting a

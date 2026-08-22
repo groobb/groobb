@@ -3,54 +3,45 @@ package password_reset_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newPasswordResetHandler wires a password-reset Handler over the shared pool,
-// with a Turnstile verifier that passes by default, so a handler test exercises
-// the full request path (Turnstile gate, validator, UseCase) against a real
-// database. The CreatePasswordResetTokenUsecase opens its own transaction, so its
-// tests commit rows and use unique emails (the test database is reset by make
-// test) rather than the rolled-back transaction pattern. The fake job inserter
-// and verifier are returned so a test can assert whether the reset mail was
-// enqueued and can make Turnstile verification fail.
+// newPasswordResetHandler wires a password-reset Handler over the test database's
+// repositories, with a Turnstile verifier that passes by default, so a handler
+// test exercises the full request path (Turnstile gate, validator, UseCase)
+// against a real database. The fake job inserter and verifier are returned so a
+// test can assert whether the reset mail was enqueued and can make Turnstile
+// verification fail.
 //
-// [Ja] newPasswordResetHandler は共有プールで、既定で通過する Turnstile 検証器を伴って
-// password-reset Handler を組み立て、ハンドラーテストが実 DB に対してリクエスト経路全体
-// (Turnstile ゲート・バリデーター・UseCase) を通すようにする。
-// CreatePasswordResetTokenUsecase は自前のトランザクションを開くため、そのテストは
-// ロールバックされるトランザクションパターンではなく、行をコミットしユニークな email を
-// 使う (テスト DB は make test がリセットする)。リセットメールが投入されたかをテストが
-// 検証でき、Turnstile 検証を失敗させられるよう、フェイクのジョブインサーターと検証器を返す。
-func newPasswordResetHandler(t *testing.T) (*password_reset.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
+// [Ja] newPasswordResetHandler はテスト用データベースのリポジトリで、既定で通過する
+// Turnstile 検証器を伴って password-reset Handler を組み立て、ハンドラーテストが実 DB に
+// 対してリクエスト経路全体 (Turnstile ゲート・バリデーター・UseCase) を通すようにする。
+// リセットメールが投入されたかをテストが検証でき、Turnstile 検証を失敗させられるよう、
+// フェイクのジョブインサーターと検証器を返す。
+func newPasswordResetHandler(t *testing.T, db *database.DB) (*password_reset.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test", AppURL: "https://groobb.example.dev"}
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreatePasswordResetTokenUsecase(
-		db,
+		db.Writer,
 		validator.NewPasswordResetCreateValidator(),
 		userRepo,
 		passwordResetTokenRepo,
@@ -64,14 +55,14 @@ func newPasswordResetHandler(t *testing.T) (*password_reset.Handler, *testutil.F
 // seedUser creates a committed user with a unique email and returns the email.
 //
 // [Ja] seedUser はユニークな email を持つコミット済みユーザーを作成し、その email を返す。
-func seedUser(t *testing.T) string {
+func seedUser(t *testing.T, db *database.DB) string {
 	t.Helper()
 
-	email := fmt.Sprintf("pwreset-h-%s@example.com", uuid.NewString())
-	userRepo := repository.NewUserRepository(query.New(testutil.GetTestDB()))
+	email := "pwreset-h@example.com"
+	userRepo := repository.NewUserRepository(db)
 	if _, err := userRepo.Create(context.Background(), repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	}); err != nil {
@@ -100,8 +91,10 @@ func postPasswordReset(email, locale string) *http.Request {
 func TestCreate_KnownEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter, _ := newPasswordResetHandler(t)
-	email := seedUser(t)
+	db := testutil.SetupDB(t)
+
+	handler, inserter, _ := newPasswordResetHandler(t, db)
+	email := seedUser(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postPasswordReset(email, i18n.LangJa))
@@ -130,8 +123,10 @@ func TestCreate_KnownEmail(t *testing.T) {
 func TestCreate_UnknownEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter, _ := newPasswordResetHandler(t)
-	email := fmt.Sprintf("nobody-h-%s@example.com", uuid.NewString())
+	db := testutil.SetupDB(t)
+
+	handler, inserter, _ := newPasswordResetHandler(t, db)
+	email := "nobody-h@example.com"
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postPasswordReset(email, i18n.LangJa))
@@ -155,7 +150,9 @@ func TestCreate_UnknownEmail(t *testing.T) {
 func TestCreate_InvalidEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter, _ := newPasswordResetHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, inserter, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postPasswordReset("not-an-email", i18n.LangJa))
@@ -194,6 +191,8 @@ func TestCreate_InvalidEmail(t *testing.T) {
 func TestCreate_TurnstileFailure(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name   string
 		passed bool
@@ -207,7 +206,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, inserter, verifier := newPasswordResetHandler(t)
+			handler, inserter, verifier := newPasswordResetHandler(t, db)
 			verifier.Passed = tt.passed
 			verifier.Err = tt.err
 

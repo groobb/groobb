@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/i18n"
@@ -37,27 +36,27 @@ const defaultUserTimeZone = "Asia/Tokyo"
 // ため、email はフォームではなく確認から取ります。セッションの発行 (サインイン) は
 // ハンドラーが CreateSessionUsecase で行う別ステップです。
 type CreateAccountUsecase struct {
-	db                    *pgxpool.Pool
+	writer                *sql.DB
 	accountValidator      *validator.AccountCreateValidator
 	emailConfirmationRepo *repository.EmailConfirmationRepository
 	userRepo              *repository.UserRepository
 	userPasswordRepo      *repository.UserPasswordRepository
 }
 
-// NewCreateAccountUsecase builds a CreateAccountUsecase from the pool, the
+// NewCreateAccountUsecase builds a CreateAccountUsecase from the write pool, the
 // validator, and the repositories it persists through.
 //
-// [Ja] NewCreateAccountUsecase はプール・validator・永続化に使うリポジトリから
+// [Ja] NewCreateAccountUsecase は書き込み用プール・validator・永続化に使うリポジトリから
 // CreateAccountUsecase を構築します。
 func NewCreateAccountUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	accountValidator *validator.AccountCreateValidator,
 	emailConfirmationRepo *repository.EmailConfirmationRepository,
 	userRepo *repository.UserRepository,
 	userPasswordRepo *repository.UserPasswordRepository,
 ) *CreateAccountUsecase {
 	return &CreateAccountUsecase{
-		db:                    db,
+		writer:                writer,
 		accountValidator:      accountValidator,
 		emailConfirmationRepo: emailConfirmationRepo,
 		userRepo:              userRepo,
@@ -151,11 +150,11 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 // パスワードの無いアカウント (またはその逆) が決して生じないようにします。パスワード
 // ダイジェストは事前に Execute が計算済みで、トランザクションを純粋な永続化に保ちます。
 func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname, locale, passwordDigest string) (*CreateAccountOutput, error) {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	userRepo := uc.userRepo.WithTx(tx)
 	userPasswordRepo := uc.userPasswordRepo.WithTx(tx)
@@ -177,7 +176,7 @@ func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname
 		return nil, fmt.Errorf("パスワード資格情報の作成に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

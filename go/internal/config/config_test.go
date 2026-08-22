@@ -16,7 +16,8 @@ func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("APP_ENV", "test")
 	t.Setenv("GROOBB_PORT", "8080")
-	t.Setenv("DATABASE_URL", "postgres://postgres@localhost:5432/groobb_test?sslmode=disable")
+	t.Setenv("GROOBB_DATABASE_PATH", "tmp/groobb_test.sqlite")
+	t.Setenv("GROOBB_CONTINUATION_TOKEN_KEY", "groobb-test-continuation-token-key-32-bytes")
 }
 
 // TestLoad verifies that Load reads the required environment variables.
@@ -36,8 +37,8 @@ func TestLoad(t *testing.T) {
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
 	}
-	if cfg.DatabaseURL == "" {
-		t.Error("DatabaseURL should not be empty")
+	if cfg.DatabasePath == "" {
+		t.Error("DatabasePath should not be empty")
 	}
 }
 
@@ -312,7 +313,8 @@ func TestLoadMissingRequiredEnv(t *testing.T) {
 		unset string
 	}{
 		{name: "GROOBB_PORT is missing", unset: "GROOBB_PORT"},
-		{name: "DATABASE_URL is missing", unset: "DATABASE_URL"},
+		{name: "GROOBB_DATABASE_PATH is missing", unset: "GROOBB_DATABASE_PATH"},
+		{name: "GROOBB_CONTINUATION_TOKEN_KEY is missing", unset: "GROOBB_CONTINUATION_TOKEN_KEY"},
 	}
 
 	for _, tt := range tests {
@@ -324,6 +326,20 @@ func TestLoadMissingRequiredEnv(t *testing.T) {
 				t.Errorf("Load() should fail when %s is missing, but got nil error", tt.unset)
 			}
 		})
+	}
+}
+
+// TestLoadRejectsShortContinuationTokenKey verifies that an easily guessed key
+// cannot reach the signing code through the normal application startup path.
+//
+// [Ja] TestLoadRejectsShortContinuationTokenKey は、推測しやすい短い鍵が通常のアプリ起動
+// 経路から署名処理へ到達できないことを検証します。
+func TestLoadRejectsShortContinuationTokenKey(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("GROOBB_CONTINUATION_TOKEN_KEY", "too-short")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() should fail when GROOBB_CONTINUATION_TOKEN_KEY is shorter than 32 bytes")
 	}
 }
 

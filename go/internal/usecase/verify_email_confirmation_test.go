@@ -2,42 +2,34 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newVerifyEmailConfirmationUsecase wires the usecase over the shared pool (not a
-// rolled-back transaction) because VerifyEmailConfirmationUsecase opens its own
-// transaction internally to compare the code and write the outcome; an outer
-// transaction's seed rows would be invisible to that inner transaction. It
-// returns the repository so a test can seed confirmations and assert the
-// post-verification state. Tests use unique emails so committed rows do not
-// collide (the test database is reset by make test).
+// newVerifyEmailConfirmationUsecase wires the usecase over the test's own
+// database, whose writer VerifyEmailConfirmationUsecase uses to open its own
+// transaction for comparing the code and writing the outcome. It returns the
+// repository so a test can seed confirmations and assert the post-verification
+// state.
 //
-// [Ja] newVerifyEmailConfirmationUsecase は共有プール (ロールバックされるトランザクション
-// ではなく) で UseCase を組み立てる。VerifyEmailConfirmationUsecase はコードを照合し結果を
-// 書き込むため内部で自前のトランザクションを開き、外側トランザクションで仕込んだ行はその
-// 内側トランザクションから見えないからである。テストが確認を仕込み検証後の状態を確認できる
-// ようリポジトリも返す。テストはユニークな email を使い、コミット済みの行が衝突しないように
-// する (テスト DB は make test がリセットする)。
-func newVerifyEmailConfirmationUsecase(t *testing.T) (*usecase.VerifyEmailConfirmationUsecase, *repository.EmailConfirmationRepository) {
+// [Ja] newVerifyEmailConfirmationUsecase はテスト専用のデータベース上で UseCase を
+// 組み立てる。VerifyEmailConfirmationUsecase はコードの照合と結果の書き込みのために、
+// その Writer で自前のトランザクションを開く。テストが確認を仕込み検証後の状態を確認
+// できるようリポジトリも返す。
+func newVerifyEmailConfirmationUsecase(t *testing.T, db *database.DB) (*usecase.VerifyEmailConfirmationUsecase, *repository.EmailConfirmationRepository) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	repo := repository.NewEmailConfirmationRepository(query.New(db))
+	repo := repository.NewEmailConfirmationRepository(db)
 	uc := usecase.NewVerifyEmailConfirmationUsecase(
-		db,
+		db.Writer,
 		validator.NewEmailConfirmationCreateValidator(repo),
 		repo,
 	)
@@ -52,7 +44,7 @@ func newVerifyEmailConfirmationUsecase(t *testing.T) (*usecase.VerifyEmailConfir
 func seedActiveConfirmation(t *testing.T, ctx context.Context, repo *repository.EmailConfirmationRepository, code string) *model.EmailConfirmation {
 	t.Helper()
 
-	email := fmt.Sprintf("verify-%s@example.com", uuid.NewString())
+	email := "verify@example.com"
 	confirmation, err := repo.Create(ctx, repository.CreateEmailConfirmationInput{
 		Email: email,
 		Event: model.EmailConfirmationEventSignUp,
@@ -73,7 +65,9 @@ func seedActiveConfirmation(t *testing.T, ctx context.Context, repo *repository.
 func TestVerifyEmailConfirmationUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, repo := newVerifyEmailConfirmationUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
@@ -112,7 +106,9 @@ func TestVerifyEmailConfirmationUsecase_Execute_Success(t *testing.T) {
 func TestVerifyEmailConfirmationUsecase_Execute_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	uc, repo := newVerifyEmailConfirmationUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
@@ -157,7 +153,9 @@ func TestVerifyEmailConfirmationUsecase_Execute_WrongCode(t *testing.T) {
 func TestVerifyEmailConfirmationUsecase_Execute_WrongCodeReachesLimit(t *testing.T) {
 	t.Parallel()
 
-	uc, repo := newVerifyEmailConfirmationUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
@@ -200,8 +198,8 @@ func TestVerifyEmailConfirmationUsecase_Execute_WrongCodeReachesLimit(t *testing
 func TestVerifyEmailConfirmationUsecase_Execute_AttemptsExhausted(t *testing.T) {
 	t.Parallel()
 
-	uc, repo := newVerifyEmailConfirmationUsecase(t)
-	db := testutil.GetTestDB()
+	db := testutil.SetupDB(t)
+	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
@@ -230,7 +228,7 @@ func TestVerifyEmailConfirmationUsecase_Execute_AttemptsExhausted(t *testing.T) 
 	//
 	// [Ja] 確認は成功済みに打刻されていてはならない。
 	var succeededAt *time.Time
-	if err := db.QueryRow(ctx, `SELECT succeeded_at FROM email_confirmations WHERE id = $1`, uuid.UUID(confirmation.ID)).Scan(&succeededAt); err != nil {
+	if err := db.Reader.QueryRowContext(ctx, `SELECT succeeded_at FROM email_confirmations WHERE id = ?`, int64(confirmation.ID)).Scan(&succeededAt); err != nil {
 		t.Fatalf("succeeded_at の読み戻しに失敗: %v", err)
 	}
 	if succeededAt != nil {

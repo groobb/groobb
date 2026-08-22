@@ -5,11 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 
 	"github.com/groobb/groobb/go/internal/dispatcher"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -30,14 +28,14 @@ import (
 func TestPurgeWithdrawnUsersWorker_Work(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := context.Background()
 
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
 	uc := usecase.NewPurgeWithdrawnUsersUsecase(userRepo)
 	w := worker.NewPurgeWithdrawnUsersWorker(uc)
 
-	oldWithdrawn := testutil.NewUserBuilder(t, tx).
+	oldWithdrawn := testutil.NewUserBuilder(t, db).
 		WithDeletedAt(time.Now().Add(-60 * 24 * time.Hour)).
 		Build()
 
@@ -47,8 +45,8 @@ func TestPurgeWithdrawnUsersWorker_Work(t *testing.T) {
 	}
 
 	var exists bool
-	if err := tx.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, uuid.UUID(oldWithdrawn),
+	if err := db.Writer.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)`, int64(oldWithdrawn),
 	).Scan(&exists); err != nil {
 		t.Fatalf("ユーザー存在確認に失敗: %v", err)
 	}

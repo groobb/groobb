@@ -66,13 +66,13 @@ type SettingsEmailUpdateValidatorInput struct {
 // required and well-formed, current password required) run first; only when they
 // pass are the state checks made against the database, so a malformed request
 // never hits it. The email match is case-insensitive because users.email is
-// citext, both for the unchanged check and the duplicate check.
+// NOCASE, both for the unchanged check and the duplicate check.
 //
 // [Ja] Validate は送信された新しい email と現在のパスワードを検証し、入力に問題が
 // あれば *model.ValidationError を、本物のシステム障害 (例: データベースに到達できない)
 // では素の error を返します。形式チェック (新しい email の必須・形式、現在のパスワードの
 // 必須) を先に行い、それらが通ったときだけ状態チェックを DB に対して行うため、不正な
-// リクエストが DB に到達することはありません。email の照合は users.email が citext のため、
+// リクエストが DB に到達することはありません。email の照合は users.email が NOCASE 照合のため、
 // 未変更チェックと重複チェックのどちらも大文字小文字を区別しません。
 func (v *SettingsEmailUpdateValidator) Validate(ctx context.Context, input SettingsEmailUpdateValidatorInput) error {
 	ve := model.NewValidationError()
@@ -109,7 +109,7 @@ func (v *SettingsEmailUpdateValidator) Validate(ctx context.Context, input Setti
 // current email from the requesting user and rejects an unchanged address before
 // the duplicate lookup, so "same as now" and "already taken" never stack. The
 // duplicate check compares the found account's id against the requester's so a
-// citext casing difference that slips past the unchanged check is not misreported
+// casing difference that slips past the unchanged check is not misreported
 // as taken; the users.email UNIQUE constraint remains the last line of defense
 // for the rare check-then-update race. A returned error is a genuine system
 // failure; field errors are collected into ve.
@@ -118,7 +118,7 @@ func (v *SettingsEmailUpdateValidator) Validate(ctx context.Context, input Setti
 // 別アカウントに使われているときにフィールドエラーを記録します。申請ユーザーから現在の
 // email を読み、重複ルックアップの前に未変更のアドレスを弾いて「現在と同じ」と「既に
 // 使用済み」が重ならないようにします。重複チェックは見つかったアカウントの id を申請者の
-// ものと比較し、未変更チェックをすり抜けた citext の大小差が「使用済み」と誤報されない
+// ものと比較し、未変更チェックをすり抜けた大小差が「使用済み」と誤報されない
 // ようにします。稀な「チェックしてから更新」の競合には users.email の UNIQUE 制約が最終
 // 防衛線として残ります。返す error は本物のシステム障害で、フィールドエラーは ve に
 // 集約します。

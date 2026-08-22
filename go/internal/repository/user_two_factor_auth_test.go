@@ -4,26 +4,23 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newUserTwoFactorAuthRepo builds a UserTwoFactorAuthRepository bound to the test
-// transaction (via WithTx) and creates a user to own the 2FA setting, returning
-// the user ID so writes roll back when the test finishes.
+// newUserTwoFactorAuthRepo builds a UserTwoFactorAuthRepository over the database
+// the test owns and creates a user to own the 2FA setting, returning the user ID
+// so each test can attach its setting to an existing owner.
 //
-// [Ja] newUserTwoFactorAuthRepo はテスト用トランザクションに束ねた (WithTx を通した)
+// [Ja] newUserTwoFactorAuthRepo はテストが所有するデータベース上に
 // UserTwoFactorAuthRepository を作り、2FA 設定の所有ユーザーを作成してその ID を返す。
-// テスト終了時に書き込みはロールバックされる。
+// 各テストが既存の所有者に設定を紐付けられるようにするためである。
 func newUserTwoFactorAuthRepo(t *testing.T) (*repository.UserTwoFactorAuthRepository, model.UserID, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	return repo, userID, context.Background()
 }
 
@@ -40,7 +37,7 @@ func TestUserTwoFactorAuthRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if twoFactorAuth.ID == (model.UserTwoFactorAuthID{}) {
+	if twoFactorAuth.ID == 0 {
 		t.Error("Create() twoFactorAuth.ID は DB 採番で空でないはず")
 	}
 	if twoFactorAuth.UserID != userID {
@@ -95,7 +92,7 @@ func TestUserTwoFactorAuthRepository_FindByUserID(t *testing.T) {
 	})
 
 	t.Run("2FA 設定を持たない user_id は (nil, nil) を返す", func(t *testing.T) {
-		twoFactorAuth, err := repo.FindByUserID(ctx, model.UserID(uuid.New()))
+		twoFactorAuth, err := repo.FindByUserID(ctx, model.UserID(testutil.UnusedID))
 		if err != nil {
 			t.Fatalf("FindByUserID() error = %v, want nil", err)
 		}

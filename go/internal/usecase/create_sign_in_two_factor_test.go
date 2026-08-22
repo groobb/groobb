@@ -9,7 +9,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -26,18 +25,18 @@ import (
 func TestCreateSignInTwoFactorUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-uc@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-uc@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
 		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
 	}
 
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewCreateSignInTwoFactorUsecase(validator.NewSignInTwoFactorCreateValidator(repo))
 	if err := uc.Execute(ctx, usecase.CreateSignInTwoFactorInput{UserID: userID, Code: code}); err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
@@ -54,11 +53,11 @@ func TestCreateSignInTwoFactorUsecase_Execute_Success(t *testing.T) {
 func TestCreateSignInTwoFactorUsecase_Execute_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-uc-bad@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-uc-bad@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 	validCode, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -69,7 +68,7 @@ func TestCreateSignInTwoFactorUsecase_Execute_WrongCode(t *testing.T) {
 		wrongCode = "111111"
 	}
 
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewCreateSignInTwoFactorUsecase(validator.NewSignInTwoFactorCreateValidator(repo))
 	err = uc.Execute(ctx, usecase.CreateSignInTwoFactorInput{UserID: userID, Code: wrongCode})
 	if ve := model.AsValidationError(err); ve == nil {

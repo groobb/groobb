@@ -2,6 +2,7 @@ package worker_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/config"
@@ -9,17 +10,22 @@ import (
 	"github.com/groobb/groobb/go/internal/worker"
 )
 
-// TestNewClient_InvalidDatabaseURL verifies NewClient fails fast on an
-// unparseable connection string instead of returning a half-built client.
+// TestNewClient_UnopenableDatabasePath verifies NewClient fails fast on a path
+// it cannot open instead of returning a half-built client.
 //
-// [Ja] TestNewClient_InvalidDatabaseURL は、解析できない接続文字列に対して NewClient が
+// [Ja] TestNewClient_UnopenableDatabasePath は、開けないパスに対して NewClient が
 // 中途半端なクライアントを返さず即座に失敗することを検証する。
-func TestNewClient_InvalidDatabaseURL(t *testing.T) {
+func TestNewClient_UnopenableDatabasePath(t *testing.T) {
 	t.Parallel()
 
-	client, err := worker.NewClient(context.Background(), "://not-a-valid-url", &config.Config{})
+	// The parent directory does not exist, so SQLite cannot create the file.
+	//
+	// [Ja] 親ディレクトリが存在しないため、SQLite はファイルを作成できない。
+	path := filepath.Join(t.TempDir(), "missing", "groobb.sqlite")
+
+	client, err := worker.NewClient(context.Background(), path, &config.Config{})
 	if err == nil {
-		t.Fatal("不正な databaseURL に対してエラーが返るべきです")
+		t.Fatal("開けないデータベースパスに対してエラーが返るべきです")
 	}
 	if client != nil {
 		t.Error("エラー時は client が nil であるべきです")
@@ -41,7 +47,7 @@ func TestNewClient(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := worker.NewClient(ctx, testutil.DatabaseURL(), &config.Config{})
+	client, err := worker.NewClient(ctx, testutil.SetupDBPath(t), &config.Config{})
 	if err != nil {
 		t.Fatalf("NewClient に失敗: %v", err)
 	}

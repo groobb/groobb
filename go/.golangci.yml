@@ -49,13 +49,15 @@ linters:
     gosec:
       # Raise the gate to medium severity and confidence to match the sister
       # Korylus projects (Annict / Mewst / Wikino). This drops low-confidence
-      # findings such as G101 on the hardcoded test-database DSN in
-      # internal/testutil, which is a throwaway local/CI credential, not a secret.
+      # findings such as G101 on the fixed values in internal/testutil that read
+      # like credentials (TestContinuationTokenKey), which exist only so tests
+      # share one non-production value and are never secrets.
       #
       # [Ja] severity / confidence をともに medium に上げ、姉妹 Korylus プロジェクト
-      # (Annict / Mewst / Wikino) に揃える。これにより internal/testutil の
-      # テスト用 DB DSN にハードコードされた認証情報に対する G101 のような低信頼度の
-      # 指摘を除外する。これはローカル / CI 用の使い捨て認証情報であり秘密情報ではない。
+      # (Annict / Mewst / Wikino) に揃える。これにより internal/testutil の、認証情報のように
+      # 見える固定値 (TestContinuationTokenKey) に対する G101 のような低信頼度の指摘を
+      # 除外する。これらはテストが 1 つの非本番の値を共有するためだけに存在し、秘密情報では
+      # ない。
       severity: medium
       confidence: medium
       # G120: the unlimited-body-size warning on r.FormValue / r.ParseForm. gosec

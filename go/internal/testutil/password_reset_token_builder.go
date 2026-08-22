@@ -2,13 +2,13 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // PasswordResetTokenBuilder builds a password_reset_tokens row for tests via a
@@ -22,7 +22,7 @@ import (
 // ありません。
 type PasswordResetTokenBuilder struct {
 	t           *testing.T
-	tx          pgx.Tx
+	db          *database.DB
 	userID      model.UserID
 	tokenDigest string
 	expiresAt   time.Time
@@ -30,20 +30,21 @@ type PasswordResetTokenBuilder struct {
 }
 
 // NewPasswordResetTokenBuilder creates a PasswordResetTokenBuilder. The default
-// digest embeds a random UUID so concurrent tests (t.Parallel) do not collide on
-// the token_digest UNIQUE constraint, and the default expiry is one validity
-// window into the future (a freshly issued, usable token).
+// digest carries the test's next sequence number, so a test that builds several
+// tokens does not have to name each digest to keep them apart on the
+// token_digest UNIQUE constraint. The default expiry is one validity window into
+// the future (a freshly issued, usable token).
 //
 // [Ja] NewPasswordResetTokenBuilder は PasswordResetTokenBuilder を生成します。
-// 既定のダイジェストにはランダムな UUID を埋め込み、並行テスト (t.Parallel) が
-// token_digest の UNIQUE 制約で衝突しないようにします。既定の有効期限は有効期間 1 つ分
-// 先 (発行直後の使えるトークン) です。
-func NewPasswordResetTokenBuilder(t *testing.T, tx pgx.Tx) *PasswordResetTokenBuilder {
+// 既定のダイジェストはそのテストの次の連番を持つため、複数のトークンを作るテストが
+// token_digest の UNIQUE 制約で互いを区別するためにダイジェストを一つずつ決める必要は
+// ありません。既定の有効期限は有効期間 1 つ分先 (発行直後の使えるトークン) です。
+func NewPasswordResetTokenBuilder(t *testing.T, db *database.DB) *PasswordResetTokenBuilder {
 	t.Helper()
 	return &PasswordResetTokenBuilder{
 		t:           t,
-		tx:          tx,
-		tokenDigest: "digest-" + uuid.NewString(),
+		db:          db,
+		tokenDigest: fmt.Sprintf("digest-%d", nextSequence(db)),
 		expiresAt:   time.Now().Add(model.PasswordResetTokenExpirationDuration),
 	}
 }
@@ -96,14 +97,14 @@ func (b *PasswordResetTokenBuilder) WithUsedAt(usedAt time.Time) *PasswordResetT
 func (b *PasswordResetTokenBuilder) Build() model.PasswordResetTokenID {
 	b.t.Helper()
 
-	if b.userID == (model.UserID{}) {
+	if b.userID == 0 {
 		b.t.Fatal("PasswordResetTokenBuilder にはユーザー ID が必要です (WithUserID で設定してください)")
 	}
 
-	var id uuid.UUID
-	err := b.tx.QueryRow(context.Background(),
-		`INSERT INTO password_reset_tokens (user_id, token_digest, expires_at, used_at) VALUES ($1, $2, $3, $4) RETURNING id`,
-		uuid.UUID(b.userID), b.tokenDigest, b.expiresAt, b.usedAt,
+	var id int64
+	err := b.db.Writer.QueryRowContext(context.Background(),
+		`INSERT INTO password_reset_tokens (user_id, token_digest, expires_at, used_at) VALUES (?, ?, ?, ?) RETURNING id`,
+		int64(b.userID), b.tokenDigest, sqlitetime.Time(b.expiresAt), sqlitetime.Ptr(b.usedAt),
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用パスワードリセットトークンの作成に失敗: %v", err)

@@ -3,20 +3,16 @@ package sign_in_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
-	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -24,29 +20,24 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignInHandler wires a sign-in Handler over the shared pool, with a Turnstile
-// verifier that passes by default, so a handler test exercises the full request
-// path (Turnstile gate, validator, UseCase, session cookie) against a real
-// database. The sign-in flow looks up the user and creates a session through the
-// pool, so its tests commit rows and use unique emails (the test database is reset
-// by make test) rather than the rolled-back transaction pattern. The verifier is
-// returned so a test can make Turnstile verification fail.
+// newSignInHandler wires a sign-in Handler over the test database's repositories,
+// with a Turnstile verifier that passes by default, so a handler test exercises
+// the full request path (Turnstile gate, validator, UseCase, session cookie)
+// against a real database. The verifier is returned so a test can make Turnstile
+// verification fail.
 //
-// [Ja] newSignInHandler は共有プールで、既定で通過する Turnstile 検証器を伴ってサインイン
-// Handler を組み立て、ハンドラーテストが実 DB に対してリクエスト経路全体 (Turnstile ゲート・
-// バリデーター・UseCase・セッション Cookie) を通すようにします。サインインフローはプール
-// 経由でユーザーを引きセッションを作るため、そのテストはロールバックされるトランザクション
-// パターンではなく、行をコミットしユニークな email を使います (テスト DB は make test が
-// リセットする)。Turnstile 検証を失敗させられるよう、検証器も併せて返します。
-func newSignInHandler(t *testing.T) (*sign_in.Handler, *testutil.FakeTurnstileVerifier) {
+// [Ja] newSignInHandler はテスト用データベースのリポジトリで、既定で通過する Turnstile
+// 検証器を伴ってサインイン Handler を組み立て、ハンドラーテストが実 DB に対して
+// リクエスト経路全体 (Turnstile ゲート・バリデーター・UseCase・セッション Cookie) を
+// 通すようにします。Turnstile 検証を失敗させられるよう、検証器も併せて返します。
+func newSignInHandler(t *testing.T, db *database.DB) (*sign_in.Handler, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
-	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	cfg := testutil.NewTestConfig(t)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	createSignInUC := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo))
@@ -60,16 +51,15 @@ func newSignInHandler(t *testing.T) (*sign_in.Handler, *testutil.FakeTurnstileVe
 //
 // [Ja] seedUserWithPassword は指定 email のユーザーとパスワード資格情報をコミットして
 // 作成し、ハンドラーテストがそれとしてサインインできるよう email を返す。
-func seedUserWithPassword(t *testing.T, password string) string {
+func seedUserWithPassword(t *testing.T, db *database.DB, password string) string {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	email := fmt.Sprintf("signin-h-%s@example.com", uuid.NewString())
+	email := testutil.UniqueEmail(db, "signin-h")
 
-	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
+	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -81,7 +71,7 @@ func seedUserWithPassword(t *testing.T, password string) string {
 	if err != nil {
 		t.Fatalf("パスワードのハッシュ化に失敗: %v", err)
 	}
-	if _, err := repository.NewUserPasswordRepository(queries).Create(ctx, repository.CreateUserPasswordInput{
+	if _, err := repository.NewUserPasswordRepository(db).Create(ctx, repository.CreateUserPasswordInput{
 		UserID:         user.ID,
 		PasswordDigest: digest,
 	}); err != nil {
@@ -97,16 +87,15 @@ func seedUserWithPassword(t *testing.T, password string) string {
 // [Ja] seedUserWithTwoFactor はパスワード資格情報と有効な 2FA 設定を持つユーザーを
 // コミットして作成し、ハンドラーテストがそれとしてサインインして 2 段階認証チャレンジの
 // 分岐へ到達できるよう email を返す。
-func seedUserWithTwoFactor(t *testing.T, password string) string {
+func seedUserWithTwoFactor(t *testing.T, db *database.DB, password string) string {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	email := fmt.Sprintf("signin-h-2fa-%s@example.com", uuid.NewString())
+	email := testutil.UniqueEmail(db, "signin-h-2fa")
 
-	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
+	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -118,14 +107,14 @@ func seedUserWithTwoFactor(t *testing.T, password string) string {
 	if err != nil {
 		t.Fatalf("パスワードのハッシュ化に失敗: %v", err)
 	}
-	if _, err := repository.NewUserPasswordRepository(queries).Create(ctx, repository.CreateUserPasswordInput{
+	if _, err := repository.NewUserPasswordRepository(db).Create(ctx, repository.CreateUserPasswordInput{
 		UserID:         user.ID,
 		PasswordDigest: digest,
 	}); err != nil {
 		t.Fatalf("パスワード資格情報の作成に失敗: %v", err)
 	}
 
-	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(queries)
+	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(db)
 	if _, err := twoFactorRepo.Create(ctx, repository.CreateUserTwoFactorAuthInput{
 		UserID: user.ID,
 		Secret: testutil.DefaultBuilderTOTPSecret,
@@ -174,8 +163,10 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
-	email := seedUserWithPassword(t, "password123")
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
+	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignIn(email, "password123", i18n.LangJa))
@@ -209,8 +200,10 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_TwoFactorEnabled(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
-	email := seedUserWithTwoFactor(t, "password123")
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
+	email := seedUserWithTwoFactor(t, db, "password123")
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignIn(email, "password123", i18n.LangJa))
@@ -243,8 +236,10 @@ func TestCreate_TwoFactorEnabled(t *testing.T) {
 func TestCreate_WrongPassword(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
-	email := seedUserWithPassword(t, "password123")
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
+	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignIn(email, "wrongpassword", i18n.LangJa))
@@ -276,7 +271,9 @@ func TestCreate_WrongPassword(t *testing.T) {
 func TestCreate_MissingEmail(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignIn("", "password123", i18n.LangJa))
@@ -314,6 +311,8 @@ func TestCreate_MissingEmail(t *testing.T) {
 func TestCreate_TurnstileFailure(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name   string
 		passed bool
@@ -327,10 +326,10 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, verifier := newSignInHandler(t)
+			handler, verifier := newSignInHandler(t, db)
 			verifier.Passed = tt.passed
 			verifier.Err = tt.err
-			email := seedUserWithPassword(t, "password123")
+			email := seedUserWithPassword(t, db, "password123")
 
 			form := url.Values{
 				"email":                 {email},
@@ -419,6 +418,8 @@ func postSignInWithReturnTo(email, password, returnTo, locale string) *http.Requ
 func TestCreate_ReturnTo(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name         string
 		returnTo     string
@@ -432,8 +433,8 @@ func TestCreate_ReturnTo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler, _ := newSignInHandler(t)
-			email := seedUserWithPassword(t, "password123")
+			handler, _ := newSignInHandler(t, db)
+			email := seedUserWithPassword(t, db, "password123")
 
 			rec := httptest.NewRecorder()
 			handler.Create(rec, postSignInWithReturnTo(email, "password123", tt.returnTo, i18n.LangJa))
@@ -462,8 +463,10 @@ func TestCreate_ReturnTo(t *testing.T) {
 func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
-	email := seedUserWithTwoFactor(t, "password123")
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
+	email := seedUserWithTwoFactor(t, db, "password123")
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/settings", i18n.LangJa))
@@ -471,7 +474,7 @@ func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	want := "/sign_in/two_factor/new?return_to=%2Fc%2Fgroobb"
+	want := "/sign_in/two_factor/new?return_to=%2Fsettings"
 	if loc := rec.Header().Get("Location"); loc != want {
 		t.Errorf("Location = %q, want %q", loc, want)
 	}
@@ -486,8 +489,10 @@ func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
 func TestCreate_ReturnToSurvivesValidationError(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newSignInHandler(t)
-	email := seedUserWithPassword(t, "password123")
+	db := testutil.SetupDB(t)
+
+	handler, _ := newSignInHandler(t, db)
+	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/settings", i18n.LangJa))

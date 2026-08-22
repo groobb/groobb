@@ -2,13 +2,14 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // EmailConfirmationRepository reads and writes email_confirmations through
@@ -17,16 +18,17 @@ import (
 // [Ja] EmailConfirmationRepository は sqlc 生成のクエリ経由で email_confirmations を
 // 読み書きします。
 type EmailConfirmationRepository struct {
-	q *query.Queries
+	reader *query.Queries
+	writer *query.Queries
 }
 
-// NewEmailConfirmationRepository creates an EmailConfirmationRepository backed by
-// the given queries.
+// NewEmailConfirmationRepository creates a EmailConfirmationRepository that reads through the database's read pool
+// and writes through its write pool.
 //
-// [Ja] NewEmailConfirmationRepository は与えられた queries を使う
+// [Ja] NewEmailConfirmationRepository は、データベースの読み取り用プールで読み、書き込み用プールで書く
 // EmailConfirmationRepository を生成します。
-func NewEmailConfirmationRepository(q *query.Queries) *EmailConfirmationRepository {
-	return &EmailConfirmationRepository{q: q}
+func NewEmailConfirmationRepository(db *database.DB) *EmailConfirmationRepository {
+	return &EmailConfirmationRepository{reader: query.New(db.Reader), writer: query.New(db.Writer)}
 }
 
 // WithTx returns a new EmailConfirmationRepository whose queries run inside tx,
@@ -36,8 +38,9 @@ func NewEmailConfirmationRepository(q *query.Queries) *EmailConfirmationReposito
 // [Ja] WithTx は queries を tx 内で実行する新しい EmailConfirmationRepository を返し、
 // UseCase が本リポジトリを自身のトランザクションに参加させられるようにします。
 // レシーバ自身は変更しません。
-func (r *EmailConfirmationRepository) WithTx(tx pgx.Tx) *EmailConfirmationRepository {
-	return &EmailConfirmationRepository{q: r.q.WithTx(tx)}
+func (r *EmailConfirmationRepository) WithTx(tx *sql.Tx) *EmailConfirmationRepository {
+	q := r.writer.WithTx(tx)
+	return &EmailConfirmationRepository{reader: q, writer: q}
 }
 
 // CreateEmailConfirmationInput holds the attributes needed to create a
@@ -58,7 +61,7 @@ type CreateEmailConfirmationInput struct {
 // [Ja] Create は確認を挿入し、DB が採番した id とタイムスタンプを設定した状態で
 // 返します。
 func (r *EmailConfirmationRepository) Create(ctx context.Context, input CreateEmailConfirmationInput) (*model.EmailConfirmation, error) {
-	row, err := r.q.CreateEmailConfirmation(ctx, query.CreateEmailConfirmationParams{
+	row, err := r.writer.CreateEmailConfirmation(ctx, query.CreateEmailConfirmationParams{
 		Email: input.Email,
 		Event: string(input.Event),
 		Code:  input.Code,
@@ -85,9 +88,9 @@ func (r *EmailConfirmationRepository) Create(ctx context.Context, input CreateEm
 // インデックスがそのまま使え、二次インデックスは不要です。確認済み・期限切れ・未知の id
 // はいずれも (nil, nil) として表れ、非 nil のエラーは本物のクエリ失敗のためにのみ用います。
 func (r *EmailConfirmationRepository) FindActiveByID(ctx context.Context, id model.EmailConfirmationID) (*model.EmailConfirmation, error) {
-	row, err := r.q.GetActiveEmailConfirmationByID(ctx, uuid.UUID(id))
+	row, err := r.reader.GetActiveEmailConfirmationByID(ctx, int64(id))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -115,9 +118,9 @@ func (r *EmailConfirmationRepository) FindActiveByID(ctx context.Context, id mod
 // 使える期間を区切ります。未知 / 未成功の id は (nil, nil) として表れ、非 nil のエラーは
 // 本物のクエリ失敗のためにのみ用います。
 func (r *EmailConfirmationRepository) FindSucceededByID(ctx context.Context, id model.EmailConfirmationID) (*model.EmailConfirmation, error) {
-	row, err := r.q.GetSucceededEmailConfirmationByID(ctx, uuid.UUID(id))
+	row, err := r.reader.GetSucceededEmailConfirmationByID(ctx, int64(id))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -133,7 +136,7 @@ func (r *EmailConfirmationRepository) FindSucceededByID(ctx context.Context, id 
 // 記録します。これにより FindActiveByID で再びマッチしなくなり、フローはアカウント作成へ
 // 進めます。
 func (r *EmailConfirmationRepository) Succeed(ctx context.Context, id model.EmailConfirmationID) error {
-	return r.q.UpdateEmailConfirmationSucceededAt(ctx, uuid.UUID(id))
+	return r.writer.UpdateEmailConfirmationSucceededAt(ctx, int64(id))
 }
 
 // IncrementFailedAttempts bumps the confirmation's failed_attempts_count by one
@@ -148,7 +151,7 @@ func (r *EmailConfirmationRepository) Succeed(ctx context.Context, id model.Emai
 // 上限に達すると FindActiveByID は当該行を返さなくなり、ユーザーはサインアップから
 // 新しいコードを再申請する必要があります。
 func (r *EmailConfirmationRepository) IncrementFailedAttempts(ctx context.Context, id model.EmailConfirmationID) error {
-	return r.q.IncrementEmailConfirmationFailedAttempts(ctx, uuid.UUID(id))
+	return r.writer.IncrementEmailConfirmationFailedAttempts(ctx, int64(id))
 }
 
 // CreateEmailChangeInput holds the attributes needed to create an email-change
@@ -174,8 +177,8 @@ type CreateEmailChangeInput struct {
 // [Ja] CreateEmailChange は指定ユーザーと新しいアドレスに対するメール変更の確認を挿入し、
 // DB が採番した id とタイムスタンプを設定した状態で返します。
 func (r *EmailConfirmationRepository) CreateEmailChange(ctx context.Context, input CreateEmailChangeInput) (*model.EmailConfirmation, error) {
-	userID := uuid.UUID(input.UserID)
-	row, err := r.q.CreateEmailChangeConfirmation(ctx, query.CreateEmailChangeConfirmationParams{
+	userID := int64(input.UserID)
+	row, err := r.writer.CreateEmailChangeConfirmation(ctx, query.CreateEmailChangeConfirmationParams{
 		UserID: &userID,
 		Email:  input.Email,
 		Code:   input.Code,
@@ -208,10 +211,10 @@ func (r *EmailConfirmationRepository) CreateEmailChange(ctx context.Context, inp
 // started_at DESC が最新を返します。該当なし・確認済み・期限切れ・試行超過の確認はいずれも
 // (nil, nil) として表れ、非 nil のエラーは本物のクエリ失敗のためにのみ用います。
 func (r *EmailConfirmationRepository) FindActiveEmailChangeByUserID(ctx context.Context, userID model.UserID) (*model.EmailConfirmation, error) {
-	id := uuid.UUID(userID)
-	row, err := r.q.GetActiveEmailChangeConfirmationByUserID(ctx, &id)
+	id := int64(userID)
+	row, err := r.reader.GetActiveEmailChangeConfirmationByUserID(ctx, &id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -230,17 +233,17 @@ func (r *EmailConfirmationRepository) FindActiveEmailChangeByUserID(ctx context.
 // なるようにします。確認済みのものは変更が成立した記録として残します。ユーザーに保留中の
 // メール変更の確認が無ければ何もしません。
 func (r *EmailConfirmationRepository) DeleteUnusedEmailChangesByUserID(ctx context.Context, userID model.UserID) error {
-	id := uuid.UUID(userID)
-	return r.q.DeleteUnusedEmailChangeConfirmationsByUserID(ctx, &id)
+	id := int64(userID)
+	return r.writer.DeleteUnusedEmailChangeConfirmationsByUserID(ctx, &id)
 }
 
 // toModel converts a query.EmailConfirmation row into a model.EmailConfirmation,
-// casting the raw uuid, event string, and int32 count into their typed forms at
+// casting the raw id, event string, and integer count into their typed forms at
 // the repository boundary. UserID stays nil for sign-up confirmations (the
 // column is NULL) and becomes a typed *UserID for email-change confirmations.
 //
 // [Ja] toModel は query.EmailConfirmation を model.EmailConfirmation に変換し、
-// リポジトリの境界で生の uuid・event 文字列・int32 のカウントを型付きの形に
+// リポジトリの境界で生の id・event 文字列・整数のカウントを型付きの形に
 // キャストします。UserID はサインアップの確認では nil のまま (列が NULL)、メール変更の
 // 確認では型付きの *UserID になります。
 func (r *EmailConfirmationRepository) toModel(row query.EmailConfirmation) *model.EmailConfirmation {
@@ -255,10 +258,10 @@ func (r *EmailConfirmationRepository) toModel(row query.EmailConfirmation) *mode
 		Email:               row.Email,
 		Event:               model.EmailConfirmationEvent(row.Event),
 		Code:                row.Code,
-		StartedAt:           row.StartedAt,
-		SucceededAt:         row.SucceededAt,
+		StartedAt:           time.Time(row.StartedAt),
+		SucceededAt:         sqlitetime.TimePtr(row.SucceededAt),
 		FailedAttemptsCount: int(row.FailedAttemptsCount),
-		CreatedAt:           row.CreatedAt,
-		UpdatedAt:           row.UpdatedAt,
+		CreatedAt:           time.Time(row.CreatedAt),
+		UpdatedAt:           time.Time(row.UpdatedAt),
 	}
 }

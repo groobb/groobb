@@ -2,14 +2,11 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -17,24 +14,20 @@ import (
 )
 
 // newCreateSignInTwoFactorRecoveryUsecase wires a
-// CreateSignInTwoFactorRecoveryUsecase over the shared pool. The UseCase opens its
-// own transaction, so its tests commit rows and use unique identifiers (the test
-// database is reset by make test) rather than the rolled-back transaction pattern.
+// CreateSignInTwoFactorRecoveryUsecase over the test's own database. The UseCase
+// opens its own transaction, so a test asserts against the rows it commits.
 //
-// [Ja] newCreateSignInTwoFactorRecoveryUsecase は共有プール上に
+// [Ja] newCreateSignInTwoFactorRecoveryUsecase はテスト専用のデータベース上に
 // CreateSignInTwoFactorRecoveryUsecase を組み立てます。UseCase は自前のトランザクションを
-// 開くため、そのテストはロールバックされるトランザクションパターンではなく、行をコミットし
-// ユニークな識別子を使います (テスト DB は make test がリセットする)。
-func newCreateSignInTwoFactorRecoveryUsecase(t *testing.T) *usecase.CreateSignInTwoFactorRecoveryUsecase {
+// 開くため、テストはそれがコミットした行を検証します。
+func newCreateSignInTwoFactorRecoveryUsecase(t *testing.T, db *database.DB) *usecase.CreateSignInTwoFactorRecoveryUsecase {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	return usecase.NewCreateSignInTwoFactorRecoveryUsecase(
-		db,
+		db.Writer,
 		validator.NewSignInTwoFactorRecoveryCreateValidator(userTwoFactorAuthRepo),
 		userTwoFactorAuthRepo,
 		userSessionRepo,
@@ -48,15 +41,14 @@ func newCreateSignInTwoFactorRecoveryUsecase(t *testing.T) *usecase.CreateSignIn
 // [Ja] seedRecoveryUser は有効な 2FA と指定のリカバリーコードを持つコミット済みユーザーを
 // 作成し、その id を返す。UseCase テストが実在の認証可能なアカウントからリカバリー
 // チャレンジを駆動し、使用したコードが消費されることを検証できるようにする。
-func seedRecoveryUser(t *testing.T, recoveryCodes []string) model.UserID {
+func seedRecoveryUser(t *testing.T, db *database.DB, recoveryCodes []string) model.UserID {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
 
-	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
-		Email:    fmt.Sprintf("2fa-rc-uc-%s@example.com", uuid.NewString()),
-		Atname:   testutil.UniqueAtname(),
+	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
+		Email:    "2fa-rc-uc@example.com",
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -64,7 +56,7 @@ func seedRecoveryUser(t *testing.T, recoveryCodes []string) model.UserID {
 		t.Fatalf("テスト用ユーザーの作成に失敗: %v", err)
 	}
 
-	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(queries)
+	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(db)
 	if _, err := twoFactorRepo.Create(ctx, repository.CreateUserTwoFactorAuthInput{
 		UserID: user.ID,
 		Secret: testutil.DefaultBuilderTOTPSecret,
@@ -87,10 +79,10 @@ func seedRecoveryUser(t *testing.T, recoveryCodes []string) model.UserID {
 // [Ja] storedRecoveryCodes はユーザーの現在保存されているリカバリーコードを読み戻す。
 // 使用したコードが消費されたこと (または拒否された試行がそれらを無傷で残したこと) を
 // 検証するために使う。
-func storedRecoveryCodes(t *testing.T, userID model.UserID) []string {
+func storedRecoveryCodes(t *testing.T, db *database.DB, userID model.UserID) []string {
 	t.Helper()
 
-	twoFactorAuth, err := repository.NewUserTwoFactorAuthRepository(query.New(testutil.GetTestDB())).FindEnabledByUserID(context.Background(), userID)
+	twoFactorAuth, err := repository.NewUserTwoFactorAuthRepository(db).FindEnabledByUserID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("2 段階認証設定の取得に失敗: %v", err)
 	}
@@ -110,9 +102,11 @@ func storedRecoveryCodes(t *testing.T, userID model.UserID) []string {
 func TestCreateSignInTwoFactorRecoveryUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc := newCreateSignInTwoFactorRecoveryUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc := newCreateSignInTwoFactorRecoveryUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedRecoveryUser(t, []string{"abcd1234", "efgh5678"})
+	userID := seedRecoveryUser(t, db, []string{"abcd1234", "efgh5678"})
 
 	out, err := uc.Execute(ctx, usecase.CreateSignInTwoFactorRecoveryInput{
 		UserID:    userID,
@@ -130,7 +124,7 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_Success(t *testing.T) {
 	// The used code is gone and the unused one remains (one-time use).
 	//
 	// [Ja] 使用したコードは消え、未使用のコードは残る (1 回使い切り)。
-	remaining := storedRecoveryCodes(t, userID)
+	remaining := storedRecoveryCodes(t, db, userID)
 	if len(remaining) != 1 || remaining[0] != "efgh5678" {
 		t.Errorf("残りのリカバリーコード = %v, want [efgh5678] (使用したコードのみ消費)", remaining)
 	}
@@ -138,7 +132,7 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_Success(t *testing.T) {
 	// The returned token resolves to a real, signed-in session.
 	//
 	// [Ja] 返したトークンは実在するサインイン済みセッションに解決する。
-	session, err := repository.NewUserSessionRepository(query.New(testutil.GetTestDB())).FindByToken(ctx, out.Token)
+	session, err := repository.NewUserSessionRepository(db).FindByToken(ctx, out.Token)
 	if err != nil {
 		t.Fatalf("セッションの取得に失敗: %v", err)
 	}
@@ -157,9 +151,11 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_Success(t *testing.T) {
 func TestCreateSignInTwoFactorRecoveryUsecase_Execute_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	uc := newCreateSignInTwoFactorRecoveryUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc := newCreateSignInTwoFactorRecoveryUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedRecoveryUser(t, []string{"abcd1234", "efgh5678"})
+	userID := seedRecoveryUser(t, db, []string{"abcd1234", "efgh5678"})
 
 	out, err := uc.Execute(ctx, usecase.CreateSignInTwoFactorRecoveryInput{
 		UserID:    userID,
@@ -174,7 +170,7 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_WrongCode(t *testing.T) {
 		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
 	}
 
-	remaining := storedRecoveryCodes(t, userID)
+	remaining := storedRecoveryCodes(t, db, userID)
 	if len(remaining) != 2 {
 		t.Errorf("失敗時の残りリカバリーコード数 = %d, want 2 (消費されるべきでない)", len(remaining))
 	}

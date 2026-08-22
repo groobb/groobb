@@ -4,6 +4,7 @@
 /.pnpm-store
 /bin
 /e2e/node_modules
+/migrate
 /node_modules
 /server
 /static/css/*

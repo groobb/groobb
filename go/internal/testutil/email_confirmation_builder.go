@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // EmailConfirmationBuilder builds an email_confirmations row for tests via a
@@ -21,8 +20,8 @@ import (
 // すれば済みます。
 type EmailConfirmationBuilder struct {
 	t                   *testing.T
-	tx                  pgx.Tx
-	userID              *uuid.UUID
+	db                  *database.DB
+	userID              *int64
 	email               string
 	event               model.EmailConfirmationEvent
 	code                string
@@ -31,18 +30,18 @@ type EmailConfirmationBuilder struct {
 }
 
 // NewEmailConfirmationBuilder creates an EmailConfirmationBuilder. The default
-// email embeds a random UUID so concurrent tests (t.Parallel) do not reuse the
-// same address.
+// email carries the test's next sequence number, so a test that builds several
+// confirmations does not reuse one address across them.
 //
 // [Ja] NewEmailConfirmationBuilder は EmailConfirmationBuilder を生成します。
-// 既定の email にはランダムな UUID を埋め込み、並行テスト (t.Parallel) が同じ
-// アドレスを使い回さないようにします。
-func NewEmailConfirmationBuilder(t *testing.T, tx pgx.Tx) *EmailConfirmationBuilder {
+// 既定の email はそのテストの次の連番を持つため、複数の確認を作るテストがそれらの間で
+// 1 つのアドレスを使い回すことはありません。
+func NewEmailConfirmationBuilder(t *testing.T, db *database.DB) *EmailConfirmationBuilder {
 	t.Helper()
 	return &EmailConfirmationBuilder{
 		t:     t,
-		tx:    tx,
-		email: fmt.Sprintf("confirm-%s@example.com", uuid.NewString()),
+		db:    db,
+		email: fmt.Sprintf("confirm-%d@example.com", nextSequence(db)),
 		event: model.EmailConfirmationEventSignUp,
 		code:  "123456",
 	}
@@ -56,7 +55,7 @@ func NewEmailConfirmationBuilder(t *testing.T, tx pgx.Tx) *EmailConfirmationBuil
 // 未設定なら user_id は NULL のまま (ユーザーが存在する前に発行されるサインアップの確認の
 // 既定) です。
 func (b *EmailConfirmationBuilder) WithUserID(userID model.UserID) *EmailConfirmationBuilder {
-	id := uuid.UUID(userID)
+	id := int64(userID)
 	b.userID = &id
 	return b
 }
@@ -130,16 +129,16 @@ func (b *EmailConfirmationBuilder) WithFailedAttemptsCount(count int) *EmailConf
 func (b *EmailConfirmationBuilder) Build() model.EmailConfirmationID {
 	b.t.Helper()
 
-	var id uuid.UUID
+	var id int64
 	var err error
 	if b.startedAt != nil {
-		err = b.tx.QueryRow(context.Background(),
-			`INSERT INTO email_confirmations (user_id, email, event, code, started_at, failed_attempts_count) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			b.userID, b.email, string(b.event), b.code, *b.startedAt, b.failedAttemptsCount,
+		err = b.db.Writer.QueryRowContext(context.Background(),
+			`INSERT INTO email_confirmations (user_id, email, event, code, started_at, failed_attempts_count) VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+			b.userID, b.email, string(b.event), b.code, sqlitetime.Time(*b.startedAt), b.failedAttemptsCount,
 		).Scan(&id)
 	} else {
-		err = b.tx.QueryRow(context.Background(),
-			`INSERT INTO email_confirmations (user_id, email, event, code, failed_attempts_count) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		err = b.db.Writer.QueryRowContext(context.Background(),
+			`INSERT INTO email_confirmations (user_id, email, event, code, failed_attempts_count) VALUES (?, ?, ?, ?, ?) RETURNING id`,
 			b.userID, b.email, string(b.event), b.code, b.failedAttemptsCount,
 		).Scan(&id)
 	}

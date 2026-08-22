@@ -8,7 +8,6 @@ import (
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -23,13 +22,13 @@ import (
 func TestPasswordUpdateValidator_Validate_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx))
+	db := testutil.SetupDB(t)
+	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
 	rawToken := "valid-raw-token"
-	tokenID := testutil.NewPasswordResetTokenBuilder(t, tx).
+	tokenID := testutil.NewPasswordResetTokenBuilder(t, db).
 		WithUserID(userID).
 		WithTokenDigest(auth.HashToken(rawToken)).
 		Build()
@@ -65,8 +64,8 @@ func TestPasswordUpdateValidator_Validate_Success(t *testing.T) {
 func TestPasswordUpdateValidator_Validate_FormatErrors(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx))
+	db := testutil.SetupDB(t)
+	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	tests := []struct {
@@ -131,8 +130,8 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 
 	t.Run("未知のトークンはフォーム全体のエラー", func(t *testing.T) {
 		t.Parallel()
-		db, tx := testutil.SetupTx(t)
-		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx))
+		db := testutil.SetupDB(t)
+		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 		out, err := v.Validate(ctx, validator.PasswordUpdateValidatorInput{
@@ -145,13 +144,13 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 
 	t.Run("使用済みトークンはフォーム全体のエラー", func(t *testing.T) {
 		t.Parallel()
-		db, tx := testutil.SetupTx(t)
-		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx))
+		db := testutil.SetupDB(t)
+		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-		userID := testutil.NewUserBuilder(t, tx).Build()
+		userID := testutil.NewUserBuilder(t, db).Build()
 		rawToken := "used-raw-token"
-		testutil.NewPasswordResetTokenBuilder(t, tx).
+		testutil.NewPasswordResetTokenBuilder(t, db).
 			WithUserID(userID).
 			WithTokenDigest(auth.HashToken(rawToken)).
 			WithUsedAt(time.Now()).
@@ -167,13 +166,13 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 
 	t.Run("期限切れトークンはフォーム全体のエラー", func(t *testing.T) {
 		t.Parallel()
-		db, tx := testutil.SetupTx(t)
-		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(query.New(db)).WithTx(tx))
+		db := testutil.SetupDB(t)
+		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-		userID := testutil.NewUserBuilder(t, tx).Build()
+		userID := testutil.NewUserBuilder(t, db).Build()
 		rawToken := "expired-raw-token"
-		testutil.NewPasswordResetTokenBuilder(t, tx).
+		testutil.NewPasswordResetTokenBuilder(t, db).
 			WithUserID(userID).
 			WithTokenDigest(auth.HashToken(rawToken)).
 			WithExpiresAt(time.Now().Add(-time.Hour)).

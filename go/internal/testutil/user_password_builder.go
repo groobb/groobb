@@ -4,10 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 )
 
@@ -32,7 +30,7 @@ const DefaultBuilderPassword = "password123"
 // テストは自前でハッシュ化せずに有効な資格情報を投入できます。
 type UserPasswordBuilder struct {
 	t        *testing.T
-	tx       pgx.Tx
+	db       *database.DB
 	userID   model.UserID
 	password string
 }
@@ -42,11 +40,11 @@ type UserPasswordBuilder struct {
 //
 // [Ja] NewUserPasswordBuilder は既定の平文パスワードを持つ UserPasswordBuilder を
 // 生成します。
-func NewUserPasswordBuilder(t *testing.T, tx pgx.Tx) *UserPasswordBuilder {
+func NewUserPasswordBuilder(t *testing.T, db *database.DB) *UserPasswordBuilder {
 	t.Helper()
 	return &UserPasswordBuilder{
 		t:        t,
-		tx:       tx,
+		db:       db,
 		password: DefaultBuilderPassword,
 	}
 }
@@ -80,7 +78,7 @@ func (b *UserPasswordBuilder) WithPassword(password string) *UserPasswordBuilder
 func (b *UserPasswordBuilder) Build() model.UserPasswordID {
 	b.t.Helper()
 
-	if b.userID == (model.UserID{}) {
+	if b.userID == 0 {
 		b.t.Fatal("UserPasswordBuilder にはユーザー ID が必要です (WithUserID で設定してください)")
 	}
 
@@ -89,10 +87,10 @@ func (b *UserPasswordBuilder) Build() model.UserPasswordID {
 		b.t.Fatalf("テスト用パスワードのハッシュ化に失敗: %v", err)
 	}
 
-	var id uuid.UUID
-	err = b.tx.QueryRow(context.Background(),
-		`INSERT INTO user_passwords (user_id, password_digest) VALUES ($1, $2) RETURNING id`,
-		uuid.UUID(b.userID), digest,
+	var id int64
+	err = b.db.Writer.QueryRowContext(context.Background(),
+		`INSERT INTO user_passwords (user_id, password_digest) VALUES (?, ?) RETURNING id`,
+		int64(b.userID), digest,
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーパスワードの作成に失敗: %v", err)

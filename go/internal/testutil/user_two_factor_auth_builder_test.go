@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
@@ -24,17 +23,17 @@ import (
 func TestUserTwoFactorAuthBuilder_Build(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
 
 	recoveryCodes := []string{"aaaa1111", "bbbb2222"}
-	id := testutil.NewUserTwoFactorAuthBuilder(t, tx).
+	id := testutil.NewUserTwoFactorAuthBuilder(t, db).
 		WithUserID(userID).
 		WithEnabled(true).
 		WithRecoveryCodes(recoveryCodes).
 		Build()
 
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	got, err := repo.FindByUserID(context.Background(), userID)
 	if err != nil {
 		t.Fatalf("FindByUserID() error = %v", err)

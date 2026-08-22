@@ -9,7 +9,6 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -278,26 +277,26 @@ func TestUserFromContext_NotSet(t *testing.T) {
 	}
 }
 
-// setupAuthTest builds an Auth middleware backed by a fresh test transaction and
+// setupAuthTest builds an Auth middleware backed by the test's own database and
 // seeds one user with a "valid-token" session, returning the middleware and the
 // seeded user's id. SetUser and RequireAuth resolve the current user the same
 // way, so both share this fixture.
 //
-// [Ja] setupAuthTest は新しいテスト用トランザクションに紐づく Auth ミドルウェアを
+// [Ja] setupAuthTest はテスト専用のデータベースに紐づく Auth ミドルウェアを
 // 組み立て、"valid-token" のセッションを持つユーザーを 1 人シードして、その
 // ミドルウェアとシードしたユーザーの id を返す。SetUser と RequireAuth は同じ方法で
 // 現在のユーザーを解決するため、両者でこのフィクスチャを共有する。
 func setupAuthTest(t *testing.T) (*middleware.Auth, model.UserID) {
 	t.Helper()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	cfg := &config.Config{Env: "test"}
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
 	mgr := session.NewManager(userRepo, cfg)
 	auth := middleware.NewAuth(mgr)
 
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	testutil.NewUserSessionBuilder(t, tx).
+	userID := testutil.NewUserBuilder(t, db).Build()
+	testutil.NewUserSessionBuilder(t, db).
 		WithUserID(userID).
 		WithToken("valid-token").
 		Build()

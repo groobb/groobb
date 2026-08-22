@@ -5,25 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newEmailConfirmationRepo builds an EmailConfirmationRepository bound to the
-// test transaction, exercising WithTx so writes roll back when the test
-// finishes.
+// newEmailConfirmationRepo builds an EmailConfirmationRepository over a database
+// the test owns, so a test that only needs the repository does not have to hold
+// on to the database itself.
 //
-// [Ja] newEmailConfirmationRepo はテスト用トランザクションに束ねた
-// EmailConfirmationRepository を作る。WithTx を通すことで、テスト終了時に書き込みが
-// ロールバックされる。
+// [Ja] newEmailConfirmationRepo はテストが所有するデータベース上に
+// EmailConfirmationRepository を作る。リポジトリだけが必要なテストがデータベース自体を
+// 抱えずに済むようにするためである。
 func newEmailConfirmationRepo(t *testing.T) (*repository.EmailConfirmationRepository, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	return repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx), context.Background()
+	db := testutil.SetupDB(t)
+	return repository.NewEmailConfirmationRepository(db), context.Background()
 }
 
 func TestEmailConfirmationRepository_Create(t *testing.T) {
@@ -40,7 +37,7 @@ func TestEmailConfirmationRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if confirmation.ID == (model.EmailConfirmationID{}) {
+	if confirmation.ID == 0 {
 		t.Error("Create() confirmation.ID は DB 採番で空でないはず")
 	}
 	if confirmation.UserID != nil {
@@ -69,13 +66,14 @@ func TestEmailConfirmationRepository_Create(t *testing.T) {
 	}
 }
 
-// TestEmailConfirmationRepository_CreatePreservesEmailCase confirms the citext
-// email column stores the address as given (a confirmation is keyed by the exact
-// address the user typed), while still matching case-insensitively elsewhere.
+// TestEmailConfirmationRepository_CreatePreservesEmailCase confirms the
+// NOCASE-collated email column stores the address as given (a confirmation is
+// keyed by the exact address the user typed), while still matching
+// case-insensitively elsewhere.
 //
-// [Ja] TestEmailConfirmationRepository_CreatePreservesEmailCase は citext の email
+// [Ja] TestEmailConfirmationRepository_CreatePreservesEmailCase は NOCASE 照合の email
 // 列が与えたとおりにアドレスを保存することを確認する (確認はユーザーが入力した正確な
-// アドレスをキーとする)。citext は他の照合では大文字小文字を無視する。
+// アドレスをキーとする)。照合は他の場面では大文字小文字を無視する。
 func TestEmailConfirmationRepository_CreatePreservesEmailCase(t *testing.T) {
 	t.Parallel()
 
@@ -106,12 +104,12 @@ func TestEmailConfirmationRepository_CreatePreservesEmailCase(t *testing.T) {
 func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
 	t.Run("発行直後の確認は active として返る", func(t *testing.T) {
-		id := testutil.NewEmailConfirmationBuilder(t, tx).WithCode("123456").Build()
+		id := testutil.NewEmailConfirmationBuilder(t, db).WithCode("123456").Build()
 
 		got, err := repo.FindActiveByID(ctx, id)
 		if err != nil {
@@ -129,7 +127,7 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	})
 
 	t.Run("未知の id は nil", func(t *testing.T) {
-		got, err := repo.FindActiveByID(ctx, model.EmailConfirmationID(uuid.New()))
+		got, err := repo.FindActiveByID(ctx, model.EmailConfirmationID(testutil.UnusedID))
 		if err != nil {
 			t.Fatalf("FindActiveByID() error = %v", err)
 		}
@@ -139,7 +137,7 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	})
 
 	t.Run("確認済み (succeeded_at あり) は active でない", func(t *testing.T) {
-		id := testutil.NewEmailConfirmationBuilder(t, tx).Build()
+		id := testutil.NewEmailConfirmationBuilder(t, db).Build()
 		if err := repo.Succeed(ctx, id); err != nil {
 			t.Fatalf("Succeed() error = %v", err)
 		}
@@ -154,7 +152,7 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	})
 
 	t.Run("有効期限切れ (started_at が 15 分より前) は active でない", func(t *testing.T) {
-		id := testutil.NewEmailConfirmationBuilder(t, tx).
+		id := testutil.NewEmailConfirmationBuilder(t, db).
 			WithStartedAt(time.Now().Add(-16 * time.Minute)).
 			Build()
 
@@ -168,7 +166,7 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	})
 
 	t.Run("試行回数が上限に達した確認は active でない", func(t *testing.T) {
-		id := testutil.NewEmailConfirmationBuilder(t, tx).
+		id := testutil.NewEmailConfirmationBuilder(t, db).
 			WithFailedAttemptsCount(5).
 			Build()
 
@@ -182,7 +180,7 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 	})
 
 	t.Run("試行回数が上限未満の確認は active として返り回数も読める", func(t *testing.T) {
-		id := testutil.NewEmailConfirmationBuilder(t, tx).
+		id := testutil.NewEmailConfirmationBuilder(t, db).
 			WithFailedAttemptsCount(4).
 			Build()
 
@@ -209,11 +207,11 @@ func TestEmailConfirmationRepository_FindActiveByID(t *testing.T) {
 func TestEmailConfirmationRepository_IncrementFailedAttempts(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
-	id := testutil.NewEmailConfirmationBuilder(t, tx).Build()
+	id := testutil.NewEmailConfirmationBuilder(t, db).Build()
 
 	if err := repo.IncrementFailedAttempts(ctx, id); err != nil {
 		t.Fatalf("IncrementFailedAttempts() error = %v", err)
@@ -252,18 +250,18 @@ func TestEmailConfirmationRepository_IncrementFailedAttempts(t *testing.T) {
 func TestEmailConfirmationRepository_Succeed(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
-	id := testutil.NewEmailConfirmationBuilder(t, tx).Build()
+	id := testutil.NewEmailConfirmationBuilder(t, db).Build()
 
 	if err := repo.Succeed(ctx, id); err != nil {
 		t.Fatalf("Succeed() error = %v", err)
 	}
 
 	var succeededAt *time.Time
-	err := tx.QueryRow(ctx, `SELECT succeeded_at FROM email_confirmations WHERE id = $1`, uuid.UUID(id)).Scan(&succeededAt)
+	err := db.Writer.QueryRowContext(ctx, `SELECT succeeded_at FROM email_confirmations WHERE id = ?`, int64(id)).Scan(&succeededAt)
 	if err != nil {
 		t.Fatalf("succeeded_at の読み戻しに失敗: %v", err)
 	}
@@ -282,11 +280,11 @@ func TestEmailConfirmationRepository_Succeed(t *testing.T) {
 func TestEmailConfirmationRepository_CreateEmailChange(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
 
 	confirmation, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{
 		UserID: userID,
@@ -297,7 +295,7 @@ func TestEmailConfirmationRepository_CreateEmailChange(t *testing.T) {
 		t.Fatalf("CreateEmailChange() error = %v", err)
 	}
 
-	if confirmation.ID == (model.EmailConfirmationID{}) {
+	if confirmation.ID == 0 {
 		t.Error("CreateEmailChange() confirmation.ID は DB 採番で空でないはず")
 	}
 	if confirmation.UserID == nil {
@@ -335,13 +333,13 @@ func TestEmailConfirmationRepository_CreateEmailChange(t *testing.T) {
 func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
 	t.Run("発行直後のメール変更確認は active として返る", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		id := testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		id := testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			WithCode("123456").
@@ -366,7 +364,7 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 	})
 
 	t.Run("保留中の確認が無いユーザーは nil", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
+		userID := testutil.NewUserBuilder(t, db).Build()
 
 		got, err := repo.FindActiveEmailChangeByUserID(ctx, userID)
 		if err != nil {
@@ -378,13 +376,13 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 	})
 
 	t.Run("サインアップ確認 (event 違い) は返さない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
+		userID := testutil.NewUserBuilder(t, db).Build()
 		// A sign_up confirmation must not match the email_change lookup even when
 		// it carries a user_id.
 		//
 		// [Ja] user_id を紐付けても event が sign_up の確認は email_change の
 		// ルックアップにヒットしない。
-		testutil.NewEmailConfirmationBuilder(t, tx).
+		testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventSignUp).
 			Build()
@@ -399,8 +397,8 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 	})
 
 	t.Run("確認済み (succeeded_at あり) は active でない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		id := testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		id := testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			Build()
@@ -418,8 +416,8 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 	})
 
 	t.Run("有効期限切れ (started_at が 15 分より前) は active でない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			WithStartedAt(time.Now().Add(-16 * time.Minute)).
@@ -435,8 +433,8 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 	})
 
 	t.Run("試行回数が上限に達した確認は active でない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			WithFailedAttemptsCount(5).
@@ -465,13 +463,13 @@ func TestEmailConfirmationRepository_FindActiveEmailChangeByUserID(t *testing.T)
 func TestEmailConfirmationRepository_DeleteUnusedEmailChangesByUserID(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	ctx := context.Background()
 
 	t.Run("未確認のメール変更確認を削除する", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			Build()
@@ -490,8 +488,8 @@ func TestEmailConfirmationRepository_DeleteUnusedEmailChangesByUserID(t *testing
 	})
 
 	t.Run("確認済みのものは残す", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		succeededID := testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		succeededID := testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			Build()
@@ -507,7 +505,7 @@ func TestEmailConfirmationRepository_DeleteUnusedEmailChangesByUserID(t *testing
 		//
 		// [Ja] 確認済みの行が残っていることを直接確認する。
 		var count int
-		if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM email_confirmations WHERE id = $1`, uuid.UUID(succeededID)).Scan(&count); err != nil {
+		if err := db.Writer.QueryRowContext(ctx, `SELECT COUNT(*) FROM email_confirmations WHERE id = ?`, int64(succeededID)).Scan(&count); err != nil {
 			t.Fatalf("確認済み行の件数取得に失敗: %v", err)
 		}
 		if count != 1 {
@@ -516,9 +514,9 @@ func TestEmailConfirmationRepository_DeleteUnusedEmailChangesByUserID(t *testing
 	})
 
 	t.Run("他ユーザーの確認は削除しない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
-		otherUserID := testutil.NewUserBuilder(t, tx).Build()
-		testutil.NewEmailConfirmationBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).Build()
+		otherUserID := testutil.NewUserBuilder(t, db).Build()
+		testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(otherUserID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			Build()
@@ -537,7 +535,7 @@ func TestEmailConfirmationRepository_DeleteUnusedEmailChangesByUserID(t *testing
 	})
 
 	t.Run("保留中が無くてもエラーにならない (no-op)", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).Build()
+		userID := testutil.NewUserBuilder(t, db).Build()
 
 		if err := repo.DeleteUnusedEmailChangesByUserID(ctx, userID); err != nil {
 			t.Fatalf("保留中が無いときの DeleteUnusedEmailChangesByUserID() error = %v", err)

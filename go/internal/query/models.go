@@ -5,137 +5,60 @@
 package query
 
 import (
-	"database/sql/driver"
-	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
-
-type RiverJobState string
-
-const (
-	RiverJobStateAvailable RiverJobState = "available"
-	RiverJobStateCancelled RiverJobState = "cancelled"
-	RiverJobStateCompleted RiverJobState = "completed"
-	RiverJobStateDiscarded RiverJobState = "discarded"
-	RiverJobStatePending   RiverJobState = "pending"
-	RiverJobStateRetryable RiverJobState = "retryable"
-	RiverJobStateRunning   RiverJobState = "running"
-	RiverJobStateScheduled RiverJobState = "scheduled"
-)
-
-func (e *RiverJobState) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = RiverJobState(s)
-	case string:
-		*e = RiverJobState(s)
-	default:
-		return fmt.Errorf("unsupported scan type for RiverJobState: %T", src)
-	}
-	return nil
-}
-
-type NullRiverJobState struct {
-	RiverJobState RiverJobState `json:"river_job_state"`
-	Valid         bool          `json:"valid"` // Valid is true if RiverJobState is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullRiverJobState) Scan(value interface{}) error {
-	if value == nil {
-		ns.RiverJobState, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.RiverJobState.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullRiverJobState) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.RiverJobState), nil
-}
 
 type Community struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	Identifier string    `json:"identifier"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-type CommunityMember struct {
-	ID          uuid.UUID `json:"id"`
-	CommunityID uuid.UUID `json:"community_id"`
-	UserID      uuid.UUID `json:"user_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-type CommunityMemberRole struct {
-	ID                uuid.UUID `json:"id"`
-	CommunityID       uuid.UUID `json:"community_id"`
-	CommunityMemberID uuid.UUID `json:"community_member_id"`
-	CommunityRoleID   uuid.UUID `json:"community_role_id"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
-}
-
-type CommunityRole struct {
-	ID          uuid.UUID `json:"id"`
-	CommunityID uuid.UUID `json:"community_id"`
-	Name        string    `json:"name"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        int64           `json:"id"`
+	Name      string          `json:"name"`
+	CreatedAt sqlitetime.Time `json:"created_at"`
+	UpdatedAt sqlitetime.Time `json:"updated_at"`
 }
 
 type EmailConfirmation struct {
-	ID                  uuid.UUID  `json:"id"`
-	Email               string     `json:"email"`
-	Event               string     `json:"event"`
-	Code                string     `json:"code"`
-	StartedAt           time.Time  `json:"started_at"`
-	SucceededAt         *time.Time `json:"succeeded_at"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
-	FailedAttemptsCount int32      `json:"failed_attempts_count"`
-	UserID              *uuid.UUID `json:"user_id"`
+	ID                  int64            `json:"id"`
+	UserID              *int64           `json:"user_id"`
+	Email               string           `json:"email"`
+	Event               string           `json:"event"`
+	Code                string           `json:"code"`
+	FailedAttemptsCount int64            `json:"failed_attempts_count"`
+	StartedAt           sqlitetime.Time  `json:"started_at"`
+	SucceededAt         *sqlitetime.Time `json:"succeeded_at"`
+	CreatedAt           sqlitetime.Time  `json:"created_at"`
+	UpdatedAt           sqlitetime.Time  `json:"updated_at"`
 }
 
 type PasswordResetToken struct {
-	ID          uuid.UUID  `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	TokenDigest string     `json:"token_digest"`
-	ExpiresAt   time.Time  `json:"expires_at"`
-	UsedAt      *time.Time `json:"used_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          int64            `json:"id"`
+	UserID      int64            `json:"user_id"`
+	TokenDigest string           `json:"token_digest"`
+	ExpiresAt   sqlitetime.Time  `json:"expires_at"`
+	UsedAt      *sqlitetime.Time `json:"used_at"`
+	CreatedAt   sqlitetime.Time  `json:"created_at"`
+	UpdatedAt   sqlitetime.Time  `json:"updated_at"`
 }
 
 type RiverJob struct {
-	ID           int64         `json:"id"`
-	State        RiverJobState `json:"state"`
-	Attempt      int16         `json:"attempt"`
-	MaxAttempts  int16         `json:"max_attempts"`
-	AttemptedAt  *time.Time    `json:"attempted_at"`
-	CreatedAt    time.Time     `json:"created_at"`
-	FinalizedAt  *time.Time    `json:"finalized_at"`
-	ScheduledAt  time.Time     `json:"scheduled_at"`
-	Priority     int16         `json:"priority"`
-	Args         []byte        `json:"args"`
-	AttemptedBy  []string      `json:"attempted_by"`
-	Errors       [][]byte      `json:"errors"`
-	Kind         string        `json:"kind"`
-	Metadata     []byte        `json:"metadata"`
-	Queue        string        `json:"queue"`
-	Tags         []string      `json:"tags"`
-	UniqueKey    []byte        `json:"unique_key"`
-	UniqueStates pgtype.Bits   `json:"unique_states"`
+	ID           int64      `json:"id"`
+	Args         []byte     `json:"args"`
+	Attempt      int64      `json:"attempt"`
+	AttemptedAt  *time.Time `json:"attempted_at"`
+	AttemptedBy  []byte     `json:"attempted_by"`
+	CreatedAt    time.Time  `json:"created_at"`
+	Errors       []byte     `json:"errors"`
+	FinalizedAt  *time.Time `json:"finalized_at"`
+	Kind         string     `json:"kind"`
+	Metadata     []byte     `json:"metadata"`
+	Priority     int64      `json:"priority"`
+	Queue        string     `json:"queue"`
+	State        string     `json:"state"`
+	ScheduledAt  time.Time  `json:"scheduled_at"`
+	Tags         []byte     `json:"tags"`
+	UniqueKey    []byte     `json:"unique_key"`
+	UniqueStates *int64     `json:"unique_states"`
+	MaxAttempts  int64      `json:"max_attempts"`
 }
 
 type RiverLeader struct {
@@ -166,47 +89,59 @@ type RiverQueue struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-type SchemaMigration struct {
-	Version string `json:"version"`
+type Role struct {
+	ID        int64           `json:"id"`
+	Name      string          `json:"name"`
+	Scopes    string          `json:"scopes"`
+	CreatedAt sqlitetime.Time `json:"created_at"`
+	UpdatedAt sqlitetime.Time `json:"updated_at"`
 }
 
 type User struct {
-	ID        uuid.UUID  `json:"id"`
-	Email     string     `json:"email"`
-	Locale    string     `json:"locale"`
-	TimeZone  string     `json:"time_zone"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	Atname    string     `json:"atname"`
-	DeletedAt *time.Time `json:"deleted_at"`
+	ID        int64            `json:"id"`
+	Email     string           `json:"email"`
+	Atname    string           `json:"atname"`
+	Locale    string           `json:"locale"`
+	TimeZone  string           `json:"time_zone"`
+	DeletedAt *sqlitetime.Time `json:"deleted_at"`
+	CreatedAt sqlitetime.Time  `json:"created_at"`
+	UpdatedAt sqlitetime.Time  `json:"updated_at"`
 }
 
 type UserPassword struct {
-	ID             uuid.UUID `json:"id"`
-	UserID         uuid.UUID `json:"user_id"`
-	PasswordDigest string    `json:"password_digest"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             int64           `json:"id"`
+	UserID         int64           `json:"user_id"`
+	PasswordDigest string          `json:"password_digest"`
+	CreatedAt      sqlitetime.Time `json:"created_at"`
+	UpdatedAt      sqlitetime.Time `json:"updated_at"`
+}
+
+type UserRole struct {
+	ID        int64           `json:"id"`
+	UserID    int64           `json:"user_id"`
+	RoleID    int64           `json:"role_id"`
+	CreatedAt sqlitetime.Time `json:"created_at"`
+	UpdatedAt sqlitetime.Time `json:"updated_at"`
 }
 
 type UserSession struct {
-	ID         uuid.UUID `json:"id"`
-	UserID     uuid.UUID `json:"user_id"`
-	Token      string    `json:"token"`
-	IpAddress  string    `json:"ip_address"`
-	UserAgent  string    `json:"user_agent"`
-	SignedInAt time.Time `json:"signed_in_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         int64           `json:"id"`
+	UserID     int64           `json:"user_id"`
+	Token      string          `json:"token"`
+	IpAddress  string          `json:"ip_address"`
+	UserAgent  string          `json:"user_agent"`
+	SignedInAt sqlitetime.Time `json:"signed_in_at"`
+	CreatedAt  sqlitetime.Time `json:"created_at"`
+	UpdatedAt  sqlitetime.Time `json:"updated_at"`
 }
 
 type UserTwoFactorAuth struct {
-	ID            uuid.UUID  `json:"id"`
-	UserID        uuid.UUID  `json:"user_id"`
-	Secret        string     `json:"secret"`
-	Enabled       bool       `json:"enabled"`
-	EnabledAt     *time.Time `json:"enabled_at"`
-	RecoveryCodes []string   `json:"recovery_codes"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            int64            `json:"id"`
+	UserID        int64            `json:"user_id"`
+	Secret        string           `json:"secret"`
+	Enabled       bool             `json:"enabled"`
+	EnabledAt     *sqlitetime.Time `json:"enabled_at"`
+	RecoveryCodes string           `json:"recovery_codes"`
+	CreatedAt     sqlitetime.Time  `json:"created_at"`
+	UpdatedAt     sqlitetime.Time  `json:"updated_at"`
 }

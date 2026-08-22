@@ -6,7 +6,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -21,8 +20,8 @@ import (
 func TestSignUpCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userRepo := repository.NewUserRepository(db)
 	v := validator.NewSignUpCreateValidator(userRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
@@ -31,7 +30,7 @@ func TestSignUpCreateValidator_Validate(t *testing.T) {
 	//
 	// [Ja] 重複ケースが衝突する相手を作るため、既存アカウントを 1 つ用意する。形式
 	// ケースは存在しないアドレスを使う。
-	testutil.NewUserBuilder(t, tx).WithEmail("taken@example.com").Build()
+	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
 
 	tests := []struct {
 		name      string
@@ -43,7 +42,7 @@ func TestSignUpCreateValidator_Validate(t *testing.T) {
 		{name: "異常系: メールが空", email: "", wantErr: true, wantField: "email"},
 		{name: "異常系: メール形式が不正", email: "not-an-email", wantErr: true, wantField: "email"},
 		{name: "異常系: 既に使われているメール", email: "taken@example.com", wantErr: true, wantField: "email"},
-		{name: "異常系: 大文字違いでも重複扱い (citext)", email: "TAKEN@example.com", wantErr: true, wantField: "email"},
+		{name: "異常系: 大文字違いでも重複扱い (NOCASE 照合)", email: "TAKEN@example.com", wantErr: true, wantField: "email"},
 	}
 
 	for _, tt := range tests {

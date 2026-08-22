@@ -5,27 +5,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pquerna/otp/totp"
 
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
 // newSignInTwoFactorValidator builds a SignInTwoFactorCreateValidator over the
-// test transaction so its 2FA lookup runs inside the rolled-back transaction.
+// test's own database so its 2FA lookup reads the rows the test seeded there.
 //
-// [Ja] newSignInTwoFactorValidator はテスト用トランザクション上に
-// SignInTwoFactorCreateValidator を組み立て、その 2FA ルックアップがロールバックされる
-// トランザクション内で走るようにする。
-func newSignInTwoFactorValidator(t *testing.T, db *pgxpool.Pool, tx pgx.Tx) *validator.SignInTwoFactorCreateValidator {
+// [Ja] newSignInTwoFactorValidator はテスト専用のデータベース上に
+// SignInTwoFactorCreateValidator を組み立て、その 2FA ルックアップがそこへ仕込んだ行を
+// 読むようにする。
+func newSignInTwoFactorValidator(t *testing.T, db *database.DB) *validator.SignInTwoFactorCreateValidator {
 	t.Helper()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
 	return validator.NewSignInTwoFactorCreateValidator(repo)
 }
 
@@ -37,18 +35,18 @@ func newSignInTwoFactorValidator(t *testing.T, db *pgxpool.Pool, tx pgx.Tx) *val
 func TestSignInTwoFactorCreateValidator_Validate_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-v@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
 		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
 	}
 
-	v := newSignInTwoFactorValidator(t, db, tx)
+	v := newSignInTwoFactorValidator(t, db)
 	if err := v.Validate(ctx, validator.SignInTwoFactorCreateValidatorInput{UserID: userID, Code: code}); err != nil {
 		t.Fatalf("Validate() error = %v, want nil", err)
 	}
@@ -64,11 +62,11 @@ func TestSignInTwoFactorCreateValidator_Validate_Success(t *testing.T) {
 func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-v-bad@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v-bad@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 	validCode, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -91,7 +89,7 @@ func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 		{name: "不一致", code: wrongCode},
 	}
 
-	v := newSignInTwoFactorValidator(t, db, tx)
+	v := newSignInTwoFactorValidator(t, db)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -118,7 +116,7 @@ func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 func TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// A user whose 2FA is only enrolling (not enabled) counts as no enabled 2FA, so
@@ -126,15 +124,15 @@ func TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor(t *testing.T
 	//
 	// [Ja] 2FA が登録中 (未有効化) のみのユーザーは有効な 2FA 無しと数えるため、形式の
 	// 整ったコードでも受理できない。
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-v-none@example.com").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v-none@example.com").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
 		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
 	}
 
-	v := newSignInTwoFactorValidator(t, db, tx)
+	v := newSignInTwoFactorValidator(t, db)
 	err = v.Validate(ctx, validator.SignInTwoFactorCreateValidatorInput{UserID: userID, Code: code})
 	ve := model.AsValidationError(err)
 	if ve == nil {

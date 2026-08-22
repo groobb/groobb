@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
 )
@@ -17,16 +17,17 @@ import (
 // [Ja] UserSessionRepository は sqlc 生成のクエリ経由で user_sessions を読み書き
 // します。
 type UserSessionRepository struct {
-	q *query.Queries
+	reader *query.Queries
+	writer *query.Queries
 }
 
-// NewUserSessionRepository creates a UserSessionRepository backed by the given
-// queries.
+// NewUserSessionRepository creates a UserSessionRepository that reads through the database's read pool
+// and writes through its write pool.
 //
-// [Ja] NewUserSessionRepository は与えられた queries を使う UserSessionRepository を
-// 生成します。
-func NewUserSessionRepository(q *query.Queries) *UserSessionRepository {
-	return &UserSessionRepository{q: q}
+// [Ja] NewUserSessionRepository は、データベースの読み取り用プールで読み、書き込み用プールで書く
+// UserSessionRepository を生成します。
+func NewUserSessionRepository(db *database.DB) *UserSessionRepository {
+	return &UserSessionRepository{reader: query.New(db.Reader), writer: query.New(db.Writer)}
 }
 
 // WithTx returns a new UserSessionRepository whose queries run inside tx, so a
@@ -36,8 +37,9 @@ func NewUserSessionRepository(q *query.Queries) *UserSessionRepository {
 // [Ja] WithTx は queries を tx 内で実行する新しい UserSessionRepository を返し、
 // UseCase が本リポジトリを自身のトランザクションに参加させられるようにします。
 // レシーバ自身は変更しません。
-func (r *UserSessionRepository) WithTx(tx pgx.Tx) *UserSessionRepository {
-	return &UserSessionRepository{q: r.q.WithTx(tx)}
+func (r *UserSessionRepository) WithTx(tx *sql.Tx) *UserSessionRepository {
+	q := r.writer.WithTx(tx)
+	return &UserSessionRepository{reader: q, writer: q}
 }
 
 // FindByToken returns the session with the given token, or (nil, nil) when none
@@ -49,9 +51,9 @@ func (r *UserSessionRepository) WithTx(tx pgx.Tx) *UserSessionRepository {
 // ルックアップ結果でありエラーではありません。呼び出し側は「未サインイン」として
 // 扱います。
 func (r *UserSessionRepository) FindByToken(ctx context.Context, token string) (*model.UserSession, error) {
-	row, err := r.q.GetUserSessionByToken(ctx, token)
+	row, err := r.reader.GetUserSessionByToken(ctx, token)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -78,8 +80,8 @@ type CreateUserSessionInput struct {
 // [Ja] Create はセッションを挿入し、DB が採番した id とタイムスタンプを設定した
 // 状態で返します。
 func (r *UserSessionRepository) Create(ctx context.Context, input CreateUserSessionInput) (*model.UserSession, error) {
-	row, err := r.q.CreateUserSession(ctx, query.CreateUserSessionParams{
-		UserID:    uuid.UUID(input.UserID),
+	row, err := r.writer.CreateUserSession(ctx, query.CreateUserSessionParams{
+		UserID:    int64(input.UserID),
 		Token:     input.Token,
 		IpAddress: input.IPAddress,
 		UserAgent: input.UserAgent,
@@ -96,7 +98,7 @@ func (r *UserSessionRepository) Create(ctx context.Context, input CreateUserSess
 // [Ja] DeleteByToken は token で識別されるセッションを削除します。既に存在しない
 // token の削除はエラーにならないため、二重サインアウトも無害です。
 func (r *UserSessionRepository) DeleteByToken(ctx context.Context, token string) error {
-	return r.q.DeleteUserSessionByToken(ctx, token)
+	return r.writer.DeleteUserSessionByToken(ctx, token)
 }
 
 // DeleteByUserID removes every session owned by the given user, signing them out
@@ -109,14 +111,14 @@ func (r *UserSessionRepository) DeleteByToken(ctx context.Context, token string)
 // アカウントに解決し続けないようにします。ユーザーがセッションを持たないときに削除しても
 // エラーにならないため、呼び出し側で事前確認は不要です。
 func (r *UserSessionRepository) DeleteByUserID(ctx context.Context, userID model.UserID) error {
-	return r.q.DeleteUserSessionsByUserID(ctx, uuid.UUID(userID))
+	return r.writer.DeleteUserSessionsByUserID(ctx, int64(userID))
 }
 
 // toModel converts a query.UserSession row into a model.UserSession, casting the
-// raw uuids into the typed IDs at the repository boundary.
+// raw ids into the typed IDs at the repository boundary.
 //
 // [Ja] toModel は query.UserSession を model.UserSession に変換し、リポジトリの
-// 境界で生の uuid を型付き ID にキャストします。
+// 境界で生の id を型付き ID にキャストします。
 func (r *UserSessionRepository) toModel(row query.UserSession) *model.UserSession {
 	return &model.UserSession{
 		ID:         model.UserSessionID(row.ID),
@@ -124,8 +126,8 @@ func (r *UserSessionRepository) toModel(row query.UserSession) *model.UserSessio
 		Token:      row.Token,
 		IPAddress:  row.IpAddress,
 		UserAgent:  row.UserAgent,
-		SignedInAt: row.SignedInAt,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
+		SignedInAt: time.Time(row.SignedInAt),
+		CreatedAt:  time.Time(row.CreatedAt),
+		UpdatedAt:  time.Time(row.UpdatedAt),
 	}
 }

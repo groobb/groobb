@@ -8,13 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -22,25 +19,24 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignUpHandler wires a sign-up Handler over transaction-bound repositories,
+// newSignUpHandler wires a sign-up Handler over the test database's repositories,
 // a fake job inserter, and a Turnstile verifier that passes by default, so a
 // handler test exercises the full request path (Turnstile gate, validator,
 // UseCase, session cookie) against a real database. The inserter and verifier are
 // returned too so a test can make enqueue fail or make Turnstile verification
 // fail.
 //
-// [Ja] newSignUpHandler はトランザクション束縛のリポジトリ、フェイクのジョブ
+// [Ja] newSignUpHandler はテスト用データベースのリポジトリ、フェイクのジョブ
 // インサーター、既定で通過する Turnstile 検証器でサインアップ Handler を組み立て、
 // ハンドラーテストが実 DB に対してリクエスト経路全体 (Turnstile ゲート・バリデーター・
 // UseCase・セッション Cookie) を通すようにします。テストが enqueue や Turnstile 検証を
 // 失敗させられるよう、インサーターと検証器も併せて返します。
-func newSignUpHandler(t *testing.T, tx pgx.Tx) (*sign_up.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
+func newSignUpHandler(t *testing.T, db *database.DB) (*sign_up.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
 
-	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries).WithTx(tx)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries).WithTx(tx)
+	cfg := testutil.NewTestConfig(t)
+	userRepo := repository.NewUserRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreateSignUpUsecase(
@@ -82,8 +78,8 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	_, tx := testutil.SetupTx(t)
-	handler, _, _ := newSignUpHandler(t, tx)
+	db := testutil.SetupDB(t)
+	handler, _, _ := newSignUpHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignUp("new@example.com", i18n.LangJa))
@@ -112,9 +108,9 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_DuplicateEmail(t *testing.T) {
 	t.Parallel()
 
-	_, tx := testutil.SetupTx(t)
-	testutil.NewUserBuilder(t, tx).WithEmail("taken@example.com").Build()
-	handler, _, _ := newSignUpHandler(t, tx)
+	db := testutil.SetupDB(t)
+	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
+	handler, _, _ := newSignUpHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postSignUp("taken@example.com", i18n.LangJa))
@@ -152,8 +148,8 @@ func TestCreate_DuplicateEmail(t *testing.T) {
 func TestCreate_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
-	_, tx := testutil.SetupTx(t)
-	handler, inserter, _ := newSignUpHandler(t, tx)
+	db := testutil.SetupDB(t)
+	handler, inserter, _ := newSignUpHandler(t, db)
 	inserter.Err = errors.New("queue unavailable")
 
 	rec := httptest.NewRecorder()
@@ -212,8 +208,8 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, tx := testutil.SetupTx(t)
-			handler, inserter, verifier := newSignUpHandler(t, tx)
+			db := testutil.SetupDB(t)
+			handler, inserter, verifier := newSignUpHandler(t, db)
 			verifier.Passed = tt.passed
 			verifier.Err = tt.err
 

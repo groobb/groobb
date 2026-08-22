@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -18,10 +17,10 @@ import (
 func TestDeleteSessionUsecase_Execute_DeletesSession(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userSessionRepo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
 	const token = "delete-session-token"
 	if _, err := userSessionRepo.Create(context.Background(), repository.CreateUserSessionInput{
 		UserID:    userID,
@@ -54,8 +53,8 @@ func TestDeleteSessionUsecase_Execute_DeletesSession(t *testing.T) {
 func TestDeleteSessionUsecase_Execute_EmptyTokenIsNoop(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userSessionRepo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	uc := usecase.NewDeleteSessionUsecase(userSessionRepo)
 	if err := uc.Execute(context.Background(), ""); err != nil {

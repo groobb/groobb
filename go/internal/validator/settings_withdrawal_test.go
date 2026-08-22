@@ -6,7 +6,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -25,21 +24,21 @@ import (
 func TestSettingsWithdrawalDeleteValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	v := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// The requesting account: a matching password.
 	//
 	// [Ja] 申請アカウント: 一致するパスワードを持つ。
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
 	// An account with no password credential (e.g. an SSO-only user).
 	//
 	// [Ja] パスワード資格情報の無いアカウント (例: SSO のみのユーザー)。
-	noPassUserID := testutil.NewUserBuilder(t, tx).Build()
+	noPassUserID := testutil.NewUserBuilder(t, db).Build()
 
 	t.Run("正常系: 正しい現在パスワードは通る", func(t *testing.T) {
 		err := v.Validate(ctx, validator.SettingsWithdrawalDeleteValidatorInput{

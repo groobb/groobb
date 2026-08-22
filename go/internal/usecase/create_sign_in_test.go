@@ -6,7 +6,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -21,15 +20,15 @@ import (
 func TestCreateSignInUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("signin-uc@example.com").Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc@example.com").Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo))
 	out, err := uc.Execute(ctx, usecase.CreateSignInInput{
 		Email:    "signin-uc@example.com",
@@ -59,16 +58,16 @@ func TestCreateSignInUsecase_Execute_Success(t *testing.T) {
 func TestCreateSignInUsecase_Execute_TwoFactorEnabled(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("signin-uc-2fa@example.com").Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc-2fa@example.com").Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo))
 	out, err := uc.Execute(ctx, usecase.CreateSignInInput{
 		Email:    "signin-uc-2fa@example.com",
@@ -95,15 +94,15 @@ func TestCreateSignInUsecase_Execute_TwoFactorEnabled(t *testing.T) {
 func TestCreateSignInUsecase_Execute_InvalidCredentials(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
+	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("signin-uc-bad@example.com").Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc-bad@example.com").Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	uc := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo))
 	out, err := uc.Execute(ctx, usecase.CreateSignInInput{
 		Email:    "signin-uc-bad@example.com",

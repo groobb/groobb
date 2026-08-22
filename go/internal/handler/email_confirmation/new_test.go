@@ -2,19 +2,15 @@ package email_confirmation_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
-	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -22,35 +18,47 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newEmailConfirmationHandler wires an email-confirmation Handler over the shared
-// pool (not a rolled-back transaction) because the verify UseCase opens its own
-// transaction internally; an outer transaction's seed rows would be invisible to
-// that inner transaction. Handler tests seed committed confirmations with unique
-// emails (the test database is reset by make test). This exercises the full
-// request path (validator, UseCase, session cookie) against a real database.
+// newEmailConfirmationHandler wires an email-confirmation Handler over the test
+// database's repositories, so a handler test exercises the full request path
+// (validator, UseCase, session cookie) against a real database.
 //
-// [Ja] newEmailConfirmationHandler は共有プール (ロールバックされるトランザクションでは
-// なく) でメール確認 Handler を組み立てる。verify UseCase は内部で自前のトランザクションを
-// 開くため、外側トランザクションで仕込んだ行はその内側トランザクションから見えないからで
-// ある。ハンドラーテストはユニークな email でコミット済みの確認を仕込む (テスト DB は
-// make test がリセットする)。これによりリクエスト経路全体 (バリデーター・UseCase・
-// セッション Cookie) を実 DB に対して通す。
-func newEmailConfirmationHandler(t *testing.T) *email_confirmation.Handler {
+// [Ja] newEmailConfirmationHandler はテスト用データベースのリポジトリでメール確認
+// Handler を組み立てる。ハンドラーテストがリクエスト経路全体 (バリデーター・UseCase・
+// セッション Cookie) を実 DB に対して通せるようにするためである。
+func newEmailConfirmationHandler(t *testing.T, db *database.DB) *email_confirmation.Handler {
 	t.Helper()
 
-	cfg := &config.Config{Env: "test"}
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
+	cfg := testutil.NewTestConfig(t)
+	userRepo := repository.NewUserRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	uc := usecase.NewVerifyEmailConfirmationUsecase(
-		db,
+		db.Writer,
 		validator.NewEmailConfirmationCreateValidator(emailConfirmationRepo),
 		emailConfirmationRepo,
 	)
 	sessionMgr := session.NewManager(userRepo, cfg)
 	return email_confirmation.NewHandler(cfg, sessionMgr, uc)
+}
+
+// emailConfirmationToken issues the same signed continuation token the sign-up
+// flow stores in the email-confirmation Cookie.
+//
+// [Ja] emailConfirmationToken はサインアップフローがメール確認 Cookie へ格納するものと
+// 同じ署名付き continuation token を発行します。
+func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
+	t.Helper()
+
+	mgr := session.NewManager(nil, testutil.NewTestConfig(t))
+	rec := httptest.NewRecorder()
+	mgr.SetEmailConfirmationID(rec, id)
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == session.EmailConfirmationCookieName && cookie.Value != "" {
+			return cookie.Value
+		}
+	}
+	t.Fatalf("メール確認 Cookie %q の署名 token が発行されていない", session.EmailConfirmationCookieName)
+	return ""
 }
 
 // seedActiveConfirmation creates a committed, active sign-up confirmation with
@@ -60,13 +68,13 @@ func newEmailConfirmationHandler(t *testing.T) *email_confirmation.Handler {
 // [Ja] seedActiveConfirmation は指定コード (とユニークな email) のコミット済み・
 // アクティブなサインアップ確認を作成し、その id を返す。ハンドラーテストが実在の行に対して
 // コード検証を駆動できるようにする。
-func seedActiveConfirmation(t *testing.T, code string) model.EmailConfirmationID {
+func seedActiveConfirmation(t *testing.T, db *database.DB, code string) model.EmailConfirmationID {
 	t.Helper()
 
 	ctx := context.Background()
-	repo := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB()))
+	repo := repository.NewEmailConfirmationRepository(db)
 	confirmation, err := repo.Create(ctx, repository.CreateEmailConfirmationInput{
-		Email: fmt.Sprintf("ec-%s@example.com", uuid.NewString()),
+		Email: "ec@example.com",
 		Event: model.EmailConfirmationEventSignUp,
 		Code:  code,
 	})
@@ -99,7 +107,9 @@ func getNew(confirmationID, locale string) *http.Request {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newEmailConfirmationHandler(t, db)
 
 	tests := []struct {
 		name        string
@@ -115,7 +125,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			rec := httptest.NewRecorder()
-			handler.New(rec, getNew(uuid.NewString(), tt.locale))
+			handler.New(rec, getNew(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
 				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -152,7 +162,9 @@ func TestNew(t *testing.T) {
 func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newEmailConfirmationHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getNew("", i18n.LangJa))

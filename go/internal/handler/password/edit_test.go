@@ -7,35 +7,31 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newPasswordHandler wires a password Handler over the shared pool. The
-// UpdatePasswordResetUsecase opens its own transaction, so its tests commit rows
-// and use unique tokens (the test database is reset by make test) rather than the
-// rolled-back transaction pattern.
+// newPasswordHandler wires a password Handler over the test database's
+// repositories, so a handler test drives the UpdatePasswordResetUsecase and the
+// transaction it opens against a real database.
 //
-// [Ja] newPasswordHandler は共有プールで password Handler を組み立てる。
-// UpdatePasswordResetUsecase は自前のトランザクションを開くため、そのテストはロール
-// バックされるトランザクションパターンではなく、行をコミットしユニークなトークンを使う
-// (テスト DB は make test がリセットする)。
-func newPasswordHandler(t *testing.T) *password.Handler {
+// [Ja] newPasswordHandler はテスト用データベースのリポジトリで password Handler を
+// 組み立てる。ハンドラーテストが UpdatePasswordResetUsecase と、それが開く
+// トランザクションを実 DB に対して駆動できるようにするためである。
+func newPasswordHandler(t *testing.T, db *database.DB) *password.Handler {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 
 	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(
-		db,
+		db.Writer,
 		validator.NewPasswordUpdateValidator(passwordResetTokenRepo),
 		passwordResetTokenRepo,
 		userPasswordRepo,
@@ -65,7 +61,9 @@ func getPasswordEdit(token, locale string) *http.Request {
 func TestEdit(t *testing.T) {
 	t.Parallel()
 
-	handler := newPasswordHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newPasswordHandler(t, db)
 
 	tests := []struct {
 		name        string

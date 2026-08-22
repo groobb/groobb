@@ -5,11 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -29,8 +26,8 @@ import (
 func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewEmailConfirmationRepository(db)
 	v := validator.NewEmailConfirmationCreateValidator(repo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
@@ -40,7 +37,7 @@ func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	//
 	// [Ja] 既知の保存コードを持つアクティブな確認。形式エラーのケースもこの id を使うが、
 	// DB ルックアップの前に失敗するため保存済みのコードは関係しない。
-	activeID := testutil.NewEmailConfirmationBuilder(t, tx).WithCode("123456").Build()
+	activeID := testutil.NewEmailConfirmationBuilder(t, db).WithCode("123456").Build()
 
 	t.Run("正常系: 形式が正しければ有効な確認を返す", func(t *testing.T) {
 		got, err := v.Validate(ctx, validator.EmailConfirmationCreateValidatorInput{ID: activeID, Code: "123456"})
@@ -89,7 +86,7 @@ func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: 有効な確認が存在しない id", func(t *testing.T) {
 		got, err := v.Validate(ctx, validator.EmailConfirmationCreateValidatorInput{
-			ID:   model.EmailConfirmationID(uuid.New()),
+			ID:   model.EmailConfirmationID(testutil.UnusedID),
 			Code: "123456",
 		})
 		if got != nil {
@@ -105,7 +102,7 @@ func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	})
 
 	t.Run("異常系: 期限切れの確認はグローバルエラー", func(t *testing.T) {
-		expiredID := testutil.NewEmailConfirmationBuilder(t, tx).
+		expiredID := testutil.NewEmailConfirmationBuilder(t, db).
 			WithCode("654321").
 			WithStartedAt(time.Now().Add(-16 * time.Minute)).
 			Build()
@@ -124,7 +121,7 @@ func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	})
 
 	t.Run("異常系: 試行回数を使い切った確認はグローバルエラー", func(t *testing.T) {
-		exhaustedID := testutil.NewEmailConfirmationBuilder(t, tx).
+		exhaustedID := testutil.NewEmailConfirmationBuilder(t, db).
 			WithCode("654321").
 			WithFailedAttemptsCount(5).
 			Build()

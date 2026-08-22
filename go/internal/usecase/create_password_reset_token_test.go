@@ -2,18 +2,15 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -22,32 +19,26 @@ import (
 
 const testAppURL = "https://groobb.example.dev"
 
-// newCreatePasswordResetTokenUsecase wires the usecase over the shared pool (not
-// a rolled-back transaction) because CreatePasswordResetTokenUsecase opens its
-// own transaction internally; an outer transaction's seed rows would be invisible
-// to that inner transaction. It returns the user repository (so a test can seed a
-// user and the test commits with unique emails) and the fake job inserter (so a
-// test can assert what mail was enqueued).
+// newCreatePasswordResetTokenUsecase wires the usecase over the test's own
+// database, whose writer CreatePasswordResetTokenUsecase uses to open its own
+// transaction. It returns the user repository (so a test can seed a user) and the
+// fake job inserter (so a test can assert what mail was enqueued).
 //
-// [Ja] newCreatePasswordResetTokenUsecase は共有プール (ロールバックされる
-// トランザクションではなく) で UseCase を組み立てる。CreatePasswordResetTokenUsecase は
-// 内部で自前のトランザクションを開くため、外側トランザクションで仕込んだ行はその内側
-// トランザクションから見えないからである。ユーザーリポジトリ (テストがユーザーを仕込み、
-// ユニークな email でコミットするため) とフェイクのジョブインサーター (どのメールが投入
-// されたかをテストが検証するため) を返す。
-func newCreatePasswordResetTokenUsecase(t *testing.T) (*usecase.CreatePasswordResetTokenUsecase, *repository.UserRepository, *testutil.FakeJobInserter) {
+// [Ja] newCreatePasswordResetTokenUsecase はテスト専用のデータベース上で UseCase を
+// 組み立てる。CreatePasswordResetTokenUsecase はその Writer で自前のトランザクションを
+// 開く。ユーザーリポジトリ (テストがユーザーを仕込むため) とフェイクのジョブインサーター
+// (どのメールが投入されたかをテストが検証するため) を返す。
+func newCreatePasswordResetTokenUsecase(t *testing.T, db *database.DB) (*usecase.CreatePasswordResetTokenUsecase, *repository.UserRepository, *testutil.FakeJobInserter) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	cfg := &config.Config{Env: "test", AppURL: testAppURL}
 
 	uc := usecase.NewCreatePasswordResetTokenUsecase(
-		db,
+		db.Writer,
 		validator.NewPasswordResetCreateValidator(),
 		userRepo,
 		passwordResetTokenRepo,
@@ -60,13 +51,13 @@ func newCreatePasswordResetTokenUsecase(t *testing.T) (*usecase.CreatePasswordRe
 // seedUser creates a committed user with a unique email and returns it.
 //
 // [Ja] seedUser はユニークな email を持つコミット済みユーザーを作成して返す。
-func seedUser(t *testing.T, ctx context.Context, userRepo *repository.UserRepository) *model.User {
+func seedUser(t *testing.T, ctx context.Context, db *database.DB, userRepo *repository.UserRepository) *model.User {
 	t.Helper()
 
-	email := fmt.Sprintf("pwreset-%s@example.com", uuid.NewString())
+	email := "pwreset@example.com"
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
@@ -79,10 +70,10 @@ func seedUser(t *testing.T, ctx context.Context, userRepo *repository.UserReposi
 // countTokens returns how many password_reset_tokens rows exist for the user.
 //
 // [Ja] countTokens はそのユーザーの password_reset_tokens 行数を返す。
-func countTokens(t *testing.T, ctx context.Context, userID model.UserID) int {
+func countTokens(t *testing.T, db *database.DB, ctx context.Context, userID model.UserID) int {
 	t.Helper()
 	var count int
-	if err := testutil.GetTestDB().QueryRow(ctx, "SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = $1", uuid.UUID(userID)).Scan(&count); err != nil {
+	if err := db.Reader.QueryRowContext(ctx, "SELECT COUNT(*) FROM password_reset_tokens WHERE user_id = ?", int64(userID)).Scan(&count); err != nil {
 		t.Fatalf("トークン数の取得に失敗: %v", err)
 	}
 	return count
@@ -91,10 +82,10 @@ func countTokens(t *testing.T, ctx context.Context, userID model.UserID) int {
 // digestForUser returns the single stored token_digest for the user.
 //
 // [Ja] digestForUser はそのユーザーに保存された唯一の token_digest を返す。
-func digestForUser(t *testing.T, ctx context.Context, userID model.UserID) string {
+func digestForUser(t *testing.T, db *database.DB, ctx context.Context, userID model.UserID) string {
 	t.Helper()
 	var digest string
-	if err := testutil.GetTestDB().QueryRow(ctx, "SELECT token_digest FROM password_reset_tokens WHERE user_id = $1", uuid.UUID(userID)).Scan(&digest); err != nil {
+	if err := db.Reader.QueryRowContext(ctx, "SELECT token_digest FROM password_reset_tokens WHERE user_id = ?", int64(userID)).Scan(&digest); err != nil {
 		t.Fatalf("token_digest の取得に失敗: %v", err)
 	}
 	return digest
@@ -112,9 +103,11 @@ func digestForUser(t *testing.T, ctx context.Context, userID model.UserID) strin
 func TestCreatePasswordResetTokenUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, userRepo, inserter := newCreatePasswordResetTokenUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, userRepo, inserter := newCreatePasswordResetTokenUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	user := seedUser(t, ctx, userRepo)
+	user := seedUser(t, ctx, db, userRepo)
 
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
 		Email:  user.Email,
@@ -127,7 +120,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_Success(t *testing.T) {
 		t.Fatal("Execute() output / Token = nil, want a created token")
 	}
 
-	if got := countTokens(t, ctx, user.ID); got != 1 {
+	if got := countTokens(t, db, ctx, user.ID); got != 1 {
 		t.Errorf("発行後のトークン数 = %d, want 1", got)
 	}
 
@@ -161,7 +154,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_Success(t *testing.T) {
 	if rawToken == "" {
 		t.Fatal("ResetURL に token クエリパラメータが無い")
 	}
-	if auth.HashToken(rawToken) != digestForUser(t, ctx, user.ID) {
+	if auth.HashToken(rawToken) != digestForUser(t, db, ctx, user.ID) {
 		t.Error("リンクのトークンのハッシュが保存済みダイジェストと一致しない")
 	}
 }
@@ -177,10 +170,12 @@ func TestCreatePasswordResetTokenUsecase_Execute_Success(t *testing.T) {
 func TestCreatePasswordResetTokenUsecase_Execute_UnknownEmail(t *testing.T) {
 	t.Parallel()
 
-	uc, _, inserter := newCreatePasswordResetTokenUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, _, inserter := newCreatePasswordResetTokenUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("nobody-%s@example.com", uuid.NewString())
+	email := "nobody@example.com"
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
 		Email:  email,
 		Locale: "ja",
@@ -205,7 +200,9 @@ func TestCreatePasswordResetTokenUsecase_Execute_UnknownEmail(t *testing.T) {
 func TestCreatePasswordResetTokenUsecase_Execute_InvalidEmail(t *testing.T) {
 	t.Parallel()
 
-	uc, _, inserter := newCreatePasswordResetTokenUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, _, inserter := newCreatePasswordResetTokenUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
@@ -233,9 +230,11 @@ func TestCreatePasswordResetTokenUsecase_Execute_InvalidEmail(t *testing.T) {
 func TestCreatePasswordResetTokenUsecase_Execute_ReplacesOutstandingToken(t *testing.T) {
 	t.Parallel()
 
-	uc, userRepo, _ := newCreatePasswordResetTokenUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, userRepo, _ := newCreatePasswordResetTokenUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	user := seedUser(t, ctx, userRepo)
+	user := seedUser(t, ctx, db, userRepo)
 
 	for i := 0; i < 2; i++ {
 		if _, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
@@ -246,7 +245,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_ReplacesOutstandingToken(t *tes
 		}
 	}
 
-	if got := countTokens(t, ctx, user.ID); got != 1 {
+	if got := countTokens(t, db, ctx, user.ID); got != 1 {
 		t.Errorf("2 回申請後のトークン数 = %d, want 1 (古い未使用トークンは置き換えられる)", got)
 	}
 }

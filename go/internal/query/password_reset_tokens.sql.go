@@ -7,25 +7,24 @@ package query
 
 import (
 	"context"
-	"time"
 
-	"github.com/google/uuid"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 const createPasswordResetToken = `-- name: CreatePasswordResetToken :one
 INSERT INTO password_reset_tokens (user_id, token_digest, expires_at)
-VALUES ($1, $2, $3)
+VALUES (?, ?, ?)
 RETURNING id, user_id, token_digest, expires_at, used_at, created_at, updated_at
 `
 
 type CreatePasswordResetTokenParams struct {
-	UserID      uuid.UUID `json:"user_id"`
-	TokenDigest string    `json:"token_digest"`
-	ExpiresAt   time.Time `json:"expires_at"`
+	UserID      int64           `json:"user_id"`
+	TokenDigest string          `json:"token_digest"`
+	ExpiresAt   sqlitetime.Time `json:"expires_at"`
 }
 
 func (q *Queries) CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) (PasswordResetToken, error) {
-	row := q.db.QueryRow(ctx, createPasswordResetToken, arg.UserID, arg.TokenDigest, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, createPasswordResetToken, arg.UserID, arg.TokenDigest, arg.ExpiresAt)
 	var i PasswordResetToken
 	err := row.Scan(
 		&i.ID,
@@ -41,21 +40,21 @@ func (q *Queries) CreatePasswordResetToken(ctx context.Context, arg CreatePasswo
 
 const deleteUnusedPasswordResetTokensByUserID = `-- name: DeleteUnusedPasswordResetTokensByUserID :exec
 DELETE FROM password_reset_tokens
-WHERE user_id = $1
+WHERE user_id = ?
   AND used_at IS NULL
 `
 
-func (q *Queries) DeleteUnusedPasswordResetTokensByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUnusedPasswordResetTokensByUserID, userID)
+func (q *Queries) DeleteUnusedPasswordResetTokensByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUnusedPasswordResetTokensByUserID, userID)
 	return err
 }
 
 const getPasswordResetTokenByDigest = `-- name: GetPasswordResetTokenByDigest :one
-SELECT id, user_id, token_digest, expires_at, used_at, created_at, updated_at FROM password_reset_tokens WHERE token_digest = $1 LIMIT 1
+SELECT id, user_id, token_digest, expires_at, used_at, created_at, updated_at FROM password_reset_tokens WHERE token_digest = ? LIMIT 1
 `
 
 func (q *Queries) GetPasswordResetTokenByDigest(ctx context.Context, tokenDigest string) (PasswordResetToken, error) {
-	row := q.db.QueryRow(ctx, getPasswordResetTokenByDigest, tokenDigest)
+	row := q.db.QueryRowContext(ctx, getPasswordResetTokenByDigest, tokenDigest)
 	var i PasswordResetToken
 	err := row.Scan(
 		&i.ID,
@@ -71,11 +70,12 @@ func (q *Queries) GetPasswordResetTokenByDigest(ctx context.Context, tokenDigest
 
 const markPasswordResetTokenAsUsed = `-- name: MarkPasswordResetTokenAsUsed :exec
 UPDATE password_reset_tokens
-SET used_at = NOW(), updated_at = NOW()
-WHERE id = $1
+SET used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
 `
 
-func (q *Queries) MarkPasswordResetTokenAsUsed(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, markPasswordResetTokenAsUsed, id)
+func (q *Queries) MarkPasswordResetTokenAsUsed(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, markPasswordResetTokenAsUsed, id)
 	return err
 }

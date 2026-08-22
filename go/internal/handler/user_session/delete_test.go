@@ -8,32 +8,28 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newUserSessionHandler wires a user session Handler over the shared pool.
-// Sign-out deletes the session through the pool, so its tests commit rows and use
-// unique tokens (the test database is reset by make test).
+// newUserSessionHandler wires a user session Handler over the test database's
+// repositories, so a sign-out test deletes a real session row.
 //
-// [Ja] newUserSessionHandler は共有プールでユーザーセッション Handler を組み立てます。
-// サインアウトはプール経由でセッションを削除するため、そのテストは行をコミットし
-// ユニークなトークンを使います (テスト DB は make test がリセットする)。
-func newUserSessionHandler(t *testing.T) (*user_session.Handler, *repository.UserSessionRepository) {
+// [Ja] newUserSessionHandler はテスト用データベースのリポジトリでユーザーセッション
+// Handler を組み立てます。サインアウトのテストが実在のセッション行を削除できるように
+// するためです。
+func newUserSessionHandler(t *testing.T, db *database.DB) (*user_session.Handler, *repository.UserSessionRepository) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	flashMgr := session.NewFlashManager(cfg)
@@ -46,13 +42,13 @@ func newUserSessionHandler(t *testing.T) (*user_session.Handler, *repository.Use
 //
 // [Ja] seedSession はコミットされたユーザーとセッションを作成し、ハンドラーテストが
 // それでサインアウトできるようセッショントークンを返す。
-func seedSession(t *testing.T, userSessionRepo *repository.UserSessionRepository) string {
+func seedSession(t *testing.T, db *database.DB, userSessionRepo *repository.UserSessionRepository) string {
 	t.Helper()
 
 	ctx := context.Background()
-	user, err := repository.NewUserRepository(query.New(testutil.GetTestDB())).Create(ctx, repository.CreateUserInput{
-		Email:    "signout-h-" + uuid.NewString() + "@example.com",
-		Atname:   testutil.UniqueAtname(),
+	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
+		Email:    "signout-h@example.com",
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -60,7 +56,7 @@ func seedSession(t *testing.T, userSessionRepo *repository.UserSessionRepository
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}
 	userID := user.ID
-	token := "signout-token-" + uuid.NewString()
+	token := "signout-token"
 	if _, err := userSessionRepo.Create(ctx, repository.CreateUserSessionInput{
 		UserID:    userID,
 		Token:     token,
@@ -117,8 +113,10 @@ func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMes
 func TestDelete_Success(t *testing.T) {
 	t.Parallel()
 
-	handler, userSessionRepo := newUserSessionHandler(t)
-	token := seedSession(t, userSessionRepo)
+	db := testutil.SetupDB(t)
+
+	handler, userSessionRepo := newUserSessionHandler(t, db)
+	token := seedSession(t, db, userSessionRepo)
 
 	req := httptest.NewRequest(http.MethodDelete, "/user_session", nil)
 	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
@@ -172,7 +170,9 @@ func TestDelete_Success(t *testing.T) {
 func TestDelete_NotSignedIn(t *testing.T) {
 	t.Parallel()
 
-	handler, _ := newUserSessionHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, _ := newUserSessionHandler(t, db)
 
 	req := httptest.NewRequest(http.MethodDelete, "/user_session", nil)
 	rec := httptest.NewRecorder()

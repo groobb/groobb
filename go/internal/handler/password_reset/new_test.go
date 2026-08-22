@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/testutil"
 )
 
 // getPasswordResetNew builds a GET /password_reset/new request with the locale
@@ -29,7 +30,9 @@ func getPasswordResetNew(locale string) *http.Request {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler, _, _ := newPasswordResetHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, _, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getPasswordResetNew(i18n.LangJa))
@@ -61,7 +64,9 @@ func TestNew(t *testing.T) {
 func TestNew_English(t *testing.T) {
 	t.Parallel()
 
-	handler, _, _ := newPasswordResetHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, _, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getPasswordResetNew(i18n.LangEn))

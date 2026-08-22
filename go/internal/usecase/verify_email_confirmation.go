@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
@@ -30,23 +29,23 @@ import (
 // ユーザーは作成しません。アカウントは成功済みの確認を読む後続ステップ (アカウント作成)
 // で作られるため、本ステップはコードが正しかったことを確認するだけです。
 type VerifyEmailConfirmationUsecase struct {
-	db                         *pgxpool.Pool
+	writer                     *sql.DB
 	emailConfirmationValidator *validator.EmailConfirmationCreateValidator
 	emailConfirmationRepo      *repository.EmailConfirmationRepository
 }
 
 // NewVerifyEmailConfirmationUsecase builds a VerifyEmailConfirmationUsecase from
-// the pool, its validator, and its repository.
+// the write pool, its validator, and its repository.
 //
-// [Ja] NewVerifyEmailConfirmationUsecase はプール・validator・repository から
+// [Ja] NewVerifyEmailConfirmationUsecase は書き込み用プール・validator・repository から
 // VerifyEmailConfirmationUsecase を構築します。
 func NewVerifyEmailConfirmationUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	emailConfirmationValidator *validator.EmailConfirmationCreateValidator,
 	emailConfirmationRepo *repository.EmailConfirmationRepository,
 ) *VerifyEmailConfirmationUsecase {
 	return &VerifyEmailConfirmationUsecase{
-		db:                         db,
+		writer:                     writer,
 		emailConfirmationValidator: emailConfirmationValidator,
 		emailConfirmationRepo:      emailConfirmationRepo,
 	}
@@ -113,11 +112,11 @@ func (uc *VerifyEmailConfirmationUsecase) Execute(ctx context.Context, input Ver
 // 数えられ、カウントは上限を超えて収束し、それ以降は FindActiveByID が当該行を返さなく
 // なります。
 func (uc *VerifyEmailConfirmationUsecase) verify(ctx context.Context, confirmation *model.EmailConfirmation, code string) (*VerifyEmailConfirmationOutput, error) {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	emailConfirmationRepo := uc.emailConfirmationRepo.WithTx(tx)
 
@@ -125,7 +124,7 @@ func (uc *VerifyEmailConfirmationUsecase) verify(ctx context.Context, confirmati
 		if err := emailConfirmationRepo.IncrementFailedAttempts(ctx, confirmation.ID); err != nil {
 			return nil, fmt.Errorf("メール確認の失敗試行回数の更新に失敗: %w", err)
 		}
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 		}
 
@@ -137,7 +136,7 @@ func (uc *VerifyEmailConfirmationUsecase) verify(ctx context.Context, confirmati
 	if err := emailConfirmationRepo.Succeed(ctx, confirmation.ID); err != nil {
 		return nil, fmt.Errorf("メール確認の成功打刻に失敗: %w", err)
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

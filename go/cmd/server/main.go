@@ -39,7 +39,6 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/turnstile"
@@ -55,36 +54,56 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Connect to PostgreSQL and verify connectivity before serving requests, so
-	// a misconfigured or unreachable database fails fast at startup. The bounded
-	// context only guards the initial connect/ping; the pool itself outlives it.
+	// Open the SQLite database and verify connectivity before serving requests, so
+	// a misconfigured or unopenable database fails fast at startup. The bounded
+	// context only guards the initial open/ping; the pools themselves outlive it.
 	//
-	// [Ja] リクエストを受ける前に PostgreSQL へ接続して疎通を確認し、設定ミスや
-	// 接続不能なデータベースを起動時に早期検知する。タイムアウト付き context は
-	// 最初の接続/ping だけを制御し、プール自体はそれより長く生存する。
+	// [Ja] リクエストを受ける前に SQLite データベースを開いて疎通を確認し、設定ミスや
+	// 開けないデータベースを起動時に早期検知する。タイムアウト付き context は
+	// 最初のオープン / ping だけを制御し、プール自体はそれより長く生存する。
 	connectCtx, connectCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	pool, err := database.New(connectCtx, cfg.DatabaseURL)
+	db, err := database.Open(connectCtx, cfg.DatabasePath)
 	connectCancel()
 	if err != nil {
-		slog.Error("failed to connect to the database", "error", err)
+		slog.Error("failed to open the database", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
-	slog.Info("connected to the database")
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("failed to close the database", "error", err)
+		}
+	}()
+	slog.Info("opened the database")
 
-	// Build and start the background job worker on its own pool. Sign-up is the
+	// Bring the schema up to date on startup. A self-hosted instance is expected
+	// to be upgraded by replacing the binary and restarting it, so applying the
+	// migrations here is what keeps the database in step with the code without the
+	// operator running a separate command.
+	//
+	// [Ja] 起動時にスキーマを最新へ揃える。セルフホストのインスタンスはバイナリを置き換えて
+	// 再起動することで更新される想定のため、ここでマイグレーションを適用することが、運用者に
+	// 別のコマンドを求めずにデータベースをコードへ追随させる手段になる。
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	err = database.Migrate(migrateCtx, db.Writer)
+	migrateCancel()
+	if err != nil {
+		slog.Error("failed to migrate the database", "error", err)
+		os.Exit(1)
+	}
+
+	// Build and start the background job worker on its own connection. Sign-up is the
 	// first flow to enqueue a job (the confirmation email), so the worker is
 	// wired and started here; without it, enqueued jobs would never be processed.
-	// The bounded context guards only pool creation; the worker runs on a
+	// The bounded context guards only opening that connection; the worker runs on a
 	// background context and is drained by Stop on shutdown.
 	//
-	// [Ja] バックグラウンドジョブのワーカーを専用プール上に構築・起動する。サインアップは
+	// [Ja] バックグラウンドジョブのワーカーを専用の接続上に構築・起動する。サインアップは
 	// 最初にジョブ (確認メール) を投入するフローのため、ワーカーをここで配線・起動する。
-	// これが無いと投入されたジョブは処理されない。タイムアウト付き context はプール生成
-	// のみを制御し、ワーカーは background context で動き、シャットダウン時に Stop で
+	// これが無いと投入されたジョブは処理されない。タイムアウト付き context はその接続を開く
+	// 処理のみを制御し、ワーカーは background context で動き、シャットダウン時に Stop で
 	// ドレインする。
 	workerCtx, workerCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	workerClient, err := worker.NewClient(workerCtx, cfg.DatabaseURL, cfg)
+	workerClient, err := worker.NewClient(workerCtx, cfg.DatabasePath, cfg)
 	workerCancel()
 	if err != nil {
 		slog.Error("failed to build the worker client", "error", err)
@@ -102,18 +121,18 @@ func main() {
 		}
 	}()
 
-	// Wire the request-path dependencies: repositories over the app pool, then
-	// the session manager, dispatcher, validator, UseCase, and handlers.
+	// Wire the request-path dependencies: repositories over the application's
+	// connection, then the session manager, dispatcher, validator, UseCase, and
+	// handlers.
 	//
-	// [Ja] リクエスト経路の依存を配線する。アプリ用プール上のリポジトリ、続いて
+	// [Ja] リクエスト経路の依存を配線する。アプリ用の接続上のリポジトリ、続いて
 	// セッションマネージャ・ディスパッチャー・バリデーター・UseCase・ハンドラー。
-	queries := query.New(pool)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -141,10 +160,10 @@ func main() {
 	createSignUpUC := usecase.NewCreateSignUpUsecase(signUpValidator, emailConfirmationRepo, jobDispatcher)
 
 	emailConfirmationValidator := validator.NewEmailConfirmationCreateValidator(emailConfirmationRepo)
-	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(pool, emailConfirmationValidator, emailConfirmationRepo)
+	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(db.Writer, emailConfirmationValidator, emailConfirmationRepo)
 
 	accountValidator := validator.NewAccountCreateValidator(userRepo)
-	createAccountUC := usecase.NewCreateAccountUsecase(pool, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
+	createAccountUC := usecase.NewCreateAccountUsecase(db.Writer, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 
 	signInValidator := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
@@ -155,22 +174,22 @@ func main() {
 	createSignInTwoFactorUC := usecase.NewCreateSignInTwoFactorUsecase(signInTwoFactorValidator)
 
 	signInTwoFactorRecoveryValidator := validator.NewSignInTwoFactorRecoveryCreateValidator(userTwoFactorAuthRepo)
-	createSignInTwoFactorRecoveryUC := usecase.NewCreateSignInTwoFactorRecoveryUsecase(pool, signInTwoFactorRecoveryValidator, userTwoFactorAuthRepo, userSessionRepo)
+	createSignInTwoFactorRecoveryUC := usecase.NewCreateSignInTwoFactorRecoveryUsecase(db.Writer, signInTwoFactorRecoveryValidator, userTwoFactorAuthRepo, userSessionRepo)
 
 	passwordResetValidator := validator.NewPasswordResetCreateValidator()
-	createPasswordResetTokenUC := usecase.NewCreatePasswordResetTokenUsecase(pool, passwordResetValidator, userRepo, passwordResetTokenRepo, jobDispatcher, cfg)
+	createPasswordResetTokenUC := usecase.NewCreatePasswordResetTokenUsecase(db.Writer, passwordResetValidator, userRepo, passwordResetTokenRepo, jobDispatcher, cfg)
 
 	passwordUpdateValidator := validator.NewPasswordUpdateValidator(passwordResetTokenRepo)
-	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(pool, passwordUpdateValidator, passwordResetTokenRepo, userPasswordRepo)
+	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(db.Writer, passwordUpdateValidator, passwordResetTokenRepo, userPasswordRepo)
 
 	settingsEmailUpdateValidator := validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo)
-	createEmailChangeUC := usecase.NewCreateEmailChangeUsecase(pool, settingsEmailUpdateValidator, emailConfirmationRepo, jobDispatcher)
+	createEmailChangeUC := usecase.NewCreateEmailChangeUsecase(db.Writer, settingsEmailUpdateValidator, emailConfirmationRepo, jobDispatcher)
 
 	settingsEmailConfirmationValidator := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
-	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(pool, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
+	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(db.Writer, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
 
 	settingsWithdrawalDeleteValidator := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
-	deleteAccountUC := usecase.NewDeleteAccountUsecase(pool, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
+	deleteAccountUC := usecase.NewDeleteAccountUsecase(db.Writer, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
 
 	settingsTwoFactorAuthCreateValidator := validator.NewSettingsTwoFactorAuthCreateValidator(userTwoFactorAuthRepo)
 	settingsTwoFactorAuthDeleteValidator := validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, userTwoFactorAuthRepo)

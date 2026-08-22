@@ -2,10 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"strings"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
@@ -25,25 +23,25 @@ import (
 // その CASCADE する子データのより重い物理削除は後続の定期パージジョブに委ねます。本
 // ステップはアカウントを即座に無効化し、一意な識別子を解放するだけです。
 type DeleteAccountUsecase struct {
-	db              *pgxpool.Pool
+	writer          *sql.DB
 	validator       *validator.SettingsWithdrawalDeleteValidator
 	userRepo        *repository.UserRepository
 	userSessionRepo *repository.UserSessionRepository
 }
 
-// NewDeleteAccountUsecase builds a DeleteAccountUsecase from the pool, its
+// NewDeleteAccountUsecase builds a DeleteAccountUsecase from the write pool, its
 // validator, and the repositories it persists through.
 //
-// [Ja] NewDeleteAccountUsecase はプール・validator・永続化に使うリポジトリから
+// [Ja] NewDeleteAccountUsecase は書き込み用プール・validator・永続化に使うリポジトリから
 // DeleteAccountUsecase を構築します。
 func NewDeleteAccountUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	validator *validator.SettingsWithdrawalDeleteValidator,
 	userRepo *repository.UserRepository,
 	userSessionRepo *repository.UserSessionRepository,
 ) *DeleteAccountUsecase {
 	return &DeleteAccountUsecase{
-		db:              db,
+		writer:          writer,
 		validator:       validator,
 		userRepo:        userRepo,
 		userSessionRepo: userSessionRepo,
@@ -93,11 +91,11 @@ func (uc *DeleteAccountUsecase) Execute(ctx context.Context, input DeleteAccount
 // セッションの消去が両方成るか、どちらも成らないか)。この 2 つの永続化ステップがあるため、
 // 本処理を Execute (純粋なオーケストレーションに徹する) から切り出しています。
 func (uc *DeleteAccountUsecase) deleteAccount(ctx context.Context, userID model.UserID, anonEmail, anonAtname string) error {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	userRepo := uc.userRepo.WithTx(tx)
 	userSessionRepo := uc.userSessionRepo.WithTx(tx)
@@ -109,42 +107,58 @@ func (uc *DeleteAccountUsecase) deleteAccount(ctx context.Context, userID model.
 		return fmt.Errorf("ユーザーセッションの削除に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 	return nil
 }
 
 // anonymizedEmail derives the placeholder email a withdrawn account's email is
-// overwritten with. It embeds the user id so the value is globally unique (freeing
-// the original address for re-registration without ever colliding on the
-// users.email UNIQUE constraint), and uses the reserved .invalid TLD (RFC 2606) so
-// it can never be a real, deliverable address.
+// overwritten with. It embeds the user id so the value is distinct per account,
+// freeing the original address for re-registration.
+//
+// The reserved .invalid TLD (RFC 2606) is what makes the value unreachable: both
+// sign-up and an email change require a confirmation code delivered to the
+// address, and .invalid can never receive one, so no account can hold this value
+// and the overwrite cannot lose the users.email UNIQUE constraint to a live row.
 //
 // [Ja] anonymizedEmail は退会済みアカウントの email を上書きする代替 email を導出します。
-// ユーザー id を埋め込むことで値をグローバルに一意にし (元のアドレスを再登録用に解放しつつ
-// users.email の UNIQUE 制約で決して衝突しない)、予約 TLD の .invalid (RFC 2606) を使うことで
-// 実在の配送可能なアドレスにならないようにします。
+// ユーザー id を埋め込むことで値をアカウントごとに別のものにし、元のアドレスを再登録用に
+// 解放します。
+//
+// 値を到達不能にしているのは予約 TLD の .invalid (RFC 2606) です。サインアップもメール
+// アドレス変更も、アドレスへ配送された確認コードを要求しますが、.invalid はそれを受け取れ
+// ません。そのためこの値を保持できるアカウントは存在せず、上書きが実在の行との間で
+// users.email の UNIQUE 制約に負けることがありません。
 func anonymizedEmail(userID model.UserID) string {
 	return fmt.Sprintf("deleted-%s@deleted.invalid", userID.String())
 }
 
 // anonymizedAtname derives the placeholder atname a withdrawn account's atname is
-// overwritten with. It embeds the user id (with the UUID hyphens stripped so the
-// value stays within the atname character set of ASCII letters/digits/underscore)
-// so the value is globally unique, freeing the original atname for reuse without
-// ever colliding on the users.atname UNIQUE constraint. The result is longer than
-// the 20-character limit the account forms enforce, but that limit is form-level
-// validation, not a column constraint (users.atname is citext with no length
-// bound), and this tombstone value is never re-validated or shown as a handle.
+// overwritten with. It embeds the user id so the value is distinct per account,
+// freeing the original atname for reuse.
+//
+// The hyphen is what makes the value unreachable: it is outside the atname
+// character set of ASCII letters, digits, and underscore, so no account can ever
+// hold this value and the overwrite cannot lose the users.atname UNIQUE
+// constraint to a live row. A separator inside that character set would not be
+// enough, because an id in decimal is short enough to spell a tombstone that
+// passes the account form and squats the value the owner's withdrawal needs.
+// users.atname is NOCASE-collated TEXT with no length bound or format check, so
+// the column accepts the hyphen; this tombstone value is never re-validated or
+// shown as a handle.
 //
 // [Ja] anonymizedAtname は退会済みアカウントの atname を上書きする代替 atname を導出
-// します。ユーザー id を埋め込む (UUID のハイフンを除いて atname の文字集合である ASCII
-// 英数字 / アンダースコアに収める) ことで値をグローバルに一意にし、users.atname の UNIQUE
-// 制約で決して衝突せずに元の atname を再利用向けに解放します。結果はアカウントフォームが
-// 強制する 20 文字制限より長くなりますが、その制限はフォームレベルのバリデーションであって
-// カラム制約ではなく (users.atname は長さ上限の無い citext)、この墓標値は再検証もハンドル
-// としての表示もされません。
+// します。ユーザー id を埋め込むことで値をアカウントごとに別のものにし、元の atname を
+// 再利用向けに解放します。
+//
+// 値を到達不能にしているのはハイフンです。ハイフンは atname の文字集合である ASCII
+// 英数字 / アンダースコアの外にあるため、この値を保持できるアカウントは存在せず、上書きが
+// 実在の行との間で users.atname の UNIQUE 制約に負けることがありません。区切りを文字集合
+// 内の文字にするとこれは成り立ちません。10 進表記の id は短く、アカウントフォームを通る
+// 墓標値を綴れてしまうため、退会に必要な値を先取りされうるからです。users.atname は長さ
+// 上限も形式チェックも無い NOCASE 照合の TEXT のため、カラム自体はハイフンを受け付けます。
+// この墓標値は再検証もハンドルとしての表示もされません。
 func anonymizedAtname(userID model.UserID) string {
-	return "deleted_" + strings.ReplaceAll(userID.String(), "-", "")
+	return "deleted-" + userID.String()
 }
