@@ -1,0 +1,94 @@
+# Example configuration file for a Groobb instance.
+# Copy it to groobb.toml in the directory the server runs from, or point
+# GROOBB_CONFIG_FILE at it, and fill in the values. Every setting here has a
+# matching environment variable, shown above it, which overrides the file when
+# it is set: keep the file for the settings an instance always has, and use the
+# environment for the secrets a deployment injects.
+#
+# The file itself is optional. An instance configured entirely through the
+# environment starts without one.
+#
+# [Ja] Groobb インスタンスの設定ファイルのサンプル。
+#
+# サーバーを実行するディレクトリに groobb.toml としてコピーするか、GROOBB_CONFIG_FILE で
+# このファイルを指したうえで、値を埋めてください。ここにある設定にはそれぞれ対応する
+# 環境変数があり (各設定の上に記載)、設定されている場合はファイルより優先されます。
+# インスタンスが常に持つ設定はファイルに置き、デプロイ側が注入する秘密情報は環境変数を
+# 使ってください。
+#
+# ファイル自体は任意です。環境変数だけで設定するインスタンスはファイル無しで起動します。
+[app]
+# The running environment: "dev", "test", or "prod". A self-hosted instance runs
+# as "prod". APP_ENV overrides it.
+#
+# The public base URL, with no trailing slash. It is what the links in outgoing
+# email are built from, so a wrong value sends people to the wrong host.
+# GROOBB_APP_URL overrides it.
+#
+# [Ja] 実行環境 ("dev" / "test" / "prod")。セルフホストのインスタンスは "prod" で
+# 動かします。APP_ENV が上書きします。
+#
+# 公開ベース URL (末尾スラッシュなし)。送信メール内のリンクはこの値から組み立てられる
+# ため、誤った値は受信者を別のホストへ送ってしまいます。GROOBB_APP_URL が上書きします。
+env = "prod"
+url = "https://groobb.example.com"
+
+[server]
+# The TCP port the HTTP server listens on. GROOBB_PORT overrides it.
+#
+# [Ja] HTTP サーバーが待ち受ける TCP ポート。GROOBB_PORT が上書きします。
+port = 8080
+
+[database]
+# The path of the SQLite database file, which holds every piece of state the
+# instance keeps. It has no default so that a misconfigured instance reports
+# that it does not know where its data is, instead of starting on an empty
+# database of its own making. GROOBB_DATABASE_PATH overrides it.
+#
+# [Ja] SQLite データベースファイルのパス。インスタンスが保持する状態はすべてこのファイルに
+# あります。既定値を持たないのは、設定を誤ったインスタンスが自分で作った空のデータベースの
+# 上で起動するのではなく、「データの在り処が分からない」と報告するためです。
+# GROOBB_DATABASE_PATH が上書きします。
+path = "/var/lib/groobb/groobb.sqlite"
+
+[security]
+# The key that signs the short-lived cookies of the email-confirmation and
+# two-factor sign-in flows. Generate at least 32 bytes from a cryptographically
+# secure random source (`openssl rand -base64 48`) and keep it stable: changing
+# it invalidates the tokens in flight, and exposing it lets an attacker forge
+# authentication state. GROOBB_CONTINUATION_TOKEN_KEY overrides it.
+#
+# [Ja] メール確認と 2 段階認証サインインの短命 Cookie に署名する鍵。暗号学的に安全な
+# 乱数源から 32 バイト以上を生成し (`openssl rand -base64 48`)、値は変えずに保ってください。
+# 変更すると発行済みのトークンが無効になり、漏えいすると攻撃者が認証状態を偽造できます。
+# GROOBB_CONTINUATION_TOKEN_KEY が上書きします。
+continuation_token_key = ""
+
+[email]
+# The sender identity outgoing email carries, and the Resend API key it is
+# delivered with. GROOBB_EMAIL_FROM, GROOBB_EMAIL_FROM_NAME, and
+# GROOBB_RESEND_API_KEY override these.
+#
+# [Ja] 送信メールが名乗る送信元と、配送に使う Resend の API キー。
+# GROOBB_EMAIL_FROM / GROOBB_EMAIL_FROM_NAME / GROOBB_RESEND_API_KEY が
+# 上書きします。
+from = "noreply@groobb.example.com"
+from_name = "Groobb"
+resend_api_key = ""
+
+[turnstile]
+# The Cloudflare Turnstile keys for bot protection on the public forms. With
+# both empty the widget is not rendered and token verification is bypassed, so
+# an instance starts before they are provisioned. The disable flag switches
+# Turnstile off in a development or test environment without unsetting the keys;
+# it is ignored in production. GROOBB_TURNSTILE_SITE_KEY,
+# GROOBB_TURNSTILE_SECRET_KEY, and GROOBB_TURNSTILE_DISABLE override these.
+#
+# [Ja] 公開フォームの Bot 対策に使う Cloudflare Turnstile のキー。両方が空のときは
+# ウィジェットを描画せずトークン検証もバイパスするため、キーを用意する前でもインスタンスは
+# 起動します。無効化フラグは、開発・テスト環境でキーを未設定にせず Turnstile を切るための
+# もので、本番では無視されます。GROOBB_TURNSTILE_SITE_KEY / GROOBB_TURNSTILE_SECRET_KEY /
+# GROOBB_TURNSTILE_DISABLE が上書きします。
+site_key = ""
+secret_key = ""
+disable = false

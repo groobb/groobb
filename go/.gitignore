@@ -6,6 +6,7 @@
 /data/*
 !/data/.gitkeep
 /e2e/node_modules
+/groobb.toml
 /migrate
 /node_modules
 /server

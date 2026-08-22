@@ -1,14 +1,13 @@
-// Package config provides loading and access to application settings from
-// environment variables.
+// Package config provides loading and access to application settings, which
+// come from a TOML configuration file and from environment variables.
 //
-// [Ja] config パッケージは、環境変数からアプリケーション設定を読み込み、
-// アクセスする機能を提供します。
+// [Ja] config パッケージは、TOML の設定ファイルと環境変数から成るアプリケーション設定を
+// 読み込み、アクセスする機能を提供します。
 package config
 
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -84,20 +83,20 @@ type Config struct {
 	// 参照)。開発環境では代わりにタイムスタンプを使います (GetAssetVersion を参照)。
 	AssetVersion string
 
-	// ResendAPIKey, EmailFrom, and EmailFromName configure outgoing email through
-	// Resend. They are consumed by the worker client when it builds the email
-	// sender for background jobs. They are optional rather than required: the
-	// worker is not started yet (its first enqueue-side consumer, sign-up, comes
-	// in a later task), so a deployment without email configured must still boot.
-	// When the worker is wired into main.go, missing values can be promoted to a
-	// startup error then.
+	// ResendAPIKey, EmailFrom, and EmailFromName configure outgoing email. The
+	// worker client consumes them when it builds the email sender for background
+	// jobs; the API key is used only when EmailProvider selects Resend, while the
+	// From address and name are used by either provider. They are optional rather
+	// than required so that an instance whose mail is not provisioned yet still
+	// boots and can be reached to finish configuring itself; a send then fails on
+	// the job instead of at startup.
 	//
-	// [Ja] ResendAPIKey / EmailFrom / EmailFromName は Resend 経由の送信メールを設定
-	// します。ワーカークライアントがバックグラウンドジョブ用の email sender を構築する
-	// 際に使います。必須ではなく任意とします。ワーカーはまだ起動されておらず (最初の
-	// 投入側の利用者であるサインアップは後続タスク)、メール未設定のデプロイでも起動できる
-	// 必要があるためです。ワーカーを main.go に配線する時点で、欠落を起動時エラーへ
-	// 格上げできます。
+	// [Ja] ResendAPIKey / EmailFrom / EmailFromName は送信メールを設定します。ワーカー
+	// クライアントがバックグラウンドジョブ用の email sender を構築する際に使い、API キーは
+	// EmailProvider が Resend を選んだときにのみ、From アドレスと名前はどちらの
+	// プロバイダーでも使います。必須ではなく任意とするのは、メールが未設定のインスタンスでも
+	// 起動して設定を仕上げるために到達できる必要があるためです。この場合、送信は起動時では
+	// なくジョブ側で失敗します。
 	ResendAPIKey string
 
 	// EmailFrom is the sender address used in the From header of outgoing email.
@@ -146,47 +145,60 @@ type Config struct {
 	TurnstileSecretKey string
 }
 
-// Load reads the configuration from environment variables.
+// Load reads the configuration from the TOML configuration file and from
+// environment variables, with the environment taking precedence per setting.
 //
-// Every environment expects the variables to be already exported into the
-// process before startup: locally `op run --env-file=.env` resolves them, and
-// in CI / production the runtime sets them directly.
+// The file is optional: without one, every setting comes from the environment,
+// which is how development (`op run --env-file=.env` resolves the values) and
+// CI run. A self-hosted instance is expected to keep its settings in the file
+// and reach for the environment to override one of them, or to hold the secrets
+// its deployment injects.
 //
-// [Ja] Load は環境変数から設定を読み込みます。
+// [Ja] Load は TOML の設定ファイルと環境変数から設定を読み込みます。設定ごとに、
+// 環境変数がファイルより優先されます。
 //
-// いずれの環境でも、プロセス起動時には環境変数が既にエクスポートされている
-// ことを前提とします。ローカルでは `op run --env-file=.env` が解決し、
-// CI / 本番ではランタイムが直接設定します。
+// 設定ファイルは任意です。ファイルが無ければすべての設定は環境変数から読み込まれ、
+// 開発環境 (`op run --env-file=.env` が値を解決する) と CI はこの形で動きます。
+// セルフホストのインスタンスは設定をファイルに置き、環境変数は個別の上書きや、
+// デプロイ側が注入する秘密情報のために使うことを想定します。
 func Load() (*Config, error) {
-	// APP_ENV defaults to "dev" when unset.
+	file, err := loadFile()
+	if err != nil {
+		return nil, err
+	}
+
+	// The running environment defaults to "dev" when neither source sets it.
 	//
-	// [Ja] APP_ENV は未設定の場合 "dev" を既定値とします。
-	env := os.Getenv("APP_ENV")
-	if env == "" {
-		env = "dev"
+	// [Ja] 実行環境はどちらの入力も設定していない場合 "dev" を既定値とします。
+	env := newSetting("APP_ENV", "app.env", file.App.Env)
+	cfg := &Config{Env: env.value}
+	if cfg.Env == "" {
+		cfg.Env = "dev"
 	}
 
-	cfg := &Config{
-		Env: env,
+	port := newSetting("GROOBB_PORT", "server.port", intFileValue(file.Server.Port))
+	if !port.isSet() {
+		return nil, port.missingError()
 	}
+	if _, err := port.tcpPort("server port"); err != nil {
+		return nil, err
+	}
+	cfg.Port = port.value
 
-	cfg.Port = os.Getenv("GROOBB_PORT")
-	if cfg.Port == "" {
-		return nil, fmt.Errorf("required environment variable GROOBB_PORT is not set")
+	databasePath := newSetting("GROOBB_DATABASE_PATH", "database.path", file.Database.Path)
+	if !databasePath.isSet() {
+		return nil, databasePath.missingError()
 	}
+	cfg.DatabasePath = databasePath.value
 
-	cfg.DatabasePath = os.Getenv("GROOBB_DATABASE_PATH")
-	if cfg.DatabasePath == "" {
-		return nil, fmt.Errorf("required environment variable GROOBB_DATABASE_PATH is not set")
+	continuationTokenKey := newSetting("GROOBB_CONTINUATION_TOKEN_KEY", "security.continuation_token_key", file.Security.ContinuationTokenKey)
+	if !continuationTokenKey.isSet() {
+		return nil, continuationTokenKey.missingError()
 	}
-
-	cfg.ContinuationTokenKey = os.Getenv("GROOBB_CONTINUATION_TOKEN_KEY")
-	if cfg.ContinuationTokenKey == "" {
-		return nil, fmt.Errorf("required environment variable GROOBB_CONTINUATION_TOKEN_KEY is not set")
+	if len(continuationTokenKey.value) < ContinuationTokenMinimumKeyLength {
+		return nil, fmt.Errorf("the continuation token key from %s must be at least %d bytes", continuationTokenKey.source(), ContinuationTokenMinimumKeyLength)
 	}
-	if len(cfg.ContinuationTokenKey) < ContinuationTokenMinimumKeyLength {
-		return nil, fmt.Errorf("GROOBB_CONTINUATION_TOKEN_KEY must be at least %d bytes", ContinuationTokenMinimumKeyLength)
-	}
+	cfg.ContinuationTokenKey = continuationTokenKey.value
 
 	// Fix the asset version once at startup so that non-dev environments serve
 	// stable, cache-busting asset URLs for the lifetime of a deploy.
@@ -195,23 +207,23 @@ func Load() (*Config, error) {
 	// アセットバージョンを起動時に一度だけ固定します。
 	cfg.AssetVersion = buildAssetVersion(assetVersion, vcsRevision())
 
-	// Email settings are read without requiring them: the worker that uses them
-	// is not started yet, so a deployment without email configured must still
-	// boot (see the field docs).
+	// Email settings are read without requiring them: an instance whose mail is
+	// not provisioned yet must still boot so that it can be reached to finish
+	// configuring itself (see the field docs).
 	//
-	// [Ja] メール設定は必須にせず読み込む。これらを使うワーカーはまだ起動されない
-	// ため、メール未設定のデプロイでも起動できる必要がある (フィールドのドキュメントを
+	// [Ja] メール設定は必須にせず読み込む。メールが未設定のインスタンスでも、設定を
+	// 仕上げるために到達できるよう起動できる必要がある (フィールドのドキュメントを
 	// 参照)。
-	cfg.ResendAPIKey = os.Getenv("GROOBB_RESEND_API_KEY")
-	cfg.EmailFrom = os.Getenv("GROOBB_EMAIL_FROM")
-	cfg.EmailFromName = os.Getenv("GROOBB_EMAIL_FROM_NAME")
+	cfg.ResendAPIKey = newSetting("GROOBB_RESEND_API_KEY", "email.resend_api_key", file.Email.ResendAPIKey).value
+	cfg.EmailFrom = newSetting("GROOBB_EMAIL_FROM", "email.from", file.Email.From).value
+	cfg.EmailFromName = newSetting("GROOBB_EMAIL_FROM_NAME", "email.from_name", file.Email.FromName).value
 
 	// AppURL is read without requiring it, for the same reason as the email
 	// settings above (see the field docs).
 	//
 	// [Ja] AppURL は必須にせず読み込む。理由は上のメール設定と同じ (フィールドの
 	// ドキュメントを参照)。
-	cfg.AppURL = os.Getenv("GROOBB_APP_URL")
+	cfg.AppURL = newSetting("GROOBB_APP_URL", "app.url", file.App.URL).value
 
 	// Turnstile keys are read without requiring them: Turnstile is enabled
 	// operationally by provisioning the real keys, so a deployment must still boot
@@ -220,30 +232,28 @@ func Load() (*Config, error) {
 	// [Ja] Turnstile キーは必須にせず読み込む。Turnstile は実キーを設定する運用手順で
 	// 有効化するため、キー設定前でもデプロイが起動できる必要がある (フィールドの
 	// ドキュメントを参照)。
-	cfg.TurnstileSiteKey = os.Getenv("GROOBB_TURNSTILE_SITE_KEY")
-	cfg.TurnstileSecretKey = os.Getenv("GROOBB_TURNSTILE_SECRET_KEY")
+	cfg.TurnstileSiteKey = newSetting("GROOBB_TURNSTILE_SITE_KEY", "turnstile.site_key", file.Turnstile.SiteKey).value
+	cfg.TurnstileSecretKey = newSetting("GROOBB_TURNSTILE_SECRET_KEY", "turnstile.secret_key", file.Turnstile.SecretKey).value
 
-	// GROOBB_TURNSTILE_DISABLE lets non-production environments switch Turnstile
-	// off with a single flag instead of unsetting both keys. When enabled, both
-	// keys are cleared so the empty-key path takes over: token verification is
-	// bypassed and the widget is not rendered.
+	// The disable flag lets non-production environments switch Turnstile off with
+	// a single setting instead of unsetting both keys. When enabled, both keys are
+	// cleared so the empty-key path takes over: token verification is bypassed and
+	// the widget is not rendered.
 	//
 	// In production the flag is deliberately ignored (fail-closed) and only logged
-	// as a warning. Turnstile is bot protection, so a stray
-	// GROOBB_TURNSTILE_DISABLE=true leaking into production must never silently
-	// disable it.
+	// as a warning. Turnstile is bot protection, so a stray disable flag leaking
+	// into production must never silently disable it.
 	//
-	// [Ja] GROOBB_TURNSTILE_DISABLE は、非本番環境で 2 つのキーを未設定にする代わりに
-	// 1 フラグで Turnstile を無効化するためのものです。有効時は両キーを空に落とし、
-	// キー空の経路 (トークン検証がバイパスされ、ウィジェットも描画されない) に
-	// 委ねます。
+	// [Ja] 無効化フラグは、非本番環境で 2 つのキーを未設定にする代わりに 1 つの設定で
+	// Turnstile を無効化するためのものです。有効時は両キーを空に落とし、キー空の経路
+	// (トークン検証がバイパスされ、ウィジェットも描画されない) に委ねます。
 	//
 	// 本番ではフラグを意図的に無視し (fail-closed)、warn ログを出すだけにします。
-	// Turnstile は Bot 対策なので、GROOBB_TURNSTILE_DISABLE=true が誤って本番に漏れても、
-	// 黙って無効化されてはなりません。
-	if os.Getenv("GROOBB_TURNSTILE_DISABLE") == "true" {
+	// Turnstile は Bot 対策なので、無効化フラグが誤って本番に漏れても、黙って無効化されては
+	// なりません。
+	if newSetting("GROOBB_TURNSTILE_DISABLE", "turnstile.disable", boolFileValue(file.Turnstile.Disable)).value == "true" {
 		if cfg.IsProduction() {
-			slog.Warn("GROOBB_TURNSTILE_DISABLE は本番環境では無視されます (Bot 対策を維持するため fail-closed)")
+			slog.Warn("Turnstile の無効化設定は本番環境では無視されます (Bot 対策を維持するため fail-closed)")
 		} else {
 			cfg.TurnstileSiteKey = ""
 			cfg.TurnstileSecretKey = ""
@@ -268,6 +278,57 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// LogValue renders the configuration for structured logging with its secrets
+// replaced, so that logging a Config cannot put the values that authenticate
+// the instance into the log. Whether a secret is set is kept, which is what a
+// question about the configuration needs to distinguish.
+//
+// It exists because slog renders a struct field by field: without it, a single
+// call that logs a Config anywhere would write out the continuation token key,
+// the Resend API key, and the Turnstile secret key.
+//
+// [Ja] LogValue は構造化ログ向けに設定を整形し、秘密情報を置き換えます。Config を
+// ログに出しても、インスタンスの認証に使う値がログへ入らないようにするためです。
+// 秘密情報が設定されているかどうかは残します。設定についての疑問を切り分けるのに
+// 必要なのはそこだからです。
+//
+// これが必要なのは、slog が構造体をフィールドごとに展開するためです。これが無いと、
+// どこか 1 箇所で Config をログに渡すだけで、continuation token の鍵・Resend の
+// API キー・Turnstile のシークレットキーが書き出されます。
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("env", c.Env),
+		slog.String("port", c.Port),
+		slog.String("database_path", c.DatabasePath),
+		slog.String("asset_version", c.AssetVersion),
+		slog.String("app_url", c.AppURL),
+		slog.String("email_from", c.EmailFrom),
+		slog.String("email_from_name", c.EmailFromName),
+		slog.String("turnstile_site_key", c.TurnstileSiteKey),
+		slog.String("continuation_token_key", redactSecret(c.ContinuationTokenKey)),
+		slog.String("resend_api_key", redactSecret(c.ResendAPIKey)),
+		slog.String("turnstile_secret_key", redactSecret(c.TurnstileSecretKey)),
+	)
+}
+
+// redactedSecret is what LogValue shows in place of a secret that is set.
+//
+// [Ja] redactedSecret は、設定済みの秘密情報の代わりに LogValue が表示する値です。
+const redactedSecret = "[REDACTED]"
+
+// redactSecret replaces a secret with a marker, keeping an unset one empty so
+// that the log still shows which secrets an instance is missing.
+//
+// [Ja] redactSecret は秘密情報をマーカーに置き換えます。未設定のものは空のままにし、
+// どの秘密情報が欠けているかはログから分かるようにします。
+func redactSecret(secret string) string {
+	if secret == "" {
+		return ""
+	}
+
+	return redactedSecret
 }
 
 // IsDev reports whether the running environment is development.

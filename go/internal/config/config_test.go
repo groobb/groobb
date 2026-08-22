@@ -8,13 +8,49 @@ import (
 	"testing"
 )
 
-// setRequiredEnv sets the environment variables that Load requires.
+// clearEnv moves the test into an empty working directory and unsets every
+// setting in the environment, so that a case states exactly which source
+// provides which value. Without it a case would read whatever the developer's
+// own environment holds, and any configuration file that happens to sit in the
+// package directory.
+//
+// [Ja] clearEnv はテストを空の作業ディレクトリへ移し、環境変数の設定をすべて未設定に
+// します。各ケースがどの入力からどの値を得るかを明示するためです。これが無いと、ケースは
+// 開発者自身の環境変数や、パッケージのディレクトリにたまたま置かれた設定ファイルを
+// 読んでしまいます。
+func clearEnv(t *testing.T) {
+	t.Helper()
+
+	t.Chdir(t.TempDir())
+
+	for _, name := range []string{
+		configFileEnvName,
+		"APP_ENV",
+		"GROOBB_PORT",
+		"GROOBB_DATABASE_PATH",
+		"GROOBB_CONTINUATION_TOKEN_KEY",
+		"GROOBB_APP_URL",
+		"GROOBB_EMAIL_FROM",
+		"GROOBB_EMAIL_FROM_NAME",
+		"GROOBB_RESEND_API_KEY",
+		"GROOBB_TURNSTILE_SITE_KEY",
+		"GROOBB_TURNSTILE_SECRET_KEY",
+		"GROOBB_TURNSTILE_DISABLE",
+	} {
+		t.Setenv(name, "")
+	}
+}
+
+// setRequiredEnv sets the environment variables that Load requires, from a
+// cleared environment.
 // t.Setenv restores the previous values automatically when the test ends.
 //
-// [Ja] setRequiredEnv は Load が必須とする環境変数を設定します。
+// [Ja] setRequiredEnv は、クリアされた環境変数の状態から、Load が必須とする環境変数を
+// 設定します。
 // t.Setenv はテスト終了時に元の値を自動的に復元します。
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
+	clearEnv(t)
 	t.Setenv("APP_ENV", "test")
 	t.Setenv("GROOBB_PORT", "8080")
 	t.Setenv("GROOBB_DATABASE_PATH", "tmp/groobb_test.sqlite")
@@ -38,8 +74,11 @@ func TestLoad(t *testing.T) {
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
 	}
-	if cfg.DatabasePath == "" {
-		t.Error("DatabasePath should not be empty")
+	if cfg.DatabasePath != "tmp/groobb_test.sqlite" {
+		t.Errorf("DatabasePath = %q, want %q", cfg.DatabasePath, "tmp/groobb_test.sqlite")
+	}
+	if cfg.ContinuationTokenKey != "groobb-test-continuation-token-key-32-bytes" {
+		t.Errorf("ContinuationTokenKey was not loaded from the environment")
 	}
 }
 
@@ -344,6 +383,40 @@ func TestLoadRejectsShortContinuationTokenKey(t *testing.T) {
 	}
 }
 
+// TestLoadRejectsAnInvalidPort verifies that a port the server cannot listen on
+// stops startup naming the setting, rather than surfacing as a failure to bind
+// or, for 0, as an instance listening on whatever port the kernel handed out.
+//
+// [Ja] TestLoadRejectsAnInvalidPort は、サーバーが待ち受けられないポートが設定名を挙げて
+// 起動を止めることを検証する。bind の失敗として現れたり、0 の場合にカーネルが割り当てた
+// ポートで待ち受けるインスタンスになったりしないようにするため。
+func TestLoadRejectsAnInvalidPort(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{name: "not a number", value: "http"},
+		{name: "out of range", value: "70000"},
+		{name: "zero", value: "0"},
+		{name: "negative", value: "-1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("GROOBB_PORT", tt.value)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("Load() should reject GROOBB_PORT = %q", tt.value)
+			}
+			if !strings.Contains(err.Error(), "GROOBB_PORT") {
+				t.Errorf("the error should name the source of the value, got: %v", err)
+			}
+		})
+	}
+}
+
 // TestEnvHelpers verifies the IsDev / IsTest / IsProduction helpers.
 //
 // [Ja] TestEnvHelpers は IsDev / IsTest / IsProduction ヘルパーを検証します。
@@ -494,6 +567,58 @@ func TestVCSRevisionFromSettings(t *testing.T) {
 
 			if got := vcsRevisionFromSettings(tt.settings); got != tt.want {
 				t.Errorf("vcsRevisionFromSettings(%v) = %q, want %q", tt.settings, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestLogValueRedactsSecrets verifies that logging a Config keeps the values
+// that authenticate the instance out of the log, while still showing which
+// secrets are set and every setting that is not one.
+//
+// [Ja] TestLogValueRedactsSecrets は、Config をログに出してもインスタンスの認証に使う値が
+// ログへ入らないこと、その一方でどの秘密情報が設定されているかと、秘密情報でない設定は
+// 見えることを検証します。
+func TestLogValueRedactsSecrets(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		Env:                  "prod",
+		ContinuationTokenKey: "continuation-token-key-that-must-not-be-logged",
+		ResendAPIKey:         "resend-api-key-that-must-not-be-logged",
+		TurnstileSecretKey:   "turnstile-secret-key-that-must-not-be-logged",
+	}
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "pointer", value: &cfg},
+		{name: "value", value: cfg},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			slog.New(slog.NewTextHandler(&buf, nil)).Info("configuration", "config", tt.value)
+			logged := buf.String()
+
+			secrets := []string{
+				cfg.ContinuationTokenKey,
+				cfg.ResendAPIKey,
+				cfg.TurnstileSecretKey,
+			}
+			for _, secret := range secrets {
+				if strings.Contains(logged, secret) {
+					t.Errorf("the log should not hold the secret %q, got: %s", secret, logged)
+				}
+			}
+
+			if !strings.Contains(logged, redactedSecret) {
+				t.Errorf("the log should mark the secrets that are set, got: %s", logged)
+			}
+			if !strings.Contains(logged, cfg.Env) {
+				t.Errorf("the log should keep the settings that are not secrets, got: %s", logged)
 			}
 		})
 	}
