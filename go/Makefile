@@ -29,9 +29,37 @@ browse-shot: ## Open a page with the logged-in session and screenshot it (e.g. m
 browse-close: ## Close the browser session and remove its credentials, origin file and profile (screenshots are kept). [Ja] ブラウザセッションを閉じ、資格情報・origin ファイル・profile を削除 (スクショは残す)
 	bash scripts/browse.sh close
 
+.PHONY: assets
+assets: ## Build the CSS / JS into static/. [Ja] CSS / JS を static/ にビルド
+	pnpm build
+
+# The binary embeds whatever static/ holds at compile time, so a release is built
+# as `make assets build`; build alone is the compile check and leaves the assets
+# as they are.
+#
+# The asset version is stamped in here because the URLs the server renders carry
+# it, and a distributed binary has no repository around it to read a revision
+# from at run time. Without the stamp the build falls back to the revision the
+# toolchain records (see buildAssetVersion in internal/config).
+# Both paths keep the complete revision so that different commits cannot share a
+# long-lived cache key through an abbreviated-prefix collision.
+#
+# [Ja] バイナリはコンパイル時点の static/ の内容を埋め込むため、リリースは
+# `make assets build` でビルドする。build 単体はコンパイルの確認であり、アセットは
+# そのままにする。
+#
+# アセットバージョンをここで埋め込むのは、サーバーが描画する URL がそれを伴う一方、
+# 配布されたバイナリの周囲には実行時にリビジョンを読めるリポジトリが無いためである。
+# 埋め込みが無い場合、ビルドはツールチェインが記録したリビジョンへフォールバックする
+# (internal/config の buildAssetVersion を参照)。
+# 両方の経路で完全なリビジョンを使い、短縮した接頭辞の衝突によって異なるコミットが
+# 同じ長期キャッシュキーを共有しないようにする。
+ASSET_VERSION ?= $(shell git rev-parse HEAD 2>/dev/null || echo dev)
+ASSET_VERSION_LDFLAGS = -X github.com/groobb/groobb/go/internal/config.assetVersion=$(ASSET_VERSION)
+
 .PHONY: build
 build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
-	go build -o bin/server ./cmd/server
+	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/server ./cmd/server
 
 .PHONY: templ-generate
 templ-generate: ## Generate Go code from templ files (also runs goimports). [Ja] templ ファイルから Go コードを生成 (goimports も実行)

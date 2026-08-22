@@ -9,9 +9,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
+	"runtime/debug"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -75,13 +74,14 @@ type Config struct {
 	// [Ja] Port は HTTP サーバーが待ち受ける TCP ポートです。
 	Port string
 
-	// AssetVersion is the cache-busting value (a Git commit hash) used for
-	// static assets in non-dev environments. In dev a timestamp is used instead;
+	// AssetVersion is the cache-busting value used for static assets in non-dev
+	// environments. It is fixed at startup from the value stamped into the binary
+	// at build time (see buildAssetVersion). In dev a timestamp is used instead;
 	// see GetAssetVersion.
 	//
-	// [Ja] AssetVersion は非開発環境で静的アセットに使うキャッシュ無効化用の値
-	// (Git コミットハッシュ) です。開発環境では代わりにタイムスタンプを使います
-	// (GetAssetVersion を参照)。
+	// [Ja] AssetVersion は非開発環境で静的アセットに使うキャッシュ無効化用の値です。
+	// ビルド時にバイナリへ埋め込まれた値から起動時に固定します (buildAssetVersion を
+	// 参照)。開発環境では代わりにタイムスタンプを使います (GetAssetVersion を参照)。
 	AssetVersion string
 
 	// ResendAPIKey, EmailFrom, and EmailFromName configure outgoing email through
@@ -188,12 +188,12 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("GROOBB_CONTINUATION_TOKEN_KEY must be at least %d bytes", ContinuationTokenMinimumKeyLength)
 	}
 
-	// Pin the asset version to the current commit so that non-dev environments
-	// serve stable, cache-busting asset URLs per deploy.
+	// Fix the asset version once at startup so that non-dev environments serve
+	// stable, cache-busting asset URLs for the lifetime of a deploy.
 	//
-	// [Ja] 非開発環境がデプロイ単位で安定したキャッシュ無効化 URL を配信できるよう、
-	// アセットバージョンを現在のコミットに固定します。
-	cfg.AssetVersion = getGitCommitHash()
+	// [Ja] 非開発環境がデプロイの間ずっと安定したキャッシュ無効化 URL を配信できるよう、
+	// アセットバージョンを起動時に一度だけ固定します。
+	cfg.AssetVersion = buildAssetVersion(assetVersion, vcsRevision())
 
 	// Email settings are read without requiring them: the worker that uses them
 	// is not started yet, so a deployment without email configured must still
@@ -310,16 +310,84 @@ func (c *Config) GetAssetVersion() string {
 	return c.AssetVersion
 }
 
-// getGitCommitHash returns the short hash of the current Git commit, or "dev"
-// as a fallback when Git is unavailable (e.g. a binary running outside a repo).
+// assetVersion is stamped into the binary at build time with
+// `-ldflags "-X github.com/groobb/groobb/go/internal/config.assetVersion=..."`
+// (see the build target in go/Makefile). It is a package-level variable because
+// that is the only thing the linker can write to, and it is left empty so that a
+// build without the flag falls back to the revision below.
 //
-// [Ja] getGitCommitHash は現在の Git コミットの短縮ハッシュを返します。Git が
-// 使えない場合 (例: リポジトリ外で動くバイナリ) はフォールバックとして "dev" を
-// 返します。
-func getGitCommitHash() string {
-	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
-	if err != nil {
-		return "dev"
+// [Ja] assetVersion はビルド時に
+// `-ldflags "-X github.com/groobb/groobb/go/internal/config.assetVersion=..."`
+// でバイナリへ埋め込まれます (go/Makefile の build ターゲットを参照)。リンカが書き込め
+// るのはパッケージレベルの変数だけのためこの形とし、フラグ無しのビルドが下のリビジョンへ
+// フォールバックできるよう空のままにしています。
+var assetVersion string
+
+// buildAssetVersion picks the asset version from the value stamped in at build
+// time, falling back to the revision the binary was built from and finally to
+// "dev".
+//
+// The fallbacks matter because a value that never changes serves stale CSS: an
+// operator who builds from source with a plain `go build` gets no stamp, and
+// pinning every such build to one constant would leave an upgraded instance
+// serving the assets the browser already cached.
+//
+// [Ja] buildAssetVersion は、ビルド時に埋め込まれた値からアセットバージョンを決め、
+// 無ければバイナリのビルド元リビジョン、最後に "dev" へフォールバックします。
+//
+// フォールバックが重要なのは、変化しない値が古い CSS を配信するためです。ソースから素の
+// `go build` でビルドする運用者には値が埋め込まれず、そうしたビルドをすべて 1 つの定数に
+// 固定すると、更新したインスタンスがブラウザのキャッシュ済みアセットを使わせ続けます。
+func buildAssetVersion(stamped, revision string) string {
+	if stamped != "" {
+		return stamped
 	}
-	return strings.TrimSpace(string(out))
+	if revision != "" {
+		return revision
+	}
+	return "dev"
+}
+
+// vcsRevision returns the complete revision the binary was built from, or an
+// empty string when the build carries no version control information (a build
+// from a source archive, or a test binary). Keeping the complete value matches
+// the linker stamp and prevents abbreviated-prefix collisions from reusing a
+// long-lived asset cache key.
+//
+// It reads the build information the toolchain records rather than running
+// `git`, because a distributed binary has neither a repository nor a git
+// executable around it at run time.
+//
+// [Ja] vcsRevision はバイナリのビルド元となった完全なリビジョンを返します。ビルドが
+// バージョン管理の情報を持たない場合 (ソースアーカイブからのビルドやテストバイナリ) は
+// 空文字列を返します。完全な値を保つことで linker stamp と揃え、短縮した接頭辞の衝突に
+// よって長期のアセットキャッシュキーが再利用されないようにします。
+//
+// `git` を実行せずツールチェインが記録したビルド情報を読むのは、配布されたバイナリの
+// 周囲には実行時にリポジトリも git の実行ファイルも無いためです。
+func vcsRevision() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	return vcsRevisionFromSettings(info.Settings)
+}
+
+// vcsRevisionFromSettings returns the complete revision from build settings, or
+// an empty string when the revision setting is absent. Keeping the extraction
+// separate from debug.ReadBuildInfo makes every branch deterministic to test.
+//
+// [Ja] vcsRevisionFromSettings はビルド設定から完全なリビジョンを返し、リビジョン設定が
+// 無い場合は空文字列を返します。抽出を debug.ReadBuildInfo から分けることで、すべての
+// 分岐を決定的にテストできるようにします。
+func vcsRevisionFromSettings(settings []debug.BuildSetting) string {
+	for _, setting := range settings {
+		if setting.Key != "vcs.revision" {
+			continue
+		}
+		return setting.Value
+	}
+
+	return ""
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"log/slog"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -401,4 +402,99 @@ func TestGetAssetVersion(t *testing.T) {
 			t.Errorf("GetAssetVersion() = %q, want %q", got, "abc123")
 		}
 	})
+}
+
+// TestBuildAssetVersion verifies the order the asset version falls back in, so
+// that a build without the stamp still serves a value that changes per revision
+// and only a build with neither settles on the fixed placeholder.
+//
+// [Ja] TestBuildAssetVersion はアセットバージョンのフォールバック順序を検証します。
+// 埋め込みの無いビルドでもリビジョンごとに変わる値を配信し、どちらも無いビルドだけが
+// 固定のプレースホルダーに落ち着くようにするためです。
+func TestBuildAssetVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		stamped  string
+		revision string
+		want     string
+	}{
+		{
+			name:     "prefers the value stamped in at build time",
+			stamped:  "19ae8301290f4dc0e814bd0298d9e5c73cda684c",
+			revision: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
+			want:     "19ae8301290f4dc0e814bd0298d9e5c73cda684c",
+		},
+		{
+			name:     "falls back to the build revision",
+			stamped:  "",
+			revision: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
+			want:     "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
+		},
+		{
+			name:     "falls back to dev without either",
+			stamped:  "",
+			revision: "",
+			want:     "dev",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := buildAssetVersion(tt.stamped, tt.revision); got != tt.want {
+				t.Errorf("buildAssetVersion(%q, %q) = %q, want %q", tt.stamped, tt.revision, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestVCSRevisionFromSettings verifies revision extraction independently of the
+// build information carried by the test binary, which normally has no VCS
+// settings.
+//
+// [Ja] TestVCSRevisionFromSettings は、通常 VCS 設定を持たないテストバイナリ自身の
+// ビルド情報に依存せず、リビジョンの抽出を検証します。
+func TestVCSRevisionFromSettings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		settings []debug.BuildSetting
+		want     string
+	}{
+		{
+			name: "returns a full revision unchanged",
+			settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6"},
+			},
+			want: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
+		},
+		{
+			name: "keeps a short revision",
+			settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "abc123"},
+			},
+			want: "abc123",
+		},
+		{
+			name: "returns empty without a revision setting",
+			settings: []debug.BuildSetting{
+				{Key: "vcs.modified", Value: "true"},
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := vcsRevisionFromSettings(tt.settings); got != tt.want {
+				t.Errorf("vcsRevisionFromSettings(%v) = %q, want %q", tt.settings, got, tt.want)
+			}
+		})
+	}
 }

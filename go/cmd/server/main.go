@@ -45,6 +45,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 	"github.com/groobb/groobb/go/internal/worker"
+	"github.com/groobb/groobb/go/static"
 )
 
 func main() {
@@ -265,11 +266,17 @@ func main() {
 	// [Ja] ヘルスチェック (認証不要)。
 	r.Get("/health", healthHandler.Show)
 
-	// Serve static assets (CSS / JS / images) built into ./static.
+	// Serve the static assets (CSS / JS) from the copy embedded in the binary, so
+	// that the server finds them wherever it is started from rather than only
+	// alongside a ./static directory. AssetCache declares how long a browser may
+	// keep them; the URLs carry the asset version, so a deploy hands out new ones.
 	//
-	// [Ja] ./static にビルドされた静的アセット (CSS / JS / 画像) を配信する。
-	fileServer := http.FileServer(http.Dir("./static"))
-	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
+	// [Ja] 静的アセット (CSS / JS) はバイナリに埋め込まれた複製から配信する。./static
+	// ディレクトリの隣でなくとも、どこで起動してもサーバーがアセットを見つけられるように
+	// するためである。AssetCache はブラウザが保持してよい期間を宣言する。URL は
+	// アセットバージョンを伴うため、デプロイのたびに新しい URL が配られる。
+	fileServer := http.FileServer(http.FS(static.Assets()))
+	r.With(middleware.AssetCache(cfg)).Handle("/static/*", http.StripPrefix("/static", fileServer))
 
 	// Top page. SetUser resolves the current user from the session cookie so the
 	// handler can render by sign-in state (a signed-in visitor is redirected to

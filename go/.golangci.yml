@@ -42,7 +42,8 @@ linters:
     paths:
       - bin/.*
       - vendor/.*
-      - static/.*
+      - static/css/.*
+      - static/js/.*
       - node_modules/.*
 
   settings:
@@ -87,7 +88,8 @@ formatters:
     paths:
       - bin/.*
       - vendor/.*
-      - static/.*
+      - static/css/.*
+      - static/js/.*
       - node_modules/.*
       - '(.+)_templ\.go' # templ-generated files. [Ja] templ 生成ファイル
   settings:
