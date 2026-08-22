@@ -3,6 +3,8 @@
 /.playwright-mcp
 /.pnpm-store
 /bin
+/data/*
+!/data/.gitkeep
 /e2e/node_modules
 /migrate
 /node_modules

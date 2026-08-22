@@ -13,7 +13,7 @@ cmd = "make templ-generate && go build -o ./tmp/main ./cmd/server"
 bin = "./tmp/main"
 full_bin = "APP_ENV=dev op run --env-file=.env -- ./tmp/main"
 delay = 1000
-exclude_dir = ["bin", "db", "node_modules", "static", "tmp", "vendor", "web"]
+exclude_dir = ["bin", "data", "db", "node_modules", "static", "tmp", "vendor", "web"]
 exclude_regex = ["_test.go", "_templ\\.go$"]
 include_ext = ["go", "sql", "templ", "toml"]
 stop_on_error = true

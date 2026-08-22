@@ -28,15 +28,14 @@ PACKAGES=$(cat <<'PKGLIST' | sed 's/#.*//'
   fonts-noto-cjk            # CJK glyphs for playwright-cli screenshots [Ja] playwright-cli のスクショで CJK を描画 (豆腐回避)
   fzf                       # Used by coding agents [Ja] コーディングエージェントで使用
   git
-  gnupg                     # Required for PostgreSQL GPG key and apt repository [Ja] PostgreSQL の GPG キーと apt リポジトリに必要
   jq                        # Used by coding agents [Ja] コーディングエージェントで使用
   libssl-dev                # Required for SSL-related builds [Ja] SSL 関連のビルドに必要
-  lsb-release               # Required for PostgreSQL apt repository setup [Ja] PostgreSQL の apt リポジトリ設定に必要
   nano                      # Used by coding agents [Ja] コーディングエージェントで使用
   net-tools                 # Used by coding agents: netstat (network debugging) [Ja] コーディングエージェントで使用: netstat (ネットワークデバッグ用)
   procps                    # ps for playwright-cli kill-all [Ja] playwright-cli の kill-all 用 (ps を提供)
   psmisc                    # Used by coding agents: fuser (process identification) [Ja] コーディングエージェントで使用: fuser (プロセス特定用)
   ripgrep                   # Used by coding agents [Ja] コーディングエージェントで使用
+  sqlite3                   # CLI for inspecting the dev SQLite database [Ja] 開発用 SQLite データベースの確認に使う CLI
   sudo
   tree                      # Used by coding agents [Ja] コーディングエージェントで使用
   unzip
@@ -47,17 +46,6 @@ PKGLIST
 
 apt install -y --no-install-recommends $PACKAGES
 EOF
-
-# --- PostgreSQL client ---
-# [Ja] PostgreSQL クライアント
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    mkdir -p -m 755 /etc/apt/keyrings && \
-    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-      | gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
-      > /etc/apt/sources.list.d/pgdg.list && \
-    apt update && apt install -y libpq-dev postgresql-client-18
 
 # --- mise (dev tool version manager) ---
 # [Ja] mise (開発ツールバージョンマネージャー)
@@ -81,16 +69,6 @@ RUN mise install go@1.26.3 && \
 RUN mise use --global go@1.26.3 && \
     mise use --global node@24.16.0 && \
     mise use --global pnpm@11.5.0
-
-# --- dbmate ---
-# [Ja] dbmate
-ARG DBMATE_VERSION=v2.33.0
-ARG DBMATE_SHA256=dfd4027141b6e4357158099bdfe6c02b286af70f8e49057937744cf80b38ea1c
-RUN curl -fsSL -o /tmp/dbmate \
-      https://github.com/amacneil/dbmate/releases/download/${DBMATE_VERSION}/dbmate-linux-amd64 && \
-    echo "${DBMATE_SHA256}  /tmp/dbmate" | sha256sum -c - && \
-    mv /tmp/dbmate /usr/local/bin/dbmate && \
-    chmod +x /usr/local/bin/dbmate
 
 # --- hivemind ---
 # [Ja] hivemind
