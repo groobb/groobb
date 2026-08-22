@@ -1,4 +1,4 @@
-<!-- last_synced: 2026-08-02 -->
+<!-- last_synced: 2026-08-22 -->
 
 # Groobb 開発ガイドライン
 
@@ -100,6 +100,34 @@ Groobb ではフィーチャーブランチではなく **フィーチャーフ�
 ## コーディング規約
 
 - Groobb が定義する環境変数には必ず `GROOBB_` プレフィックスを付ける (外部ライブラリが要求するものを除く)
+
+### Groobb が所有する SQLite スキーマ
+
+以下の規約は、Groobb が所有するアプリケーションスキーマだけに適用する。
+River が所有するマイグレーションは上流の宣言を維持し、本節の対象外とする。
+
+- 主キーは `INTEGER PRIMARY KEY` とし、`AUTOINCREMENT` は付けない
+- 時刻の列は宣言型を `DATETIME`、真偽値の列は `BOOLEAN` と書く
+- 時刻は桁数を固定した ISO8601 UTC で保持する
+- データベースが生成する現在時刻の既定値を列に持たせる場合は、`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` を使う
+- 大文字小文字を区別しない一意性には、値を ASCII に制限した列だけで `COLLATE NOCASE` を使い、Unicode を許す値には Unicode 対応の方法を選ぶ
+- リストを値に取る列は JSON 配列を保持する `TEXT` とし、`json_valid` と `json_type` のチェックで守る
+
+各規約の根拠は[初期スキーマ](./go/db/migrations/20260821075404_create_initial_schema.sql)の冒頭のコメントにある。
+River の例外は [River のマイグレーション](./go/db/migrations/20260821101022_create_river_tables.sql) に記録している。
+
+### SQLite への読み書き
+
+時刻をクエリに渡すときは、`time.Time` をそのまま bind せず `sqlitetime.Time` を経由する。
+`DATETIME` の列は sqlc の override でこの型になっているため、通常は生成コードに従えばよい。
+保存されているテキストそのものを読むときは、宣言型を持たない式 (`CAST(x AS TEXT)`) にする。
+
+書き込みは `database.DB` の `Writer`、読み取りは `Reader` を使う。
+リポジトリは 2 つの `*query.Queries` を持ってメソッドごとに使い分け、UseCase は書き込み用プールだけを `writer *sql.DB` として受け取る。
+アプリケーションの接続は `database.Open` を通して開き、本番コードから `sql.Open` を直接呼ばない。
+共通の PRAGMA と `_txlock=immediate` を持たないアプリケーション用の書き込み接続を作らない。
+
+書式と型の詳細は [internal/sqlitetime](./go/internal/sqlitetime/sqlitetime.go)、プールの構成は [internal/database](./go/internal/database/database.go) の `DB` 型と DSN 組み立て関数のコメントを参照する。
 
 ## コーディングエージェントとの作業
 
