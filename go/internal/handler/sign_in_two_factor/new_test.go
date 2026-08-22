@@ -241,13 +241,13 @@ func TestNew_ReturnTo(t *testing.T) {
 	}{
 		{
 			name:       "同一オリジンの相対パスは引き継ぐ",
-			returnTo:   "/c/groobb",
+			returnTo:   "/settings",
 			wantHidden: true,
 			wantLink:   `href="/sign_in/two_factor/recovery/new?return_to=%2Fc%2Fgroobb"`,
 		},
 		{
 			name:       "別オリジンを指す値は引き継がない",
-			returnTo:   "https://evil.example.com/c/groobb",
+			returnTo:   "https://evil.example.com/settings",
 			wantHidden: false,
 			wantLink:   `href="/sign_in/two_factor/recovery/new"`,
 		},
@@ -272,8 +272,8 @@ func TestNew_ReturnTo(t *testing.T) {
 			if got := strings.Contains(body, `name="return_to"`); got != tt.wantHidden {
 				t.Errorf("return_to の hidden フィールドの有無 = %v, want %v", got, tt.wantHidden)
 			}
-			if tt.wantHidden && !strings.Contains(body, `value="/c/groobb"`) {
-				t.Error(`body does not contain value="/c/groobb"`)
+			if tt.wantHidden && !strings.Contains(body, `value="/settings"`) {
+				t.Error(`body does not contain value="/settings"`)
 			}
 			if !strings.Contains(body, tt.wantLink) {
 				t.Errorf("body does not contain %q", tt.wantLink)

@@ -108,7 +108,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), wrongCode, "/c/groobb", i18n.LangJa))
+	handler.Create(rec, postCreate(userID.String(), wrongCode, "/settings", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -123,7 +123,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	if !strings.Contains(body, `name="return_to"`) {
 		t.Error("再描画されたフォームに return_to フィールドが無い")
 	}
-	if !strings.Contains(body, `value="/c/groobb"`) {
+	if !strings.Contains(body, `value="/settings"`) {
 		t.Error("再描画されたフォームに return_to の値が保持されていない")
 	}
 	if findCookie(rec, session.CookieName) != nil {
@@ -217,7 +217,7 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 		// 運び、ホームに着地させない。
 		{
 			name:         "遷移先あり",
-			returnTo:     "/c/groobb",
+			returnTo:     "/settings",
 			wantLocation: "/sign_in?return_to=%2Fc%2Fgroobb",
 		},
 	}
@@ -262,7 +262,7 @@ func TestCreate_ReturnTo(t *testing.T) {
 		returnTo     string
 		wantLocation string
 	}{
-		{name: "同一オリジンの相対パスへ戻す", returnTo: "/c/groobb", wantLocation: "/c/groobb"},
+		{name: "同一オリジンの相対パスへ戻す", returnTo: "/settings", wantLocation: "/settings"},
 		{name: "別オリジンを指す値はホームへフォールバックする", returnTo: "https://evil.example.com", wantLocation: "/home"},
 	}
 

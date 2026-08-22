@@ -138,7 +138,7 @@ func TestAuth_RequireAuth(t *testing.T) {
 			var captured *model.User
 			var called bool
 
-			req := httptest.NewRequest(method, "/c/groobb?tab=posts", nil)
+			req := httptest.NewRequest(method, "/settings?from=home", nil)
 			rec := httptest.NewRecorder()
 
 			auth.RequireAuth(newRecordingHandler(&captured, &called)).ServeHTTP(rec, req)
@@ -149,7 +149,7 @@ func TestAuth_RequireAuth(t *testing.T) {
 			if rec.Code != http.StatusSeeOther {
 				t.Errorf("status = %d, want %d", rec.Code, http.StatusSeeOther)
 			}
-			want := "/sign_in?return_to=%2Fc%2Fgroobb%3Ftab%3Dposts"
+			want := "/sign_in?return_to=%2Fsettings%3Ffrom%3Dhome"
 			if loc := rec.Header().Get("Location"); loc != want {
 				t.Errorf("Location = %q, want %q", loc, want)
 			}
@@ -166,7 +166,7 @@ func TestAuth_RequireAuth(t *testing.T) {
 		var captured *model.User
 		var called bool
 
-		req := httptest.NewRequest(http.MethodPost, "/communities", nil)
+		req := httptest.NewRequest(http.MethodPost, "/settings/two_factor_auth", nil)
 		rec := httptest.NewRecorder()
 
 		auth.RequireAuth(newRecordingHandler(&captured, &called)).ServeHTTP(rec, req)
@@ -211,13 +211,13 @@ func TestAuth_RequireAuth(t *testing.T) {
 	})
 
 	// The policy is set before the handler runs, so it has to survive whatever the
-	// handler writes afterwards. The community page answers an unclaimed identifier
-	// with http.Error and a non-canonical spelling with http.Redirect, and both
-	// helpers rewrite headers of their own on the way out.
+	// handler writes afterwards. A guarded handler may answer with http.Error or
+	// http.Redirect instead of a rendered page, and both helpers rewrite headers of
+	// their own on the way out.
 	//
 	// [Ja] 方針はハンドラーが走る前に設定するため、その後ハンドラーが何を書いても残る
-	// 必要がある。コミュニティ画面は誰も取得していない識別子に http.Error、正規でない
-	// 表記に http.Redirect で応答し、どちらのヘルパーも出ていく際に自前でヘッダーを
+	// 必要がある。保護されたハンドラーは描画したページではなく http.Error や
+	// http.Redirect で応答することがあり、どちらのヘルパーも出ていく際に自前でヘッダーを
 	// 書き換える。
 	for _, tt := range []struct {
 		name    string
@@ -232,12 +232,12 @@ func TestAuth_RequireAuth(t *testing.T) {
 		{
 			name: "http.Redirect で 301 を書いても",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, "/c/groobb", http.StatusMovedPermanently)
+				http.Redirect(w, r, "/settings", http.StatusMovedPermanently)
 			},
 		},
 	} {
 		t.Run("ハンドラーが "+tt.name+"キャッシュ方針が残る", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/c/Groobb", nil)
+			req := httptest.NewRequest(http.MethodGet, "/settings/email/edit", nil)
 			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "valid-token"})
 			rec := httptest.NewRecorder()
 

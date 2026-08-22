@@ -21,7 +21,6 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/account"
-	"github.com/groobb/groobb/go/internal/handler/community"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
 	"github.com/groobb/groobb/go/internal/handler/health"
 	"github.com/groobb/groobb/go/internal/handler/home"
@@ -115,10 +114,6 @@ func main() {
 	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
 	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
-	communityRepo := repository.NewCommunityRepository(queries)
-	communityRoleRepo := repository.NewCommunityRoleRepository(queries)
-	communityMemberRepo := repository.NewCommunityMemberRepository(queries)
-	communityMemberRoleRepo := repository.NewCommunityMemberRoleRepository(queries)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -183,10 +178,6 @@ func main() {
 	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
 
-	communityValidator := validator.NewCommunityCreateValidator(communityRepo)
-	createCommunityUC := usecase.NewCreateCommunityUsecase(pool, communityValidator, communityRepo, communityRoleRepo, communityMemberRepo, communityMemberRoleRepo)
-	getCommunityUC := usecase.NewGetCommunityUsecase(communityRepo)
-
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -204,7 +195,6 @@ func main() {
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
 	settingsTwoFactorAuthHandler := settings_two_factor_auth.NewHandler(cfg, flashMgr, prepareTwoFactorAuthUC, enableTwoFactorAuthUC, disableTwoFactorAuthUC)
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
-	communityHandler := community.NewHandler(cfg, flashMgr, createCommunityUC, getCommunityUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
@@ -421,26 +411,6 @@ func main() {
 	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
 	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
-
-	// Communities: show the creation form and create the community, together with
-	// the administrator role its creator is given. Both are behind RequireAuth, so
-	// a community always has a signed-in creator to found it.
-	//
-	// [Ja] コミュニティ: 作成フォームを表示し、作成者へ与える管理者ロールと併せてコミュニティを
-	// 作成する。どちらも RequireAuth の背後に置き、コミュニティには常にそれを作成するサイン
-	// イン済みの作成者がいるようにする。
-	r.With(authMiddleware.RequireAuth).Get("/communities/new", communityHandler.New)
-	r.With(authMiddleware.RequireAuth).Post("/communities", communityHandler.Create)
-
-	// A community's own page is behind RequireAuth; every signed-in visitor sees
-	// the same page, as membership does not gate the view yet. Why it sits under
-	// the short /c/ prefix instead of /communities is explained on
-	// templates.CommunityPath.
-	//
-	// [Ja] コミュニティ自身の画面は RequireAuth の背後に置く。閲覧はまだ所属で制限しない
-	// ため、サインイン済みの訪問者はすべて同じ画面を見る。/communities ではなく短縮した
-	// /c/ 接頭辞の下に置く理由は templates.CommunityPath に記載している。
-	r.With(authMiddleware.RequireAuth).Get("/c/{identifier}", communityHandler.Show)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)

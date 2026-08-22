@@ -336,7 +336,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 				"email":                 {email},
 				"password":              {"password123"},
 				"cf-turnstile-response": {"submitted-token"},
-				"return_to":             {"/c/groobb"},
+				"return_to":             {"/settings"},
 			}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -373,7 +373,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 			//
 			// [Ja] 遷移先は Bot ゲートを越えて残り、再試行に成功した訪問者は向かっていた
 			// 先へ着地できること。
-			if !strings.Contains(body, `value="/c/groobb"`) {
+			if !strings.Contains(body, `value="/settings"`) {
 				t.Error("再描画したフォームに return_to が残っていない")
 			}
 			// The submitted token reached the verifier, confirming the handler read
@@ -424,8 +424,8 @@ func TestCreate_ReturnTo(t *testing.T) {
 		returnTo     string
 		wantLocation string
 	}{
-		{name: "同一オリジンの相対パスへ戻す", returnTo: "/c/groobb", wantLocation: "/c/groobb"},
-		{name: "別オリジンを指す値はホームへフォールバックする", returnTo: "//evil.example.com/c/groobb", wantLocation: "/home"},
+		{name: "同一オリジンの相対パスへ戻す", returnTo: "/settings", wantLocation: "/settings"},
+		{name: "別オリジンを指す値はホームへフォールバックする", returnTo: "//evil.example.com/settings", wantLocation: "/home"},
 	}
 
 	for _, tt := range tests {
@@ -466,7 +466,7 @@ func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
 	email := seedUserWithTwoFactor(t, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/c/groobb", i18n.LangJa))
+	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/settings", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -490,12 +490,12 @@ func TestCreate_ReturnToSurvivesValidationError(t *testing.T) {
 	email := seedUserWithPassword(t, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/c/groobb", i18n.LangJa))
+	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/settings", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
 	}
-	if !strings.Contains(rec.Body.String(), `value="/c/groobb"`) {
+	if !strings.Contains(rec.Body.String(), `value="/settings"`) {
 		t.Error("再描画したフォームに return_to が残っていない")
 	}
 }
