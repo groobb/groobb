@@ -99,7 +99,31 @@ New comments added to an existing file follow these rules even when the surround
 
 ## Coding Conventions
 
-- For environment variables defined by Groobb, always prefix them with `GROOBB_` (except those required by external libraries)
+### Settings
+
+Settings come from a TOML configuration file and from environment variables, and an environment variable holding a non-empty value wins over the file.
+For environment variables defined by Groobb, always prefix them with `GROOBB_` (except those required by external libraries).
+
+Adding one setting means updating all of the following together:
+
+- the `Config` field and its resolution through `newSetting` in `Load` ([internal/config](./go/internal/config/config.go))
+- the `fileConfig` field ([internal/config/file.go](./go/internal/config/file.go))
+- the commented entry in [groobb.example.toml](./go/groobb.example.toml)
+- the entry in `Config.LogValue`, for a secret
+
+Keep the environment variable name and the file key one to one, with the component the variable names becoming the table (`GROOBB_SMTP_HOST` is `host` under `[email.smtp]`).
+Reject invalid values and missing required settings at startup.
+Use the methods of `setting` so an invalid-value error names the value's actual source, while a missing-setting error names both accepted inputs.
+Keep the example file in step with the schema, which rejects unknown keys: a sample that drifts from it stops the instance of whoever copied it.
+
+Never log a secret.
+`Config.LogValue` renders a configured secret as `[REDACTED]`, and a parse error from the configuration file drops the library's message, which can quote the file.
+
+### Embedded Resources
+
+Static assets, locales, and migrations ship inside the binary through `embed.FS`, so that they are read without depending on the directory the server runs from.
+A self-hosted instance runs from the binary alone, so reading any of them from disk breaks that premise.
+For the embedding, see [static](./go/static/static.go) and [db](./go/db/migrations.go).
 
 ### Groobb-Owned SQLite Schema
 
