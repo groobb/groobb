@@ -47,14 +47,14 @@ type SignUpCreateValidatorInput struct {
 // database is unreachable). The duplicate-email check is intentionally explicit
 // rather than enumeration-safe: an existing-account message is the established
 // sign-up behavior in the sister projects and matches the form the user expects.
-// The match is case-insensitive because users.email is citext.
+// The match is case-insensitive because users.email collates NOCASE.
 //
 // [Ja] Validate は送信された email を検証し、入力に問題があれば
 // *model.ValidationError を、本物のシステム障害 (例: データベースに到達できない) では
 // 素の error を返します。重複メールのチェックは列挙攻撃対策で成功扱いにするのではなく、
 // 意図的に明示的なエラーにします。既存アカウントを伝えるのは姉妹プロジェクトで確立した
 // サインアップの挙動であり、利用者が期待する形に合致します。照合は users.email が
-// citext のため大文字小文字を区別しません。
+// NOCASE 照合のため大文字小文字を区別しません。
 func (v *SignUpCreateValidator) Validate(ctx context.Context, input SignUpCreateValidatorInput) error {
 	ve := model.NewValidationError()
 

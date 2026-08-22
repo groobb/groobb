@@ -5,30 +5,28 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newCreateSignUpUsecase wires the usecase with transaction-bound repositories
-// and a fake job inserter, returning the usecase together with the inserter so a
-// test can assert what was enqueued.
+// newCreateSignUpUsecase wires the usecase over the test's database with a fake
+// job inserter, returning the usecase together with the inserter so a test can
+// assert what was enqueued.
 //
-// [Ja] newCreateSignUpUsecase はトランザクション束縛のリポジトリとフェイクのジョブ
-// インサーターで UseCase を組み立て、何が投入されたかをテストが検証できるよう
+// [Ja] newCreateSignUpUsecase はテストのデータベース上に、フェイクのジョブ
+// インサーターを伴って UseCase を組み立て、何が投入されたかをテストが検証できるよう
 // インサーターと一緒に返します。
-func newCreateSignUpUsecase(t *testing.T) (*usecase.CreateSignUpUsecase, *testutil.FakeJobInserter, *repository.EmailConfirmationRepository) {
+func newCreateSignUpUsecase(t *testing.T, db *database.DB) (*usecase.CreateSignUpUsecase, *testutil.FakeJobInserter, *repository.EmailConfirmationRepository) {
 	t.Helper()
 
-	db, tx := testutil.SetupTx(t)
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries).WithTx(tx)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries).WithTx(tx)
+	userRepo := repository.NewUserRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreateSignUpUsecase(
@@ -49,7 +47,9 @@ func newCreateSignUpUsecase(t *testing.T) (*usecase.CreateSignUpUsecase, *testut
 func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, inserter, _ := newCreateSignUpUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, inserter, _ := newCreateSignUpUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	output, err := uc.Execute(ctx, usecase.CreateSignUpInput{
@@ -64,7 +64,7 @@ func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 	if confirmation == nil {
 		t.Fatal("Execute() output.EmailConfirmation = nil")
 	}
-	if confirmation.ID == (model.EmailConfirmationID{}) {
+	if confirmation.ID == 0 {
 		t.Error("作成された確認の ID が空 (永続化されていない可能性)")
 	}
 	if confirmation.Email != "new@example.com" {
@@ -103,10 +103,9 @@ func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries).WithTx(tx)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userRepo := repository.NewUserRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreateSignUpUsecase(
 		validator.NewSignUpCreateValidator(userRepo),
@@ -114,7 +113,7 @@ func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 		dispatcher.NewDispatcher(inserter),
 	)
 
-	testutil.NewUserBuilder(t, tx).WithEmail("taken@example.com").Build()
+	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
 
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 	output, err := uc.Execute(ctx, usecase.CreateSignUpInput{
@@ -145,7 +144,9 @@ func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 func TestCreateSignUpUsecase_Execute_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
-	uc, inserter, _ := newCreateSignUpUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, inserter, _ := newCreateSignUpUsecase(t, db)
 	inserter.Err = errors.New("queue unavailable")
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 

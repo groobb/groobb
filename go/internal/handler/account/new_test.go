@@ -6,12 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
-	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/account"
 	"github.com/groobb/groobb/go/internal/i18n"
-	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -19,29 +17,25 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newAccountHandler wires an account Handler over the shared pool. The
-// CreateAccountUsecase opens its own transaction, so its tests commit rows and
-// use unique emails (the test database is reset by make test) rather than the
-// rolled-back transaction pattern.
+// newAccountHandler wires an account Handler over the test database's
+// repositories, so a handler test drives the CreateAccountUsecase and the
+// transaction it opens against a real database.
 //
-// [Ja] newAccountHandler は共有プールで account Handler を組み立てます。
-// CreateAccountUsecase は自前のトランザクションを開くため、そのテストはロールバック
-// されるトランザクションパターンではなく、行をコミットしユニークな email を使います
-// (テスト DB は make test がリセットする)。
-func newAccountHandler(t *testing.T) *account.Handler {
+// [Ja] newAccountHandler はテスト用データベースのリポジトリで account Handler を
+// 組み立てます。ハンドラーテストが CreateAccountUsecase と、それが開くトランザクションを
+// 実 DB に対して駆動できるようにするためです。
+func newAccountHandler(t *testing.T, db *database.DB) *account.Handler {
 	t.Helper()
 
-	cfg := &config.Config{Env: "test"}
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
+	cfg := testutil.NewTestConfig(t)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	createAccountUC := usecase.NewCreateAccountUsecase(
-		db,
+		db.Writer,
 		validator.NewAccountCreateValidator(userRepo),
 		emailConfirmationRepo,
 		userRepo,
@@ -49,6 +43,24 @@ func newAccountHandler(t *testing.T) *account.Handler {
 	)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 	return account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
+}
+
+// emailConfirmationToken issues the same signed continuation token the
+// sign-up flow would place in the handoff Cookie.
+//
+// [Ja] emailConfirmationToken はサインアップフローが受け渡し Cookie に設定するものと
+// 同じ署名付き continuation token を発行します。
+func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
+	t.Helper()
+
+	mgr := session.NewManager(nil, testutil.NewTestConfig(t))
+	rec := httptest.NewRecorder()
+	mgr.SetEmailConfirmationID(rec, id)
+	cookie := findCookie(rec, session.EmailConfirmationCookieName)
+	if cookie == nil || cookie.Value == "" {
+		t.Fatalf("メール確認 Cookie %q の署名 token が発行されていない", session.EmailConfirmationCookieName)
+	}
+	return cookie.Value
 }
 
 // getAccountNew builds a GET /account/new request, attaching the handoff cookie
@@ -76,7 +88,9 @@ func getAccountNew(confirmationID, locale string) *http.Request {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
 
 	tests := []struct {
 		name        string
@@ -93,7 +107,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			rec := httptest.NewRecorder()
-			handler.New(rec, getAccountNew(uuid.NewString(), tt.locale))
+			handler.New(rec, getAccountNew(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
 				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -134,7 +148,9 @@ func TestNew(t *testing.T) {
 func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.New(rec, getAccountNew("", i18n.LangJa))

@@ -34,10 +34,6 @@ other = "Your account has been deleted."
 description = "Flash message shown on the settings hub after two-factor authentication is disabled"
 other = "Two-factor authentication is now off."
 
-[flash_community_created]
-description = "Flash message shown on the new community's page after it is created"
-other = "Your community has been created."
-
 [posts_count]
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
@@ -90,10 +86,6 @@ other = "Are you sure you want to sign out?"
 [home_show_settings_link]
 description = "Link text on the home page that leads to the settings hub"
 other = "Settings"
-
-[home_show_create_community_link]
-description = "Link text on the home page that leads to the community-creation form"
-other = "Create a community"
 
 [email_confirmation_subject]
 description = "Subject line for the email confirmation code email"
@@ -571,46 +563,6 @@ other = "Disable two-factor authentication?"
 description = "Two-factor authentication disable (confirmation) page submit button"
 other = "Disable"
 
-[community_new_title]
-description = "Community creation page title (title tag)"
-other = "Create a community"
-
-[community_new_description]
-description = "Community creation page meta description"
-other = "Create a new community."
-
-[community_new_heading]
-description = "Community creation page heading"
-other = "Create a community"
-
-[community_new_lead]
-description = "Community creation page lead text (says what to fill in)"
-other = "Choose a name and a URL identifier for your community."
-
-[community_new_name_label]
-description = "Community creation page community name label"
-other = "Community name"
-
-[community_new_name_hint]
-description = "Community creation page community name hint (length)"
-other = "Enter at most 30 characters"
-
-[community_new_identifier_label]
-description = "Community creation page URL identifier label"
-other = "URL identifier"
-
-[community_new_identifier_hint]
-description = "Community creation page URL identifier hint (what it is for, allowed characters and length)"
-other = "Used in your community's URL. Letters, numbers, and hyphens, up to 20 characters"
-
-[community_new_submit]
-description = "Community creation page submit button"
-other = "Create"
-
-[community_show_description]
-description = "Community page meta description (includes the community name)"
-other = "The {{.Name}} community."
-
 [validation_required]
 description = "Required field validation error"
 other = "is required"
@@ -722,23 +674,3 @@ other = "This password reset link has expired. Please request a new one."
 [validation_turnstile_failed]
 description = "Form-wide error when the Turnstile bot check fails (prompts a retry)"
 other = "We couldn't verify that you're not a robot. Please try again."
-
-[validation_community_name_too_long]
-description = "Validation error when the community name is too long"
-other = "must be at most 30 characters"
-
-[validation_community_identifier_too_long]
-description = "Validation error when the community identifier is too long"
-other = "must be at most 20 characters"
-
-[validation_community_identifier_invalid_format]
-description = "Validation error when the community identifier contains disallowed characters"
-other = "may only contain letters, numbers, and hyphens"
-
-[validation_community_identifier_reserved]
-description = "Validation error when the community identifier is a reserved word"
-other = "is reserved and cannot be used"
-
-[validation_community_identifier_already_taken]
-description = "Duplicate community identifier validation error"
-other = "is already taken"

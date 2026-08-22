@@ -1,11 +1,10 @@
-// Package email provides email delivery: a Sender interface, a Resend-backed
-// production sender, and a no-op sender for tests. Per-mail-type senders
-// (confirmation, password reset) and their templates are added in later tasks.
+// Package email provides email delivery: a Sender interface, two production
+// senders (one backed by the Resend API and one speaking SMTP), a no-op sender
+// for tests, and a per-mail-type sender for each kind of mail Groobb sends.
 //
 // [Ja] email パッケージはメール送信機能を提供します。Sender インターフェース、
-// Resend を用いた本番用 Sender、テスト用の no-op Sender を含みます。メール種別
-// ごとの Sender (確認コード・パスワードリセット) とそのテンプレートは後続タスクで
-// 追加します。
+// 本番用の 2 つの Sender (Resend API を用いるものと SMTP を話すもの)、テスト用の
+// no-op Sender、そして Groobb が送る各メール種別ごとの Sender を含みます。
 package email
 
 import (

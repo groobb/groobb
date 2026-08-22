@@ -7,24 +7,22 @@ package query
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createUserTwoFactorAuth = `-- name: CreateUserTwoFactorAuth :one
 INSERT INTO user_two_factor_auths (user_id, secret)
-VALUES ($1, $2)
+VALUES (?, ?)
 ON CONFLICT (user_id) DO NOTHING
 RETURNING id, user_id, secret, enabled, enabled_at, recovery_codes, created_at, updated_at
 `
 
 type CreateUserTwoFactorAuthParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	Secret string    `json:"secret"`
+	UserID int64  `json:"user_id"`
+	Secret string `json:"secret"`
 }
 
 func (q *Queries) CreateUserTwoFactorAuth(ctx context.Context, arg CreateUserTwoFactorAuthParams) (UserTwoFactorAuth, error) {
-	row := q.db.QueryRow(ctx, createUserTwoFactorAuth, arg.UserID, arg.Secret)
+	row := q.db.QueryRowContext(ctx, createUserTwoFactorAuth, arg.UserID, arg.Secret)
 	var i UserTwoFactorAuth
 	err := row.Scan(
 		&i.ID,
@@ -40,39 +38,42 @@ func (q *Queries) CreateUserTwoFactorAuth(ctx context.Context, arg CreateUserTwo
 }
 
 const deleteUserTwoFactorAuthByUserID = `-- name: DeleteUserTwoFactorAuthByUserID :exec
-DELETE FROM user_two_factor_auths WHERE user_id = $1
+DELETE FROM user_two_factor_auths WHERE user_id = ?
 `
 
-func (q *Queries) DeleteUserTwoFactorAuthByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUserTwoFactorAuthByUserID, userID)
+func (q *Queries) DeleteUserTwoFactorAuthByUserID(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUserTwoFactorAuthByUserID, userID)
 	return err
 }
 
 const enableUserTwoFactorAuth = `-- name: EnableUserTwoFactorAuth :execrows
 UPDATE user_two_factor_auths
-SET enabled = true, enabled_at = NOW(), recovery_codes = $2, updated_at = NOW()
-WHERE user_id = $1 AND enabled = false
+SET enabled = TRUE,
+    enabled_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    recovery_codes = ?,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE user_id = ? AND enabled = FALSE
 `
 
 type EnableUserTwoFactorAuthParams struct {
-	UserID        uuid.UUID `json:"user_id"`
-	RecoveryCodes []string  `json:"recovery_codes"`
+	RecoveryCodes string `json:"recovery_codes"`
+	UserID        int64  `json:"user_id"`
 }
 
 func (q *Queries) EnableUserTwoFactorAuth(ctx context.Context, arg EnableUserTwoFactorAuthParams) (int64, error) {
-	result, err := q.db.Exec(ctx, enableUserTwoFactorAuth, arg.UserID, arg.RecoveryCodes)
+	result, err := q.db.ExecContext(ctx, enableUserTwoFactorAuth, arg.RecoveryCodes, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected(), nil
+	return result.RowsAffected()
 }
 
 const getEnabledUserTwoFactorAuthByUserID = `-- name: GetEnabledUserTwoFactorAuthByUserID :one
-SELECT id, user_id, secret, enabled, enabled_at, recovery_codes, created_at, updated_at FROM user_two_factor_auths WHERE user_id = $1 AND enabled = true LIMIT 1
+SELECT id, user_id, secret, enabled, enabled_at, recovery_codes, created_at, updated_at FROM user_two_factor_auths WHERE user_id = ? AND enabled = TRUE LIMIT 1
 `
 
-func (q *Queries) GetEnabledUserTwoFactorAuthByUserID(ctx context.Context, userID uuid.UUID) (UserTwoFactorAuth, error) {
-	row := q.db.QueryRow(ctx, getEnabledUserTwoFactorAuthByUserID, userID)
+func (q *Queries) GetEnabledUserTwoFactorAuthByUserID(ctx context.Context, userID int64) (UserTwoFactorAuth, error) {
+	row := q.db.QueryRowContext(ctx, getEnabledUserTwoFactorAuthByUserID, userID)
 	var i UserTwoFactorAuth
 	err := row.Scan(
 		&i.ID,
@@ -88,11 +89,11 @@ func (q *Queries) GetEnabledUserTwoFactorAuthByUserID(ctx context.Context, userI
 }
 
 const getUserTwoFactorAuthByUserID = `-- name: GetUserTwoFactorAuthByUserID :one
-SELECT id, user_id, secret, enabled, enabled_at, recovery_codes, created_at, updated_at FROM user_two_factor_auths WHERE user_id = $1 LIMIT 1
+SELECT id, user_id, secret, enabled, enabled_at, recovery_codes, created_at, updated_at FROM user_two_factor_auths WHERE user_id = ? LIMIT 1
 `
 
-func (q *Queries) GetUserTwoFactorAuthByUserID(ctx context.Context, userID uuid.UUID) (UserTwoFactorAuth, error) {
-	row := q.db.QueryRow(ctx, getUserTwoFactorAuthByUserID, userID)
+func (q *Queries) GetUserTwoFactorAuthByUserID(ctx context.Context, userID int64) (UserTwoFactorAuth, error) {
+	row := q.db.QueryRowContext(ctx, getUserTwoFactorAuthByUserID, userID)
 	var i UserTwoFactorAuth
 	err := row.Scan(
 		&i.ID,
@@ -109,16 +110,16 @@ func (q *Queries) GetUserTwoFactorAuthByUserID(ctx context.Context, userID uuid.
 
 const updateUserTwoFactorAuthRecoveryCodes = `-- name: UpdateUserTwoFactorAuthRecoveryCodes :exec
 UPDATE user_two_factor_auths
-SET recovery_codes = $2, updated_at = NOW()
-WHERE user_id = $1
+SET recovery_codes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE user_id = ?
 `
 
 type UpdateUserTwoFactorAuthRecoveryCodesParams struct {
-	UserID        uuid.UUID `json:"user_id"`
-	RecoveryCodes []string  `json:"recovery_codes"`
+	RecoveryCodes string `json:"recovery_codes"`
+	UserID        int64  `json:"user_id"`
 }
 
 func (q *Queries) UpdateUserTwoFactorAuthRecoveryCodes(ctx context.Context, arg UpdateUserTwoFactorAuthRecoveryCodesParams) error {
-	_, err := q.db.Exec(ctx, updateUserTwoFactorAuthRecoveryCodes, arg.UserID, arg.RecoveryCodes)
+	_, err := q.db.ExecContext(ctx, updateUserTwoFactorAuthRecoveryCodes, arg.RecoveryCodes, arg.UserID)
 	return err
 }

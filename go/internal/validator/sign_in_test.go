@@ -6,7 +6,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -25,25 +24,25 @@ import (
 func TestSignInCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	v := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// Seed an account with a password to sign in against.
 	//
 	// [Ja] サインインの対象となる、パスワード付きのアカウントを 1 つ用意する。
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("member@example.com").Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
 	// Seed an account without any password (e.g. an SSO-only user) to assert it
 	// cannot sign in with a password.
 	//
 	// [Ja] パスワードの無いアカウント (例: SSO のみのユーザー) を用意し、パスワードでは
 	// サインインできないことを確かめる。
-	testutil.NewUserBuilder(t, tx).WithEmail("nopass@example.com").Build()
+	testutil.NewUserBuilder(t, db).WithEmail("nopass@example.com").Build()
 
 	t.Run("正常系: 正しい資格情報はユーザーを返す (2FA 無しなので設定は nil)", func(t *testing.T) {
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
@@ -61,7 +60,7 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 		}
 	})
 
-	t.Run("正常系: 大文字違いの email でもサインインできる (citext)", func(t *testing.T) {
+	t.Run("正常系: 大文字違いの email でもサインインできる (NOCASE 照合)", func(t *testing.T) {
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "MEMBER@example.com",
 			Password: "password123",
@@ -75,9 +74,9 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	})
 
 	t.Run("正常系: 2FA 有効なユーザーは有効な 2FA 設定を併せて返す", func(t *testing.T) {
-		twoFAUserID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-on@example.com").Build()
-		testutil.NewUserPasswordBuilder(t, tx).WithUserID(twoFAUserID).WithPassword("password123").Build()
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(twoFAUserID).WithEnabled(true).Build()
+		twoFAUserID := testutil.NewUserBuilder(t, db).WithEmail("2fa-on@example.com").Build()
+		testutil.NewUserPasswordBuilder(t, db).WithUserID(twoFAUserID).WithPassword("password123").Build()
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(twoFAUserID).WithEnabled(true).Build()
 
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "2fa-on@example.com",
@@ -98,9 +97,9 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	})
 
 	t.Run("正常系: 登録中 (未有効化) の 2FA は無しとして扱う", func(t *testing.T) {
-		enrollingUserID := testutil.NewUserBuilder(t, tx).WithEmail("2fa-enrolling@example.com").Build()
-		testutil.NewUserPasswordBuilder(t, tx).WithUserID(enrollingUserID).WithPassword("password123").Build()
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(enrollingUserID).WithEnabled(false).Build()
+		enrollingUserID := testutil.NewUserBuilder(t, db).WithEmail("2fa-enrolling@example.com").Build()
+		testutil.NewUserPasswordBuilder(t, db).WithUserID(enrollingUserID).WithPassword("password123").Build()
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(enrollingUserID).WithEnabled(false).Build()
 
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "2fa-enrolling@example.com",

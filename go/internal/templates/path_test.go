@@ -37,8 +37,6 @@ func TestStaticPaths(t *testing.T) {
 		{name: "SettingsTwoFactorAuthPath", got: templates.SettingsTwoFactorAuthPath(), want: "/settings/two_factor_auth"},
 		{name: "SettingsWithdrawalNewPath", got: templates.SettingsWithdrawalNewPath(), want: "/settings/withdrawal/new"},
 		{name: "SettingsWithdrawalPath", got: templates.SettingsWithdrawalPath(), want: "/settings/withdrawal"},
-		{name: "CommunityNewPath", got: templates.CommunityNewPath(), want: "/communities/new"},
-		{name: "CommunityListPath", got: templates.CommunityListPath(), want: "/communities"},
 	}
 
 	for _, tt := range tests {
@@ -49,19 +47,6 @@ func TestStaticPaths(t *testing.T) {
 				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
 			}
 		})
-	}
-}
-
-// TestCommunityPath verifies that a community's page is addressed by the short
-// /c/{identifier} path rather than under the /communities collection namespace.
-//
-// [Ja] TestCommunityPath は、コミュニティの画面が /communities のコレクション名前空間の
-// 下ではなく短縮パス /c/{identifier} で指されることを検証します。
-func TestCommunityPath(t *testing.T) {
-	t.Parallel()
-
-	if got := templates.CommunityPath("groobb"); got != "/c/groobb" {
-		t.Errorf("CommunityPath(%q) = %q, want %q", "groobb", got, "/c/groobb")
 	}
 }
 
@@ -84,14 +69,14 @@ func TestPath_WithReturnTo(t *testing.T) {
 		{
 			name:     "遷移先を付ける",
 			path:     templates.SignInPath(),
-			returnTo: "/c/groobb",
-			want:     "/sign_in?return_to=%2Fc%2Fgroobb",
+			returnTo: "/settings",
+			want:     "/sign_in?return_to=%2Fsettings",
 		},
 		{
 			name:     "クエリを含む遷移先をエンコードする",
 			path:     templates.SignInTwoFactorRecoveryNewPath(),
-			returnTo: "/c/groobb?tab=posts",
-			want:     "/sign_in/two_factor/recovery/new?return_to=%2Fc%2Fgroobb%3Ftab%3Dposts",
+			returnTo: "/settings?from=home",
+			want:     "/sign_in/two_factor/recovery/new?return_to=%2Fsettings%3Ffrom%3Dhome",
 		},
 		{
 			name:     "空の遷移先ではパスを変えない",
@@ -124,8 +109,8 @@ func TestPath_WithReturnTo(t *testing.T) {
 func TestAfterSignInPath(t *testing.T) {
 	t.Parallel()
 
-	if got := templates.AfterSignInPath("/c/groobb"); got != "/c/groobb" {
-		t.Errorf("AfterSignInPath(%q) = %q, want %q", "/c/groobb", got, "/c/groobb")
+	if got := templates.AfterSignInPath("/settings"); got != "/settings" {
+		t.Errorf("AfterSignInPath(%q) = %q, want %q", "/settings", got, "/settings")
 	}
 	if got := templates.AfterSignInPath(""); got != templates.HomePath() {
 		t.Errorf("AfterSignInPath(%q) = %q, want %q", "", got, templates.HomePath())

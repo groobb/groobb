@@ -15,48 +15,32 @@ import (
 
 // TestShow verifies that GET /home returns HTTP 200 with an HTML body that
 // renders the localized heading, a greeting addressed to the signed-in user's
-// atname, links to the community-creation form and the settings hub, and the
-// sign-out form (POST /user_session via the _method=DELETE override, with the
-// CSRF hidden field and a confirmation prompt), plus the noindex robots meta, for
-// each supported locale. The user is placed in the context directly (as
-// RequireAuth would), so the handler runs without the auth middleware or a
-// database.
+// atname, and the sign-out form (POST /user_session via the _method=DELETE
+// override, with the CSRF hidden field and a confirmation prompt), plus the
+// noindex robots meta, for each supported locale. The user is placed in the
+// context directly (as RequireAuth would), so the handler runs without the auth
+// middleware or a database.
 //
 // [Ja] TestShow は GET /home が HTTP 200 と、サポートする各ロケールについて、
-// ローカライズされた見出し・サインイン済みユーザーの atname 宛ての挨拶・コミュニティ
-// 作成フォームと設定ハブへのリンク・サインアウトフォーム (_method=DELETE オーバーライド
-// 経由の POST /user_session、CSRF hidden フィールドと確認文言つき)、そして noindex の
-// robots メタを描画した HTML ボディを返すことを検証します。ユーザーは (RequireAuth が
-// するように) context に直接載せ、認証ミドルウェアや DB なしでハンドラーを走らせます。
+// ローカライズされた見出し・サインイン済みユーザーの atname 宛ての挨拶・サインアウト
+// フォーム (_method=DELETE オーバーライド経由の POST /user_session、CSRF hidden
+// フィールドと確認文言つき)、そして noindex の robots メタを描画した HTML ボディを
+// 返すことを検証します。ユーザーは (RequireAuth がするように) context に直接載せ、
+// 認証ミドルウェアや DB なしでハンドラーを走らせます。
 func TestShow(t *testing.T) {
 	t.Parallel()
 
 	handler := home.NewHandler(&config.Config{Env: "dev"})
 
 	tests := []struct {
-		name                    string
-		locale                  string
-		wantHeading             string
-		wantSignOutBtn          string
-		wantSettingsLink        string
-		wantCreateCommunityLink string
+		name             string
+		locale           string
+		wantHeading      string
+		wantSignOutBtn   string
+		wantSettingsLink string
 	}{
-		{
-			name:                    "Japanese",
-			locale:                  i18n.LangJa,
-			wantHeading:             "ホーム",
-			wantSignOutBtn:          "ログアウト",
-			wantSettingsLink:        "設定",
-			wantCreateCommunityLink: "コミュニティを作る",
-		},
-		{
-			name:                    "English",
-			locale:                  i18n.LangEn,
-			wantHeading:             "Home",
-			wantSignOutBtn:          "Sign out",
-			wantSettingsLink:        "Settings",
-			wantCreateCommunityLink: "Create a community",
-		},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "ホーム", wantSignOutBtn: "ログアウト", wantSettingsLink: "設定"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Home", wantSignOutBtn: "Sign out", wantSettingsLink: "Settings"},
 	}
 
 	for _, tt := range tests {
@@ -85,8 +69,6 @@ func TestShow(t *testing.T) {
 				tt.wantSignOutBtn,
 				tt.wantSettingsLink,
 				`href="/settings"`,
-				tt.wantCreateCommunityLink,
-				`href="/communities/new"`,
 				"@alice",
 				`action="/user_session"`,
 				`method="POST"`,

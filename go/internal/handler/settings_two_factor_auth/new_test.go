@@ -4,21 +4,17 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/settings_two_factor_auth"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -26,30 +22,23 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// setupTwoFactorAuthHandler wires a settings_two_factor_auth Handler over the test
-// transaction and creates a user to set up 2FA. The prepare, enable, and disable
-// usecases open no transaction of their own, so the WithTx repositories keep every
-// write inside the rolled-back test transaction. It returns the handler, the 2FA
-// repository (for assertions and seeding via the builder), a user model to place in
-// the request context (as RequireAuth would), and the transaction (to seed enrollment
-// rows and a password for disable re-authentication).
+// setupTwoFactorAuthHandler wires a settings_two_factor_auth Handler over the
+// test database and creates a user to set up 2FA. It returns the handler, the 2FA
+// repository (for assertions and seeding via the builder), and a user model to
+// place in the request context (as RequireAuth would).
 //
-// [Ja] setupTwoFactorAuthHandler はテスト用トランザクション上に settings_two_factor_auth
-// Handler を組み立て、2FA を設定するユーザーを作成する。prepare / enable / disable usecase は
-// 自前のトランザクションを開かないため、WithTx リポジトリがすべての書き込みをロールバックされる
-// テストトランザクション内に保つ。ハンドラー・(検証と登録行の投入用の) 2FA リポジトリ・
-// (RequireAuth のように) リクエスト context に載せるユーザーモデル・(登録行や無効化の再認証用
-// パスワードを投入するための) トランザクションを返す。
-func setupTwoFactorAuthHandler(t *testing.T) (*settings_two_factor_auth.Handler, *repository.UserTwoFactorAuthRepository, *model.User, pgx.Tx) {
+// [Ja] setupTwoFactorAuthHandler はテスト用データベース上に settings_two_factor_auth
+// Handler を組み立て、2FA を設定するユーザーを作成する。ハンドラー・(検証と登録行の投入用の)
+// 2FA リポジトリ・(RequireAuth のように) リクエスト context に載せるユーザーモデルを返す。
+func setupTwoFactorAuthHandler(t *testing.T, db *database.DB) (*settings_two_factor_auth.Handler, *repository.UserTwoFactorAuthRepository, *model.User) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	db, tx := testutil.SetupTx(t)
-	email := fmt.Sprintf("2fa-h-%s@example.com", uuid.NewString())
-	userID := testutil.NewUserBuilder(t, tx).WithEmail(email).Build()
+	email := "2fa-h@example.com"
+	userID := testutil.NewUserBuilder(t, db).WithEmail(email).Build()
 
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
+	repo := repository.NewUserTwoFactorAuthRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	prepareUC := usecase.NewPrepareTwoFactorAuthUsecase(repo)
 	enableUC := usecase.NewEnableTwoFactorAuthUsecase(
 		validator.NewSettingsTwoFactorAuthCreateValidator(repo),
@@ -61,7 +50,7 @@ func setupTwoFactorAuthHandler(t *testing.T) (*settings_two_factor_auth.Handler,
 	)
 	h := settings_two_factor_auth.NewHandler(cfg, session.NewFlashManager(cfg), prepareUC, enableUC, disableUC)
 
-	return h, repo, &model.User{ID: userID, Email: email}, tx
+	return h, repo, &model.User{ID: userID, Email: email}
 }
 
 // getNew builds a GET /settings/two_factor_auth/new request with the user in the
@@ -139,7 +128,8 @@ func TestNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h, repo, user, _ := setupTwoFactorAuthHandler(t)
+			db := testutil.SetupDB(t)
+			h, repo, user := setupTwoFactorAuthHandler(t, db)
 
 			rec := httptest.NewRecorder()
 			h.New(rec, getNew(user, tt.locale))
@@ -204,8 +194,10 @@ func TestNew(t *testing.T) {
 func TestNew_AlreadyEnabled(t *testing.T) {
 	t.Parallel()
 
-	h, _, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).WithEnabled(true).Build()
+	db := testutil.SetupDB(t)
+
+	h, _, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
 
 	rec := httptest.NewRecorder()
 	h.New(rec, getNew(user, i18n.LangJa))

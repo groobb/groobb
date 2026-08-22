@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/repository"
@@ -24,25 +23,25 @@ import (
 // 実際に変わらないままリンクが消費される (またはその逆) ことが決して起きません。パスワード
 // リセットはサインアウト中に行われるため、ユーザーはセッションではなくトークンで特定します。
 type UpdatePasswordResetUsecase struct {
-	db                     *pgxpool.Pool
+	writer                 *sql.DB
 	updateValidator        *validator.PasswordUpdateValidator
 	passwordResetTokenRepo *repository.PasswordResetTokenRepository
 	userPasswordRepo       *repository.UserPasswordRepository
 }
 
 // NewUpdatePasswordResetUsecase builds an UpdatePasswordResetUsecase from the
-// pool, the validator, and the repositories it persists through.
+// write pool, the validator, and the repositories it persists through.
 //
-// [Ja] NewUpdatePasswordResetUsecase はプール・validator・永続化に使うリポジトリから
+// [Ja] NewUpdatePasswordResetUsecase は書き込み用プール・validator・永続化に使うリポジトリから
 // UpdatePasswordResetUsecase を構築します。
 func NewUpdatePasswordResetUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	updateValidator *validator.PasswordUpdateValidator,
 	passwordResetTokenRepo *repository.PasswordResetTokenRepository,
 	userPasswordRepo *repository.UserPasswordRepository,
 ) *UpdatePasswordResetUsecase {
 	return &UpdatePasswordResetUsecase{
-		db:                     db,
+		writer:                 writer,
 		updateValidator:        updateValidator,
 		passwordResetTokenRepo: passwordResetTokenRepo,
 		userPasswordRepo:       userPasswordRepo,
@@ -96,11 +95,11 @@ func (uc *UpdatePasswordResetUsecase) Execute(ctx context.Context, input UpdateP
 // 消費されるようにします。ダイジェストは事前に Execute が計算済みで、トランザクションを
 // 純粋な永続化に保ちます。
 func (uc *UpdatePasswordResetUsecase) updatePassword(ctx context.Context, validated *validator.PasswordUpdateValidateOutput, passwordDigest string) error {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	userPasswordRepo := uc.userPasswordRepo.WithTx(tx)
 	passwordResetTokenRepo := uc.passwordResetTokenRepo.WithTx(tx)
@@ -113,7 +112,7 @@ func (uc *UpdatePasswordResetUsecase) updatePassword(ctx context.Context, valida
 		return fmt.Errorf("リセットトークンの使用済みマークに失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

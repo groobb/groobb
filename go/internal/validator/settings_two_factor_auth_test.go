@@ -5,32 +5,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/pquerna/otp/totp"
 
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newTwoFactorAuthValidator builds a SettingsTwoFactorAuthCreateValidator bound to
-// the test transaction (via WithTx) and creates a user to own the 2FA setting,
-// returning the validator, the user ID, and the transaction so a subtest can seed
-// the enrollment row. Writes roll back when the test finishes.
+// newTwoFactorAuthValidator builds a SettingsTwoFactorAuthCreateValidator over the
+// test's own database and creates a user to own the 2FA setting, returning the
+// validator and the user ID so a subtest can seed the enrollment row for that
+// user.
 //
-// [Ja] newTwoFactorAuthValidator はテスト用トランザクションに束ねた (WithTx を通した)
-// SettingsTwoFactorAuthCreateValidator を作り、2FA 設定の所有ユーザーを作成して、validator・
-// ユーザー ID・トランザクション (サブテストが登録行を投入できるよう) を返す。書き込みはテスト
-// 終了時にロールバックされる。
-func newTwoFactorAuthValidator(t *testing.T) (*validator.SettingsTwoFactorAuthCreateValidator, model.UserID, pgx.Tx) {
+// [Ja] newTwoFactorAuthValidator はテスト専用のデータベース上に
+// SettingsTwoFactorAuthCreateValidator を作り、2FA 設定の所有ユーザーを作成する。
+// サブテストがそのユーザーの登録行を投入できるよう、validator とユーザー ID を返す。
+func newTwoFactorAuthValidator(t *testing.T, db *database.DB) (*validator.SettingsTwoFactorAuthCreateValidator, model.UserID) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
-	return validator.NewSettingsTwoFactorAuthCreateValidator(repo), userID, tx
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
+	return validator.NewSettingsTwoFactorAuthCreateValidator(repo), userID
 }
 
 // validTOTPCode returns the current TOTP code for DefaultBuilderTOTPSecret, the
@@ -63,10 +60,12 @@ func validTOTPCode(t *testing.T) string {
 func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	t.Run("正常系: 登録中の設定に対する正しいコード", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{
@@ -80,8 +79,8 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: コードが空", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: ""})
@@ -97,8 +96,8 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: コードの形式が不正", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: "12ab5"})
@@ -114,7 +113,8 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: 登録中の設定が無い", func(t *testing.T) {
 		t.Parallel()
-		v, userID, _ := newTwoFactorAuthValidator(t)
+		db := testutil.SetupDB(t)
+		v, userID := newTwoFactorAuthValidator(t, db)
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: "123456"})
@@ -130,8 +130,8 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: 既に有効", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+		v, userID := newTwoFactorAuthValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: validTOTPCode(t)})
@@ -147,8 +147,8 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: コードが secret と一致しない", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 		// Pick a well-formed code that is deliberately not the current one, so the
 		// mismatch (not a format problem) is exercised.
@@ -173,22 +173,20 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 	})
 }
 
-// newTwoFactorAuthDeleteValidator builds a SettingsTwoFactorAuthDeleteValidator bound
-// to the test transaction (via WithTx) and creates a user to own the credentials,
-// returning the validator, the user ID, and the transaction so a subtest can seed the
-// enabled 2FA setting and a password. Writes roll back when the test finishes.
+// newTwoFactorAuthDeleteValidator builds a SettingsTwoFactorAuthDeleteValidator over
+// the test's own database and creates a user to own the credentials, returning the
+// validator and the user ID so a subtest can seed the enabled 2FA setting and a
+// password for that user.
 //
-// [Ja] newTwoFactorAuthDeleteValidator はテスト用トランザクションに束ねた (WithTx を通した)
-// SettingsTwoFactorAuthDeleteValidator を作り、資格情報の所有ユーザーを作成して、validator・
-// ユーザー ID・トランザクション (サブテストが有効な 2FA 設定とパスワードを投入できるよう) を
-// 返す。書き込みはテスト終了時にロールバックされる。
-func newTwoFactorAuthDeleteValidator(t *testing.T) (*validator.SettingsTwoFactorAuthDeleteValidator, model.UserID, pgx.Tx) {
+// [Ja] newTwoFactorAuthDeleteValidator はテスト専用のデータベース上に
+// SettingsTwoFactorAuthDeleteValidator を作り、資格情報の所有ユーザーを作成する。
+// サブテストが有効な 2FA 設定とパスワードを投入できるよう、validator とユーザー ID を返す。
+func newTwoFactorAuthDeleteValidator(t *testing.T, db *database.DB) (*validator.SettingsTwoFactorAuthDeleteValidator, model.UserID) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
-	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
-	return validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, twoFactorRepo), userID, tx
+	userID := testutil.NewUserBuilder(t, db).Build()
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(db)
+	return validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, twoFactorRepo), userID
 }
 
 // TestSettingsTwoFactorAuthDeleteValidator_Validate covers the disable form's
@@ -203,11 +201,13 @@ func newTwoFactorAuthDeleteValidator(t *testing.T) (*validator.SettingsTwoFactor
 func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	t.Run("正常系: 正しい現在のパスワード", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthDeleteValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
-		testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthDeleteValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
+		testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
@@ -221,8 +221,8 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 
 	t.Run("正常系: 正しい TOTP コード", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthDeleteValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+		v, userID := newTwoFactorAuthDeleteValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
@@ -236,8 +236,8 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: どちらも未入力", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthDeleteValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+		v, userID := newTwoFactorAuthDeleteValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{UserID: userID})
@@ -253,9 +253,9 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: 誤った現在のパスワード", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthDeleteValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
-		testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
+		v, userID := newTwoFactorAuthDeleteValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
+		testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
 		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
@@ -274,8 +274,8 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 
 	t.Run("異常系: 誤った TOTP コード", func(t *testing.T) {
 		t.Parallel()
-		v, userID, tx := newTwoFactorAuthDeleteValidator(t)
-		testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).WithEnabled(true).Build()
+		v, userID := newTwoFactorAuthDeleteValidator(t, db)
+		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
 		// A well-formed code deliberately not equal to the current one, so the
 		// mismatch (not a format problem) is exercised.

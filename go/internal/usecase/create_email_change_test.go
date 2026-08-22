@@ -3,45 +3,36 @@ package usecase_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newCreateEmailChangeUsecase wires a CreateEmailChangeUsecase over the shared
-// pool with a fake job inserter, returning the inserter too so a test can assert
-// what was enqueued or force an enqueue failure. The UseCase opens its own
-// transaction, so its tests commit rows and use unique emails (the test database
-// is reset by make test) rather than the rolled-back transaction pattern.
+// newCreateEmailChangeUsecase wires a CreateEmailChangeUsecase over the test's
+// own database with a fake job inserter, returning the inserter too so a test can
+// assert what was enqueued or force an enqueue failure.
 //
-// [Ja] newCreateEmailChangeUsecase は共有プール上に CreateEmailChangeUsecase を
+// [Ja] newCreateEmailChangeUsecase はテスト専用のデータベース上に CreateEmailChangeUsecase を
 // フェイクのジョブインサーターで組み立て、投入内容を検証したり enqueue 失敗を強制したり
-// できるようインサーターも返します。UseCase は自前のトランザクションを開くため、そのテストは
-// ロールバックされるトランザクションパターンではなく、行をコミットしユニークな email を
-// 使います (テスト DB は make test がリセットする)。
-func newCreateEmailChangeUsecase(t *testing.T) (*usecase.CreateEmailChangeUsecase, *testutil.FakeJobInserter) {
+// できるようインサーターも返します。
+func newCreateEmailChangeUsecase(t *testing.T, db *database.DB) (*usecase.CreateEmailChangeUsecase, *testutil.FakeJobInserter) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreateEmailChangeUsecase(
-		db,
+		db.Writer,
 		validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo),
 		emailConfirmationRepo,
 		dispatcher.NewDispatcher(inserter),
@@ -56,17 +47,16 @@ func newCreateEmailChangeUsecase(t *testing.T) (*usecase.CreateEmailChangeUsecas
 // [Ja] seedEmailChangeUser は指定 email とパスワード "password123" を持つコミット済み
 // ユーザーを作成し、その id を返す。UseCase テストが実在の認証可能なアカウントから
 // メール変更申請を駆動できるようにする。
-func seedEmailChangeUser(t *testing.T, email string) model.UserID {
+func seedEmailChangeUser(t *testing.T, db *database.DB, email string) model.UserID {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
@@ -96,10 +86,12 @@ func seedEmailChangeUser(t *testing.T, email string) model.UserID {
 func TestCreateEmailChangeUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, inserter := newCreateEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, inserter := newCreateEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedEmailChangeUser(t, fmt.Sprintf("ec-uc-cur-%s@example.com", uuid.NewString()))
-	newEmail := fmt.Sprintf("ec-uc-new-%s@example.com", uuid.NewString())
+	userID := seedEmailChangeUser(t, db, "ec-uc-cur@example.com")
+	newEmail := "ec-uc-new@example.com"
 
 	output, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID:          userID,
@@ -148,11 +140,13 @@ func TestCreateEmailChangeUsecase_Execute_Success(t *testing.T) {
 func TestCreateEmailChangeUsecase_Execute_ReplacesPending(t *testing.T) {
 	t.Parallel()
 
-	uc, _ := newCreateEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, _ := newCreateEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedEmailChangeUser(t, fmt.Sprintf("ec-uc-rep-%s@example.com", uuid.NewString()))
-	firstEmail := fmt.Sprintf("ec-uc-rep1-%s@example.com", uuid.NewString())
-	secondEmail := fmt.Sprintf("ec-uc-rep2-%s@example.com", uuid.NewString())
+	userID := seedEmailChangeUser(t, db, "ec-uc-rep@example.com")
+	firstEmail := "ec-uc-rep1@example.com"
+	secondEmail := "ec-uc-rep2@example.com"
 
 	if _, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID: userID, NewEmail: firstEmail, CurrentPassword: "password123", Locale: i18n.LangJa,
@@ -166,9 +160,9 @@ func TestCreateEmailChangeUsecase_Execute_ReplacesPending(t *testing.T) {
 	}
 
 	var pending int
-	err := testutil.GetTestDB().QueryRow(ctx,
-		`SELECT count(*) FROM email_confirmations WHERE user_id = $1 AND event = 'email_change' AND succeeded_at IS NULL`,
-		uuid.UUID(userID),
+	err := db.Reader.QueryRowContext(ctx,
+		`SELECT count(*) FROM email_confirmations WHERE user_id = ? AND event = 'email_change' AND succeeded_at IS NULL`,
+		int64(userID),
 	).Scan(&pending)
 	if err != nil {
 		t.Fatalf("保留件数の取得に失敗: %v", err)
@@ -177,7 +171,7 @@ func TestCreateEmailChangeUsecase_Execute_ReplacesPending(t *testing.T) {
 		t.Errorf("保留中のメール変更確認 = %d 件, want 1 件", pending)
 	}
 
-	active, err := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB())).FindActiveEmailChangeByUserID(ctx, userID)
+	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(ctx, userID)
 	if err != nil {
 		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
 	}
@@ -195,13 +189,15 @@ func TestCreateEmailChangeUsecase_Execute_ReplacesPending(t *testing.T) {
 func TestCreateEmailChangeUsecase_Execute_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	uc, inserter := newCreateEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, inserter := newCreateEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedEmailChangeUser(t, fmt.Sprintf("ec-uc-ve-%s@example.com", uuid.NewString()))
+	userID := seedEmailChangeUser(t, db, "ec-uc-ve@example.com")
 
 	_, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID:          userID,
-		NewEmail:        fmt.Sprintf("ec-uc-ve-new-%s@example.com", uuid.NewString()),
+		NewEmail:        "ec-uc-ve-new@example.com",
 		CurrentPassword: "wrongpassword",
 		Locale:          i18n.LangJa,
 	})
@@ -212,7 +208,7 @@ func TestCreateEmailChangeUsecase_Execute_ValidationError(t *testing.T) {
 		t.Error("バリデーション失敗時に確認メールが投入された")
 	}
 
-	active, err := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB())).FindActiveEmailChangeByUserID(ctx, userID)
+	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(ctx, userID)
 	if err != nil {
 		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
 	}
@@ -230,14 +226,16 @@ func TestCreateEmailChangeUsecase_Execute_ValidationError(t *testing.T) {
 func TestCreateEmailChangeUsecase_Execute_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
-	uc, inserter := newCreateEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, inserter := newCreateEmailChangeUsecase(t, db)
 	inserter.Err = errors.New("queue unavailable")
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	userID := seedEmailChangeUser(t, fmt.Sprintf("ec-uc-enq-%s@example.com", uuid.NewString()))
+	userID := seedEmailChangeUser(t, db, "ec-uc-enq@example.com")
 
 	_, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID:          userID,
-		NewEmail:        fmt.Sprintf("ec-uc-enq-new-%s@example.com", uuid.NewString()),
+		NewEmail:        "ec-uc-enq-new@example.com",
 		CurrentPassword: "password123",
 		Locale:          i18n.LangJa,
 	})

@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/model"
@@ -31,26 +30,26 @@ import (
 // だけでコードが消費されていない状態も残さないようにします。セッション作成は本トランザクション
 // 内で走る必要があるため、共有の CreateSessionUsecase ではなくここに置きます。
 type CreateSignInTwoFactorRecoveryUsecase struct {
-	db                    *pgxpool.Pool
+	writer                *sql.DB
 	validator             *validator.SignInTwoFactorRecoveryCreateValidator
 	userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository
 	userSessionRepo       *repository.UserSessionRepository
 }
 
 // NewCreateSignInTwoFactorRecoveryUsecase builds a
-// CreateSignInTwoFactorRecoveryUsecase from the pool, its validator, and the
+// CreateSignInTwoFactorRecoveryUsecase from the write pool, its validator, and the
 // repositories it persists through.
 //
-// [Ja] NewCreateSignInTwoFactorRecoveryUsecase はプール・validator・永続化に使う
+// [Ja] NewCreateSignInTwoFactorRecoveryUsecase は書き込み用プール・validator・永続化に使う
 // リポジトリから CreateSignInTwoFactorRecoveryUsecase を構築します。
 func NewCreateSignInTwoFactorRecoveryUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	validator *validator.SignInTwoFactorRecoveryCreateValidator,
 	userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository,
 	userSessionRepo *repository.UserSessionRepository,
 ) *CreateSignInTwoFactorRecoveryUsecase {
 	return &CreateSignInTwoFactorRecoveryUsecase{
-		db:                    db,
+		writer:                writer,
 		validator:             validator,
 		userTwoFactorAuthRepo: userTwoFactorAuthRepo,
 		userSessionRepo:       userSessionRepo,
@@ -125,11 +124,11 @@ func (uc *CreateSignInTwoFactorRecoveryUsecase) Execute(ctx context.Context, inp
 // にします。この 2 つの永続化ステップがあるため、本処理を Execute (純粋なオーケストレーションに
 // 徹する) から切り出しています。
 func (uc *CreateSignInTwoFactorRecoveryUsecase) consumeAndCreateSession(ctx context.Context, input CreateSignInTwoFactorRecoveryInput, remainingCodes []string, token string) error {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	userTwoFactorAuthRepo := uc.userTwoFactorAuthRepo.WithTx(tx)
 	userSessionRepo := uc.userSessionRepo.WithTx(tx)
@@ -146,7 +145,7 @@ func (uc *CreateSignInTwoFactorRecoveryUsecase) consumeAndCreateSession(ctx cont
 		return fmt.Errorf("セッションの作成に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 	return nil

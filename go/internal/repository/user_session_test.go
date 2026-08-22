@@ -5,23 +5,22 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newUserSessionRepo builds a UserSessionRepository bound to the test
-// transaction (via WithTx) and creates a user to own the sessions, returning the
-// user ID so writes roll back when the test finishes.
+// newUserSessionRepo builds a UserSessionRepository over the database the test
+// owns and creates a user to own the sessions, returning the user ID so each
+// test can attach its sessions to an existing owner.
 //
-// [Ja] newUserSessionRepo はテスト用トランザクションに束ねた (WithTx を通した)
-// UserSessionRepository を作り、セッションの所有ユーザーを作成してその ID を返す。
-// テスト終了時に書き込みはロールバックされる。
+// [Ja] newUserSessionRepo はテストが所有するデータベース上に UserSessionRepository を
+// 作り、セッションの所有ユーザーを作成してその ID を返す。各テストが既存の所有者に
+// セッションを紐付けられるようにするためである。
 func newUserSessionRepo(t *testing.T) (*repository.UserSessionRepository, model.UserID, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserSessionRepository(db)
 	return repo, userID, context.Background()
 }
 
@@ -40,7 +39,7 @@ func TestUserSessionRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if userSession.ID == (model.UserSessionID{}) {
+	if userSession.ID == 0 {
 		t.Error("Create() userSession.ID は DB 採番で空でないはず")
 	}
 	if userSession.UserID != userID {
@@ -152,8 +151,8 @@ func TestUserSessionRepository_DeleteByToken(t *testing.T) {
 func TestUserSessionRepository_DeleteByUserID(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserSessionRepository(db)
 	ctx := context.Background()
 
 	// The target user with two sessions, plus another user whose session must
@@ -161,7 +160,7 @@ func TestUserSessionRepository_DeleteByUserID(t *testing.T) {
 	//
 	// [Ja] 2 つのセッションを持つ対象ユーザーと、削除を生き延びるべきセッションを持つ
 	// 別ユーザー。
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
 	for _, token := range []string{"del-by-user-1", "del-by-user-2"} {
 		if _, err := repo.Create(ctx, repository.CreateUserSessionInput{
 			UserID: userID, Token: token, IPAddress: "203.0.113.6", UserAgent: "agent",
@@ -169,7 +168,7 @@ func TestUserSessionRepository_DeleteByUserID(t *testing.T) {
 			t.Fatalf("Create() error = %v", err)
 		}
 	}
-	otherUserID := testutil.NewUserBuilder(t, tx).Build()
+	otherUserID := testutil.NewUserBuilder(t, db).Build()
 	if _, err := repo.Create(ctx, repository.CreateUserSessionInput{
 		UserID: otherUserID, Token: "other-user-token", IPAddress: "203.0.113.7", UserAgent: "agent",
 	}); err != nil {

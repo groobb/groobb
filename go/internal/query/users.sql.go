@@ -7,15 +7,14 @@ package query
 
 import (
 	"context"
-	"time"
 
-	"github.com/google/uuid"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, locale, time_zone, created_at, updated_at, atname, deleted_at
+VALUES (?, ?, ?, ?)
+RETURNING id, email, atname, locale, time_zone, deleted_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -26,7 +25,7 @@ type CreateUserParams struct {
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
+	row := q.db.QueryRowContext(ctx, createUser,
 		arg.Email,
 		arg.Atname,
 		arg.Locale,
@@ -36,141 +35,144 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.Atname,
 		&i.Locale,
 		&i.TimeZone,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Atname,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByAtname = `-- name: GetUserByAtname :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE atname = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE atname = ? AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByAtname, atname)
+	row := q.db.QueryRowContext(ctx, getUserByAtname, atname)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.Atname,
 		&i.Locale,
 		&i.TimeZone,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Atname,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.Atname,
 		&i.Locale,
 		&i.TimeZone,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Atname,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, locale, time_zone, created_at, updated_at, atname, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByID, id)
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.Atname,
 		&i.Locale,
 		&i.TimeZone,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Atname,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserBySessionToken = `-- name: GetUserBySessionToken :one
-SELECT users.id, users.email, users.locale, users.time_zone, users.created_at, users.updated_at, users.atname, users.deleted_at FROM users
+SELECT users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
-WHERE user_sessions.token = $1 AND users.deleted_at IS NULL
+WHERE user_sessions.token = ? AND users.deleted_at IS NULL
 LIMIT 1
 `
 
 func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserBySessionToken, token)
+	row := q.db.QueryRowContext(ctx, getUserBySessionToken, token)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.Atname,
 		&i.Locale,
 		&i.TimeZone,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Atname,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const purgeUsersDeletedBefore = `-- name: PurgeUsersDeletedBefore :execrows
 DELETE FROM users
-WHERE deleted_at IS NOT NULL AND deleted_at < $1
+WHERE deleted_at IS NOT NULL AND deleted_at < ?
 `
 
-func (q *Queries) PurgeUsersDeletedBefore(ctx context.Context, deletedAt *time.Time) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeUsersDeletedBefore, deletedAt)
+func (q *Queries) PurgeUsersDeletedBefore(ctx context.Context, deletedAt *sqlitetime.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, purgeUsersDeletedBefore, deletedAt)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected(), nil
+	return result.RowsAffected()
 }
 
 const softDeleteAndAnonymizeUser = `-- name: SoftDeleteAndAnonymizeUser :exec
 UPDATE users
-SET deleted_at = NOW(), email = $2, atname = $3, updated_at = NOW()
-WHERE id = $1
+SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    email = ?,
+    atname = ?,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
 `
 
 type SoftDeleteAndAnonymizeUserParams struct {
-	ID     uuid.UUID `json:"id"`
-	Email  string    `json:"email"`
-	Atname string    `json:"atname"`
+	Email  string `json:"email"`
+	Atname string `json:"atname"`
+	ID     int64  `json:"id"`
 }
 
 func (q *Queries) SoftDeleteAndAnonymizeUser(ctx context.Context, arg SoftDeleteAndAnonymizeUserParams) error {
-	_, err := q.db.Exec(ctx, softDeleteAndAnonymizeUser, arg.ID, arg.Email, arg.Atname)
+	_, err := q.db.ExecContext(ctx, softDeleteAndAnonymizeUser, arg.Email, arg.Atname, arg.ID)
 	return err
 }
 
 const updateUserEmail = `-- name: UpdateUserEmail :exec
 UPDATE users
-SET email = $2, updated_at = NOW()
-WHERE id = $1
+SET email = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
 `
 
 type UpdateUserEmailParams struct {
-	ID    uuid.UUID `json:"id"`
-	Email string    `json:"email"`
+	Email string `json:"email"`
+	ID    int64  `json:"id"`
 }
 
 func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) error {
-	_, err := q.db.Exec(ctx, updateUserEmail, arg.ID, arg.Email)
+	_, err := q.db.ExecContext(ctx, updateUserEmail, arg.Email, arg.ID)
 	return err
 }

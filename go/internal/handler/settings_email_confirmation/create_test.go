@@ -4,22 +4,19 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -28,25 +25,20 @@ import (
 )
 
 // newSettingsEmailConfirmationHandler wires a settings_email_confirmation Handler
-// over the shared pool, returning the email-confirmation repository so a test can
-// seed a pending email-change confirmation. The VerifyEmailChangeUsecase opens its
-// own transaction, so its tests commit rows and use unique emails (the test
-// database is reset by make test) rather than the rolled-back transaction pattern.
+// over the test database's repositories, returning the email-confirmation
+// repository so a test can seed a pending email-change confirmation.
 //
-// [Ja] newSettingsEmailConfirmationHandler は共有プール上に
+// [Ja] newSettingsEmailConfirmationHandler はテスト用データベースのリポジトリで
 // settings_email_confirmation Handler を組み立て、テストが保留中のメール変更確認を
-// 仕込めるようメール確認リポジトリを返す。VerifyEmailChangeUsecase は自前のトランザク
-// ションを開くため、そのテストはロールバックされるトランザクションパターンではなく、行を
-// コミットしユニークな email を使う (テスト DB は make test がリセットする)。
-func newSettingsEmailConfirmationHandler(t *testing.T) (*settings_email_confirmation.Handler, *repository.EmailConfirmationRepository, *repository.UserRepository) {
+// 仕込めるようメール確認リポジトリを返す。
+func newSettingsEmailConfirmationHandler(t *testing.T, db *database.DB) (*settings_email_confirmation.Handler, *repository.EmailConfirmationRepository, *repository.UserRepository) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
-	userRepo := repository.NewUserRepository(queries)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
+	userRepo := repository.NewUserRepository(db)
 	uc := usecase.NewVerifyEmailChangeUsecase(
-		testutil.GetTestDB(),
+		db.Writer,
 		validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo),
 		emailConfirmationRepo,
 		userRepo,
@@ -65,13 +57,13 @@ func newSettingsEmailConfirmationHandler(t *testing.T) (*settings_email_confirma
 // 返す。Create テストが (RequireAuth がするように) それをリクエスト context に載せ、
 // そこから確認を駆動できるようにする。パスワードは作らない。確認ステップはパスワードでは
 // なくコードを検証するためである。
-func seedConfirmUser(t *testing.T, email string) *model.User {
+func seedConfirmUser(t *testing.T, db *database.DB, email string) *model.User {
 	t.Helper()
 
-	userRepo := repository.NewUserRepository(query.New(testutil.GetTestDB()))
+	userRepo := repository.NewUserRepository(db)
 	user, err := userRepo.Create(context.Background(), repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
@@ -133,11 +125,13 @@ func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMes
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler, repo, userRepo := newSettingsEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, repo, userRepo := newSettingsEmailConfirmationHandler(t, db)
 	ctx := context.Background()
 
-	user := seedConfirmUser(t, fmt.Sprintf("ec-hc-cur-%s@example.com", uuid.NewString()))
-	newEmail := fmt.Sprintf("ec-hc-new-%s@example.com", uuid.NewString())
+	user := seedConfirmUser(t, db, "ec-hc-cur@example.com")
+	newEmail := "ec-hc-new@example.com"
 	if _, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{UserID: user.ID, Email: newEmail, Code: "123456"}); err != nil {
 		t.Fatalf("メール変更確認の作成に失敗: %v", err)
 	}
@@ -176,12 +170,14 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	handler, repo, userRepo := newSettingsEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, repo, userRepo := newSettingsEmailConfirmationHandler(t, db)
 	ctx := context.Background()
 
-	currentEmail := fmt.Sprintf("ec-hc-wc-cur-%s@example.com", uuid.NewString())
-	user := seedConfirmUser(t, currentEmail)
-	newEmail := fmt.Sprintf("ec-hc-wc-new-%s@example.com", uuid.NewString())
+	currentEmail := "ec-hc-wc-cur@example.com"
+	user := seedConfirmUser(t, db, currentEmail)
+	newEmail := "ec-hc-wc-new@example.com"
 	if _, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{UserID: user.ID, Email: newEmail, Code: "123456"}); err != nil {
 		t.Fatalf("メール変更確認の作成に失敗: %v", err)
 	}

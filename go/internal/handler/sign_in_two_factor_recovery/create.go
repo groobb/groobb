@@ -53,7 +53,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	output, err := h.createSignInTwoFactorRecoveryUC.Execute(ctx, usecase.CreateSignInTwoFactorRecoveryInput{
 		UserID:    userID,
 		Code:      code,
-		IPAddress: clientip.GetClientIP(r),
+		IPAddress: clientip.GetClientIP(r, h.cfg.TrustedProxies),
 		UserAgent: r.UserAgent(),
 	})
 	if err != nil {

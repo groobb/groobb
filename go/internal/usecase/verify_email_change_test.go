@@ -2,47 +2,38 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newVerifyEmailChangeUsecase wires a VerifyEmailChangeUsecase over the shared
-// pool (not a rolled-back transaction) because it opens its own transaction
-// internally to compare the code, stamp the confirmation, and update the email; an
-// outer transaction's seed rows would be invisible to that inner transaction. It
-// returns the repositories and the fake job inserter so a test can seed
-// confirmations, assert the post-verification state, and inspect the enqueued
-// notification. Tests use unique emails so committed rows do not collide (the test
-// database is reset by make test).
+// newVerifyEmailChangeUsecase wires a VerifyEmailChangeUsecase over the test's
+// own database. The UseCase compares the code, stamps the confirmation, and
+// updates the email in a transaction of its own, so those writes land or roll back
+// together. It returns the repositories and the fake job inserter so a test can
+// seed confirmations, assert the post-verification state, and inspect the enqueued
+// notification.
 //
-// [Ja] newVerifyEmailChangeUsecase は共有プール (ロールバックされるトランザクションでは
-// なく) で VerifyEmailChangeUsecase を組み立てる。コードを照合し、確認を打刻し、email を
-// 更新するため内部で自前のトランザクションを開き、外側トランザクションで仕込んだ行はその
-// 内側トランザクションから見えないからである。テストが確認を仕込み、検証後の状態を確認し、
-// 投入された通知を検査できるようリポジトリとフェイクのジョブ inserter も返す。テストは
-// ユニークな email を使い、コミット済みの行が衝突しないようにする (テスト DB は make test が
-// リセットする)。
-func newVerifyEmailChangeUsecase(t *testing.T) (*usecase.VerifyEmailChangeUsecase, *repository.EmailConfirmationRepository, *repository.UserRepository, *testutil.FakeJobInserter) {
+// [Ja] newVerifyEmailChangeUsecase はテスト専用のデータベース上に
+// VerifyEmailChangeUsecase を組み立てる。UseCase はコードの照合・確認の打刻・email の更新を
+// 自前のトランザクションで行うため、これらの書き込みはまとめて確定するかロールバックする。
+// テストが確認を仕込み、検証後の状態を確認し、投入された通知を検査できるようリポジトリと
+// フェイクのジョブ inserter も返す。
+func newVerifyEmailChangeUsecase(t *testing.T, db *database.DB) (*usecase.VerifyEmailChangeUsecase, *repository.EmailConfirmationRepository, *repository.UserRepository, *testutil.FakeJobInserter) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
-	userRepo := repository.NewUserRepository(queries)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
+	userRepo := repository.NewUserRepository(db)
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewVerifyEmailChangeUsecase(
-		db,
+		db.Writer,
 		validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo),
 		emailConfirmationRepo,
 		userRepo,
@@ -61,12 +52,14 @@ func newVerifyEmailChangeUsecase(t *testing.T) (*usecase.VerifyEmailChangeUsecas
 func TestVerifyEmailChangeUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	currentEmail := fmt.Sprintf("ec-vc-cur-%s@example.com", uuid.NewString())
-	userID := seedEmailChangeUser(t, currentEmail)
-	newEmail := fmt.Sprintf("ec-vc-new-%s@example.com", uuid.NewString())
+	currentEmail := "ec-vc-cur@example.com"
+	userID := seedEmailChangeUser(t, db, currentEmail)
+	newEmail := "ec-vc-new@example.com"
 
 	if _, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{UserID: userID, Email: newEmail, Code: "123456"}); err != nil {
 		t.Fatalf("メール変更確認の作成に失敗: %v", err)
@@ -138,12 +131,14 @@ func TestVerifyEmailChangeUsecase_Execute_Success(t *testing.T) {
 func TestVerifyEmailChangeUsecase_Execute_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	currentEmail := fmt.Sprintf("ec-vc-wc-cur-%s@example.com", uuid.NewString())
-	userID := seedEmailChangeUser(t, currentEmail)
-	newEmail := fmt.Sprintf("ec-vc-wc-new-%s@example.com", uuid.NewString())
+	currentEmail := "ec-vc-wc-cur@example.com"
+	userID := seedEmailChangeUser(t, db, currentEmail)
+	newEmail := "ec-vc-wc-new@example.com"
 
 	if _, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{UserID: userID, Email: newEmail, Code: "123456"}); err != nil {
 		t.Fatalf("メール変更確認の作成に失敗: %v", err)
@@ -207,19 +202,21 @@ func TestVerifyEmailChangeUsecase_Execute_WrongCode(t *testing.T) {
 func TestVerifyEmailChangeUsecase_Execute_UniqueConflict(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	currentEmail := fmt.Sprintf("ec-vc-cf-cur-%s@example.com", uuid.NewString())
-	takenEmail := fmt.Sprintf("ec-vc-cf-taken-%s@example.com", uuid.NewString())
+	currentEmail := "ec-vc-cf-cur@example.com"
+	takenEmail := "ec-vc-cf-taken@example.com"
 
-	userID := seedEmailChangeUser(t, currentEmail)
+	userID := seedEmailChangeUser(t, db, currentEmail)
 	// Another account already holds the address the confirmation targets, so the
 	// apply hits the users.email UNIQUE constraint.
 	//
 	// [Ja] 確認が対象とするアドレスを別アカウントが既に保持しているため、適用は
 	// users.email の UNIQUE 制約に当たる。
-	seedEmailChangeUser(t, takenEmail)
+	seedEmailChangeUser(t, db, takenEmail)
 
 	if _, err := repo.CreateEmailChange(ctx, repository.CreateEmailChangeInput{UserID: userID, Email: takenEmail, Code: "123456"}); err != nil {
 		t.Fatalf("メール変更確認の作成に失敗: %v", err)

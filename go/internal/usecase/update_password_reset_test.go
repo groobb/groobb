@@ -2,47 +2,35 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newUpdatePasswordResetUsecase wires the usecase over the shared pool (not a
-// rolled-back transaction) because UpdatePasswordResetUsecase opens its own
-// transaction internally; an outer transaction's seed rows would be invisible to
-// that inner transaction. It returns the repositories so a test can seed a user,
-// its password, and a token, then assert the updated password and spent token.
-// Tests use unique emails and tokens so committed rows do not collide (the test
-// database is reset by make test).
+// newUpdatePasswordResetUsecase wires the usecase over the test's own database.
+// It returns the repositories so a test can seed a user, its password, and a
+// token, then assert the updated password and spent token.
 //
-// [Ja] newUpdatePasswordResetUsecase は共有プール (ロールバックされるトランザクションでは
-// なく) で UseCase を組み立てる。UpdatePasswordResetUsecase は内部で自前のトランザクションを
-// 開くため、外側トランザクションで仕込んだ行はその内側トランザクションから見えないからである。
+// [Ja] newUpdatePasswordResetUsecase はテスト専用のデータベース上に UseCase を組み立てる。
 // テストがユーザー・そのパスワード・トークンを仕込み、更新後のパスワードと消費済みトークンを
-// 検証できるようリポジトリを返す。テストはユニークな email とトークンを使い、コミット済みの行が
-// 衝突しないようにする (テスト DB は make test がリセットする)。
-func newUpdatePasswordResetUsecase(t *testing.T) (*usecase.UpdatePasswordResetUsecase, *repository.UserRepository, *repository.UserPasswordRepository, *repository.PasswordResetTokenRepository) {
+// 検証できるようリポジトリを返す。
+func newUpdatePasswordResetUsecase(t *testing.T, db *database.DB) (*usecase.UpdatePasswordResetUsecase, *repository.UserRepository, *repository.UserPasswordRepository, *repository.PasswordResetTokenRepository) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
 
 	uc := usecase.NewUpdatePasswordResetUsecase(
-		db,
+		db.Writer,
 		validator.NewPasswordUpdateValidator(passwordResetTokenRepo),
 		passwordResetTokenRepo,
 		userPasswordRepo,
@@ -55,10 +43,10 @@ func newUpdatePasswordResetUsecase(t *testing.T) (*usecase.UpdatePasswordResetUs
 //
 // [Ja] seedUserWithPassword は初期パスワードを持つコミット済みユーザーを作成し、テストが
 // その UseCase でパスワードをリセットできるようユーザー id を返す。
-func seedUserWithPassword(t *testing.T, ctx context.Context, userRepo *repository.UserRepository, userPasswordRepo *repository.UserPasswordRepository, email, password string) model.UserID {
+func seedUserWithPassword(t *testing.T, ctx context.Context, db *database.DB, userRepo *repository.UserRepository, userPasswordRepo *repository.UserPasswordRepository, email, password string) model.UserID {
 	t.Helper()
 
-	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(), Locale: "ja", TimeZone: "Asia/Tokyo"})
+	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(db), Locale: "ja", TimeZone: "Asia/Tokyo"})
 	if err != nil {
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}
@@ -82,13 +70,15 @@ func seedUserWithPassword(t *testing.T, ctx context.Context, userRepo *repositor
 func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("pw-update-success-%s@example.com", uuid.NewString())
-	userID := seedUserWithPassword(t, ctx, userRepo, userPasswordRepo, email, "oldpassword123")
+	email := "pw-update-success@example.com"
+	userID := seedUserWithPassword(t, ctx, db, userRepo, userPasswordRepo, email, "oldpassword123")
 
-	rawToken := "success-token-" + uuid.NewString()
+	rawToken := "success-token"
 	if _, err := tokenRepo.Create(ctx, repository.CreatePasswordResetTokenInput{
 		UserID:      userID,
 		TokenDigest: auth.HashToken(rawToken),
@@ -144,6 +134,8 @@ func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
 func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name string
 		// setupToken returns the raw token string to submit, after seeding any
@@ -157,14 +149,14 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 		{
 			name: "未知のトークン",
 			setupToken: func(t *testing.T, ctx context.Context, tokenRepo *repository.PasswordResetTokenRepository, userID model.UserID) string {
-				return "unknown-token-" + uuid.NewString()
+				return "unknown-token"
 			},
 			password: "newpassword123",
 		},
 		{
 			name: "使用済みのトークン",
 			setupToken: func(t *testing.T, ctx context.Context, tokenRepo *repository.PasswordResetTokenRepository, userID model.UserID) string {
-				raw := "used-token-" + uuid.NewString()
+				raw := "used-token"
 				token, err := tokenRepo.Create(ctx, repository.CreatePasswordResetTokenInput{UserID: userID, TokenDigest: auth.HashToken(raw), ExpiresAt: time.Now().Add(model.PasswordResetTokenExpirationDuration)})
 				if err != nil {
 					t.Fatalf("トークンの作成に失敗: %v", err)
@@ -179,7 +171,7 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 		{
 			name: "期限切れのトークン",
 			setupToken: func(t *testing.T, ctx context.Context, tokenRepo *repository.PasswordResetTokenRepository, userID model.UserID) string {
-				raw := "expired-token-" + uuid.NewString()
+				raw := "expired-token"
 				if _, err := tokenRepo.Create(ctx, repository.CreatePasswordResetTokenInput{UserID: userID, TokenDigest: auth.HashToken(raw), ExpiresAt: time.Now().Add(-time.Hour)}); err != nil {
 					t.Fatalf("トークンの作成に失敗: %v", err)
 				}
@@ -190,7 +182,7 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 		{
 			name: "不正なパスワード (短すぎ)",
 			setupToken: func(t *testing.T, ctx context.Context, tokenRepo *repository.PasswordResetTokenRepository, userID model.UserID) string {
-				raw := "valid-token-" + uuid.NewString()
+				raw := "valid-token"
 				if _, err := tokenRepo.Create(ctx, repository.CreatePasswordResetTokenInput{UserID: userID, TokenDigest: auth.HashToken(raw), ExpiresAt: time.Now().Add(model.PasswordResetTokenExpirationDuration)}); err != nil {
 					t.Fatalf("トークンの作成に失敗: %v", err)
 				}
@@ -204,11 +196,11 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t)
+			uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t, db)
 			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-			email := fmt.Sprintf("pw-update-bad-%s@example.com", uuid.NewString())
-			userID := seedUserWithPassword(t, ctx, userRepo, userPasswordRepo, email, "oldpassword123")
+			email := testutil.UniqueEmail(db, "pw-update-bad")
+			userID := seedUserWithPassword(t, ctx, db, userRepo, userPasswordRepo, email, "oldpassword123")
 			rawToken := tt.setupToken(t, ctx, tokenRepo, userID)
 
 			err := uc.Execute(ctx, usecase.UpdatePasswordResetInput{

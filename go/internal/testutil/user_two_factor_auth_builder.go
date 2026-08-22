@@ -2,13 +2,13 @@ package testutil
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // DefaultBuilderTOTPSecret is the TOTP shared secret a UserTwoFactorAuthBuilder
@@ -35,7 +35,7 @@ const DefaultBuilderTOTPSecret = "JBSWY3DPEHPK3PXP"
 // enabled_at を打刻し、有効な設定がアプリケーションの生成したものと同じ見え方になります。
 type UserTwoFactorAuthBuilder struct {
 	t             *testing.T
-	tx            pgx.Tx
+	db            *database.DB
 	userID        model.UserID
 	secret        string
 	enabled       bool
@@ -47,11 +47,11 @@ type UserTwoFactorAuthBuilder struct {
 //
 // [Ja] NewUserTwoFactorAuthBuilder は既定の secret を持ち、無効かつリカバリーコード
 // 無しの UserTwoFactorAuthBuilder を生成します。
-func NewUserTwoFactorAuthBuilder(t *testing.T, tx pgx.Tx) *UserTwoFactorAuthBuilder {
+func NewUserTwoFactorAuthBuilder(t *testing.T, db *database.DB) *UserTwoFactorAuthBuilder {
 	t.Helper()
 	return &UserTwoFactorAuthBuilder{
 		t:             t,
-		tx:            tx,
+		db:            db,
 		secret:        DefaultBuilderTOTPSecret,
 		recoveryCodes: []string{},
 	}
@@ -107,7 +107,7 @@ func (b *UserTwoFactorAuthBuilder) WithRecoveryCodes(recoveryCodes []string) *Us
 func (b *UserTwoFactorAuthBuilder) Build() model.UserTwoFactorAuthID {
 	b.t.Helper()
 
-	if b.userID == (model.UserID{}) {
+	if b.userID == 0 {
 		b.t.Fatal("UserTwoFactorAuthBuilder にはユーザー ID が必要です (WithUserID で設定してください)")
 	}
 
@@ -117,11 +117,21 @@ func (b *UserTwoFactorAuthBuilder) Build() model.UserTwoFactorAuthID {
 		enabledAt = &now
 	}
 
-	var id uuid.UUID
-	err := b.tx.QueryRow(context.Background(),
+	// SQLite has no array type, so the column holds a JSON array; the builder
+	// writes the same text the repository does.
+	//
+	// [Ja] SQLite に配列型は無く列は JSON 配列を保持するため、ビルダーはリポジトリと
+	// 同じテキストを書く。
+	recoveryCodes, err := json.Marshal(b.recoveryCodes)
+	if err != nil {
+		b.t.Fatalf("テスト用リカバリーコードのエンコードに失敗: %v", err)
+	}
+
+	var id int64
+	err = b.db.Writer.QueryRowContext(context.Background(),
 		`INSERT INTO user_two_factor_auths (user_id, secret, enabled, enabled_at, recovery_codes)
-		 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		uuid.UUID(b.userID), b.secret, b.enabled, enabledAt, b.recoveryCodes,
+		 VALUES (?, ?, ?, ?, ?) RETURNING id`,
+		int64(b.userID), b.secret, b.enabled, sqlitetime.Ptr(enabledAt), string(recoveryCodes),
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用 2 段階認証設定の作成に失敗: %v", err)

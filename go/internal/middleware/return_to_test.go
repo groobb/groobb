@@ -23,18 +23,18 @@ func TestSanitizeReturnTo(t *testing.T) {
 		raw  string
 		want string
 	}{
-		{name: "相対パス", raw: "/c/groobb", want: "/c/groobb"},
-		{name: "クエリ付きの相対パス", raw: "/c/groobb?tab=posts", want: "/c/groobb?tab=posts"},
+		{name: "相対パス", raw: "/settings", want: "/settings"},
+		{name: "クエリ付きの相対パス", raw: "/settings?from=home", want: "/settings?from=home"},
 		{name: "ルート", raw: "/", want: "/"},
-		{name: "フラグメントは落とす", raw: "/c/groobb#posts", want: "/c/groobb"},
-		{name: "エスケープが必要な文字はエスケープする", raw: "/c/groobb bbs", want: "/c/groobb%20bbs"},
+		{name: "フラグメントは落とす", raw: "/settings#email", want: "/settings"},
+		{name: "エスケープが必要な文字はエスケープする", raw: "/settings/email edit", want: "/settings/email%20edit"},
 		{name: "空文字", raw: "", want: ""},
-		{name: "スラッシュ始まりでない", raw: "c/groobb", want: ""},
-		{name: "プロトコル相対 URL", raw: "//evil.example.com/c/groobb", want: ""},
+		{name: "スラッシュ始まりでない", raw: "settings", want: ""},
+		{name: "プロトコル相対 URL", raw: "//evil.example.com/settings", want: ""},
 		{name: "バックスラッシュ始まり (ブラウザはプロトコル相対として解釈する)", raw: `/\evil.example.com`, want: ""},
-		{name: "スキーム付き絶対 URL", raw: "https://evil.example.com/c/groobb", want: ""},
+		{name: "スキーム付き絶対 URL", raw: "https://evil.example.com/settings", want: ""},
 		{name: "javascript スキーム", raw: "javascript:alert(1)", want: ""},
-		{name: "制御文字を含む", raw: "/c/groobb\nLocation: https://evil.example.com", want: ""},
+		{name: "制御文字を含む", raw: "/settings\nLocation: https://evil.example.com", want: ""},
 	}
 
 	for _, tt := range tests {

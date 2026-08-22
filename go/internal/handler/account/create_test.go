@@ -2,18 +2,15 @@ package account_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -47,11 +44,11 @@ func postAccount(confirmationID, atname, password, passwordConfirmation, locale 
 // [Ja] seedSucceededConfirmation は指定 email のサインアップ確認を作成し成功済みとして
 // 打刻 (コミット) し、ハンドラーテストが検証済みの確認からアカウント作成を駆動できるよう
 // その id を返す。
-func seedSucceededConfirmation(t *testing.T, email string) model.EmailConfirmationID {
+func seedSucceededConfirmation(t *testing.T, db *database.DB, email string) model.EmailConfirmationID {
 	t.Helper()
 
 	ctx := context.Background()
-	repo := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB()))
+	repo := repository.NewEmailConfirmationRepository(db)
 	confirmation, err := repo.Create(ctx, repository.CreateEmailConfirmationInput{
 		Email: email,
 		Event: model.EmailConfirmationEventSignUp,
@@ -88,13 +85,15 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
-	email := fmt.Sprintf("acct-h-success-%s@example.com", uuid.NewString())
-	atname := testutil.UniqueAtname()
-	id := seedSucceededConfirmation(t, email)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
+	email := "acct-h-success@example.com"
+	atname := testutil.UniqueAtname(db)
+	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), atname, "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), atname, "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -111,7 +110,7 @@ func TestCreate_Success(t *testing.T) {
 		t.Error("受け渡し Cookie が消去されていない")
 	}
 
-	user, err := repository.NewUserRepository(query.New(testutil.GetTestDB())).FindByEmail(context.Background(), email)
+	user, err := repository.NewUserRepository(db).FindByEmail(context.Background(), email)
 	if err != nil {
 		t.Fatalf("FindByEmail() error = %v", err)
 	}
@@ -133,16 +132,55 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_NoCookieRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount("", testutil.UniqueAtname(), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount("", testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/sign_up" {
 		t.Errorf("Location = %q, want %q", loc, "/sign_up")
+	}
+}
+
+// TestCreate_UnsignedNumericCookieCannotCreateAccount verifies that knowing a
+// succeeded confirmation's sequential id is insufficient to continue the
+// account-creation flow without a server-issued signature.
+//
+// [Ja] TestCreate_UnsignedNumericCookieCannotCreateAccount は、成功済み確認の連番 id を
+// 知っていても、サーバー発行の署名なしにはアカウント作成フローを継続できないことを
+// 検証します。
+func TestCreate_UnsignedNumericCookieCannotCreateAccount(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+	handler := newAccountHandler(t, db)
+	email := "acct-h-forged@example.com"
+	id := seedSucceededConfirmation(t, db, email)
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postAccount(id.String(), testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/sign_up" {
+		t.Errorf("Location = %q, want %q", loc, "/sign_up")
+	}
+	if findCookie(rec, session.CookieName) != nil {
+		t.Error("未署名の確認 ID からセッション Cookie が発行されている")
+	}
+
+	user, err := repository.NewUserRepository(db).FindByEmail(context.Background(), email)
+	if err != nil {
+		t.Fatalf("FindByEmail() error = %v", err)
+	}
+	if user != nil {
+		t.Errorf("未署名の確認 ID からユーザーが作成された: id=%s", user.ID)
 	}
 }
 
@@ -155,12 +193,14 @@ func TestCreate_NoCookieRedirectsToSignUp(t *testing.T) {
 func TestCreate_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
-	email := fmt.Sprintf("acct-h-badpw-%s@example.com", uuid.NewString())
-	id := seedSucceededConfirmation(t, email)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
+	email := "acct-h-badpw@example.com"
+	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), testutil.UniqueAtname(), "password123", "different456", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), testutil.UniqueAtname(db), "password123", "different456", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -186,12 +226,14 @@ func TestCreate_ValidationError(t *testing.T) {
 func TestCreate_InvalidAtnameEchoesValue(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
-	email := fmt.Sprintf("acct-h-badatname-%s@example.com", uuid.NewString())
-	id := seedSucceededConfirmation(t, email)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
+	email := "acct-h-badatname@example.com"
+	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), "bad-name", "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), "bad-name", "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -218,10 +260,12 @@ func TestCreate_InvalidAtnameEchoesValue(t *testing.T) {
 func TestCreate_StaleConfirmationRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
 
-	handler := newAccountHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(uuid.NewString(), testutil.UniqueAtname(), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)

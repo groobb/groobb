@@ -3,52 +3,44 @@ package settings_email_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/settings_email"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSettingsEmailHandler wires a settings_email Handler over the shared pool with
-// a fake job inserter, returning the inserter too so a test can assert what was
-// enqueued or force an enqueue failure. The CreateEmailChangeUsecase opens its own
-// transaction, so its tests commit rows and use unique emails (the test database
-// is reset by make test) rather than the rolled-back transaction pattern.
+// newSettingsEmailHandler wires a settings_email Handler over the test database's
+// repositories with a fake job inserter, returning the inserter too so a test can
+// assert what was enqueued or force an enqueue failure.
 //
-// [Ja] newSettingsEmailHandler は共有プール上に settings_email Handler をフェイクの
-// ジョブインサーターで組み立て、投入内容を検証したり enqueue 失敗を強制したりできるよう
-// インサーターも返します。CreateEmailChangeUsecase は自前のトランザクションを開くため、
-// そのテストはロールバックされるトランザクションパターンではなく、行をコミットしユニークな
-// email を使います (テスト DB は make test がリセットする)。
-func newSettingsEmailHandler(t *testing.T) (*settings_email.Handler, *testutil.FakeJobInserter) {
+// [Ja] newSettingsEmailHandler はテスト用データベースのリポジトリで settings_email
+// Handler をフェイクのジョブインサーターで組み立て、投入内容を検証したり enqueue 失敗を
+// 強制したりできるようインサーターも返します。
+func newSettingsEmailHandler(t *testing.T, db *database.DB) (*settings_email.Handler, *testutil.FakeJobInserter) {
 	t.Helper()
 
 	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 
 	inserter := &testutil.FakeJobInserter{}
 	uc := usecase.NewCreateEmailChangeUsecase(
-		testutil.GetTestDB(),
+		db.Writer,
 		validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo),
 		emailConfirmationRepo,
 		dispatcher.NewDispatcher(inserter),
@@ -63,17 +55,16 @@ func newSettingsEmailHandler(t *testing.T) (*settings_email.Handler, *testutil.F
 // [Ja] seedUserWithPassword は指定 email とパスワード "password123" を持つコミット済み
 // ユーザーを作成し、ユーザーモデルを返す。Update テストが (RequireAuth がするように) それを
 // リクエスト context に載せ、それに対して認証できるようにする。
-func seedUserWithPassword(t *testing.T, email string) *model.User {
+func seedUserWithPassword(t *testing.T, db *database.DB, email string) *model.User {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    email,
-		Atname:   testutil.UniqueAtname(),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   "ja",
 		TimeZone: "Asia/Tokyo",
 	})
@@ -122,9 +113,11 @@ func patchSettingsEmail(user *model.User, newEmail, currentPassword, locale stri
 func TestUpdate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newSettingsEmailHandler(t)
-	user := seedUserWithPassword(t, fmt.Sprintf("ec-h-cur-%s@example.com", uuid.NewString()))
-	newEmail := fmt.Sprintf("ec-h-new-%s@example.com", uuid.NewString())
+	db := testutil.SetupDB(t)
+
+	handler, inserter := newSettingsEmailHandler(t, db)
+	user := seedUserWithPassword(t, db, "ec-h-cur@example.com")
+	newEmail := "ec-h-new@example.com"
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", i18n.LangJa))
@@ -139,7 +132,7 @@ func TestUpdate_Success(t *testing.T) {
 		t.Error("確認メールが投入されていない")
 	}
 
-	active, err := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB())).FindActiveEmailChangeByUserID(context.Background(), user.ID)
+	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
 	}
@@ -158,9 +151,11 @@ func TestUpdate_Success(t *testing.T) {
 func TestUpdate_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newSettingsEmailHandler(t)
-	user := seedUserWithPassword(t, fmt.Sprintf("ec-h-ve-%s@example.com", uuid.NewString()))
-	newEmail := fmt.Sprintf("ec-h-ve-new-%s@example.com", uuid.NewString())
+	db := testutil.SetupDB(t)
+
+	handler, inserter := newSettingsEmailHandler(t, db)
+	user := seedUserWithPassword(t, db, "ec-h-ve@example.com")
+	newEmail := "ec-h-ve-new@example.com"
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "wrongpassword", i18n.LangJa))
@@ -190,7 +185,7 @@ func TestUpdate_ValidationError(t *testing.T) {
 		t.Error("バリデーション失敗時に確認メールが投入された")
 	}
 
-	active, err := repository.NewEmailConfirmationRepository(query.New(testutil.GetTestDB())).FindActiveEmailChangeByUserID(context.Background(), user.ID)
+	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
 	}
@@ -209,10 +204,12 @@ func TestUpdate_ValidationError(t *testing.T) {
 func TestUpdate_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
-	handler, inserter := newSettingsEmailHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler, inserter := newSettingsEmailHandler(t, db)
 	inserter.Err = errors.New("queue unavailable")
-	user := seedUserWithPassword(t, fmt.Sprintf("ec-h-enq-%s@example.com", uuid.NewString()))
-	newEmail := fmt.Sprintf("ec-h-enq-new-%s@example.com", uuid.NewString())
+	user := seedUserWithPassword(t, db, "ec-h-enq@example.com")
+	newEmail := "ec-h-enq-new@example.com"
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", i18n.LangJa))

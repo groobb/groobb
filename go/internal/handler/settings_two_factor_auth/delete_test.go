@@ -62,9 +62,11 @@ func deleteTwoFactorAuth(user *model.User, currentPassword, code, locale string)
 func TestDelete_SuccessWithPassword(t *testing.T) {
 	t.Parallel()
 
-	h, repo, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).WithEnabled(true).Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(user.ID).Build()
+	db := testutil.SetupDB(t)
+
+	h, repo, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
 
 	rec := httptest.NewRecorder()
 	h.Delete(rec, deleteTwoFactorAuth(user, testutil.DefaultBuilderPassword, "", i18n.LangJa))
@@ -82,8 +84,10 @@ func TestDelete_SuccessWithPassword(t *testing.T) {
 func TestDelete_SuccessWithCode(t *testing.T) {
 	t.Parallel()
 
-	h, repo, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).WithEnabled(true).Build()
+	db := testutil.SetupDB(t)
+
+	h, repo, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -105,9 +109,11 @@ func TestDelete_SuccessWithCode(t *testing.T) {
 func TestDelete_ValidationError(t *testing.T) {
 	t.Parallel()
 
-	h, repo, user, tx := setupTwoFactorAuthHandler(t)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(user.ID).WithEnabled(true).Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(user.ID).Build()
+	db := testutil.SetupDB(t)
+
+	h, repo, user := setupTwoFactorAuthHandler(t, db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
 
 	rec := httptest.NewRecorder()
 	h.Delete(rec, deleteTwoFactorAuth(user, "wrongpassword", "", i18n.LangJa))

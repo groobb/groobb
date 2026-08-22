@@ -2,45 +2,34 @@ package usecase_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newCreateAccountUsecase wires the usecase over the shared pool (not a rolled-
-// back transaction) because CreateAccountUsecase opens its own transaction
-// internally; an outer transaction's seed rows would be invisible to that inner
-// transaction. It returns the repositories so a test can seed a confirmation and
-// assert the created user and password. Tests use unique emails so committed
-// rows do not collide (the test database is reset by make test).
+// newCreateAccountUsecase wires the usecase over the test's own database. It
+// returns the repositories so a test can seed a confirmation and assert the
+// created user and password.
 //
-// [Ja] newCreateAccountUsecase は共有プール (ロールバックされるトランザクションではなく)
-// で UseCase を組み立てます。CreateAccountUsecase は内部で自前のトランザクションを開く
-// ため、外側トランザクションで仕込んだ行はその内側トランザクションから見えないからです。
+// [Ja] newCreateAccountUsecase はテスト専用のデータベース上に UseCase を組み立てます。
 // テストが確認を仕込み、作成されたユーザーとパスワードを検証できるようリポジトリも返し
-// ます。テストはユニークな email を使い、コミット済みの行が衝突しないようにします
-// (テスト DB は make test がリセットする)。
-func newCreateAccountUsecase(t *testing.T) (*usecase.CreateAccountUsecase, *repository.EmailConfirmationRepository, *repository.UserRepository, *repository.UserPasswordRepository) {
+// ます。
+func newCreateAccountUsecase(t *testing.T, db *database.DB) (*usecase.CreateAccountUsecase, *repository.EmailConfirmationRepository, *repository.UserRepository, *repository.UserPasswordRepository) {
 	t.Helper()
 
-	db := testutil.GetTestDB()
-	queries := query.New(db)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 
 	uc := usecase.NewCreateAccountUsecase(
-		db,
+		db.Writer,
 		validator.NewAccountCreateValidator(userRepo),
 		emailConfirmationRepo,
 		userRepo,
@@ -82,11 +71,13 @@ func seedSucceededConfirmation(t *testing.T, ctx context.Context, repo *reposito
 func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, ecRepo, userRepo, userPasswordRepo := newCreateAccountUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, ecRepo, userRepo, userPasswordRepo := newCreateAccountUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("acct-success-%s@example.com", uuid.NewString())
-	atname := testutil.UniqueAtname()
+	email := "acct-success@example.com"
+	atname := testutil.UniqueAtname(db)
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
 
 	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
@@ -149,10 +140,12 @@ func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
 func TestCreateAccountUsecase_Execute_NoSucceededConfirmation(t *testing.T) {
 	t.Parallel()
 
-	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("acct-unverified-%s@example.com", uuid.NewString())
+	email := "acct-unverified@example.com"
 	// Create the confirmation but do not stamp it succeeded.
 	//
 	// [Ja] 確認を作成するが成功済みとして打刻しない。
@@ -201,15 +194,17 @@ func TestCreateAccountUsecase_Execute_NoSucceededConfirmation(t *testing.T) {
 func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
 	t.Parallel()
 
-	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("acct-badpw-%s@example.com", uuid.NewString())
+	email := "acct-badpw@example.com"
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
 
 	out, err := uc.Execute(ctx, usecase.CreateAccountInput{
 		EmailConfirmationID:  confirmation.ID,
-		Atname:               testutil.UniqueAtname(),
+		Atname:               testutil.UniqueAtname(db),
 		Password:             "password123",
 		PasswordConfirmation: "different456",
 		Locale:               "ja",
@@ -240,10 +235,12 @@ func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
 func TestCreateAccountUsecase_Execute_EmptyAtname(t *testing.T) {
 	t.Parallel()
 
-	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	email := fmt.Sprintf("acct-noatname-%s@example.com", uuid.NewString())
+	email := "acct-noatname@example.com"
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
 
 	out, err := uc.Execute(ctx, usecase.CreateAccountInput{

@@ -9,6 +9,7 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/testutil"
 )
 
 // postEmailConfirmation builds a POST /email_confirmation request carrying the
@@ -36,12 +37,14 @@ func postEmailConfirmation(confirmationID, code, locale string) *http.Request {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
 
-	id := seedActiveConfirmation(t, "123456")
+	handler := newEmailConfirmationHandler(t, db)
+
+	id := seedActiveConfirmation(t, db, "123456")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postEmailConfirmation(id.String(), "123456", i18n.LangJa))
+	handler.Create(rec, postEmailConfirmation(emailConfirmationToken(t, id), "123456", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -61,12 +64,14 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
 
-	id := seedActiveConfirmation(t, "123456")
+	handler := newEmailConfirmationHandler(t, db)
+
+	id := seedActiveConfirmation(t, db, "123456")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postEmailConfirmation(id.String(), "000000", i18n.LangJa))
+	handler.Create(rec, postEmailConfirmation(emailConfirmationToken(t, id), "000000", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -91,12 +96,14 @@ func TestCreate_WrongCode(t *testing.T) {
 func TestCreate_InvalidFormat(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
 
-	id := seedActiveConfirmation(t, "123456")
+	handler := newEmailConfirmationHandler(t, db)
+
+	id := seedActiveConfirmation(t, db, "123456")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postEmailConfirmation(id.String(), "abc", i18n.LangJa))
+	handler.Create(rec, postEmailConfirmation(emailConfirmationToken(t, id), "abc", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -120,7 +127,9 @@ func TestCreate_InvalidFormat(t *testing.T) {
 func TestCreate_NoCookieRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
 
-	handler := newEmailConfirmationHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newEmailConfirmationHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Create(rec, postEmailConfirmation("", "123456", i18n.LangJa))

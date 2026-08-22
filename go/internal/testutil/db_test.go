@@ -2,79 +2,149 @@ package testutil_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-func TestMain(m *testing.M) {
-	os.Exit(testutil.SetupTestMain(m))
-}
-
-// TestGetTestDB verifies that the shared pool is returned and is reachable.
+// insertUser inserts a user through the write pool, failing the test on error.
 //
-// [Ja] TestGetTestDB は共有プールが返り、かつ疎通できることを検証します。
-func TestGetTestDB(t *testing.T) {
-	t.Parallel()
+// [Ja] insertUser は書き込み用プールからユーザーを挿入します。エラー時はテストを
+// 失敗させます。
+func insertUser(t *testing.T, db *database.DB, atname string) {
+	t.Helper()
 
-	pool := testutil.GetTestDB()
-	if pool == nil {
-		t.Fatal("GetTestDB() returned nil")
-	}
-	if err := pool.Ping(context.Background()); err != nil {
-		t.Fatalf("Ping() error = %v", err)
+	_, err := db.Writer.ExecContext(
+		context.Background(),
+		"INSERT INTO users (email, atname, locale, time_zone) VALUES (?, ?, ?, ?)",
+		atname+"@example.com", atname, "ja", "Asia/Tokyo",
+	)
+	if err != nil {
+		t.Fatalf("failed to insert a user: %v", err)
 	}
 }
 
-// TestSetupTx verifies that SetupTx returns a usable transaction on the shared
+// countUsers returns how many users the database holds, read through the read
 // pool.
 //
-// [Ja] TestSetupTx は SetupTx が共有プール上の利用可能なトランザクションを返すこと
-// を検証します。
-func TestSetupTx(t *testing.T) {
+// [Ja] countUsers はデータベースが持つユーザーの件数を、読み取り用プールから読んで
+// 返します。
+func countUsers(t *testing.T, db *database.DB) int {
+	t.Helper()
+
+	var count int
+	if err := db.Reader.QueryRowContext(context.Background(), "SELECT count(*) FROM users").Scan(&count); err != nil {
+		t.Fatalf("failed to count the users: %v", err)
+	}
+
+	return count
+}
+
+// TestSetupDB_ReturnsAMigratedDatabase verifies that the returned database has
+// the schema applied and is writable and readable, so a test can use it without
+// migrating anything itself.
+//
+// [Ja] TestSetupDB_ReturnsAMigratedDatabase は、返されるデータベースがスキーマを
+// 適用済みで、書き込みも読み取りもできることを検証します。これによりテストは自分で
+// マイグレートすることなくデータベースを使えます。
+func TestSetupDB_ReturnsAMigratedDatabase(t *testing.T) {
 	t.Parallel()
 
-	pool, tx := testutil.SetupTx(t)
-	if pool == nil {
-		t.Fatal("SetupTx() returned a nil pool")
-	}
-	if tx == nil {
-		t.Fatal("SetupTx() returned a nil tx")
-	}
+	db := testutil.SetupDB(t)
 
-	var got int
-	if err := tx.QueryRow(context.Background(), "SELECT 1").Scan(&got); err != nil {
-		t.Fatalf("querying inside the transaction error = %v", err)
-	}
-	if got != 1 {
-		t.Errorf("SELECT 1 = %d, want 1", got)
+	insertUser(t, db, "user")
+
+	if got := countUsers(t, db); got != 1 {
+		t.Errorf("count(*) FROM users = %d, want 1", got)
 	}
 }
 
-// TestSetupTxMultipleTransactions verifies that multiple SetupTx calls share the
-// same pool while returning independent transactions.
+// TestSetupDB_GivesEachTestItsOwnDatabase verifies that two databases obtained
+// from the same test are independent, which is what lets tests share table
+// contents' expectations while running in parallel.
 //
-// [Ja] TestSetupTxMultipleTransactions は複数回の SetupTx 呼び出しが同じプールを
-// 共有しつつ、独立したトランザクションを返すことを検証します。
-func TestSetupTxMultipleTransactions(t *testing.T) {
+// [Ja] TestSetupDB_GivesEachTestItsOwnDatabase は、同じテストから得た 2 つの
+// データベースが互いに独立していることを検証します。これがあるからこそ、並行して
+// 走るテストがそれぞれテーブルの中身に対する期待値を書けます。
+func TestSetupDB_GivesEachTestItsOwnDatabase(t *testing.T) {
 	t.Parallel()
 
-	pool1, tx1 := testutil.SetupTx(t)
-	pool2, tx2 := testutil.SetupTx(t)
+	first := testutil.SetupDB(t)
+	second := testutil.SetupDB(t)
 
-	if pool1 != pool2 {
-		t.Error("SetupTx() should return the same shared pool")
-	}
+	insertUser(t, first, "user")
 
-	var r1, r2 int
-	if err := tx1.QueryRow(context.Background(), "SELECT 1").Scan(&r1); err != nil {
-		t.Fatalf("tx1 query error = %v", err)
+	if got := countUsers(t, second); got != 0 {
+		t.Errorf("count(*) FROM users on the second database = %d, want 0", got)
 	}
-	if err := tx2.QueryRow(context.Background(), "SELECT 2").Scan(&r2); err != nil {
-		t.Fatalf("tx2 query error = %v", err)
+}
+
+// TestSetupDB_RejectsWritesThroughTheReadPool verifies that the read pool of a
+// test database keeps the read-only guard the application's pools have, so a
+// misrouted write fails in tests the same way it would in production.
+//
+// [Ja] TestSetupDB_RejectsWritesThroughTheReadPool は、テスト用データベースの
+// 読み取り用プールが、アプリケーションのプールと同じ読み取り専用の防御を保っている
+// ことを検証します。これにより、誤って振り分けられた書き込みは本番と同じように
+// テストでも失敗します。
+func TestSetupDB_RejectsWritesThroughTheReadPool(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	_, err := db.Reader.ExecContext(
+		context.Background(),
+		"INSERT INTO users (email, atname, locale, time_zone) VALUES (?, ?, ?, ?)",
+		"user@example.com", "user", "ja", "Asia/Tokyo",
+	)
+	if err == nil {
+		t.Error("writing through the read pool succeeded, want an error")
 	}
-	if r1 != 1 || r2 != 2 {
-		t.Errorf("got r1=%d r2=%d, want r1=1 r2=2", r1, r2)
+}
+
+// TestSetupDB_ClosesTheDatabaseWhenTheTestEnds verifies that the pools are
+// closed once the test that asked for them finishes, so a package's tests do
+// not accumulate open connections and temporary files.
+//
+// [Ja] TestSetupDB_ClosesTheDatabaseWhenTheTestEnds は、プールを要求したテストが
+// 終わった時点でプールがクローズされることを検証します。これによりパッケージ内の
+// テストが、開いたままのコネクションや一時ファイルを溜め込むことはありません。
+func TestSetupDB_ClosesTheDatabaseWhenTheTestEnds(t *testing.T) {
+	t.Parallel()
+
+	var db *database.DB
+	t.Run("inner", func(t *testing.T) {
+		db = testutil.SetupDB(t)
+	})
+
+	// database/sql does not export the error a closed pool returns, so the
+	// assertion is only that pinging fails.
+	//
+	// [Ja] database/sql はクローズ済みのプールが返すエラーを公開していないため、
+	// ping が失敗することだけを検証する。
+	if err := db.Writer.PingContext(context.Background()); err == nil {
+		t.Error("pinging the write pool after the test ended succeeded, want an error")
+	}
+	if err := db.Reader.PingContext(context.Background()); err == nil {
+		t.Error("pinging the read pool after the test ended succeeded, want an error")
+	}
+}
+
+// TestSetupDB_LowersTheBcryptCost verifies that asking for a test database also
+// lowers the hashing cost, since a test that stores a password would otherwise
+// spend most of its runtime hashing it.
+//
+// [Ja] TestSetupDB_LowersTheBcryptCost は、テスト用データベースを要求すると
+// ハッシュ化のコストも下がることを検証します。そうでなければ、パスワードを保存する
+// テストは実行時間の大半をハッシュ化に費やすことになります。
+func TestSetupDB_LowersTheBcryptCost(t *testing.T) {
+	t.Parallel()
+
+	testutil.SetupDB(t)
+
+	if auth.BcryptCost != auth.TestBcryptCost {
+		t.Errorf("auth.BcryptCost = %d, want %d", auth.BcryptCost, auth.TestBcryptCost)
 	}
 }

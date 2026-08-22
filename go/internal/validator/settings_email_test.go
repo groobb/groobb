@@ -6,7 +6,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -27,27 +26,27 @@ import (
 func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userRepo := repository.NewUserRepository(query.New(db)).WithTx(tx)
-	userPasswordRepo := repository.NewUserPasswordRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	v := validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
 	// The requesting account: a current email and a matching password.
 	//
 	// [Ja] 申請アカウント: 現在の email と一致するパスワードを持つ。
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("member@example.com").Build()
-	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).WithPassword("password123").Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
 	// Another account whose email the requester must not be able to switch to.
 	//
 	// [Ja] 申請者が切り替えられてはならない email を持つ別アカウント。
-	testutil.NewUserBuilder(t, tx).WithEmail("taken@example.com").Build()
+	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
 
 	// An account with no password credential (e.g. an SSO-only user).
 	//
 	// [Ja] パスワード資格情報の無いアカウント (例: SSO のみのユーザー)。
-	noPassUserID := testutil.NewUserBuilder(t, tx).WithEmail("nopass@example.com").Build()
+	noPassUserID := testutil.NewUserBuilder(t, db).WithEmail("nopass@example.com").Build()
 
 	t.Run("正常系: 有効な新メールと正しい現在パスワードは通る", func(t *testing.T) {
 		err := v.Validate(ctx, validator.SettingsEmailUpdateValidatorInput{
@@ -81,7 +80,7 @@ func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 			wantField: "current_password",
 		},
 		{
-			name:      "異常系: 現在のアドレスと同じ (大文字違いも citext で同一)",
+			name:      "異常系: 現在のアドレスと同じ (大文字違いも NOCASE 照合で同一)",
 			input:     validator.SettingsEmailUpdateValidatorInput{UserID: userID, NewEmail: "MEMBER@example.com", CurrentPassword: "password123"},
 			wantField: "email",
 		},

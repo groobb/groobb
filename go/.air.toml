@@ -13,9 +13,16 @@ cmd = "make templ-generate && go build -o ./tmp/main ./cmd/server"
 bin = "./tmp/main"
 full_bin = "APP_ENV=dev op run --env-file=.env -- ./tmp/main"
 delay = 1000
-exclude_dir = ["bin", "db", "node_modules", "static", "tmp", "vendor", "web"]
+# static/ is watched, and css / js are watched extensions, because the binary
+# embeds the assets: a rebuilt style.css only reaches the browser once the server
+# is rebuilt around it.
+#
+# [Ja] static/ を監視対象に含め、css / js を監視する拡張子に含めるのは、バイナリが
+# アセットを埋め込むためである。ビルドし直された style.css は、その周りのサーバーが
+# ビルドし直されて初めてブラウザに届く。
+exclude_dir = ["bin", "data", "db", "node_modules", "tmp", "vendor", "web"]
 exclude_regex = ["_test.go", "_templ\\.go$"]
-include_ext = ["go", "sql", "templ", "toml"]
+include_ext = ["css", "go", "js", "sql", "templ", "toml"]
 stop_on_error = true
 
 [misc]

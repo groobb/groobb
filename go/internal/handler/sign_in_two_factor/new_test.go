@@ -2,20 +2,16 @@ package sign_in_two_factor_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
-	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -23,32 +19,46 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignInTwoFactorHandler wires a sign_in_two_factor Handler over the shared pool
-// (not a rolled-back transaction) because completing the challenge creates a
-// session row through the pool; an outer transaction's seed rows would be invisible
-// to it. Its tests seed committed users with unique emails (the test database is
-// reset by make test). This exercises the full request path (pending cookie,
-// validator, UseCase, session cookie) against a real database.
+// newSignInTwoFactorHandler wires a sign_in_two_factor Handler over the test
+// database's repositories, so a handler test exercises the full request path
+// (pending cookie, validator, UseCase, session cookie) against a real database.
 //
-// [Ja] newSignInTwoFactorHandler は共有プール (ロールバックされるトランザクションではなく)
-// で sign_in_two_factor Handler を組み立てる。チャレンジの完了はプール経由でセッション行を
-// 作るため、外側トランザクションで仕込んだ行はそこから見えないからである。テストはユニークな
-// email でコミット済みユーザーを仕込む (テスト DB は make test がリセットする)。これにより
-// リクエスト経路全体 (pending Cookie・バリデーター・UseCase・セッション Cookie) を実 DB に
-// 対して通す。
-func newSignInTwoFactorHandler(t *testing.T) *sign_in_two_factor.Handler {
+// [Ja] newSignInTwoFactorHandler はテスト用データベースのリポジトリで
+// sign_in_two_factor Handler を組み立てる。ハンドラーテストがリクエスト経路全体
+// (pending Cookie・バリデーター・UseCase・セッション Cookie) を実 DB に対して通せるように
+// するためである。
+func newSignInTwoFactorHandler(t *testing.T, db *database.DB) *sign_in_two_factor.Handler {
 	t.Helper()
 
-	cfg := &config.Config{Env: "test"}
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
+	cfg := testutil.NewTestConfig(t)
+	userRepo := repository.NewUserRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	createSignInTwoFactorUC := usecase.NewCreateSignInTwoFactorUsecase(validator.NewSignInTwoFactorCreateValidator(userTwoFactorAuthRepo))
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 	return sign_in_two_factor.NewHandler(cfg, sessionMgr, createSignInTwoFactorUC, createSessionUC)
+}
+
+// twoFactorPendingToken issues the same signed handoff token as the password
+// sign-in step, so handler tests do not bypass the continuation-token boundary.
+//
+// [Ja] twoFactorPendingToken はパスワードサインインのステップと同じ署名付き受け渡し token を
+// 発行し、ハンドラーテストが continuation token の境界を迂回しないようにする。
+func twoFactorPendingToken(t *testing.T, id model.UserID) string {
+	t.Helper()
+
+	mgr := session.NewManager(nil, testutil.NewTestConfig(t))
+	rec := httptest.NewRecorder()
+	mgr.SetTwoFactorPendingUserID(rec, id)
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == session.TwoFactorPendingCookieName && cookie.Value != "" {
+			return cookie.Value
+		}
+	}
+	t.Fatalf("2 段階認証 pending Cookie %q の署名 token が発行されていない", session.TwoFactorPendingCookieName)
+	return ""
 }
 
 // seedUserWithEnabledTwoFactor creates a committed user with an enabled 2FA setting
@@ -58,15 +68,14 @@ func newSignInTwoFactorHandler(t *testing.T) *sign_in_two_factor.Handler {
 // [Ja] seedUserWithEnabledTwoFactor は既定の TOTP secret に紐づく有効な 2FA 設定を持つ
 // ユーザーをコミットして作成し、ハンドラーテストがその id を pending Cookie に入れ、一致する
 // コードを生成できるよう user id を返す。
-func seedUserWithEnabledTwoFactor(t *testing.T) model.UserID {
+func seedUserWithEnabledTwoFactor(t *testing.T, db *database.DB) model.UserID {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
 
-	user, err := repository.NewUserRepository(queries).Create(ctx, repository.CreateUserInput{
-		Email:    fmt.Sprintf("2fa-ch-%s@example.com", uuid.NewString()),
-		Atname:   testutil.UniqueAtname(),
+	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
+		Email:    testutil.UniqueEmail(db, "2fa-ch"),
+		Atname:   testutil.UniqueAtname(db),
 		Locale:   i18n.LangJa,
 		TimeZone: "Asia/Tokyo",
 	})
@@ -74,7 +83,7 @@ func seedUserWithEnabledTwoFactor(t *testing.T) model.UserID {
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}
 
-	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(queries)
+	twoFactorRepo := repository.NewUserTwoFactorAuthRepository(db)
 	if _, err := twoFactorRepo.Create(ctx, repository.CreateUserTwoFactorAuthInput{
 		UserID: user.ID,
 		Secret: testutil.DefaultBuilderTOTPSecret,
@@ -104,17 +113,19 @@ func getNew(pendingUserID, locale string) *http.Request {
 
 // TestNew verifies that GET /sign_in/two_factor/new returns HTTP 200 with the
 // code-entry form (code field and CSRF hidden field) and the localized heading for
-// each supported locale, when the pending cookie is present. The cookie id is not
-// resolved here, so any value is enough to render the thin form.
+// each supported locale, when the pending cookie carries a valid signed
+// continuation token.
 //
 // [Ja] TestNew は、pending Cookie がある場合に GET /sign_in/two_factor/new が HTTP 200 と、
 // コード入力フォーム (code フィールド・CSRF hidden フィールド) を、サポートする各ロケールの
-// ローカライズ済み見出しとともに返すことを検証する。ここでは Cookie の id を解決しないため、
-// 薄いフォームの描画には任意の値で足りる。
+// ローカライズ済み見出しとともに返すことを検証する。Cookie は有効な署名付き
+// continuation token を運ぶ。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
 
 	tests := []struct {
 		name        string
@@ -130,7 +141,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			rec := httptest.NewRecorder()
-			handler.New(rec, getNew(uuid.NewString(), tt.locale))
+			handler.New(rec, getNew(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
 				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -173,7 +184,9 @@ func TestNew(t *testing.T) {
 func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
 
 	tests := []struct {
 		name         string
@@ -192,8 +205,8 @@ func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 		// 運び、ホームに着地させない。
 		{
 			name:         "遷移先あり",
-			target:       "/sign_in/two_factor/new?return_to=%2Fc%2Fgroobb",
-			wantLocation: "/sign_in?return_to=%2Fc%2Fgroobb",
+			target:       "/sign_in/two_factor/new?return_to=%2Fsettings",
+			wantLocation: "/sign_in?return_to=%2Fsettings",
 		},
 	}
 
@@ -231,7 +244,9 @@ func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 func TestNew_ReturnTo(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
 
 	tests := []struct {
 		name       string
@@ -241,13 +256,13 @@ func TestNew_ReturnTo(t *testing.T) {
 	}{
 		{
 			name:       "同一オリジンの相対パスは引き継ぐ",
-			returnTo:   "/c/groobb",
+			returnTo:   "/settings",
 			wantHidden: true,
-			wantLink:   `href="/sign_in/two_factor/recovery/new?return_to=%2Fc%2Fgroobb"`,
+			wantLink:   `href="/sign_in/two_factor/recovery/new?return_to=%2Fsettings"`,
 		},
 		{
 			name:       "別オリジンを指す値は引き継がない",
-			returnTo:   "https://evil.example.com/c/groobb",
+			returnTo:   "https://evil.example.com/settings",
 			wantHidden: false,
 			wantLink:   `href="/sign_in/two_factor/recovery/new"`,
 		},
@@ -259,7 +274,10 @@ func TestNew_ReturnTo(t *testing.T) {
 
 			target := "/sign_in/two_factor/new?return_to=" + url.QueryEscape(tt.returnTo)
 			req := httptest.NewRequest(http.MethodGet, target, nil)
-			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: uuid.NewString()})
+			req.AddCookie(&http.Cookie{
+				Name:  session.TwoFactorPendingCookieName,
+				Value: twoFactorPendingToken(t, model.UserID(testutil.UnusedID)),
+			})
 			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
 			rec := httptest.NewRecorder()
 
@@ -272,8 +290,8 @@ func TestNew_ReturnTo(t *testing.T) {
 			if got := strings.Contains(body, `name="return_to"`); got != tt.wantHidden {
 				t.Errorf("return_to の hidden フィールドの有無 = %v, want %v", got, tt.wantHidden)
 			}
-			if tt.wantHidden && !strings.Contains(body, `value="/c/groobb"`) {
-				t.Error(`body does not contain value="/c/groobb"`)
+			if tt.wantHidden && !strings.Contains(body, `value="/settings"`) {
+				t.Error(`body does not contain value="/settings"`)
 			}
 			if !strings.Contains(body, tt.wantLink) {
 				t.Errorf("body does not contain %q", tt.wantLink)

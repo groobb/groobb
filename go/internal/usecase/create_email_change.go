@@ -2,9 +2,8 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/dispatcher"
@@ -27,25 +26,25 @@ import (
 // アドレスの切り替えはコード検証後 (後続タスク) に初めて行われるため、本ステップは新しい
 // アドレスが到達可能で、申請が現在のパスワードで認可されていることを確認するだけです。
 type CreateEmailChangeUsecase struct {
-	db                     *pgxpool.Pool
+	writer                 *sql.DB
 	settingsEmailValidator *validator.SettingsEmailUpdateValidator
 	emailConfirmationRepo  *repository.EmailConfirmationRepository
 	dispatcher             *dispatcher.Dispatcher
 }
 
-// NewCreateEmailChangeUsecase builds a CreateEmailChangeUsecase from the pool, its
+// NewCreateEmailChangeUsecase builds a CreateEmailChangeUsecase from the write pool, its
 // validator, the repository it persists through, and the dispatcher.
 //
-// [Ja] NewCreateEmailChangeUsecase はプール・validator・永続化に使うリポジトリ・
+// [Ja] NewCreateEmailChangeUsecase は書き込み用プール・validator・永続化に使うリポジトリ・
 // dispatcher から CreateEmailChangeUsecase を構築します。
 func NewCreateEmailChangeUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	settingsEmailValidator *validator.SettingsEmailUpdateValidator,
 	emailConfirmationRepo *repository.EmailConfirmationRepository,
 	dispatcher *dispatcher.Dispatcher,
 ) *CreateEmailChangeUsecase {
 	return &CreateEmailChangeUsecase{
-		db:                     db,
+		writer:                 writer,
 		settingsEmailValidator: settingsEmailValidator,
 		emailConfirmationRepo:  emailConfirmationRepo,
 		dispatcher:             dispatcher,
@@ -119,11 +118,11 @@ func (uc *CreateEmailChangeUsecase) createEmailChange(ctx context.Context, input
 		return nil, fmt.Errorf("確認コードの生成に失敗: %w", err)
 	}
 
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	emailConfirmationRepo := uc.emailConfirmationRepo.WithTx(tx)
 
@@ -140,7 +139,7 @@ func (uc *CreateEmailChangeUsecase) createEmailChange(ctx context.Context, input
 		return nil, fmt.Errorf("メール変更確認の作成に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

@@ -8,8 +8,8 @@ import (
 	"github.com/pquerna/otp/totp"
 
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -17,24 +17,20 @@ import (
 )
 
 // newEnableTwoFactorAuthUsecase builds an EnableTwoFactorAuthUsecase (and its
-// validator) bound to the test transaction, creates a user, and seeds a
+// validator) over the test's own database, creates a user, and seeds a
 // not-yet-enabled enrollment with the default secret so a valid TOTP code can be
 // generated for it. It returns the usecase, the repository (for assertions), the
-// user ID, and a context. The usecase opens no transaction of its own, so the WithTx
-// repository keeps every write inside the rolled-back test transaction.
+// user ID, and a context.
 //
-// [Ja] newEnableTwoFactorAuthUsecase はテスト用トランザクションに束ねた
+// [Ja] newEnableTwoFactorAuthUsecase はテスト専用のデータベース上に
 // EnableTwoFactorAuthUsecase (とその validator) を作り、ユーザーを作成し、既定の secret を
 // 持つ未有効化の登録を投入して、それに対する有効な TOTP コードを生成できるようにする。
-// usecase・(検証用の) リポジトリ・ユーザー ID・context を返す。usecase は自前のトランザク
-// ションを開かないため、WithTx リポジトリがすべての書き込みをロールバックされるテスト
-// トランザクション内に保つ。
-func newEnableTwoFactorAuthUsecase(t *testing.T) (*usecase.EnableTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID, context.Context) {
+// usecase・(検証用の) リポジトリ・ユーザー ID・context を返す。
+func newEnableTwoFactorAuthUsecase(t *testing.T, db *database.DB) (*usecase.EnableTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	userID := testutil.NewUserBuilder(t, tx).Build()
-	repo := repository.NewUserTwoFactorAuthRepository(query.New(db)).WithTx(tx)
-	testutil.NewUserTwoFactorAuthBuilder(t, tx).WithUserID(userID).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
+	repo := repository.NewUserTwoFactorAuthRepository(db)
+	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 	v := validator.NewSettingsTwoFactorAuthCreateValidator(repo)
 	return usecase.NewEnableTwoFactorAuthUsecase(v, repo), repo, userID, context.Background()
 }
@@ -49,7 +45,9 @@ func newEnableTwoFactorAuthUsecase(t *testing.T) (*usecase.EnableTwoFactorAuthUs
 func TestEnableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userID, ctx := newEnableTwoFactorAuthUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userID, ctx := newEnableTwoFactorAuthUsecase(t, db)
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -90,7 +88,9 @@ func TestEnableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 func TestEnableTwoFactorAuthUsecase_Execute_InvalidCode(t *testing.T) {
 	t.Parallel()
 
-	uc, repo, userID, ctx := newEnableTwoFactorAuthUsecase(t)
+	db := testutil.SetupDB(t)
+
+	uc, repo, userID, ctx := newEnableTwoFactorAuthUsecase(t, db)
 
 	// A well-formed code deliberately not equal to the current one.
 	//

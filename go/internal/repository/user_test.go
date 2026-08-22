@@ -2,27 +2,24 @@ package repository_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newUserRepo builds a UserRepository bound to the test transaction, exercising
-// WithTx so writes roll back when the test finishes.
+// newUserRepo builds a UserRepository over a database the test owns, so a test
+// that only needs the repository does not have to hold on to the database
+// itself.
 //
-// [Ja] newUserRepo はテスト用トランザクションに束ねた UserRepository を作る。
-// WithTx を通すことで、テスト終了時に書き込みがロールバックされる。
+// [Ja] newUserRepo はテストが所有するデータベース上に UserRepository を作る。
+// リポジトリだけが必要なテストがデータベース自体を抱えずに済むようにするためである。
 func newUserRepo(t *testing.T) (*repository.UserRepository, context.Context) {
 	t.Helper()
-	db, tx := testutil.SetupTx(t)
-	return repository.NewUserRepository(query.New(db)).WithTx(tx), context.Background()
+	db := testutil.SetupDB(t)
+	return repository.NewUserRepository(db), context.Background()
 }
 
 func TestUserRepository_Create(t *testing.T) {
@@ -40,7 +37,7 @@ func TestUserRepository_Create(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	if user.ID == (model.UserID{}) {
+	if user.ID == 0 {
 		t.Error("Create() user.ID は DB 採番で空でないはず")
 	}
 	if user.Email != "create@example.com" {
@@ -95,7 +92,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 	})
 
 	t.Run("存在しないユーザーは (nil, nil) を返す", func(t *testing.T) {
-		user, err := repo.FindByID(ctx, model.UserID(uuid.New()))
+		user, err := repo.FindByID(ctx, model.UserID(testutil.UnusedID))
 		if err != nil {
 			t.Fatalf("FindByID() error = %v, want nil", err)
 		}
@@ -132,13 +129,13 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 		}
 	})
 
-	t.Run("citext により大文字小文字を無視して取得できる", func(t *testing.T) {
+	t.Run("NOCASE 照合により大文字小文字を無視して取得できる", func(t *testing.T) {
 		user, err := repo.FindByEmail(ctx, "FindByEmail@Example.com")
 		if err != nil {
 			t.Fatalf("FindByEmail() error = %v", err)
 		}
 		if user == nil {
-			t.Fatal("FindByEmail() = nil, want user (citext は大文字小文字を無視するはず)")
+			t.Fatal("FindByEmail() = nil, want user (NOCASE 照合は大文字小文字を無視するはず)")
 		}
 	})
 
@@ -156,14 +153,14 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 func TestUserRepository_FindBySessionToken(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserRepository(db)
 	ctx := context.Background()
 
-	userID := testutil.NewUserBuilder(t, tx).
+	userID := testutil.NewUserBuilder(t, db).
 		WithEmail("session-user@example.com").
 		Build()
-	testutil.NewUserSessionBuilder(t, tx).
+	testutil.NewUserSessionBuilder(t, db).
 		WithUserID(userID).
 		WithToken("resolve-token").
 		Build()
@@ -196,10 +193,10 @@ func TestUserRepository_FindBySessionToken(t *testing.T) {
 }
 
 // TestUserRepository_CreateRejectsDuplicateEmail verifies the users.email UNIQUE
-// constraint surfaces as an error (case-insensitive via citext).
+// constraint surfaces as an error (case-insensitive via the NOCASE collation).
 //
 // [Ja] TestUserRepository_CreateRejectsDuplicateEmail は users.email の UNIQUE 制約が
-// エラーとして表面化することを確認する (citext により大文字小文字を区別しない)。
+// エラーとして表面化することを確認する (NOCASE 照合により大文字小文字を区別しない)。
 func TestUserRepository_CreateRejectsDuplicateEmail(t *testing.T) {
 	t.Parallel()
 
@@ -231,11 +228,11 @@ func TestUserRepository_CreateRejectsDuplicateEmail(t *testing.T) {
 }
 
 // TestUserRepository_FindByAtname verifies lookup by atname: an existing atname
-// resolves the user, the match is case-insensitive via citext, and an unknown
+// resolves the user, the match is case-insensitive via the NOCASE collation, and an unknown
 // atname returns (nil, nil).
 //
 // [Ja] TestUserRepository_FindByAtname は atname による取得を検証する。存在する atname は
-// ユーザーを解決し、照合は citext により大文字小文字を無視し、未知の atname は (nil, nil)
+// ユーザーを解決し、照合は NOCASE 照合により大文字小文字を無視し、未知の atname は (nil, nil)
 // を返す。
 func TestUserRepository_FindByAtname(t *testing.T) {
 	t.Parallel()
@@ -264,13 +261,13 @@ func TestUserRepository_FindByAtname(t *testing.T) {
 		}
 	})
 
-	t.Run("citext により大文字小文字を無視して取得できる", func(t *testing.T) {
+	t.Run("NOCASE 照合により大文字小文字を無視して取得できる", func(t *testing.T) {
 		user, err := repo.FindByAtname(ctx, "FindByAtnameUser")
 		if err != nil {
 			t.Fatalf("FindByAtname() error = %v", err)
 		}
 		if user == nil {
-			t.Fatal("FindByAtname() = nil, want user (citext は大文字小文字を無視するはず)")
+			t.Fatal("FindByAtname() = nil, want user (NOCASE 照合は大文字小文字を無視するはず)")
 		}
 	})
 
@@ -286,10 +283,10 @@ func TestUserRepository_FindByAtname(t *testing.T) {
 }
 
 // TestUserRepository_CreateRejectsDuplicateAtname verifies the users.atname UNIQUE
-// constraint surfaces as an error (case-insensitive via citext).
+// constraint surfaces as an error (case-insensitive via the NOCASE collation).
 //
 // [Ja] TestUserRepository_CreateRejectsDuplicateAtname は users.atname の UNIQUE 制約が
-// エラーとして表面化することを確認する (citext により大文字小文字を区別しない)。
+// エラーとして表面化することを確認する (NOCASE 照合により大文字小文字を区別しない)。
 func TestUserRepository_CreateRejectsDuplicateAtname(t *testing.T) {
 	t.Parallel()
 
@@ -329,8 +326,8 @@ func TestUserRepository_CreateRejectsDuplicateAtname(t *testing.T) {
 func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserRepository(db)
 	ctx := context.Background()
 
 	// A time in the past stands in for the moment the user withdrew; the exact
@@ -341,7 +338,7 @@ func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 	deletedAt := time.Now().Add(-24 * time.Hour)
 
 	t.Run("FindByID は論理削除済みユーザーを除外する", func(t *testing.T) {
-		id := testutil.NewUserBuilder(t, tx).WithDeletedAt(deletedAt).Build()
+		id := testutil.NewUserBuilder(t, db).WithDeletedAt(deletedAt).Build()
 
 		user, err := repo.FindByID(ctx, id)
 		if err != nil {
@@ -354,7 +351,7 @@ func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 
 	t.Run("FindByEmail は論理削除済みユーザーを除外する", func(t *testing.T) {
 		email := "softdeleted-findbyemail@example.com"
-		testutil.NewUserBuilder(t, tx).WithEmail(email).WithDeletedAt(deletedAt).Build()
+		testutil.NewUserBuilder(t, db).WithEmail(email).WithDeletedAt(deletedAt).Build()
 
 		user, err := repo.FindByEmail(ctx, email)
 		if err != nil {
@@ -367,7 +364,7 @@ func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 
 	t.Run("FindByAtname は論理削除済みユーザーを除外する", func(t *testing.T) {
 		atname := "softdeletedatname"
-		testutil.NewUserBuilder(t, tx).WithAtname(atname).WithDeletedAt(deletedAt).Build()
+		testutil.NewUserBuilder(t, db).WithAtname(atname).WithDeletedAt(deletedAt).Build()
 
 		user, err := repo.FindByAtname(ctx, atname)
 		if err != nil {
@@ -379,8 +376,8 @@ func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 	})
 
 	t.Run("FindBySessionToken は論理削除済みユーザーのセッションを解決しない", func(t *testing.T) {
-		userID := testutil.NewUserBuilder(t, tx).WithDeletedAt(deletedAt).Build()
-		testutil.NewUserSessionBuilder(t, tx).
+		userID := testutil.NewUserBuilder(t, db).WithDeletedAt(deletedAt).Build()
+		testutil.NewUserSessionBuilder(t, db).
 			WithUserID(userID).
 			WithToken("soft-deleted-token").
 			Build()
@@ -406,8 +403,8 @@ func TestUserRepository_SoftDeletedUsersAreExcludedFromLookups(t *testing.T) {
 func TestUserRepository_SoftDeleteAndAnonymize(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	repo := repository.NewUserRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserRepository(db)
 	ctx := context.Background()
 
 	created, err := repo.Create(ctx, repository.CreateUserInput{
@@ -421,7 +418,7 @@ func TestUserRepository_SoftDeleteAndAnonymize(t *testing.T) {
 	}
 
 	anonEmail := "deleted-" + created.ID.String() + "@deleted.invalid"
-	anonAtname := "deleted_" + strings.ReplaceAll(created.ID.String(), "-", "")
+	anonAtname := "deleted-" + created.ID.String()
 
 	if err := repo.SoftDeleteAndAnonymize(ctx, created.ID, anonEmail, anonAtname); err != nil {
 		t.Fatalf("SoftDeleteAndAnonymize() error = %v", err)
@@ -435,8 +432,8 @@ func TestUserRepository_SoftDeleteAndAnonymize(t *testing.T) {
 		// 匿名化された値を観測できる。
 		var deletedAt *time.Time
 		var email, atname string
-		if err := tx.QueryRow(ctx,
-			`SELECT deleted_at, email, atname FROM users WHERE id = $1`, uuid.UUID(created.ID),
+		if err := db.Writer.QueryRowContext(ctx,
+			`SELECT deleted_at, email, atname FROM users WHERE id = ?`, int64(created.ID),
 		).Scan(&deletedAt, &email, &atname); err != nil {
 			t.Fatalf("行の取得に失敗: %v", err)
 		}
@@ -475,11 +472,11 @@ func TestUserRepository_SoftDeleteAndAnonymize(t *testing.T) {
 
 // TestUserRepository_UpdateEmail verifies UpdateEmail rewrites the user's email
 // and that moving to an address already taken by another account fails on the
-// users.email UNIQUE constraint (case-insensitive via citext).
+// users.email UNIQUE constraint (case-insensitive via the NOCASE collation).
 //
 // [Ja] TestUserRepository_UpdateEmail は UpdateEmail がユーザーの email を書き換えること、
 // および別アカウントが既に使用しているアドレスへの変更が users.email の UNIQUE 制約で失敗
-// することを検証する (citext により大文字小文字を区別しない)。
+// することを検証する (NOCASE 照合により大文字小文字を区別しない)。
 func TestUserRepository_UpdateEmail(t *testing.T) {
 	t.Parallel()
 
@@ -514,10 +511,10 @@ func TestUserRepository_UpdateEmail(t *testing.T) {
 
 	t.Run("既存アカウントと重複するアドレスへの更新はエラー", func(t *testing.T) {
 		// Another account already holds taken@example.com, so moving to it fails
-		// on the users.email UNIQUE constraint (citext, case-insensitive).
+		// on the users.email UNIQUE constraint (NOCASE, case-insensitive).
 		//
 		// [Ja] 別アカウントが taken@example.com を先に使用しているため、そのアドレスへの
-		// 更新は users.email の UNIQUE 制約 (citext) で失敗する。
+		// 更新は users.email の UNIQUE 制約 (NOCASE 照合) で失敗する。
 		if _, err := repo.Create(ctx, repository.CreateUserInput{
 			Email:    "taken@example.com",
 			Atname:   "takenemailuser",

@@ -69,14 +69,14 @@ type AccountCreateValidatorInput struct {
 // uniqueness check made against the database, so a malformed atname never hits
 // the database. An empty atname reports a required error and skips the format
 // checks so the two errors do not stack. The match is case-insensitive because
-// users.atname is citext.
+// users.atname collates NOCASE.
 //
 // [Ja] Validate は atname・パスワード・その確認を検証し、いずれかが不正なら
 // *model.ValidationError を、本物のシステム障害 (例: データベースに到達できない) では
 // 素の error を返します。形式チェック (atname の形と パスワード強度) を先に行い、それらが
 // すべて通ったときだけ atname の一意性チェックを DB に対して行うため、不正な atname が
 // DB に到達することはありません。空の atname は必須エラーを報告し形式チェックをスキップ
-// して 2 つのエラーが重ならないようにします。照合は users.atname が citext のため大文字
+// して 2 つのエラーが重ならないようにします。照合は users.atname が NOCASE 照合のため大文字
 // 小文字を区別しません。
 func (v *AccountCreateValidator) Validate(ctx context.Context, input AccountCreateValidatorInput) error {
 	ve := model.NewValidationError()

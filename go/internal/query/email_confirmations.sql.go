@@ -7,44 +7,42 @@ package query
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createEmailChangeConfirmation = `-- name: CreateEmailChangeConfirmation :one
 INSERT INTO email_confirmations (user_id, email, event, code)
-VALUES ($1, $2, 'email_change', $3)
-RETURNING id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id
+VALUES (?, ?, 'email_change', ?)
+RETURNING id, user_id, email, event, code, failed_attempts_count, started_at, succeeded_at, created_at, updated_at
 `
 
 type CreateEmailChangeConfirmationParams struct {
-	UserID *uuid.UUID `json:"user_id"`
-	Email  string     `json:"email"`
-	Code   string     `json:"code"`
+	UserID *int64 `json:"user_id"`
+	Email  string `json:"email"`
+	Code   string `json:"code"`
 }
 
 func (q *Queries) CreateEmailChangeConfirmation(ctx context.Context, arg CreateEmailChangeConfirmationParams) (EmailConfirmation, error) {
-	row := q.db.QueryRow(ctx, createEmailChangeConfirmation, arg.UserID, arg.Email, arg.Code)
+	row := q.db.QueryRowContext(ctx, createEmailChangeConfirmation, arg.UserID, arg.Email, arg.Code)
 	var i EmailConfirmation
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Email,
 		&i.Event,
 		&i.Code,
+		&i.FailedAttemptsCount,
 		&i.StartedAt,
 		&i.SucceededAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FailedAttemptsCount,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const createEmailConfirmation = `-- name: CreateEmailConfirmation :one
 INSERT INTO email_confirmations (email, event, code)
-VALUES ($1, $2, $3)
-RETURNING id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id
+VALUES (?, ?, ?)
+RETURNING id, user_id, email, event, code, failed_attempts_count, started_at, succeeded_at, created_at, updated_at
 `
 
 type CreateEmailConfirmationParams struct {
@@ -54,134 +52,136 @@ type CreateEmailConfirmationParams struct {
 }
 
 func (q *Queries) CreateEmailConfirmation(ctx context.Context, arg CreateEmailConfirmationParams) (EmailConfirmation, error) {
-	row := q.db.QueryRow(ctx, createEmailConfirmation, arg.Email, arg.Event, arg.Code)
+	row := q.db.QueryRowContext(ctx, createEmailConfirmation, arg.Email, arg.Event, arg.Code)
 	var i EmailConfirmation
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Email,
 		&i.Event,
 		&i.Code,
+		&i.FailedAttemptsCount,
 		&i.StartedAt,
 		&i.SucceededAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FailedAttemptsCount,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const deleteUnusedEmailChangeConfirmationsByUserID = `-- name: DeleteUnusedEmailChangeConfirmationsByUserID :exec
 DELETE FROM email_confirmations
-WHERE user_id = $1
+WHERE user_id = ?
   AND event = 'email_change'
   AND succeeded_at IS NULL
 `
 
-func (q *Queries) DeleteUnusedEmailChangeConfirmationsByUserID(ctx context.Context, userID *uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteUnusedEmailChangeConfirmationsByUserID, userID)
+func (q *Queries) DeleteUnusedEmailChangeConfirmationsByUserID(ctx context.Context, userID *int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUnusedEmailChangeConfirmationsByUserID, userID)
 	return err
 }
 
 const getActiveEmailChangeConfirmationByUserID = `-- name: GetActiveEmailChangeConfirmationByUserID :one
-SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
-WHERE user_id = $1
+SELECT id, user_id, email, event, code, failed_attempts_count, started_at, succeeded_at, created_at, updated_at FROM email_confirmations
+WHERE user_id = ?
   AND event = 'email_change'
   AND succeeded_at IS NULL
-  AND started_at > NOW() - INTERVAL '15 minutes'
+  AND started_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
   AND failed_attempts_count < 5
 ORDER BY started_at DESC
 LIMIT 1
 `
 
-func (q *Queries) GetActiveEmailChangeConfirmationByUserID(ctx context.Context, userID *uuid.UUID) (EmailConfirmation, error) {
-	row := q.db.QueryRow(ctx, getActiveEmailChangeConfirmationByUserID, userID)
+func (q *Queries) GetActiveEmailChangeConfirmationByUserID(ctx context.Context, userID *int64) (EmailConfirmation, error) {
+	row := q.db.QueryRowContext(ctx, getActiveEmailChangeConfirmationByUserID, userID)
 	var i EmailConfirmation
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Email,
 		&i.Event,
 		&i.Code,
+		&i.FailedAttemptsCount,
 		&i.StartedAt,
 		&i.SucceededAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FailedAttemptsCount,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const getActiveEmailConfirmationByID = `-- name: GetActiveEmailConfirmationByID :one
-SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
-WHERE id = $1
+SELECT id, user_id, email, event, code, failed_attempts_count, started_at, succeeded_at, created_at, updated_at FROM email_confirmations
+WHERE id = ?
   AND succeeded_at IS NULL
-  AND started_at > NOW() - INTERVAL '15 minutes'
+  AND started_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
   AND failed_attempts_count < 5
 LIMIT 1
 `
 
-func (q *Queries) GetActiveEmailConfirmationByID(ctx context.Context, id uuid.UUID) (EmailConfirmation, error) {
-	row := q.db.QueryRow(ctx, getActiveEmailConfirmationByID, id)
+func (q *Queries) GetActiveEmailConfirmationByID(ctx context.Context, id int64) (EmailConfirmation, error) {
+	row := q.db.QueryRowContext(ctx, getActiveEmailConfirmationByID, id)
 	var i EmailConfirmation
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Email,
 		&i.Event,
 		&i.Code,
+		&i.FailedAttemptsCount,
 		&i.StartedAt,
 		&i.SucceededAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FailedAttemptsCount,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const getSucceededEmailConfirmationByID = `-- name: GetSucceededEmailConfirmationByID :one
-SELECT id, email, event, code, started_at, succeeded_at, created_at, updated_at, failed_attempts_count, user_id FROM email_confirmations
-WHERE id = $1
+SELECT id, user_id, email, event, code, failed_attempts_count, started_at, succeeded_at, created_at, updated_at FROM email_confirmations
+WHERE id = ?
   AND succeeded_at IS NOT NULL
 LIMIT 1
 `
 
-func (q *Queries) GetSucceededEmailConfirmationByID(ctx context.Context, id uuid.UUID) (EmailConfirmation, error) {
-	row := q.db.QueryRow(ctx, getSucceededEmailConfirmationByID, id)
+func (q *Queries) GetSucceededEmailConfirmationByID(ctx context.Context, id int64) (EmailConfirmation, error) {
+	row := q.db.QueryRowContext(ctx, getSucceededEmailConfirmationByID, id)
 	var i EmailConfirmation
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Email,
 		&i.Event,
 		&i.Code,
+		&i.FailedAttemptsCount,
 		&i.StartedAt,
 		&i.SucceededAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FailedAttemptsCount,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const incrementEmailConfirmationFailedAttempts = `-- name: IncrementEmailConfirmationFailedAttempts :exec
 UPDATE email_confirmations
-SET failed_attempts_count = failed_attempts_count + 1, updated_at = NOW()
-WHERE id = $1
+SET failed_attempts_count = failed_attempts_count + 1,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
 `
 
-func (q *Queries) IncrementEmailConfirmationFailedAttempts(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, incrementEmailConfirmationFailedAttempts, id)
+func (q *Queries) IncrementEmailConfirmationFailedAttempts(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, incrementEmailConfirmationFailedAttempts, id)
 	return err
 }
 
 const updateEmailConfirmationSucceededAt = `-- name: UpdateEmailConfirmationSucceededAt :exec
 UPDATE email_confirmations
-SET succeeded_at = NOW(), updated_at = NOW()
-WHERE id = $1
+SET succeeded_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
 `
 
-func (q *Queries) UpdateEmailConfirmationSucceededAt(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, updateEmailConfirmationSucceededAt, id)
+func (q *Queries) UpdateEmailConfirmationSucceededAt(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, updateEmailConfirmationSucceededAt, id)
 	return err
 }

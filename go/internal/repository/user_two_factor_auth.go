@@ -2,13 +2,16 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // UserTwoFactorAuthRepository reads and writes user_two_factor_auths through
@@ -17,16 +20,17 @@ import (
 // [Ja] UserTwoFactorAuthRepository は sqlc 生成のクエリ経由で user_two_factor_auths を
 // 読み書きします。
 type UserTwoFactorAuthRepository struct {
-	q *query.Queries
+	reader *query.Queries
+	writer *query.Queries
 }
 
-// NewUserTwoFactorAuthRepository creates a UserTwoFactorAuthRepository backed by
-// the given queries.
+// NewUserTwoFactorAuthRepository creates a UserTwoFactorAuthRepository that reads through the database's read pool
+// and writes through its write pool.
 //
-// [Ja] NewUserTwoFactorAuthRepository は与えられた queries を使う
+// [Ja] NewUserTwoFactorAuthRepository は、データベースの読み取り用プールで読み、書き込み用プールで書く
 // UserTwoFactorAuthRepository を生成します。
-func NewUserTwoFactorAuthRepository(q *query.Queries) *UserTwoFactorAuthRepository {
-	return &UserTwoFactorAuthRepository{q: q}
+func NewUserTwoFactorAuthRepository(db *database.DB) *UserTwoFactorAuthRepository {
+	return &UserTwoFactorAuthRepository{reader: query.New(db.Reader), writer: query.New(db.Writer)}
 }
 
 // WithTx returns a new UserTwoFactorAuthRepository whose queries run inside tx,
@@ -36,8 +40,9 @@ func NewUserTwoFactorAuthRepository(q *query.Queries) *UserTwoFactorAuthReposito
 // [Ja] WithTx は queries を tx 内で実行する新しい UserTwoFactorAuthRepository を返し、
 // UseCase が本リポジトリを自身のトランザクションに参加させられる (例: リカバリーコードの
 // 消費とセッション発行をアトミックに行う) ようにします。レシーバ自身は変更しません。
-func (r *UserTwoFactorAuthRepository) WithTx(tx pgx.Tx) *UserTwoFactorAuthRepository {
-	return &UserTwoFactorAuthRepository{q: r.q.WithTx(tx)}
+func (r *UserTwoFactorAuthRepository) WithTx(tx *sql.Tx) *UserTwoFactorAuthRepository {
+	q := r.writer.WithTx(tx)
+	return &UserTwoFactorAuthRepository{reader: q, writer: q}
 }
 
 // FindByUserID returns the 2FA setting of the user with the given ID, or
@@ -49,14 +54,14 @@ func (r *UserTwoFactorAuthRepository) WithTx(tx pgx.Tx) *UserTwoFactorAuthReposi
 // 開始していないユーザー) は (nil, nil) を返します。未存在は正常なルックアップ結果であり
 // エラーではありません。業務上の失敗として扱うかは呼び出し側が判断します。
 func (r *UserTwoFactorAuthRepository) FindByUserID(ctx context.Context, userID model.UserID) (*model.UserTwoFactorAuth, error) {
-	row, err := r.q.GetUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+	row, err := r.reader.GetUserTwoFactorAuthByUserID(ctx, int64(userID))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return r.toModel(row), nil
+	return r.toModel(row)
 }
 
 // FindEnabledByUserID returns the user's 2FA setting only when it is enabled, or
@@ -68,14 +73,14 @@ func (r *UserTwoFactorAuthRepository) FindByUserID(ctx context.Context, userID m
 // まだ登録中の場合は (nil, nil) を返します。サインインは TOTP チャレンジを要求するか
 // どうかの判定にこれを使うため、未有効化の行は設定なしと同じ扱いになります。
 func (r *UserTwoFactorAuthRepository) FindEnabledByUserID(ctx context.Context, userID model.UserID) (*model.UserTwoFactorAuth, error) {
-	row, err := r.q.GetEnabledUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+	row, err := r.reader.GetEnabledUserTwoFactorAuthByUserID(ctx, int64(userID))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return r.toModel(row), nil
+	return r.toModel(row)
 }
 
 // CreateUserTwoFactorAuthInput holds the attributes needed to start enrolling a
@@ -106,17 +111,17 @@ type CreateUserTwoFactorAuthInput struct {
 // これにより、設定が同時に走っても user_id の unique 制約に一切違反せず get-or-create を
 // 冪等に保ちます。
 func (r *UserTwoFactorAuthRepository) Create(ctx context.Context, input CreateUserTwoFactorAuthInput) (*model.UserTwoFactorAuth, error) {
-	row, err := r.q.CreateUserTwoFactorAuth(ctx, query.CreateUserTwoFactorAuthParams{
-		UserID: uuid.UUID(input.UserID),
+	row, err := r.writer.CreateUserTwoFactorAuth(ctx, query.CreateUserTwoFactorAuthParams{
+		UserID: int64(input.UserID),
 		Secret: input.Secret,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return r.toModel(row), nil
+	return r.toModel(row)
 }
 
 // Enable activates the user's not-yet-enabled 2FA setting: it marks the setting
@@ -136,9 +141,14 @@ func (r *UserTwoFactorAuthRepository) Create(ctx context.Context, input CreateUs
 // なりません。このガードにより有効化は冪等になり、2 つ目の同時有効化が保存済みリカバリー
 // コードを上書きするのを防ぎます。
 func (r *UserTwoFactorAuthRepository) Enable(ctx context.Context, userID model.UserID, recoveryCodes []string) (bool, error) {
-	rows, err := r.q.EnableUserTwoFactorAuth(ctx, query.EnableUserTwoFactorAuthParams{
-		UserID:        uuid.UUID(userID),
-		RecoveryCodes: recoveryCodes,
+	encoded, err := encodeRecoveryCodes(recoveryCodes)
+	if err != nil {
+		return false, err
+	}
+
+	rows, err := r.writer.EnableUserTwoFactorAuth(ctx, query.EnableUserTwoFactorAuthParams{
+		UserID:        int64(userID),
+		RecoveryCodes: encoded,
 	})
 	if err != nil {
 		return false, err
@@ -154,9 +164,14 @@ func (r *UserTwoFactorAuthRepository) Enable(ctx context.Context, userID model.U
 // 置き換えます (updated_at も更新)。リカバリーコードでのサインインが、1 つ消費した後に
 // 残りのコードを書き戻すために使います。
 func (r *UserTwoFactorAuthRepository) UpdateRecoveryCodes(ctx context.Context, userID model.UserID, recoveryCodes []string) error {
-	return r.q.UpdateUserTwoFactorAuthRecoveryCodes(ctx, query.UpdateUserTwoFactorAuthRecoveryCodesParams{
-		UserID:        uuid.UUID(userID),
-		RecoveryCodes: recoveryCodes,
+	encoded, err := encodeRecoveryCodes(recoveryCodes)
+	if err != nil {
+		return err
+	}
+
+	return r.writer.UpdateUserTwoFactorAuthRecoveryCodes(ctx, query.UpdateUserTwoFactorAuthRecoveryCodesParams{
+		UserID:        int64(userID),
+		RecoveryCodes: encoded,
 	})
 }
 
@@ -168,23 +183,67 @@ func (r *UserTwoFactorAuthRepository) UpdateRecoveryCodes(ctx context.Context, u
 // リカバリーコードを行ごと破棄します。設定が無いときに削除してもエラーにならないため、
 // 無効化は冪等です。
 func (r *UserTwoFactorAuthRepository) Delete(ctx context.Context, userID model.UserID) error {
-	return r.q.DeleteUserTwoFactorAuthByUserID(ctx, uuid.UUID(userID))
+	return r.writer.DeleteUserTwoFactorAuthByUserID(ctx, int64(userID))
 }
 
 // toModel converts a query.UserTwoFactorAuth row into a model.UserTwoFactorAuth,
-// casting the raw uuids into the typed IDs at the repository boundary.
+// casting the raw ids into the typed IDs and decoding the stored recovery codes
+// at the repository boundary. It reports an error when the stored codes are not
+// the JSON array the column is supposed to hold.
 //
 // [Ja] toModel は query.UserTwoFactorAuth を model.UserTwoFactorAuth に変換し、
-// リポジトリの境界で生の uuid を型付き ID にキャストします。
-func (r *UserTwoFactorAuthRepository) toModel(row query.UserTwoFactorAuth) *model.UserTwoFactorAuth {
+// リポジトリの境界で生の id を型付き ID にキャストし、保存されたリカバリーコードを
+// デコードします。保存された値が、その列が保持するはずの JSON 配列になっていない場合は
+// エラーを返します。
+func (r *UserTwoFactorAuthRepository) toModel(row query.UserTwoFactorAuth) (*model.UserTwoFactorAuth, error) {
+	recoveryCodes, err := decodeRecoveryCodes(row.RecoveryCodes)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.UserTwoFactorAuth{
 		ID:            model.UserTwoFactorAuthID(row.ID),
 		UserID:        model.UserID(row.UserID),
 		Secret:        row.Secret,
 		Enabled:       row.Enabled,
-		EnabledAt:     row.EnabledAt,
-		RecoveryCodes: row.RecoveryCodes,
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
+		EnabledAt:     sqlitetime.TimePtr(row.EnabledAt),
+		RecoveryCodes: recoveryCodes,
+		CreatedAt:     time.Time(row.CreatedAt),
+		UpdatedAt:     time.Time(row.UpdatedAt),
+	}, nil
+}
+
+// encodeRecoveryCodes renders the recovery codes as the JSON array the column
+// stores. SQLite has no array type, so a list-valued column is TEXT holding JSON
+// and the repository boundary is where the slice becomes that text.
+//
+// [Ja] encodeRecoveryCodes はリカバリーコードを、列が保存する JSON 配列として表現
+// します。SQLite に配列型は無いため、リストを値に取る列は JSON を保持する TEXT であり、
+// スライスがそのテキストになる場所がリポジトリの境界です。
+func encodeRecoveryCodes(recoveryCodes []string) (string, error) {
+	// A nil slice encodes as "null", which the column's json_type check rejects.
+	// An empty list is written as the empty array the column also defaults to.
+	//
+	// [Ja] nil のスライスは "null" にエンコードされ、列の json_type チェックに弾かれる。
+	// 空のリストは、列の既定値でもある空配列として書く。
+	if recoveryCodes == nil {
+		recoveryCodes = []string{}
 	}
+
+	encoded, err := json.Marshal(recoveryCodes)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode the recovery codes: %w", err)
+	}
+	return string(encoded), nil
+}
+
+// decodeRecoveryCodes parses the JSON array the column stores back into a slice.
+//
+// [Ja] decodeRecoveryCodes は列が保存する JSON 配列をスライスに解釈し直します。
+func decodeRecoveryCodes(encoded string) ([]string, error) {
+	var recoveryCodes []string
+	if err := json.Unmarshal([]byte(encoded), &recoveryCodes); err != nil {
+		return nil, fmt.Errorf("failed to decode the recovery codes: %w", err)
+	}
+	return recoveryCodes, nil
 }

@@ -7,23 +7,21 @@ package query
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createUserPassword = `-- name: CreateUserPassword :one
 INSERT INTO user_passwords (user_id, password_digest)
-VALUES ($1, $2)
+VALUES (?, ?)
 RETURNING id, user_id, password_digest, created_at, updated_at
 `
 
 type CreateUserPasswordParams struct {
-	UserID         uuid.UUID `json:"user_id"`
-	PasswordDigest string    `json:"password_digest"`
+	UserID         int64  `json:"user_id"`
+	PasswordDigest string `json:"password_digest"`
 }
 
 func (q *Queries) CreateUserPassword(ctx context.Context, arg CreateUserPasswordParams) (UserPassword, error) {
-	row := q.db.QueryRow(ctx, createUserPassword, arg.UserID, arg.PasswordDigest)
+	row := q.db.QueryRowContext(ctx, createUserPassword, arg.UserID, arg.PasswordDigest)
 	var i UserPassword
 	err := row.Scan(
 		&i.ID,
@@ -36,11 +34,11 @@ func (q *Queries) CreateUserPassword(ctx context.Context, arg CreateUserPassword
 }
 
 const getUserPasswordByUserID = `-- name: GetUserPasswordByUserID :one
-SELECT id, user_id, password_digest, created_at, updated_at FROM user_passwords WHERE user_id = $1 LIMIT 1
+SELECT id, user_id, password_digest, created_at, updated_at FROM user_passwords WHERE user_id = ? LIMIT 1
 `
 
-func (q *Queries) GetUserPasswordByUserID(ctx context.Context, userID uuid.UUID) (UserPassword, error) {
-	row := q.db.QueryRow(ctx, getUserPasswordByUserID, userID)
+func (q *Queries) GetUserPasswordByUserID(ctx context.Context, userID int64) (UserPassword, error) {
+	row := q.db.QueryRowContext(ctx, getUserPasswordByUserID, userID)
 	var i UserPassword
 	err := row.Scan(
 		&i.ID,
@@ -54,16 +52,16 @@ func (q *Queries) GetUserPasswordByUserID(ctx context.Context, userID uuid.UUID)
 
 const updateUserPasswordDigestByUserID = `-- name: UpdateUserPasswordDigestByUserID :exec
 UPDATE user_passwords
-SET password_digest = $2, updated_at = NOW()
-WHERE user_id = $1
+SET password_digest = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE user_id = ?
 `
 
 type UpdateUserPasswordDigestByUserIDParams struct {
-	UserID         uuid.UUID `json:"user_id"`
-	PasswordDigest string    `json:"password_digest"`
+	PasswordDigest string `json:"password_digest"`
+	UserID         int64  `json:"user_id"`
 }
 
 func (q *Queries) UpdateUserPasswordDigestByUserID(ctx context.Context, arg UpdateUserPasswordDigestByUserIDParams) error {
-	_, err := q.db.Exec(ctx, updateUserPasswordDigestByUserID, arg.UserID, arg.PasswordDigest)
+	_, err := q.db.ExecContext(ctx, updateUserPasswordDigestByUserID, arg.PasswordDigest, arg.UserID)
 	return err
 }

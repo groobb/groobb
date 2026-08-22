@@ -1,18 +1,12 @@
 # In CI the environment variables are already exported, so op run is skipped.
 # Locally, op run resolves the op:// references in .env before launching.
-# OP_RUN_TEST runs with APP_ENV=test so op:// resolves to the test database's
-# DATABASE_URL; reusing OP_RUN_DEV would point the test suite at the dev database.
 #
 # [Ja] CI では環境変数が既にエクスポート済みのため op run を介しません。
 # ローカルでは .env 内の op:// 参照を op run が解決してから起動します。
-# OP_RUN_TEST は APP_ENV=test で実行し、op:// がテスト DB の DATABASE_URL に
-# 解決されるようにします。OP_RUN_DEV を使い回すとテストが dev DB を指してしまいます。
 ifeq ($(CI),true)
   OP_RUN_DEV = APP_ENV=dev
-  OP_RUN_TEST = APP_ENV=test
 else
   OP_RUN_DEV = APP_ENV=dev op run --env-file=".env" --
-  OP_RUN_TEST = APP_ENV=test op run --env-file=".env" --
 endif
 
 .PHONY: help
@@ -35,9 +29,37 @@ browse-shot: ## Open a page with the logged-in session and screenshot it (e.g. m
 browse-close: ## Close the browser session and remove its credentials, origin file and profile (screenshots are kept). [Ja] ブラウザセッションを閉じ、資格情報・origin ファイル・profile を削除 (スクショは残す)
 	bash scripts/browse.sh close
 
+.PHONY: assets
+assets: ## Build the CSS / JS into static/. [Ja] CSS / JS を static/ にビルド
+	pnpm build
+
+# The binary embeds whatever static/ holds at compile time, so a release is built
+# as `make assets build`; build alone is the compile check and leaves the assets
+# as they are.
+#
+# The asset version is stamped in here because the URLs the server renders carry
+# it, and a distributed binary has no repository around it to read a revision
+# from at run time. Without the stamp the build falls back to the revision the
+# toolchain records (see buildAssetVersion in internal/config).
+# Both paths keep the complete revision so that different commits cannot share a
+# long-lived cache key through an abbreviated-prefix collision.
+#
+# [Ja] バイナリはコンパイル時点の static/ の内容を埋め込むため、リリースは
+# `make assets build` でビルドする。build 単体はコンパイルの確認であり、アセットは
+# そのままにする。
+#
+# アセットバージョンをここで埋め込むのは、サーバーが描画する URL がそれを伴う一方、
+# 配布されたバイナリの周囲には実行時にリビジョンを読めるリポジトリが無いためである。
+# 埋め込みが無い場合、ビルドはツールチェインが記録したリビジョンへフォールバックする
+# (internal/config の buildAssetVersion を参照)。
+# 両方の経路で完全なリビジョンを使い、短縮した接頭辞の衝突によって異なるコミットが
+# 同じ長期キャッシュキーを共有しないようにする。
+ASSET_VERSION ?= $(shell git rev-parse HEAD 2>/dev/null || echo dev)
+ASSET_VERSION_LDFLAGS = -X github.com/groobb/groobb/go/internal/config.assetVersion=$(ASSET_VERSION)
+
 .PHONY: build
 build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
-	go build -o bin/server ./cmd/server
+	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/server ./cmd/server
 
 .PHONY: templ-generate
 templ-generate: ## Generate Go code from templ files (also runs goimports). [Ja] templ ファイルから Go コードを生成 (goimports も実行)
@@ -84,32 +106,36 @@ lint: ## Run golangci-lint. [Ja] golangci-lint を実行
 lint-comment: ## Check [Ja]-marker misuse in code comments (koryluslint). [Ja] コードコメントの [Ja] マーカー誤用をチェック (koryluslint)
 	@go tool koryluslint comment
 
-# db-setup-test resets the test database and applies db/schema.sql before the run,
-# so `make test` is self-contained. tparse formats the -json stream; it ships via
-# the go.mod tool directive, matching how the other dev tools are invoked here.
-# set -o pipefail surfaces a go test failure through the tparse pipe; without it
-# make would only see tparse's exit code and read a failing run as success.
+# A migrated SQLite schema snapshot is built once per test binary and copied
+# into a separate database file for each test, so the suite needs neither a
+# database prepared beforehand nor any environment variable, and runs without
+# op. tparse formats the -json stream; it ships via the go.mod tool directive,
+# matching how the other dev tools are invoked here. set -o pipefail surfaces a
+# go test failure through the tparse pipe; otherwise make sees only the tparse
+# exit code and reads a failing run as success.
 #
-# [Ja] db-setup-test が実行前にテスト DB をリセットして db/schema.sql を適用するため、
-# `make test` は自己完結する。tparse は -json ストリームを整形するツールで、go.mod の
-# tool ディレクティブ経由で導入し、ここでの他の開発ツールと同じ呼び出し方に揃えている。
-# set -o pipefail は go test の失敗を tparse パイプ越しに伝播させる。これが無いと make は
-# tparse の終了コードしか見ず、失敗した実行を成功と誤認してしまう。
+# [Ja] マイグレーション済みの SQLite スキーマスナップショットをテストバイナリごとに
+# 1 度だけ作り、各テスト専用のデータベースファイルへ複製するため、テストスイートは
+# 事前に用意されたデータベースも環境変数も必要とせず、op を介さずに走る。
+# tparse は -json ストリームを整形するツールで、go.mod の tool ディレクティブ経由で
+# 導入し、ここでの他の開発ツールと同じ呼び出し方に揃えている。set -o pipefail は
+# go test の失敗を tparse パイプ越しに伝播させる。これが無いと make は tparse の
+# 終了コードしか見ず、失敗した実行を成功と誤認してしまう。
 .PHONY: test
-test: db-setup-test ## Run tests. [Ja] テストを実行
-	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./... | go tool tparse -all'
+test: ## Run tests. [Ja] テストを実行
+	@bash -c 'set -o pipefail && go test -json -race ./... | go tool tparse -all'
 
 .PHONY: test-pkg
-test-pkg: db-setup-test ## Run tests for a single package (usage: make test-pkg PKG=internal/handler/sign_in). [Ja] 特定パッケージのテストを実行
+test-pkg: ## Run tests for a single package (usage: make test-pkg PKG=internal/handler/sign_in). [Ja] 特定パッケージのテストを実行
 	@if [ -z "$(PKG)" ]; then \
 		echo "Error: set the PKG variable"; \
 		echo "Usage: make test-pkg PKG=internal/handler/sign_in"; \
 		exit 1; \
 	fi
-	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./$(PKG) | go tool tparse -all'
+	@bash -c 'set -o pipefail && go test -json -race ./$(PKG) | go tool tparse -all'
 
 .PHONY: test-run
-test-run: db-setup-test ## Run a single test (usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate). [Ja] 特定のテストを実行
+test-run: ## Run a single test (usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate). [Ja] 特定のテストを実行
 	@if [ -z "$(PKG)" ]; then \
 		echo "Error: set the PKG variable"; \
 		echo "Usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate"; \
@@ -120,54 +146,45 @@ test-run: db-setup-test ## Run a single test (usage: make test-run PKG=internal/
 		echo "Usage: make test-run PKG=internal/handler/sign_in RUN=TestCreate"; \
 		exit 1; \
 	fi
-	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race ./$(PKG) -run $(RUN) | go tool tparse -all'
+	@bash -c 'set -o pipefail && go test -json -race ./$(PKG) -run $(RUN) | go tool tparse -all'
 
 .PHONY: test-verbose
-test-verbose: db-setup-test ## Run all tests with verbose logs (for debugging). [Ja] 詳細ログ付きで全テストを実行 (デバッグ用)
-	@bash -c 'set -o pipefail && $(OP_RUN_TEST) go test -json -race -count=1 ./... | go tool tparse -all'
+test-verbose: ## Run all tests with verbose logs (for debugging). [Ja] 詳細ログ付きで全テストを実行 (デバッグ用)
+	@bash -c 'set -o pipefail && go test -json -race -count=1 ./... | go tool tparse -all'
 
-# Database commands. db-migrate / db-dump / db-rollback resolve the op:// refs
-# in .env via op run; db-new only writes a file and db-setup-test talks to the
-# local/CI Postgres directly, so neither needs op.
+# Database commands. db-migrate / db-rollback read the database path from .env,
+# which op run loads before the command starts; db-new only writes a file, so it
+# needs neither.
 #
-# [Ja] データベースコマンド。db-migrate / db-dump / db-rollback は op run で .env の
-# op:// 参照を解決する。db-new はファイルを作るだけ、db-setup-test はローカル/CI の
-# Postgres に直接つなぐため、どちらも op を必要としない。
-
-# Strip the random \restrict / \unrestrict lines that pg_dump >= 17.6 emits into
-# db/schema.sql, which dbmate writes on both up and dump. Shared by db-migrate
-# and db-dump so the workaround lives in one place.
-# https://github.com/amacneil/dbmate/issues/678
-#
-# [Ja] dbmate が up / dump の双方で db/schema.sql へ書き込む、pg_dump 17.6 以降が
-# 出力するランダムな \restrict / \unrestrict 行を削除する。db-migrate と db-dump で
-# 共有し、回避策を 1 箇所にまとめる。
-STRIP_SCHEMA_RESTRICT = sed -i '/^\\restrict /d;/^\\unrestrict /d' db/schema.sql
+# [Ja] データベースコマンド。db-migrate / db-rollback はデータベースのパスを .env
+# から読み、op run がコマンドの起動前にそれを読み込む。db-new はファイルを作るだけの
+# ため、どちらも必要としない。
 
 .PHONY: db-migrate
-db-migrate: ## Apply pending migrations and dump the schema. [Ja] 未適用のマイグレーションを実行しスキーマをダンプ
-	$(OP_RUN_DEV) dbmate up
-	@$(STRIP_SCHEMA_RESTRICT)
+db-migrate: ## Apply pending migrations. [Ja] 未適用のマイグレーションを実行
+	$(OP_RUN_DEV) go run ./cmd/migrate up
 
 .PHONY: db-rollback
 db-rollback: ## Roll back the most recent migration. [Ja] 直近のマイグレーションをロールバック
-	$(OP_RUN_DEV) dbmate down
+	$(OP_RUN_DEV) go run ./cmd/migrate down
 
+# The generated file holds the two annotations goose reads to split a migration
+# into its up and down halves, under a UTC timestamp that fixes the order the
+# migrations are applied in.
+#
+# [Ja] 生成されるファイルは、goose がマイグレーションを up と down の 2 つに分けて読む
+# ための注釈 2 行を持つ。ファイル名の先頭に付ける UTC のタイムスタンプが、
+# マイグレーションを適用する順序を決める。
 .PHONY: db-new
 db-new: ## Create a new migration file (usage: make db-new name=create_users). [Ja] 新しいマイグレーションファイルを作成
-	dbmate new $(name)
-
-.PHONY: db-dump
-db-dump: ## Dump the current database schema to db/schema.sql. [Ja] 現在の DB スキーマを db/schema.sql にダンプ
-	$(OP_RUN_DEV) dbmate dump
-	@$(STRIP_SCHEMA_RESTRICT)
-
-.PHONY: db-setup-test
-db-setup-test: ## Reset the test database and apply db/schema.sql. [Ja] テスト用 DB をリセットしてスキーマを適用
-	@if [ "$$CI" = "true" ]; then host=localhost; else host=postgresql; fi; \
-	echo "Resetting the test database and applying the schema (host=$$host)"; \
-	psql -h $$host -U postgres -d groobb_test -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' > /dev/null 2>&1; \
-	psql -h $$host -U postgres -d groobb_test -f db/schema.sql > /dev/null
+	@if [ -z "$(name)" ]; then \
+		echo "Error: set the name variable"; \
+		echo "Usage: make db-new name=create_users"; \
+		exit 1; \
+	fi
+	@file="db/migrations/$$(date -u +%Y%m%d%H%M%S)_$(name).sql"; \
+	printf -- '-- +goose Up\n\n-- +goose Down\n' > "$$file"; \
+	echo "Created $$file"
 
 .PHONY: sqlc-generate
 sqlc-generate: ## Generate Go code from SQL queries. [Ja] SQL クエリから Go コードを生成

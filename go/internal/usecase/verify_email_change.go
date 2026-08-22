@@ -2,12 +2,9 @@ package usecase
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
 	"log/slog"
-
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/i18n"
@@ -15,17 +12,6 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/validator"
 )
-
-// pgUniqueViolationCode is PostgreSQL's SQLSTATE for a unique_violation. The
-// email-change apply can hit it when the new address is claimed by another
-// account between the request-time uniqueness check and this update, and that
-// race is turned into a user-fixable validation error rather than a 500.
-//
-// [Ja] pgUniqueViolationCode は PostgreSQL の unique_violation の SQLSTATE です。
-// メール変更の適用は、申請時の一意性チェックからこの更新までの間に新しいアドレスが別
-// アカウントに取得されると発生しうるため、その競合を 500 ではなくユーザーが修正できる
-// バリデーションエラーに変換します。
-const pgUniqueViolationCode = "23505"
 
 // VerifyEmailChangeUsecase orchestrates the confirm step of an email change: it
 // validates the submitted code's format, resolves the signed-in user's active
@@ -53,28 +39,28 @@ const pgUniqueViolationCode = "23505"
 // コミット後、以前のアドレスへベストエフォートの通知を投入し、本人が意図しない変更に
 // 気づけるようにします。
 type VerifyEmailChangeUsecase struct {
-	db                    *pgxpool.Pool
+	writer                *sql.DB
 	confirmationValidator *validator.SettingsEmailConfirmationCreateValidator
 	emailConfirmationRepo *repository.EmailConfirmationRepository
 	userRepo              *repository.UserRepository
 	dispatcher            *dispatcher.Dispatcher
 }
 
-// NewVerifyEmailChangeUsecase builds a VerifyEmailChangeUsecase from the pool, its
+// NewVerifyEmailChangeUsecase builds a VerifyEmailChangeUsecase from the write pool, its
 // validator, the repositories it persists through, and the dispatcher used to
 // enqueue the post-change notification.
 //
-// [Ja] NewVerifyEmailChangeUsecase はプール・validator・永続化に使うリポジトリ・変更後の
+// [Ja] NewVerifyEmailChangeUsecase は書き込み用プール・validator・永続化に使うリポジトリ・変更後の
 // 通知を投入する dispatcher から VerifyEmailChangeUsecase を構築します。
 func NewVerifyEmailChangeUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	confirmationValidator *validator.SettingsEmailConfirmationCreateValidator,
 	emailConfirmationRepo *repository.EmailConfirmationRepository,
 	userRepo *repository.UserRepository,
 	dispatcher *dispatcher.Dispatcher,
 ) *VerifyEmailChangeUsecase {
 	return &VerifyEmailChangeUsecase{
-		db:                    db,
+		writer:                writer,
 		confirmationValidator: confirmationValidator,
 		emailConfirmationRepo: emailConfirmationRepo,
 		userRepo:              userRepo,
@@ -198,11 +184,11 @@ func (uc *VerifyEmailChangeUsecase) notifyOldAddress(ctx context.Context, oldEma
 // 意味し、フォーム全体の ValidationError (500 ではなく) として表面化させ、ユーザーが別の
 // アドレスで再試行できるようにします。
 func (uc *VerifyEmailChangeUsecase) verify(ctx context.Context, confirmation *model.EmailConfirmation, code string) (*VerifyEmailChangeOutput, error) {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	emailConfirmationRepo := uc.emailConfirmationRepo.WithTx(tx)
 	userRepo := uc.userRepo.WithTx(tx)
@@ -211,7 +197,7 @@ func (uc *VerifyEmailChangeUsecase) verify(ctx context.Context, confirmation *mo
 		if err := emailConfirmationRepo.IncrementFailedAttempts(ctx, confirmation.ID); err != nil {
 			return nil, fmt.Errorf("メール変更確認の失敗試行回数の更新に失敗: %w", err)
 		}
-		if err := tx.Commit(ctx); err != nil {
+		if err := tx.Commit(); err != nil {
 			return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 		}
 
@@ -230,8 +216,15 @@ func (uc *VerifyEmailChangeUsecase) verify(ctx context.Context, confirmation *mo
 	// [Ja] UserID はメール変更の確認では非 nil であり (サインイン済みユーザーが発行する)、
 	// Email は切り替え先の新しいアドレスである。
 	if err := userRepo.UpdateEmail(ctx, *confirmation.UserID, confirmation.Email); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolationCode {
+		// The email-change apply hits the UNIQUE constraint when the new address is
+		// claimed by another account between the request-time uniqueness check and
+		// this update, and that race is turned into a user-fixable validation error
+		// rather than a 500.
+		//
+		// [Ja] メール変更の適用は、申請時の一意性チェックからこの更新までの間に新しい
+		// アドレスが別アカウントに取得されると UNIQUE 制約に当たる。その競合を 500 では
+		// なくユーザーが修正できるバリデーションエラーに変換する。
+		if repository.IsUniqueViolation(err) {
 			// The address was claimed by another account after the request-time
 			// check. Return without committing so the defer rolls back both the
 			// stamp and the update, leaving the confirmation active; the user is
@@ -247,7 +240,7 @@ func (uc *VerifyEmailChangeUsecase) verify(ctx context.Context, confirmation *mo
 		return nil, fmt.Errorf("メールアドレスの更新に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

@@ -3,12 +3,17 @@
 /.playwright-mcp
 /.pnpm-store
 /bin
+/data/*
+!/data/.gitkeep
 /e2e/node_modules
+/groobb.toml
+/migrate
 /node_modules
 /server
 /static/css/*
 !/static/css/.gitkeep
 /static/js/*
+!/static/js/.gitkeep
 !/static/js/vendor/
 /tmp
 /web/dist

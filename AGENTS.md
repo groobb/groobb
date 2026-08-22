@@ -1,4 +1,4 @@
-<!-- last_synced: 2026-08-02 -->
+<!-- last_synced: 2026-08-22 -->
 
 # Groobb Development Guide
 
@@ -99,7 +99,59 @@ New comments added to an existing file follow these rules even when the surround
 
 ## Coding Conventions
 
-- For environment variables defined by Groobb, always prefix them with `GROOBB_` (except those required by external libraries)
+### Settings
+
+Settings come from a TOML configuration file and from environment variables, and an environment variable holding a non-empty value wins over the file.
+For environment variables defined by Groobb, always prefix them with `GROOBB_` (except those required by external libraries).
+
+Adding one setting means updating all of the following together:
+
+- the `Config` field and its resolution through `newSetting` in `Load` ([internal/config](./go/internal/config/config.go))
+- the `fileConfig` field ([internal/config/file.go](./go/internal/config/file.go))
+- the commented entry in [groobb.example.toml](./go/groobb.example.toml)
+- the entry in `Config.LogValue`, for a secret
+
+Keep the environment variable name and the file key one to one, with the component the variable names becoming the table (`GROOBB_SMTP_HOST` is `host` under `[email.smtp]`).
+Reject invalid values and missing required settings at startup.
+Use the methods of `setting` so an invalid-value error names the value's actual source, while a missing-setting error names both accepted inputs.
+Keep the example file in step with the schema, which rejects unknown keys: a sample that drifts from it stops the instance of whoever copied it.
+
+Never log a secret.
+`Config.LogValue` renders a configured secret as `[REDACTED]`, and a parse error from the configuration file drops the library's message, which can quote the file.
+
+### Embedded Resources
+
+Static assets, locales, and migrations ship inside the binary through `embed.FS`, so that they are read without depending on the directory the server runs from.
+A self-hosted instance runs from the binary alone, so reading any of them from disk breaks that premise.
+For the embedding, see [static](./go/static/static.go) and [db](./go/db/migrations.go).
+
+### Groobb-Owned SQLite Schema
+
+These conventions apply only to the application schema owned by Groobb.
+Migrations owned by River retain their upstream declarations and are outside the scope of this section.
+
+- Primary keys are `INTEGER PRIMARY KEY`, without `AUTOINCREMENT`
+- Timestamp columns are declared `DATETIME` and boolean columns `BOOLEAN`
+- Timestamps hold ISO8601 UTC at a fixed width
+- When a column needs a database-generated current timestamp default, use `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
+- Use `COLLATE NOCASE` for case-insensitive uniqueness only when the column's values are restricted to ASCII; choose a Unicode-aware approach for values that allow Unicode
+- A list-valued column is `TEXT` holding a JSON array, guarded by `json_valid` and `json_type` checks
+
+The reasoning behind these conventions is in the comment at the top of the [initial schema](./go/db/migrations/20260821075404_create_initial_schema.sql).
+The River exception is documented in the [River migration](./go/db/migrations/20260821101022_create_river_tables.sql).
+
+### Reading and Writing SQLite
+
+Pass a timestamp to a query through `sqlitetime.Time`; never bind a plain `time.Time`.
+Columns declared `DATETIME` already carry this type through a sqlc override, so following the generated code is usually enough.
+To read the stored text itself, use an expression that has no declared type (`CAST(x AS TEXT)`).
+
+Write through the `Writer` of `database.DB` and read through its `Reader`.
+A repository holds two `*query.Queries` and picks between them per method, while a UseCase takes only the write pool, as `writer *sql.DB`.
+Open application connections through `database.Open`; do not call `sql.Open` directly in production code.
+Do not construct an application write connection without the shared PRAGMAs and `_txlock=immediate`.
+
+For the format and the types see [internal/sqlitetime](./go/internal/sqlitetime/sqlitetime.go), and for the pool setup see the `DB` and DSN builder comments in [internal/database](./go/internal/database/database.go).
 
 ## Working with Coding Agents
 

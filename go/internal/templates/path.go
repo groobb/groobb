@@ -255,35 +255,3 @@ func SettingsWithdrawalNewPath() Path {
 func SettingsWithdrawalPath() Path {
 	return Path("/settings/withdrawal")
 }
-
-// CommunityNewPath returns the path to the community-creation form.
-//
-// [Ja] CommunityNewPath はコミュニティ作成フォームのパスを返します。
-func CommunityNewPath() Path {
-	return Path("/communities/new")
-}
-
-// CommunityListPath returns the path to the community collection. Creating a
-// community targets it with POST /communities.
-//
-// [Ja] CommunityListPath はコミュニティのコレクションのパスを返します。コミュニティの
-// 作成は POST /communities でこれを対象とします。
-func CommunityListPath() Path {
-	return Path("/communities")
-}
-
-// CommunityPath returns the path to a community's own page. Pages belonging to a
-// community live under the short /c/ prefix rather than /communities, so the URL
-// stays short as boards and posts nest beneath it and no identifier can collide
-// with a route in the collection namespace. identifier is a value the
-// community-creation validator has accepted (ASCII letters, digits, and hyphens),
-// so it needs no escaping here.
-//
-// [Ja] CommunityPath はコミュニティ自身の画面のパスを返します。コミュニティに属する画面は
-// /communities ではなく短縮した /c/ 接頭辞の下に置き、掲示板や投稿がその下に入れ子に
-// なっても URL を短く保ち、識別子がコレクション名前空間のルートと衝突しないようにします。
-// identifier はコミュニティ作成のバリデーターが受け付けた値 (ASCII 英数字とハイフン) の
-// ため、ここでのエスケープは不要です。
-func CommunityPath(identifier string) Path {
-	return Path("/c/" + identifier)
-}

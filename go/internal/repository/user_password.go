@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
 )
@@ -17,16 +17,17 @@ import (
 // [Ja] UserPasswordRepository は sqlc 生成のクエリ経由で user_passwords を読み書き
 // します。
 type UserPasswordRepository struct {
-	q *query.Queries
+	reader *query.Queries
+	writer *query.Queries
 }
 
-// NewUserPasswordRepository creates a UserPasswordRepository backed by the given
-// queries.
+// NewUserPasswordRepository creates a UserPasswordRepository that reads through the database's read pool
+// and writes through its write pool.
 //
-// [Ja] NewUserPasswordRepository は与えられた queries を使う UserPasswordRepository を
-// 生成します。
-func NewUserPasswordRepository(q *query.Queries) *UserPasswordRepository {
-	return &UserPasswordRepository{q: q}
+// [Ja] NewUserPasswordRepository は、データベースの読み取り用プールで読み、書き込み用プールで書く
+// UserPasswordRepository を生成します。
+func NewUserPasswordRepository(db *database.DB) *UserPasswordRepository {
+	return &UserPasswordRepository{reader: query.New(db.Reader), writer: query.New(db.Writer)}
 }
 
 // WithTx returns a new UserPasswordRepository whose queries run inside tx, so a
@@ -36,8 +37,9 @@ func NewUserPasswordRepository(q *query.Queries) *UserPasswordRepository {
 // [Ja] WithTx は queries を tx 内で実行する新しい UserPasswordRepository を返し、
 // UseCase が本リポジトリを自身のトランザクションに参加させられる (例: ユーザーと
 // そのパスワードをアトミックに作成する) ようにします。レシーバ自身は変更しません。
-func (r *UserPasswordRepository) WithTx(tx pgx.Tx) *UserPasswordRepository {
-	return &UserPasswordRepository{q: r.q.WithTx(tx)}
+func (r *UserPasswordRepository) WithTx(tx *sql.Tx) *UserPasswordRepository {
+	q := r.writer.WithTx(tx)
+	return &UserPasswordRepository{reader: q, writer: q}
 }
 
 // FindByUserID returns the password credential of the user with the given ID, or
@@ -50,9 +52,9 @@ func (r *UserPasswordRepository) WithTx(tx pgx.Tx) *UserPasswordRepository {
 // 未存在は正常なルックアップ結果でありエラーではありません。業務上の失敗として扱うかは
 // 呼び出し側が判断します。
 func (r *UserPasswordRepository) FindByUserID(ctx context.Context, userID model.UserID) (*model.UserPassword, error) {
-	row, err := r.q.GetUserPasswordByUserID(ctx, uuid.UUID(userID))
+	row, err := r.reader.GetUserPasswordByUserID(ctx, int64(userID))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -78,8 +80,8 @@ type CreateUserPasswordInput struct {
 // [Ja] Create はパスワード資格情報を挿入し、DB が採番した id とタイムスタンプを
 // 設定した状態で返します。
 func (r *UserPasswordRepository) Create(ctx context.Context, input CreateUserPasswordInput) (*model.UserPassword, error) {
-	row, err := r.q.CreateUserPassword(ctx, query.CreateUserPasswordParams{
-		UserID:         uuid.UUID(input.UserID),
+	row, err := r.writer.CreateUserPassword(ctx, query.CreateUserPasswordParams{
+		UserID:         int64(input.UserID),
 		PasswordDigest: input.PasswordDigest,
 	})
 	if err != nil {
@@ -102,23 +104,23 @@ func (r *UserPasswordRepository) Create(ctx context.Context, input CreateUserPas
 // もここではエラーとしません。呼び出し側が事前にユーザーを解決するため、素の UPDATE に
 // 留めます。
 func (r *UserPasswordRepository) UpdatePasswordDigest(ctx context.Context, userID model.UserID, passwordDigest string) error {
-	return r.q.UpdateUserPasswordDigestByUserID(ctx, query.UpdateUserPasswordDigestByUserIDParams{
-		UserID:         uuid.UUID(userID),
+	return r.writer.UpdateUserPasswordDigestByUserID(ctx, query.UpdateUserPasswordDigestByUserIDParams{
+		UserID:         int64(userID),
 		PasswordDigest: passwordDigest,
 	})
 }
 
 // toModel converts a query.UserPassword row into a model.UserPassword, casting
-// the raw uuids into the typed IDs at the repository boundary.
+// the raw ids into the typed IDs at the repository boundary.
 //
 // [Ja] toModel は query.UserPassword を model.UserPassword に変換し、リポジトリの
-// 境界で生の uuid を型付き ID にキャストします。
+// 境界で生の id を型付き ID にキャストします。
 func (r *UserPasswordRepository) toModel(row query.UserPassword) *model.UserPassword {
 	return &model.UserPassword{
 		ID:             model.UserPasswordID(row.ID),
 		UserID:         model.UserID(row.UserID),
 		PasswordDigest: row.PasswordDigest,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		CreatedAt:      time.Time(row.CreatedAt),
+		UpdatedAt:      time.Time(row.UpdatedAt),
 	}
 }

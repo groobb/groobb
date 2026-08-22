@@ -2,11 +2,10 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/groobb/groobb/go/internal/auth"
 	"github.com/groobb/groobb/go/internal/config"
@@ -29,7 +28,7 @@ import (
 // 呼び出し側への結果は同じになるため、レスポンスはアカウントの存在有無を決して明かしません。
 // トークン自体は別のパスワード更新フローで消費されます。
 type CreatePasswordResetTokenUsecase struct {
-	db                     *pgxpool.Pool
+	writer                 *sql.DB
 	passwordResetValidator *validator.PasswordResetCreateValidator
 	userRepo               *repository.UserRepository
 	passwordResetTokenRepo *repository.PasswordResetTokenRepository
@@ -38,12 +37,12 @@ type CreatePasswordResetTokenUsecase struct {
 }
 
 // NewCreatePasswordResetTokenUsecase builds a CreatePasswordResetTokenUsecase
-// from the pool, validator, repositories, dispatcher, and config.
+// from the write pool, validator, repositories, dispatcher, and config.
 //
-// [Ja] NewCreatePasswordResetTokenUsecase はプール・validator・リポジトリ・dispatcher・
+// [Ja] NewCreatePasswordResetTokenUsecase は書き込み用プール・validator・リポジトリ・dispatcher・
 // config から CreatePasswordResetTokenUsecase を構築します。
 func NewCreatePasswordResetTokenUsecase(
-	db *pgxpool.Pool,
+	writer *sql.DB,
 	passwordResetValidator *validator.PasswordResetCreateValidator,
 	userRepo *repository.UserRepository,
 	passwordResetTokenRepo *repository.PasswordResetTokenRepository,
@@ -51,7 +50,7 @@ func NewCreatePasswordResetTokenUsecase(
 	cfg *config.Config,
 ) *CreatePasswordResetTokenUsecase {
 	return &CreatePasswordResetTokenUsecase{
-		db:                     db,
+		writer:                 writer,
 		passwordResetValidator: passwordResetValidator,
 		userRepo:               userRepo,
 		passwordResetTokenRepo: passwordResetTokenRepo,
@@ -162,11 +161,11 @@ func (uc *CreatePasswordResetTokenUsecase) Execute(ctx context.Context, input Cr
 // 有効なリセットトークンを溜め込まないようにします。ダイジェストと有効期限は事前に
 // Execute が計算済みで、トランザクションを純粋な永続化に保ちます。
 func (uc *CreatePasswordResetTokenUsecase) createToken(ctx context.Context, userID model.UserID, tokenDigest string, expiresAt time.Time) (*model.PasswordResetToken, error) {
-	tx, err := uc.db.Begin(ctx)
+	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer func() { _ = tx.Rollback() }()
 
 	tokenRepo := uc.passwordResetTokenRepo.WithTx(tx)
 
@@ -183,7 +182,7 @@ func (uc *CreatePasswordResetTokenUsecase) createToken(ctx context.Context, user
 		return nil, fmt.Errorf("リセットトークンの作成に失敗: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 

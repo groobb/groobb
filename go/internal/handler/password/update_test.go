@@ -10,12 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/groobb/groobb/go/internal/auth"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
@@ -40,24 +38,21 @@ func patchPassword(token, password, passwordConfirmation, locale string) *http.R
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// seedResetTokenForUser creates a committed user with a password and a usable
-// reset token, returning the plaintext token to submit. Used by handler tests
-// whose usecase opens its own transaction (so seed rows must be committed).
+// seedResetTokenForUser creates a user with a password and a usable reset token,
+// returning the plaintext token to submit.
 //
-// [Ja] seedResetTokenForUser はパスワードと使えるリセットトークンを持つコミット済み
-// ユーザーを作成し、送信する平文トークンを返す。自前のトランザクションを開く UseCase を
-// 持つハンドラーテスト用 (仕込み行をコミットする必要があるため)。
-func seedResetTokenForUser(t *testing.T, password string) string {
+// [Ja] seedResetTokenForUser はパスワードと使えるリセットトークンを持つユーザーを
+// 作成し、送信する平文トークンを返す。
+func seedResetTokenForUser(t *testing.T, db *database.DB, password string) string {
 	t.Helper()
 
 	ctx := context.Background()
-	queries := query.New(testutil.GetTestDB())
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	tokenRepo := repository.NewPasswordResetTokenRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	tokenRepo := repository.NewPasswordResetTokenRepository(db)
 
-	email := fmt.Sprintf("pw-h-%s@example.com", uuid.NewString())
-	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(), Locale: "ja", TimeZone: "Asia/Tokyo"})
+	email := "pw-h@example.com"
+	user, err := userRepo.Create(ctx, repository.CreateUserInput{Email: email, Atname: testutil.UniqueAtname(db), Locale: "ja", TimeZone: "Asia/Tokyo"})
 	if err != nil {
 		t.Fatalf("ユーザーの作成に失敗: %v", err)
 	}
@@ -69,7 +64,7 @@ func seedResetTokenForUser(t *testing.T, password string) string {
 		t.Fatalf("パスワード資格情報の作成に失敗: %v", err)
 	}
 
-	rawToken := "h-token-" + uuid.NewString()
+	rawToken := "h-token"
 	if _, err := tokenRepo.Create(ctx, repository.CreatePasswordResetTokenInput{
 		UserID:      user.ID,
 		TokenDigest: auth.HashToken(rawToken),
@@ -88,8 +83,10 @@ func seedResetTokenForUser(t *testing.T, password string) string {
 func TestUpdate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newPasswordHandler(t)
-	rawToken := seedResetTokenForUser(t, "oldpassword123")
+	db := testutil.SetupDB(t)
+
+	handler := newPasswordHandler(t, db)
+	rawToken := seedResetTokenForUser(t, db, "oldpassword123")
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchPassword(rawToken, "newpassword123", "newpassword123", i18n.LangJa))
@@ -112,8 +109,10 @@ func TestUpdate_Success(t *testing.T) {
 func TestUpdate_InvalidPasswordRetainsToken(t *testing.T) {
 	t.Parallel()
 
-	handler := newPasswordHandler(t)
-	rawToken := seedResetTokenForUser(t, "oldpassword123")
+	db := testutil.SetupDB(t)
+
+	handler := newPasswordHandler(t, db)
+	rawToken := seedResetTokenForUser(t, db, "oldpassword123")
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchPassword(rawToken, "newpassword123", "different456", i18n.LangJa))
@@ -143,7 +142,9 @@ func TestUpdate_InvalidPasswordRetainsToken(t *testing.T) {
 func TestUpdate_InvalidTokenClearsToken(t *testing.T) {
 	t.Parallel()
 
-	handler := newPasswordHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newPasswordHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	handler.Update(rec, patchPassword("no-such-token", "newpassword123", "newpassword123", i18n.LangJa))

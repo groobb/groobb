@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
@@ -56,8 +56,10 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
-	userID := seedUserWithEnabledTwoFactor(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
+	userID := seedUserWithEnabledTwoFactor(t, db)
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -65,7 +67,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), code, "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), code, "", i18n.LangJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -85,6 +87,40 @@ func TestCreate_Success(t *testing.T) {
 	}
 }
 
+// TestCreate_UnsignedNumericCookieCannotCompleteSignIn verifies that knowing a
+// user's sequential id and a valid current TOTP code is insufficient without the
+// signed handoff token issued by the preceding password step.
+//
+// [Ja] TestCreate_UnsignedNumericCookieCannotCompleteSignIn は、ユーザーの連番 id と現在の
+// 正しい TOTP コードを知っていても、直前のパスワードステップが発行する署名付き受け渡し
+// token が無ければサインインを完了できないことを検証する。
+func TestCreate_UnsignedNumericCookieCannotCompleteSignIn(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
+	userID := seedUserWithEnabledTwoFactor(t, db)
+
+	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
+	if err != nil {
+		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.Create(rec, postCreate(userID.String(), code, "", i18n.LangJa))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/sign_in" {
+		t.Errorf("Location = %q, want %q", loc, "/sign_in")
+	}
+	if findCookie(rec, session.CookieName) != nil {
+		t.Error("未署名の連番 id Cookie でセッション Cookie が設定されている")
+	}
+}
+
 // TestCreate_WrongCode verifies that a well-formed but non-matching code re-renders
 // the form with 422 and the incorrect-code message, echoes the entered code back,
 // preserves the requested destination, and issues no session.
@@ -95,8 +131,10 @@ func TestCreate_Success(t *testing.T) {
 func TestCreate_WrongCode(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
-	userID := seedUserWithEnabledTwoFactor(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
+	userID := seedUserWithEnabledTwoFactor(t, db)
 
 	validCode, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
@@ -108,7 +146,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), wrongCode, "/c/groobb", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), wrongCode, "/settings", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -123,7 +161,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	if !strings.Contains(body, `name="return_to"`) {
 		t.Error("再描画されたフォームに return_to フィールドが無い")
 	}
-	if !strings.Contains(body, `value="/c/groobb"`) {
+	if !strings.Contains(body, `value="/settings"`) {
 		t.Error("再描画されたフォームに return_to の値が保持されていない")
 	}
 	if findCookie(rec, session.CookieName) != nil {
@@ -139,11 +177,13 @@ func TestCreate_WrongCode(t *testing.T) {
 func TestCreate_InvalidFormat(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
-	userID := seedUserWithEnabledTwoFactor(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
+	userID := seedUserWithEnabledTwoFactor(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), "abc", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), "abc", "", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -167,13 +207,15 @@ func TestCreate_InvalidFormat(t *testing.T) {
 func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
 
 	rec := httptest.NewRecorder()
 	// A random user id that has no enabled 2FA setting: the challenge cannot succeed.
 	//
 	// [Ja] 有効な 2FA 設定を持たないランダムなユーザー id: チャレンジは成功しえない。
-	handler.Create(rec, postCreate(uuid.NewString(), "123456", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), "123456", "", i18n.LangJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -198,7 +240,9 @@ func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 	t.Parallel()
 
-	handler := newSignInTwoFactorHandler(t)
+	db := testutil.SetupDB(t)
+
+	handler := newSignInTwoFactorHandler(t, db)
 
 	tests := []struct {
 		name         string
@@ -217,8 +261,8 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 		// 運び、ホームに着地させない。
 		{
 			name:         "遷移先あり",
-			returnTo:     "/c/groobb",
-			wantLocation: "/sign_in?return_to=%2Fc%2Fgroobb",
+			returnTo:     "/settings",
+			wantLocation: "/sign_in?return_to=%2Fsettings",
 		},
 	}
 
@@ -257,12 +301,14 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 func TestCreate_ReturnTo(t *testing.T) {
 	t.Parallel()
 
+	db := testutil.SetupDB(t)
+
 	tests := []struct {
 		name         string
 		returnTo     string
 		wantLocation string
 	}{
-		{name: "同一オリジンの相対パスへ戻す", returnTo: "/c/groobb", wantLocation: "/c/groobb"},
+		{name: "同一オリジンの相対パスへ戻す", returnTo: "/settings", wantLocation: "/settings"},
 		{name: "別オリジンを指す値はホームへフォールバックする", returnTo: "https://evil.example.com", wantLocation: "/home"},
 	}
 
@@ -270,8 +316,8 @@ func TestCreate_ReturnTo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			handler := newSignInTwoFactorHandler(t)
-			userID := seedUserWithEnabledTwoFactor(t)
+			handler := newSignInTwoFactorHandler(t, db)
+			userID := seedUserWithEnabledTwoFactor(t, db)
 
 			code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 			if err != nil {
@@ -281,7 +327,7 @@ func TestCreate_ReturnTo(t *testing.T) {
 			form := url.Values{"code": {code}, "return_to": {tt.returnTo}}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in/two_factor", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: userID.String()})
+			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: twoFactorPendingToken(t, userID)})
 			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
 			rec := httptest.NewRecorder()
 

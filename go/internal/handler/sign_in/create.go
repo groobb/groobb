@@ -125,7 +125,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 未サインインのまま放置せず 500 として表面化する。
 	sessionOutput, err := h.createSessionUC.Execute(ctx, usecase.CreateSessionInput{
 		UserID:    signInOutput.User.ID,
-		IPAddress: clientip.GetClientIP(r),
+		IPAddress: clientip.GetClientIP(r, h.cfg.TrustedProxies),
 		UserAgent: r.UserAgent(),
 	})
 	if err != nil {

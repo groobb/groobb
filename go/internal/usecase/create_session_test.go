@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -19,11 +18,11 @@ import (
 func TestCreateSessionUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	userSessionRepo := repository.NewUserSessionRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	userSessionRepo := repository.NewUserSessionRepository(db)
 	uc := usecase.NewCreateSessionUsecase(userSessionRepo)
 
-	userID := testutil.NewUserBuilder(t, tx).Build()
+	userID := testutil.NewUserBuilder(t, db).Build()
 
 	out, err := uc.Execute(context.Background(), usecase.CreateSessionInput{
 		UserID:    userID,

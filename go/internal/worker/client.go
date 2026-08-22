@@ -12,19 +12,18 @@ package worker
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/riverdriver/riversqlite"
 
 	"github.com/groobb/groobb/go/internal/config"
+	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/email"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
@@ -40,61 +39,57 @@ import (
 // 影響しません。
 const purgeWithdrawnUsersInterval = 24 * time.Hour
 
-// Client wraps the River client together with the pgx pool it owns, so the two
-// can be started and shut down as a single unit.
+// Client wraps the River client together with the database connection it owns,
+// so the two can be started and shut down as a single unit.
 //
-// [Ja] Client は River クライアントと、それが所有する pgx プールをまとめて保持し、
+// [Ja] Client は River クライアントと、それが所有するデータベース接続をまとめて保持し、
 // 起動と停止を 1 つの単位として扱えるようにする。
 type Client struct {
-	riverClient *river.Client[pgx.Tx]
-	pool        *pgxpool.Pool
+	riverClient *river.Client[*sql.Tx]
+	db          *database.DB
 }
 
-// NewClient builds the River client on its own connection pool. The pool is
-// dedicated to background job processing, separate from the application's
-// request-serving pool, so jobs and HTTP traffic do not compete for the same
-// connections. Worker-only dependencies are built from cfg inside this function
+// NewClient opens its own connection to the database file and builds the River
+// client on it. The write connection is dedicated to background job processing,
+// separate from the one serving requests, because River writes on its own
+// schedule (looking for available jobs, holding the leader election) and a
+// shared single-writer connection would queue the application's writes behind
+// that traffic. Worker-only dependencies are built from cfg inside this function
 // (rather than injected) so they stay encapsulated here and never leak into the
 // rest of the DI graph; more worker registrations are added here as jobs are
 // introduced in later tasks.
 //
-// [Ja] NewClient は専用の接続プール上に River クライアントを構築する。プールは
-// バックグラウンドジョブ処理専用で、アプリのリクエスト処理用プールとは分離し、ジョブと
-// HTTP トラフィックが同じ接続を奪い合わないようにする。ワーカー専用の依存は (注入では
-// なく) 本関数内で cfg から構築し、ここに閉じ込めて DI グラフの他の部分へ漏らさない。
-// 追加のワーカー登録は、後続タスクでジョブが導入されるのに合わせてここに加える。
-func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Client, error) {
-	poolConfig, err := pgxpool.ParseConfig(databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("ワーカー用プール設定の解析に失敗: %w", err)
-	}
-
-	// Keep the worker pool small and bounded: background jobs are not
-	// latency-critical, and a dedicated pool avoids starving the HTTP pool.
-	//
-	// [Ja] ワーカー用プールは小さく上限を設ける。バックグラウンドジョブはレイテンシ
-	// 重視ではなく、専用プールにすることで HTTP 用プールを枯渇させないようにする。
-	poolConfig.MaxConns = 10
-	poolConfig.MinConns = 2
-	poolConfig.MaxConnLifetime = 5 * time.Minute
-	poolConfig.MaxConnIdleTime = 2 * time.Minute
-
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		return nil, fmt.Errorf("ワーカー用接続プールの作成に失敗: %w", err)
-	}
-
+// [Ja] NewClient はデータベースファイルへの専用の接続を開き、その上に River
+// クライアントを構築する。書き込み用コネクションをリクエスト処理用と分けるのは、River が
+// 自身のスケジュールで (空きジョブの探索やリーダー選出のために) 書き込むためで、単一の
+// ライターを共有するとアプリケーションの書き込みがその後ろに並んでしまう。ワーカー専用の
+// 依存は (注入ではなく) 本関数内で cfg から構築し、ここに閉じ込めて DI グラフの他の部分へ
+// 漏らさない。追加のワーカー登録は、後続タスクでジョブが導入されるのに合わせてここに加える。
+func NewClient(ctx context.Context, databasePath string, cfg *config.Config) (*Client, error) {
 	// Build the worker-only email dependencies from cfg and register the mail
 	// workers (email confirmation, password reset, and email-change
-	// notification). Constructing the senders here keeps Resend configuration out
-	// of main.go's DI graph, where no request-path code needs it; all per-mail
-	// senders share the one base ResendSender.
+	// notification). The sender is built before the database connection is opened
+	// so a rejected email configuration fails without leaving a connection to
+	// close. Constructing the senders here keeps the provider configuration out of
+	// main.go's DI graph, where no request-path code needs it; all per-mail
+	// senders share the one base sender.
 	//
 	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認・
-	// パスワードリセット・メールアドレス変更通知) を登録する。ここで sender を構築する
-	// ことで、リクエスト経路のコードが必要としない Resend 設定を main.go の DI グラフから
-	// 締め出す。メール種別ごとの各 sender は 1 つの基盤 ResendSender を共有する。
-	emailSender := email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
+	// パスワードリセット・メールアドレス変更通知) を登録する。sender をデータベース接続を
+	// 開く前に構築するのは、メール設定が拒否された場合に閉じるべき接続を残さず失敗させる
+	// ため。ここで sender を構築することで、リクエスト経路のコードが必要としない
+	// プロバイダー設定を main.go の DI グラフから締め出す。メール種別ごとの各 sender は
+	// 1 つの基盤 sender を共有する。
+	emailSender, err := newEmailSender(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := database.Open(ctx, databasePath)
+	if err != nil {
+		return nil, fmt.Errorf("ワーカー用データベース接続の作成に失敗: %w", err)
+	}
+
 	confirmationSender := email.NewConfirmationSender(emailSender)
 	sendEmailConfirmationUC := usecase.NewSendEmailConfirmationUsecase(confirmationSender)
 
@@ -104,16 +99,16 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	emailChangeNotificationSender := email.NewEmailChangeNotificationSender(emailSender)
 	sendEmailChangeNotificationUC := usecase.NewSendEmailChangeNotificationUsecase(emailChangeNotificationSender)
 
-	// Build the withdrawn-user purge UseCase over the worker pool. Unlike the mail
-	// jobs it needs database access, so a repository is built here from the worker
-	// pool; it is a worker-only dependency (only the periodic purge job uses it) and
-	// so stays out of main.go's request-path DI graph.
+	// Build the withdrawn-user purge UseCase over the worker's own connection.
+	// Unlike the mail jobs it needs database access, so a repository is built here
+	// from that connection; it is a worker-only dependency (only the periodic purge
+	// job uses it) and so stays out of main.go's request-path DI graph.
 	//
-	// [Ja] 退会済みユーザーのパージ UseCase をワーカー用プール上に構築する。メールジョブと
-	// 違い DB アクセスが必要なため、リポジトリをここでワーカー用プールから構築する。これは
+	// [Ja] 退会済みユーザーのパージ UseCase をワーカー自身の接続上に構築する。メールジョブと
+	// 違い DB アクセスが必要なため、リポジトリをここでその接続から構築する。これは
 	// ワーカー専用の依存 (定期パージジョブだけが使う) のため、main.go のリクエスト経路の
 	// DI グラフには載せない。
-	purgeUserRepo := repository.NewUserRepository(query.New(pool))
+	purgeUserRepo := repository.NewUserRepository(db)
 	purgeWithdrawnUsersUC := usecase.NewPurgeWithdrawnUsersUsecase(purgeUserRepo)
 
 	workers := river.NewWorkers()
@@ -153,20 +148,20 @@ func NewClient(ctx context.Context, databaseURL string, cfg *config.Config) (*Cl
 	// [Ja] Logger: slog.Default() により River 自身のジョブ実行・リトライログを構造化
 	// ロガー経由で出力する。これでワーカー追加前から観測性が確保され、ワーカーの Work
 	// メソッドはエラーを返すだけでよくなる。
-	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+	riverClient, err := river.NewClient(riversqlite.New(db.Writer), &river.Config{
 		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 10}},
 		Workers:      workers,
 		Logger:       slog.Default(),
 		PeriodicJobs: periodicJobs,
 	})
 	if err != nil {
-		pool.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("ワーカーの River クライアントの作成に失敗: %w", err)
 	}
 
 	return &Client{
 		riverClient: riverClient,
-		pool:        pool,
+		db:          db,
 	}, nil
 }
 
@@ -178,16 +173,17 @@ func (c *Client) Start(ctx context.Context) error {
 	return c.riverClient.Start(ctx)
 }
 
-// Stop drains in-flight jobs, stops the client, and closes the pool it owns.
+// Stop drains in-flight jobs, stops the client, and closes the database
+// connection it owns.
 //
-// [Ja] Stop は実行中のジョブをドレインしてクライアントを停止し、所有するプールを閉じる。
+// [Ja] Stop は実行中のジョブをドレインしてクライアントを停止し、所有するデータベース
+// 接続を閉じる。
 func (c *Client) Stop(ctx context.Context) error {
 	slog.InfoContext(ctx, "River クライアントを停止します")
 	if err := c.riverClient.Stop(ctx); err != nil {
 		return err
 	}
-	c.pool.Close()
-	return nil
+	return c.db.Close()
 }
 
 // Client exposes the underlying River client so it can be wired into the
@@ -195,6 +191,34 @@ func (c *Client) Stop(ctx context.Context) error {
 //
 // [Ja] Client は基盤の River クライアントを公開し、ジョブ投入のため Dispatcher に
 // 配線できるようにする (dispatcher.JobInserter を満たす)。
-func (c *Client) Client() *river.Client[pgx.Tx] {
+func (c *Client) Client() *river.Client[*sql.Tx] {
 	return c.riverClient
+}
+
+// newEmailSender builds the base email sender the per-mail senders share,
+// picking the transport named by the configuration. An unset provider resolves
+// to Resend so that a Config built without one (a test, or a deployment made
+// before the setting existed) keeps its previous transport.
+//
+// [Ja] newEmailSender はメール種別ごとの Sender が共有する基盤 Sender を構築し、設定が
+// 指定する transport を選ぶ。プロバイダー未設定は Resend に解決する。これにより、設定を
+// 持たずに構築された Config (テストや、この設定が存在する前のデプロイ) は従来の transport を
+// 保つ。
+func newEmailSender(cfg *config.Config) (email.Sender, error) {
+	switch cfg.EmailProvider {
+	case config.EmailProviderSMTP:
+		return email.NewSMTPSender(email.SMTPConfig{
+			Host:      cfg.SMTPHost,
+			Port:      cfg.SMTPPort,
+			Username:  cfg.SMTPUsername,
+			Password:  cfg.SMTPPassword,
+			TLSMode:   email.SMTPTLSMode(cfg.SMTPTLSMode),
+			FromEmail: cfg.EmailFrom,
+			FromName:  cfg.EmailFromName,
+		}), nil
+	case config.EmailProviderResend, "":
+		return email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName), nil
+	default:
+		return nil, fmt.Errorf("未知のメール送信プロバイダーです: %q", cfg.EmailProvider)
+	}
 }

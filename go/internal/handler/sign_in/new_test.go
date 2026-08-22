@@ -143,13 +143,13 @@ func TestNew_ReturnTo(t *testing.T) {
 	}{
 		{
 			name:          "同一オリジンの相対パスは hidden フィールドで引き継ぐ",
-			returnTo:      "/c/groobb",
+			returnTo:      "/settings",
 			wantHidden:    true,
-			wantAttribute: `value="/c/groobb"`,
+			wantAttribute: `value="/settings"`,
 		},
 		{
 			name:       "別オリジンを指す値は引き継がない",
-			returnTo:   "https://evil.example.com/c/groobb",
+			returnTo:   "https://evil.example.com/settings",
 			wantHidden: false,
 		},
 		{

@@ -2,24 +2,24 @@ package dispatcher
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 )
 
-// Compile-time proof that River's pgx client satisfies JobInserter, so main.go
+// Compile-time proof that River's SQLite client satisfies JobInserter, so main.go
 // can wire dispatcher.NewDispatcher(workerClient.Client()) directly once the
 // first enqueue-side consumer (a UseCase) exists. If River changes the Insert
 // signature, this breaks the build here rather than at the (not-yet-written)
 // wiring site.
 //
-// [Ja] River の pgx クライアントが JobInserter を満たすことのコンパイル時保証。これにより
+// [Ja] River の SQLite クライアントが JobInserter を満たすことのコンパイル時保証。これにより
 // 最初の投入側の利用者 (UseCase) ができた時点で main.go が
 // dispatcher.NewDispatcher(workerClient.Client()) をそのまま配線できる。River が Insert の
 // シグネチャを変えた場合、(まだ書かれていない) 配線箇所ではなくここでビルドが壊れる。
-var _ JobInserter = (*river.Client[pgx.Tx])(nil)
+var _ JobInserter = (*river.Client[*sql.Tx])(nil)
 
 // mockJobInserter records the last enqueued job so tests can assert which args
 // and options a future Enqueue* method passes to Insert.

@@ -1,4 +1,4 @@
-<!-- last_synced: 2026-08-02 -->
+<!-- last_synced: 2026-08-22 -->
 
 # Groobb 開発ガイドライン
 
@@ -99,7 +99,59 @@ Groobb ではフィーチャーブランチではなく **フィーチャーフ�
 
 ## コーディング規約
 
-- Groobb が定義する環境変数には必ず `GROOBB_` プレフィックスを付ける (外部ライブラリが要求するものを除く)
+### 設定
+
+設定は TOML の設定ファイルと環境変数から読み込み、空でない値を持つ環境変数がファイルの値に優先する。
+Groobb が定義する環境変数には必ず `GROOBB_` プレフィックスを付ける (外部ライブラリが要求するものを除く)。
+
+設定を 1 つ増やすときは、次をまとめて更新する。
+
+- `Config` のフィールドと `Load` での `newSetting` による解決 ([internal/config](./go/internal/config/config.go))
+- `fileConfig` のフィールド ([internal/config/file.go](./go/internal/config/file.go))
+- [groobb.example.toml](./go/groobb.example.toml) のコメント付きの記載
+- 秘密情報の場合は `Config.LogValue` の項目
+
+環境変数名とファイルのキーは 1 対 1 に対応させ、変数名が示す構成要素をテーブルにする (`GROOBB_SMTP_HOST` は `[email.smtp]` の `host`)。
+値の誤りと必須設定の欠落はどちらも起動時に拒否する。
+`setting` のメソッドを使い、不正な値のエラーでは実際の入力元を、欠落のエラーでは受け付ける 2 つの入力名を挙げる。
+サンプルは、未知のキーを拒否するスキーマと揃えて保つ (ずれたサンプルはコピーした運用者のインスタンスを止める)。
+
+秘密情報はログに出さない。
+`Config.LogValue` は設定済みの秘密情報を `[REDACTED]` として表示し、設定ファイルのパースエラーはライブラリのメッセージを落とす (そのメッセージがファイルの内容を引用しうるため)。
+
+### バイナリへの同梱
+
+静的アセット・ロケール・マイグレーションは `embed.FS` でバイナリに同梱し、サーバーを実行するディレクトリに依存せず読めるようにする。
+セルフホストのインスタンスはバイナリだけで動くため、これらをディスクから読むとその前提が崩れる。
+埋め込みの実装は [static](./go/static/static.go) と [db](./go/db/migrations.go) を参照する。
+
+### Groobb が所有する SQLite スキーマ
+
+以下の規約は、Groobb が所有するアプリケーションスキーマだけに適用する。
+River が所有するマイグレーションは上流の宣言を維持し、本節の対象外とする。
+
+- 主キーは `INTEGER PRIMARY KEY` とし、`AUTOINCREMENT` は付けない
+- 時刻の列は宣言型を `DATETIME`、真偽値の列は `BOOLEAN` と書く
+- 時刻は桁数を固定した ISO8601 UTC で保持する
+- データベースが生成する現在時刻の既定値を列に持たせる場合は、`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` を使う
+- 大文字小文字を区別しない一意性には、値を ASCII に制限した列だけで `COLLATE NOCASE` を使い、Unicode を許す値には Unicode 対応の方法を選ぶ
+- リストを値に取る列は JSON 配列を保持する `TEXT` とし、`json_valid` と `json_type` のチェックで守る
+
+各規約の根拠は[初期スキーマ](./go/db/migrations/20260821075404_create_initial_schema.sql)の冒頭のコメントにある。
+River の例外は [River のマイグレーション](./go/db/migrations/20260821101022_create_river_tables.sql) に記録している。
+
+### SQLite への読み書き
+
+時刻をクエリに渡すときは、`time.Time` をそのまま bind せず `sqlitetime.Time` を経由する。
+`DATETIME` の列は sqlc の override でこの型になっているため、通常は生成コードに従えばよい。
+保存されているテキストそのものを読むときは、宣言型を持たない式 (`CAST(x AS TEXT)`) にする。
+
+書き込みは `database.DB` の `Writer`、読み取りは `Reader` を使う。
+リポジトリは 2 つの `*query.Queries` を持ってメソッドごとに使い分け、UseCase は書き込み用プールだけを `writer *sql.DB` として受け取る。
+アプリケーションの接続は `database.Open` を通して開き、本番コードから `sql.Open` を直接呼ばない。
+共通の PRAGMA と `_txlock=immediate` を持たないアプリケーション用の書き込み接続を作らない。
+
+書式と型の詳細は [internal/sqlitetime](./go/internal/sqlitetime/sqlitetime.go)、プールの構成は [internal/database](./go/internal/database/database.go) の `DB` 型と DSN 組み立て関数のコメントを参照する。
 
 ## コーディングエージェントとの作業
 

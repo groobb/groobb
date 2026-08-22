@@ -7,7 +7,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -27,15 +26,15 @@ import (
 func TestSettingsEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
-	db, tx := testutil.SetupTx(t)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(query.New(db)).WithTx(tx)
+	db := testutil.SetupDB(t)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 	v := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
 
-	userID := testutil.NewUserBuilder(t, tx).WithEmail("member@example.com").Build()
+	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
 
 	t.Run("正常系: アクティブなメール変更確認が返る", func(t *testing.T) {
-		confirmationID := testutil.NewEmailConfirmationBuilder(t, tx).
+		confirmationID := testutil.NewEmailConfirmationBuilder(t, db).
 			WithUserID(userID).
 			WithEvent(model.EmailConfirmationEventEmailChange).
 			WithEmail("new@example.com").
@@ -91,14 +90,14 @@ func TestSettingsEmailConfirmationCreateValidator_Validate(t *testing.T) {
 		{
 			name: "異常系: 保留中の確認が無い",
 			build: func(t *testing.T) model.UserID {
-				return testutil.NewUserBuilder(t, tx).WithEmail("nopending@example.com").Build()
+				return testutil.NewUserBuilder(t, db).WithEmail("nopending@example.com").Build()
 			},
 		},
 		{
 			name: "異常系: 確認が期限切れ",
 			build: func(t *testing.T) model.UserID {
-				id := testutil.NewUserBuilder(t, tx).WithEmail("expired@example.com").Build()
-				testutil.NewEmailConfirmationBuilder(t, tx).
+				id := testutil.NewUserBuilder(t, db).WithEmail("expired@example.com").Build()
+				testutil.NewEmailConfirmationBuilder(t, db).
 					WithUserID(id).
 					WithEvent(model.EmailConfirmationEventEmailChange).
 					WithCode("123456").
@@ -110,8 +109,8 @@ func TestSettingsEmailConfirmationCreateValidator_Validate(t *testing.T) {
 		{
 			name: "異常系: 試行回数を使い切った確認",
 			build: func(t *testing.T) model.UserID {
-				id := testutil.NewUserBuilder(t, tx).WithEmail("exhausted@example.com").Build()
-				testutil.NewEmailConfirmationBuilder(t, tx).
+				id := testutil.NewUserBuilder(t, db).WithEmail("exhausted@example.com").Build()
+				testutil.NewEmailConfirmationBuilder(t, db).
 					WithUserID(id).
 					WithEvent(model.EmailConfirmationEventEmailChange).
 					WithCode("123456").
@@ -123,8 +122,8 @@ func TestSettingsEmailConfirmationCreateValidator_Validate(t *testing.T) {
 		{
 			name: "異常系: サインアップの確認 (event 違い) は引かない",
 			build: func(t *testing.T) model.UserID {
-				id := testutil.NewUserBuilder(t, tx).WithEmail("signup@example.com").Build()
-				testutil.NewEmailConfirmationBuilder(t, tx).
+				id := testutil.NewUserBuilder(t, db).WithEmail("signup@example.com").Build()
+				testutil.NewEmailConfirmationBuilder(t, db).
 					WithUserID(id).
 					WithEvent(model.EmailConfirmationEventSignUp).
 					WithCode("123456").

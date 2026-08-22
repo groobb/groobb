@@ -21,7 +21,6 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/account"
-	"github.com/groobb/groobb/go/internal/handler/community"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
 	"github.com/groobb/groobb/go/internal/handler/health"
 	"github.com/groobb/groobb/go/internal/handler/home"
@@ -40,13 +39,13 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
-	"github.com/groobb/groobb/go/internal/query"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
 	"github.com/groobb/groobb/go/internal/worker"
+	"github.com/groobb/groobb/go/static"
 )
 
 func main() {
@@ -56,36 +55,56 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Connect to PostgreSQL and verify connectivity before serving requests, so
-	// a misconfigured or unreachable database fails fast at startup. The bounded
-	// context only guards the initial connect/ping; the pool itself outlives it.
+	// Open the SQLite database and verify connectivity before serving requests, so
+	// a misconfigured or unopenable database fails fast at startup. The bounded
+	// context only guards the initial open/ping; the pools themselves outlive it.
 	//
-	// [Ja] リクエストを受ける前に PostgreSQL へ接続して疎通を確認し、設定ミスや
-	// 接続不能なデータベースを起動時に早期検知する。タイムアウト付き context は
-	// 最初の接続/ping だけを制御し、プール自体はそれより長く生存する。
+	// [Ja] リクエストを受ける前に SQLite データベースを開いて疎通を確認し、設定ミスや
+	// 開けないデータベースを起動時に早期検知する。タイムアウト付き context は
+	// 最初のオープン / ping だけを制御し、プール自体はそれより長く生存する。
 	connectCtx, connectCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	pool, err := database.New(connectCtx, cfg.DatabaseURL)
+	db, err := database.Open(connectCtx, cfg.DatabasePath)
 	connectCancel()
 	if err != nil {
-		slog.Error("failed to connect to the database", "error", err)
+		slog.Error("failed to open the database", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
-	slog.Info("connected to the database")
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("failed to close the database", "error", err)
+		}
+	}()
+	slog.Info("opened the database")
 
-	// Build and start the background job worker on its own pool. Sign-up is the
+	// Bring the schema up to date on startup. A self-hosted instance is expected
+	// to be upgraded by replacing the binary and restarting it, so applying the
+	// migrations here is what keeps the database in step with the code without the
+	// operator running a separate command.
+	//
+	// [Ja] 起動時にスキーマを最新へ揃える。セルフホストのインスタンスはバイナリを置き換えて
+	// 再起動することで更新される想定のため、ここでマイグレーションを適用することが、運用者に
+	// 別のコマンドを求めずにデータベースをコードへ追随させる手段になる。
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	err = database.Migrate(migrateCtx, db.Writer)
+	migrateCancel()
+	if err != nil {
+		slog.Error("failed to migrate the database", "error", err)
+		os.Exit(1)
+	}
+
+	// Build and start the background job worker on its own connection. Sign-up is the
 	// first flow to enqueue a job (the confirmation email), so the worker is
 	// wired and started here; without it, enqueued jobs would never be processed.
-	// The bounded context guards only pool creation; the worker runs on a
+	// The bounded context guards only opening that connection; the worker runs on a
 	// background context and is drained by Stop on shutdown.
 	//
-	// [Ja] バックグラウンドジョブのワーカーを専用プール上に構築・起動する。サインアップは
+	// [Ja] バックグラウンドジョブのワーカーを専用の接続上に構築・起動する。サインアップは
 	// 最初にジョブ (確認メール) を投入するフローのため、ワーカーをここで配線・起動する。
-	// これが無いと投入されたジョブは処理されない。タイムアウト付き context はプール生成
-	// のみを制御し、ワーカーは background context で動き、シャットダウン時に Stop で
+	// これが無いと投入されたジョブは処理されない。タイムアウト付き context はその接続を開く
+	// 処理のみを制御し、ワーカーは background context で動き、シャットダウン時に Stop で
 	// ドレインする。
 	workerCtx, workerCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	workerClient, err := worker.NewClient(workerCtx, cfg.DatabaseURL, cfg)
+	workerClient, err := worker.NewClient(workerCtx, cfg.DatabasePath, cfg)
 	workerCancel()
 	if err != nil {
 		slog.Error("failed to build the worker client", "error", err)
@@ -103,22 +122,18 @@ func main() {
 		}
 	}()
 
-	// Wire the request-path dependencies: repositories over the app pool, then
-	// the session manager, dispatcher, validator, UseCase, and handlers.
+	// Wire the request-path dependencies: repositories over the application's
+	// connection, then the session manager, dispatcher, validator, UseCase, and
+	// handlers.
 	//
-	// [Ja] リクエスト経路の依存を配線する。アプリ用プール上のリポジトリ、続いて
+	// [Ja] リクエスト経路の依存を配線する。アプリ用の接続上のリポジトリ、続いて
 	// セッションマネージャ・ディスパッチャー・バリデーター・UseCase・ハンドラー。
-	queries := query.New(pool)
-	userRepo := repository.NewUserRepository(queries)
-	userPasswordRepo := repository.NewUserPasswordRepository(queries)
-	userSessionRepo := repository.NewUserSessionRepository(queries)
-	emailConfirmationRepo := repository.NewEmailConfirmationRepository(queries)
-	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(queries)
-	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(queries)
-	communityRepo := repository.NewCommunityRepository(queries)
-	communityRoleRepo := repository.NewCommunityRoleRepository(queries)
-	communityMemberRepo := repository.NewCommunityMemberRepository(queries)
-	communityMemberRoleRepo := repository.NewCommunityMemberRoleRepository(queries)
+	userRepo := repository.NewUserRepository(db)
+	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	userSessionRepo := repository.NewUserSessionRepository(db)
+	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
+	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -146,10 +161,10 @@ func main() {
 	createSignUpUC := usecase.NewCreateSignUpUsecase(signUpValidator, emailConfirmationRepo, jobDispatcher)
 
 	emailConfirmationValidator := validator.NewEmailConfirmationCreateValidator(emailConfirmationRepo)
-	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(pool, emailConfirmationValidator, emailConfirmationRepo)
+	verifyEmailConfirmationUC := usecase.NewVerifyEmailConfirmationUsecase(db.Writer, emailConfirmationValidator, emailConfirmationRepo)
 
 	accountValidator := validator.NewAccountCreateValidator(userRepo)
-	createAccountUC := usecase.NewCreateAccountUsecase(pool, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
+	createAccountUC := usecase.NewCreateAccountUsecase(db.Writer, accountValidator, emailConfirmationRepo, userRepo, userPasswordRepo)
 	createSessionUC := usecase.NewCreateSessionUsecase(userSessionRepo)
 
 	signInValidator := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
@@ -160,32 +175,28 @@ func main() {
 	createSignInTwoFactorUC := usecase.NewCreateSignInTwoFactorUsecase(signInTwoFactorValidator)
 
 	signInTwoFactorRecoveryValidator := validator.NewSignInTwoFactorRecoveryCreateValidator(userTwoFactorAuthRepo)
-	createSignInTwoFactorRecoveryUC := usecase.NewCreateSignInTwoFactorRecoveryUsecase(pool, signInTwoFactorRecoveryValidator, userTwoFactorAuthRepo, userSessionRepo)
+	createSignInTwoFactorRecoveryUC := usecase.NewCreateSignInTwoFactorRecoveryUsecase(db.Writer, signInTwoFactorRecoveryValidator, userTwoFactorAuthRepo, userSessionRepo)
 
 	passwordResetValidator := validator.NewPasswordResetCreateValidator()
-	createPasswordResetTokenUC := usecase.NewCreatePasswordResetTokenUsecase(pool, passwordResetValidator, userRepo, passwordResetTokenRepo, jobDispatcher, cfg)
+	createPasswordResetTokenUC := usecase.NewCreatePasswordResetTokenUsecase(db.Writer, passwordResetValidator, userRepo, passwordResetTokenRepo, jobDispatcher, cfg)
 
 	passwordUpdateValidator := validator.NewPasswordUpdateValidator(passwordResetTokenRepo)
-	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(pool, passwordUpdateValidator, passwordResetTokenRepo, userPasswordRepo)
+	updatePasswordResetUC := usecase.NewUpdatePasswordResetUsecase(db.Writer, passwordUpdateValidator, passwordResetTokenRepo, userPasswordRepo)
 
 	settingsEmailUpdateValidator := validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo)
-	createEmailChangeUC := usecase.NewCreateEmailChangeUsecase(pool, settingsEmailUpdateValidator, emailConfirmationRepo, jobDispatcher)
+	createEmailChangeUC := usecase.NewCreateEmailChangeUsecase(db.Writer, settingsEmailUpdateValidator, emailConfirmationRepo, jobDispatcher)
 
 	settingsEmailConfirmationValidator := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
-	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(pool, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
+	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(db.Writer, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
 
 	settingsWithdrawalDeleteValidator := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
-	deleteAccountUC := usecase.NewDeleteAccountUsecase(pool, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
+	deleteAccountUC := usecase.NewDeleteAccountUsecase(db.Writer, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
 
 	settingsTwoFactorAuthCreateValidator := validator.NewSettingsTwoFactorAuthCreateValidator(userTwoFactorAuthRepo)
 	settingsTwoFactorAuthDeleteValidator := validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, userTwoFactorAuthRepo)
 	prepareTwoFactorAuthUC := usecase.NewPrepareTwoFactorAuthUsecase(userTwoFactorAuthRepo)
 	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
-
-	communityValidator := validator.NewCommunityCreateValidator(communityRepo)
-	createCommunityUC := usecase.NewCreateCommunityUsecase(pool, communityValidator, communityRepo, communityRoleRepo, communityMemberRepo, communityMemberRoleRepo)
-	getCommunityUC := usecase.NewGetCommunityUsecase(communityRepo)
 
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
@@ -204,7 +215,6 @@ func main() {
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
 	settingsTwoFactorAuthHandler := settings_two_factor_auth.NewHandler(cfg, flashMgr, prepareTwoFactorAuthUC, enableTwoFactorAuthUC, disableTwoFactorAuthUC)
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
-	communityHandler := community.NewHandler(cfg, flashMgr, createCommunityUC, getCommunityUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrf := middleware.NewCSRF(cfg)
@@ -256,11 +266,17 @@ func main() {
 	// [Ja] ヘルスチェック (認証不要)。
 	r.Get("/health", healthHandler.Show)
 
-	// Serve static assets (CSS / JS / images) built into ./static.
+	// Serve the static assets (CSS / JS) from the copy embedded in the binary, so
+	// that the server finds them wherever it is started from rather than only
+	// alongside a ./static directory. AssetCache declares how long a browser may
+	// keep them; the URLs carry the asset version, so a deploy hands out new ones.
 	//
-	// [Ja] ./static にビルドされた静的アセット (CSS / JS / 画像) を配信する。
-	fileServer := http.FileServer(http.Dir("./static"))
-	r.Handle("/static/*", http.StripPrefix("/static", fileServer))
+	// [Ja] 静的アセット (CSS / JS) はバイナリに埋め込まれた複製から配信する。./static
+	// ディレクトリの隣でなくとも、どこで起動してもサーバーがアセットを見つけられるように
+	// するためである。AssetCache はブラウザが保持してよい期間を宣言する。URL は
+	// アセットバージョンを伴うため、デプロイのたびに新しい URL が配られる。
+	fileServer := http.FileServer(http.FS(static.Assets()))
+	r.With(middleware.AssetCache(cfg)).Handle("/static/*", http.StripPrefix("/static", fileServer))
 
 	// Top page. SetUser resolves the current user from the session cookie so the
 	// handler can render by sign-in state (a signed-in visitor is redirected to
@@ -421,26 +437,6 @@ func main() {
 	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
 	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
-
-	// Communities: show the creation form and create the community, together with
-	// the administrator role its creator is given. Both are behind RequireAuth, so
-	// a community always has a signed-in creator to found it.
-	//
-	// [Ja] コミュニティ: 作成フォームを表示し、作成者へ与える管理者ロールと併せてコミュニティを
-	// 作成する。どちらも RequireAuth の背後に置き、コミュニティには常にそれを作成するサイン
-	// イン済みの作成者がいるようにする。
-	r.With(authMiddleware.RequireAuth).Get("/communities/new", communityHandler.New)
-	r.With(authMiddleware.RequireAuth).Post("/communities", communityHandler.Create)
-
-	// A community's own page is behind RequireAuth; every signed-in visitor sees
-	// the same page, as membership does not gate the view yet. Why it sits under
-	// the short /c/ prefix instead of /communities is explained on
-	// templates.CommunityPath.
-	//
-	// [Ja] コミュニティ自身の画面は RequireAuth の背後に置く。閲覧はまだ所属で制限しない
-	// ため、サインイン済みの訪問者はすべて同じ画面を見る。/communities ではなく短縮した
-	// /c/ 接頭辞の下に置く理由は templates.CommunityPath に記載している。
-	r.With(authMiddleware.RequireAuth).Get("/c/{identifier}", communityHandler.Show)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)
