@@ -6,10 +6,13 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -72,6 +75,29 @@ type Config struct {
 	//
 	// [Ja] Port は HTTP サーバーが待ち受ける TCP ポートです。
 	Port string
+
+	// TrustedProxies lists the networks the instance's own reverse proxies
+	// connect from. A request that arrives from one of them has its client
+	// address read from the forwarding header it carries, and a request from
+	// anywhere else is attributed to the address that connected. It is empty
+	// unless configured, which is what an instance exposed directly needs: a
+	// forwarding header is client-supplied input until a proxy known to append
+	// to it sits in front.
+	//
+	// Every hop belongs in the list, not only the nearest one, because the
+	// resolution takes the closest address in the chain that is not a listed
+	// proxy (see internal/clientip).
+	//
+	// [Ja] TrustedProxies は、このインスタンス自身のリバースプロキシが接続してくる
+	// ネットワークの一覧です。そのいずれかから届いたリクエストは、運んできた転送ヘッダーから
+	// クライアントのアドレスを読み取り、それ以外から届いたリクエストは接続してきたアドレスの
+	// ものとして扱います。設定しない限り空であり、直接公開されているインスタンスに必要なのは
+	// この状態です。転送ヘッダーは、追記すると分かっているプロキシが前段に立つまでは、
+	// クライアントが与えた入力に過ぎません。
+	//
+	// 一覧には最も近い hop だけでなくすべての hop を書きます。解決はチェーンの中で一覧に
+	// 無い最も近いアドレスを採るためです (internal/clientip を参照)。
+	TrustedProxies []netip.Prefix
 
 	// AssetVersion is the cache-busting value used for static assets in non-dev
 	// environments. It is fixed at startup from the value stamped into the binary
@@ -229,6 +255,12 @@ func Load() (*Config, error) {
 	}
 	cfg.Port = port.value
 
+	trustedProxies, err := loadTrustedProxies(file)
+	if err != nil {
+		return nil, err
+	}
+	cfg.TrustedProxies = trustedProxies
+
 	databasePath := newSetting("GROOBB_DATABASE_PATH", "database.path", file.Database.Path)
 	if !databasePath.isSet() {
 		return nil, databasePath.missingError()
@@ -328,6 +360,106 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// loadTrustedProxies reads the networks whose forwarded client address is
+// believed, written as a comma-separated list of addresses and CIDR blocks.
+// Leaving the setting out is not an error and is the safe state: an instance
+// exposed directly has no proxy to trust, and the client address is then the
+// one that connected.
+//
+// An entry that is neither stops startup rather than being dropped. A list that
+// silently loses one of its entries resolves the visitors behind that proxy to
+// the proxy's own address, and that address is what an audit record — and any
+// future per-address limit — is then keyed on.
+//
+// [Ja] loadTrustedProxies は、転送されたクライアントアドレスを信じる相手のネットワークを
+// 読み込みます。アドレスと CIDR ブロックをカンマで区切って並べた形で書きます。設定を書か
+// ないことはエラーではなく、それが安全な状態です。直接公開されているインスタンスには信頼
+// すべきプロキシが無く、そのときクライアントのアドレスは接続してきたアドレスそのものです。
+//
+// どちらでもない項目は、取り除かずに起動を止めます。項目を黙って 1 つ落とした一覧は、その
+// プロキシの背後にいる訪問者をプロキシ自身のアドレスとして解決してしまい、そのアドレスが
+// 監査記録の値となり、将来のアドレス単位の制限のキーにもなるためです。
+func loadTrustedProxies(file *fileConfig) ([]netip.Prefix, error) {
+	trustedProxies := newSetting("GROOBB_TRUSTED_PROXIES", "server.trusted_proxies", listFileValue(file.Server.TrustedProxies))
+	// An array holding only empty strings joins to nothing, which the setting
+	// reads as a key nobody wrote. The file is consulted directly here so that
+	// those entries reach the check below and are reported as the empty entries
+	// they are, rather than disappearing into the same "not configured" that an
+	// absent key and an empty array leave behind.
+	//
+	// [Ja] 空文字列だけを持つ配列は連結すると何も残らず、setting はそれを誰も書いていない
+	// キーとして読みます。ここでファイルを直接見るのは、その項目を下の検査に届かせて空の
+	// 項目として報告するためです。そうしないと、キーの不在や空の配列と同じ「未設定」へ
+	// 消えてしまいます。
+	if !trustedProxies.isSet() && len(file.Server.TrustedProxies) == 0 {
+		return nil, nil
+	}
+
+	entries := strings.Split(trustedProxies.value, ",")
+	prefixes := make([]netip.Prefix, 0, len(entries))
+	for _, entry := range entries {
+		entry = strings.TrimSpace(entry)
+		prefix, err := ParseTrustedProxy(entry)
+		if err != nil {
+			return nil, fmt.Errorf("the trusted proxy from %s %s, but is %q", trustedProxies.source(), err, entry)
+		}
+		prefixes = append(prefixes, prefix)
+	}
+
+	return prefixes, nil
+}
+
+// ParseTrustedProxy parses one entry of the trusted proxy list, which is either
+// a CIDR block or a single address standing for the block that holds only it.
+// The prefix is masked so that an entry carrying bits below its prefix length
+// ("10.1.2.3/8") is kept in the one form the comparison and the log show.
+// An IPv4-mapped IPv6 prefix from /96 through /128 is converted to its IPv4
+// equivalent; a shorter prefix is rejected because it also covers addresses
+// that cannot be represented by one IPv4 prefix. An IPv6 zone on a single
+// address is dropped, because a prefix describes an address range independently
+// of an interface and the resolution drops the zone from the peer as well.
+//
+// It is exported because it is the one place that turns the text an operator
+// writes into the form the resolution compares an address against, and the
+// resolution's own tests state their trusted proxies as that text. A second
+// parser written for those tests would let the two normalisations drift apart,
+// which is how an entry that loads but never matches gets through.
+//
+// [Ja] ParseTrustedProxy は信頼するプロキシの一覧の項目を 1 つ解析します。項目は CIDR
+// ブロックか、それ 1 つだけを含むブロックを表す単一のアドレスのいずれかです。prefix 長より
+// 下位のビットを持つ項目 ("10.1.2.3/8") が、比較とログが示す 1 つの形に収まるよう、prefix は
+// マスクします。/96 から /128 までの IPv4-mapped IPv6 prefix は同等の IPv4 prefix へ
+// 変換します。それより短い prefix は、1 つの IPv4 prefix では表現できないアドレスも含むため
+// 拒否します。単一のアドレスに付いた IPv6 の zone は取り除きます。prefix はインターフェイスに
+// 依存しないアドレス範囲を表し、解決もピアから zone を取り除くためです。
+//
+// 公開しているのは、運用者が書くテキストを解決が照合する形へ変換する唯一の場所であり、
+// 解決自身のテストも信頼するプロキシをそのテキストのまま記述するためです。そのテストのために
+// 2 つ目の解析を書くと 2 つの正規化が離れていき、読み込めるのに決して一致しない項目が
+// そこをすり抜けます。
+func ParseTrustedProxy(entry string) (netip.Prefix, error) {
+	if prefix, err := netip.ParsePrefix(entry); err == nil {
+		if prefix.Addr().Is4In6() {
+			if prefix.Bits() < 96 {
+				return netip.Prefix{}, errors.New("must use a prefix length from 96 through 128 when written as an IPv4-mapped IPv6 CIDR block")
+			}
+
+			addr := prefix.Addr().Unmap()
+			return netip.PrefixFrom(addr, prefix.Bits()-96).Masked(), nil
+		}
+
+		return prefix.Masked(), nil
+	}
+
+	addr, err := netip.ParseAddr(entry)
+	if err != nil {
+		return netip.Prefix{}, errors.New("must be an IP address or a CIDR block")
+	}
+	addr = addr.Unmap().WithZone("")
+
+	return netip.PrefixFrom(addr, addr.BitLen()), nil
+}
+
 // LogValue renders the configuration for structured logging with its secrets
 // replaced, so that logging a Config cannot put the values that authenticate
 // the instance into the log. Whether a secret is set is kept, which is what a
@@ -349,6 +481,7 @@ func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("env", c.Env),
 		slog.String("port", c.Port),
+		slog.Any("trusted_proxies", c.TrustedProxies),
 		slog.String("database_path", c.DatabasePath),
 		slog.String("asset_version", c.AssetVersion),
 		slog.String("app_url", c.AppURL),

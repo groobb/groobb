@@ -79,7 +79,8 @@ type fileApp struct {
 }
 
 type fileServer struct {
-	Port *int `toml:"port"`
+	Port           *int     `toml:"port"`
+	TrustedProxies []string `toml:"trusted_proxies"`
 }
 
 type fileDatabase struct {

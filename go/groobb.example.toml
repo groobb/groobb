@@ -1,4 +1,5 @@
 # Example configuration file for a Groobb instance.
+#
 # Copy it to groobb.toml in the directory the server runs from, or point
 # GROOBB_CONFIG_FILE at it, and fill in the values. Every setting here has a
 # matching environment variable, shown above it, which overrides the file when
@@ -37,8 +38,32 @@ url = "https://groobb.example.com"
 [server]
 # The TCP port the HTTP server listens on. GROOBB_PORT overrides it.
 #
+# The networks this instance's own reverse proxies connect from, written as
+# addresses or CIDR blocks. A request that arrives from one of them has its
+# client address read from X-Forwarded-For; a request from anywhere else is
+# attributed to the address that connected, which is what an instance exposed
+# directly wants. List every hop and not only the nearest one: behind
+# Cloudflare and a local Caddy that means the loopback addresses together with
+# Cloudflare's ranges, or the address recorded for a visitor is Cloudflare's
+# edge instead of theirs. It is empty here because the forwarding header is
+# client-supplied input until a proxy that appends to it is known to be in
+# front. GROOBB_TRUSTED_PROXIES overrides it, as a comma-separated list
+# ("127.0.0.1,::1,10.0.0.0/8").
+#
 # [Ja] HTTP サーバーが待ち受ける TCP ポート。GROOBB_PORT が上書きします。
+#
+# このインスタンス自身のリバースプロキシが接続してくるネットワーク。アドレスか CIDR
+# ブロックで書きます。そのいずれかから届いたリクエストは X-Forwarded-For から
+# クライアントのアドレスを読み取り、それ以外から届いたリクエストは接続してきたアドレスの
+# ものとして扱います。直接公開するインスタンスに必要なのは後者です。最も近い hop だけでなく
+# すべての hop を書いてください。Cloudflare とローカルの Caddy の背後にあるなら、ループ
+# バックアドレスに加えて Cloudflare のレンジも必要で、書かなければ訪問者のアドレスとして
+# Cloudflare のエッジが記録されます。ここで空にしているのは、転送ヘッダーが、追記すると
+# 分かっているプロキシが前段に立つまではクライアントの与えた入力に過ぎないためです。
+# GROOBB_TRUSTED_PROXIES がカンマ区切りの一覧 ("127.0.0.1,::1,10.0.0.0/8") で
+# 上書きします。
 port = 8080
+trusted_proxies = []
 
 [database]
 # The path of the SQLite database file, which holds every piece of state the

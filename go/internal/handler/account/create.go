@@ -98,7 +98,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// 未サインインのまま放置されないようにする。
 	sessionOutput, err := h.createSessionUC.Execute(ctx, usecase.CreateSessionInput{
 		UserID:    accountOutput.User.ID,
-		IPAddress: clientip.GetClientIP(r),
+		IPAddress: clientip.GetClientIP(r, h.cfg.TrustedProxies),
 		UserAgent: r.UserAgent(),
 	})
 	if err != nil {

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -19,6 +20,7 @@ url = "https://groobb.example.dev"
 
 [server]
 port = 9090
+trusted_proxies = ["127.0.0.1", "10.0.0.0/8"]
 
 [database]
 path = "/var/lib/groobb/groobb.sqlite"
@@ -102,6 +104,64 @@ func TestLoadReadsSettingsFromConfigFile(t *testing.T) {
 
 	if cfg.SMTPPort != 587 {
 		t.Errorf("SMTPPort = %d, want 587", cfg.SMTPPort)
+	}
+
+	// The trusted proxies are a list rather than a scalar, so they are checked
+	// apart from the table above. Their rendered form is what the resolution
+	// compares an address against.
+	//
+	// [Ja] 信頼するプロキシはスカラーではなくリストのため、上の表とは別に検証する。
+	// 整形した形は、解決がアドレスを照合する相手そのものである。
+	wantTrustedProxies := []string{"127.0.0.1/32", "10.0.0.0/8"}
+	gotTrustedProxies := make([]string, 0, len(cfg.TrustedProxies))
+	for _, prefix := range cfg.TrustedProxies {
+		gotTrustedProxies = append(gotTrustedProxies, prefix.String())
+	}
+	if !slices.Equal(gotTrustedProxies, wantTrustedProxies) {
+		t.Errorf("TrustedProxies = %v, want %v", gotTrustedProxies, wantTrustedProxies)
+	}
+}
+
+// TestLoadRejectsAnInvalidTrustedProxyFromTheConfigFile verifies that a bad
+// entry in the file is reported the same way as one in the environment, naming
+// the file key rather than the variable, so that the operator looks where they
+// wrote it.
+//
+// [Ja] TestLoadRejectsAnInvalidTrustedProxyFromTheConfigFile は、ファイルの不正な項目が
+// 環境変数のものと同じように報告され、変数ではなくファイルのキーを挙げることを検証する。
+// 運用者が自分の書いた場所を見に行けるようにするためである。
+func TestLoadRejectsAnInvalidTrustedProxyFromTheConfigFile(t *testing.T) {
+	clearEnv(t)
+	writeConfigFile(t, strings.Replace(fullConfigFile, `trusted_proxies = ["127.0.0.1", "10.0.0.0/8"]`, `trusted_proxies = ["proxy.example.dev"]`, 1))
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() should reject a trusted proxy that is not an address")
+	}
+	if !strings.Contains(err.Error(), "server.trusted_proxies") {
+		t.Errorf("the error should name the file key the value came from, got: %v", err)
+	}
+}
+
+// TestLoadRejectsAnEmptyTrustedProxyFromTheConfigFile verifies that an array of
+// empty strings is reported rather than read as a key nobody wrote. An entry
+// left empty is the same mistake whether it is the only one or one of several,
+// so the operator hears about it either way.
+//
+// [Ja] TestLoadRejectsAnEmptyTrustedProxyFromTheConfigFile は、空文字列だけの配列が、
+// 誰も書いていないキーとして読まれるのではなく報告されることを検証する。空のまま残った項目は、
+// それが唯一の項目でも複数のうちの 1 つでも同じ誤りなので、どちらでも運用者に伝わるように
+// する。
+func TestLoadRejectsAnEmptyTrustedProxyFromTheConfigFile(t *testing.T) {
+	clearEnv(t)
+	writeConfigFile(t, strings.Replace(fullConfigFile, `trusted_proxies = ["127.0.0.1", "10.0.0.0/8"]`, `trusted_proxies = [""]`, 1))
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() should reject a trusted proxy list holding an empty entry")
+	}
+	if !strings.Contains(err.Error(), "server.trusted_proxies") {
+		t.Errorf("the error should name the file key the value came from, got: %v", err)
 	}
 }
 

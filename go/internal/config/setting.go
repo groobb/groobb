@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // setting is one resolved configuration value together with where it came
@@ -144,4 +145,24 @@ func boolFileValue(value bool) string {
 	}
 
 	return "true"
+}
+
+// listFileValue renders a list setting from the file as the comma-separated
+// text its environment variable carries, for the same reason as intFileValue.
+// An empty list is the same as an absent key: both leave the setting off.
+//
+// Joining loses nothing for the values a list setting takes here (addresses and
+// CIDR blocks, which hold no comma). An entry that did hold one is split back
+// into pieces, and validation reports them as the entries they became rather
+// than as the one that was written.
+//
+// [Ja] listFileValue はファイルのリスト設定を、対応する環境変数が運ぶカンマ区切りの
+// テキストとして表現します。理由は intFileValue と同じです。空のリストはキーの不在と
+// 同じことで、どちらも設定を無効のままにします。
+//
+// ここでリスト設定が取る値 (カンマを含まないアドレスと CIDR ブロック) にとって、連結で
+// 失われるものはありません。カンマを含む項目は分割し直され、検証はそれを書かれたままの
+// 項目としてではなく、分割後の項目として報告します。
+func listFileValue(values []string) string {
+	return strings.Join(values, ",")
 }

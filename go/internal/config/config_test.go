@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log/slog"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"testing"
 
@@ -29,6 +30,7 @@ func clearEnv(t *testing.T) {
 		configFileEnvName,
 		"APP_ENV",
 		"GROOBB_PORT",
+		"GROOBB_TRUSTED_PROXIES",
 		"GROOBB_DATABASE_PATH",
 		"GROOBB_CONTINUATION_TOKEN_KEY",
 		"GROOBB_APP_URL",
@@ -419,6 +421,141 @@ func TestLoadRejectsAnInvalidPort(t *testing.T) {
 				t.Fatalf("Load() should reject GROOBB_PORT = %q", tt.value)
 			}
 			if !strings.Contains(err.Error(), "GROOBB_PORT") {
+				t.Errorf("the error should name the source of the value, got: %v", err)
+			}
+		})
+	}
+}
+
+// TestLoadReadsTrustedProxies verifies how the list is written: a single
+// address stands for itself, a CIDR block for its network, whitespace around an
+// entry is not part of it, and an entry carrying bits below its prefix length
+// is kept in one form. IPv4-mapped IPv6 blocks are represented by their IPv4
+// equivalents so they use the same address family as runtime peers, and an IPv6
+// zone is dropped so that an entry covers the same range the resolution asks
+// about after it drops the zone from the peer.
+//
+// [Ja] TestLoadReadsTrustedProxies は一覧の書き方を検証する。単一のアドレスはそれ自身を、
+// CIDR ブロックはそのネットワークを表すこと、項目の前後の空白は項目の一部ではないこと、
+// prefix 長より下位のビットを持つ項目が 1 つの形に収まることである。IPv4-mapped IPv6 の
+// ブロックは、実行時のピアと同じアドレスファミリーになるよう同等の IPv4 表現にする。
+// IPv6 の zone は取り除き、解決がピアから zone を落としたうえで問い合わせるのと同じ範囲を
+// 項目が覆うようにする。
+func TestLoadReadsTrustedProxies(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  []string
+	}{
+		{
+			name:  "a single address stands for itself",
+			value: "127.0.0.1",
+			want:  []string{"127.0.0.1/32"},
+		},
+		{
+			name:  "an IPv6 address stands for itself",
+			value: "::1",
+			want:  []string{"::1/128"},
+		},
+		{
+			name:  "several entries are separated by commas and may be spaced out",
+			value: "127.0.0.1, ::1 , 10.0.0.0/8",
+			want:  []string{"127.0.0.1/32", "::1/128", "10.0.0.0/8"},
+		},
+		{
+			name:  "a block keeps one form regardless of the address written for it",
+			value: "10.1.2.3/8",
+			want:  []string{"10.0.0.0/8"},
+		},
+		{
+			name:  "an IPv4-mapped IPv6 address block becomes its IPv4 equivalent",
+			value: "::ffff:127.0.0.1/128",
+			want:  []string{"127.0.0.1/32"},
+		},
+		{
+			name:  "an IPv4-mapped IPv6 network becomes its IPv4 equivalent",
+			value: "::ffff:10.1.2.3/104",
+			want:  []string{"10.0.0.0/8"},
+		},
+		{
+			name:  "an IPv6 address written with a zone stands for the address alone",
+			value: "fe80::1%eth0",
+			want:  []string{"fe80::1/128"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("GROOBB_TRUSTED_PROXIES", tt.value)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load() returned an unexpected error: %v", err)
+			}
+
+			got := make([]string, 0, len(cfg.TrustedProxies))
+			for _, prefix := range cfg.TrustedProxies {
+				got = append(got, prefix.String())
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("TrustedProxies = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestLoadWithoutTrustedProxies verifies that leaving the setting out is not an
+// error and leaves no proxy trusted, which is what an instance exposed directly
+// needs: the forwarding headers are then never read.
+//
+// [Ja] TestLoadWithoutTrustedProxies は、設定を書かないことがエラーにならず、信頼する
+// プロキシが 1 つも無い状態になることを検証する。直接公開されているインスタンスに必要なのが
+// これで、その場合に転送ヘッダーは一切読まれない。
+func TestLoadWithoutTrustedProxies(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if len(cfg.TrustedProxies) != 0 {
+		t.Errorf("TrustedProxies = %v, want none", cfg.TrustedProxies)
+	}
+}
+
+// TestLoadRejectsAnInvalidTrustedProxy verifies that an entry which is not an
+// address stops startup naming the entry and the source. Dropping it instead
+// would leave the visitors behind that proxy recorded as the proxy itself,
+// which looks like a working configuration.
+//
+// [Ja] TestLoadRejectsAnInvalidTrustedProxy は、アドレスではない項目が、その項目と入力元を
+// 挙げて起動を止めることを検証する。代わりに取り除くと、そのプロキシの背後にいる訪問者が
+// プロキシ自身として記録され、動いている設定に見えてしまう。
+func TestLoadRejectsAnInvalidTrustedProxy(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{name: "not an address", value: "proxy.example.dev"},
+		{name: "an address out of range", value: "10.0.0.256"},
+		{name: "a prefix length out of range", value: "10.0.0.0/33"},
+		{name: "an IPv4-mapped prefix that also covers IPv6", value: "::ffff:127.0.0.1/95"},
+		{name: "one bad entry among good ones", value: "127.0.0.1,proxy.example.dev"},
+		{name: "an empty entry left by a stray comma", value: "127.0.0.1,"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("GROOBB_TRUSTED_PROXIES", tt.value)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("Load() should reject GROOBB_TRUSTED_PROXIES = %q", tt.value)
+			}
+			if !strings.Contains(err.Error(), "GROOBB_TRUSTED_PROXIES") {
 				t.Errorf("the error should name the source of the value, got: %v", err)
 			}
 		})
