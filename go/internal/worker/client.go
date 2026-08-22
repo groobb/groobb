@@ -66,22 +66,29 @@ type Client struct {
 // 依存は (注入ではなく) 本関数内で cfg から構築し、ここに閉じ込めて DI グラフの他の部分へ
 // 漏らさない。追加のワーカー登録は、後続タスクでジョブが導入されるのに合わせてここに加える。
 func NewClient(ctx context.Context, databasePath string, cfg *config.Config) (*Client, error) {
+	// Build the worker-only email dependencies from cfg and register the mail
+	// workers (email confirmation, password reset, and email-change
+	// notification). The sender is built before the database connection is opened
+	// so a rejected email configuration fails without leaving a connection to
+	// close. Constructing the senders here keeps the provider configuration out of
+	// main.go's DI graph, where no request-path code needs it; all per-mail
+	// senders share the one base sender.
+	//
+	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認・
+	// パスワードリセット・メールアドレス変更通知) を登録する。sender をデータベース接続を
+	// 開く前に構築するのは、メール設定が拒否された場合に閉じるべき接続を残さず失敗させる
+	// ため。ここで sender を構築することで、リクエスト経路のコードが必要としない
+	// プロバイダー設定を main.go の DI グラフから締め出す。メール種別ごとの各 sender は
+	// 1 つの基盤 sender を共有する。
+	emailSender, err := newEmailSender(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	db, err := database.Open(ctx, databasePath)
 	if err != nil {
 		return nil, fmt.Errorf("ワーカー用データベース接続の作成に失敗: %w", err)
 	}
-
-	// Build the worker-only email dependencies from cfg and register the mail
-	// workers (email confirmation, password reset, and email-change
-	// notification). Constructing the senders here keeps Resend configuration out
-	// of main.go's DI graph, where no request-path code needs it; all per-mail
-	// senders share the one base ResendSender.
-	//
-	// [Ja] ワーカー専用のメール依存を cfg から構築し、メールワーカー (メール確認・
-	// パスワードリセット・メールアドレス変更通知) を登録する。ここで sender を構築する
-	// ことで、リクエスト経路のコードが必要としない Resend 設定を main.go の DI グラフから
-	// 締め出す。メール種別ごとの各 sender は 1 つの基盤 ResendSender を共有する。
-	emailSender := email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
 
 	confirmationSender := email.NewConfirmationSender(emailSender)
 	sendEmailConfirmationUC := usecase.NewSendEmailConfirmationUsecase(confirmationSender)
@@ -186,4 +193,32 @@ func (c *Client) Stop(ctx context.Context) error {
 // 配線できるようにする (dispatcher.JobInserter を満たす)。
 func (c *Client) Client() *river.Client[*sql.Tx] {
 	return c.riverClient
+}
+
+// newEmailSender builds the base email sender the per-mail senders share,
+// picking the transport named by the configuration. An unset provider resolves
+// to Resend so that a Config built without one (a test, or a deployment made
+// before the setting existed) keeps its previous transport.
+//
+// [Ja] newEmailSender はメール種別ごとの Sender が共有する基盤 Sender を構築し、設定が
+// 指定する transport を選ぶ。プロバイダー未設定は Resend に解決する。これにより、設定を
+// 持たずに構築された Config (テストや、この設定が存在する前のデプロイ) は従来の transport を
+// 保つ。
+func newEmailSender(cfg *config.Config) (email.Sender, error) {
+	switch cfg.EmailProvider {
+	case config.EmailProviderSMTP:
+		return email.NewSMTPSender(email.SMTPConfig{
+			Host:      cfg.SMTPHost,
+			Port:      cfg.SMTPPort,
+			Username:  cfg.SMTPUsername,
+			Password:  cfg.SMTPPassword,
+			TLSMode:   email.SMTPTLSMode(cfg.SMTPTLSMode),
+			FromEmail: cfg.EmailFrom,
+			FromName:  cfg.EmailFromName,
+		}), nil
+	case config.EmailProviderResend, "":
+		return email.NewResendSender(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName), nil
+	default:
+		return nil, fmt.Errorf("未知のメール送信プロバイダーです: %q", cfg.EmailProvider)
+	}
 }

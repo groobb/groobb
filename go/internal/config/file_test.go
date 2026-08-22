@@ -27,9 +27,17 @@ path = "/var/lib/groobb/groobb.sqlite"
 continuation_token_key = "groobb-test-continuation-token-key-32-bytes"
 
 [email]
+provider = "smtp"
 from = "noreply@example.dev"
 from_name = "Groobb"
 resend_api_key = "re_test_key"
+
+[email.smtp]
+host = "smtp.example.dev"
+port = 587
+username = "smtp-user"
+password = "smtp-password"
+tls_mode = "implicit"
 
 [turnstile]
 site_key = "1x00000000000000000000AA"
@@ -74,9 +82,14 @@ func TestLoadReadsSettingsFromConfigFile(t *testing.T) {
 		{name: "Port", got: cfg.Port, want: "9090"},
 		{name: "DatabasePath", got: cfg.DatabasePath, want: "/var/lib/groobb/groobb.sqlite"},
 		{name: "ContinuationTokenKey", got: cfg.ContinuationTokenKey, want: "groobb-test-continuation-token-key-32-bytes"},
+		{name: "EmailProvider", got: cfg.EmailProvider, want: EmailProviderSMTP},
 		{name: "EmailFrom", got: cfg.EmailFrom, want: "noreply@example.dev"},
 		{name: "EmailFromName", got: cfg.EmailFromName, want: "Groobb"},
 		{name: "ResendAPIKey", got: cfg.ResendAPIKey, want: "re_test_key"},
+		{name: "SMTPHost", got: cfg.SMTPHost, want: "smtp.example.dev"},
+		{name: "SMTPUsername", got: cfg.SMTPUsername, want: "smtp-user"},
+		{name: "SMTPPassword", got: cfg.SMTPPassword, want: "smtp-password"},
+		{name: "SMTPTLSMode", got: cfg.SMTPTLSMode, want: smtpTLSModeImplicit},
 		{name: "TurnstileSiteKey", got: cfg.TurnstileSiteKey, want: turnstileTestSiteKey},
 		{name: "TurnstileSecretKey", got: cfg.TurnstileSecretKey, want: turnstileTestSecretKey},
 	}
@@ -85,6 +98,10 @@ func TestLoadReadsSettingsFromConfigFile(t *testing.T) {
 		if tt.got != tt.want {
 			t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
 		}
+	}
+
+	if cfg.SMTPPort != 587 {
+		t.Errorf("SMTPPort = %d, want 587", cfg.SMTPPort)
 	}
 }
 
@@ -98,7 +115,7 @@ func TestLoadPrefersTheEnvironmentOverTheConfigFile(t *testing.T) {
 	clearEnv(t)
 	writeConfigFile(t, fullConfigFile)
 	t.Setenv("GROOBB_PORT", "8080")
-	t.Setenv("GROOBB_RESEND_API_KEY", "resend-api-key-from-the-environment")
+	t.Setenv("GROOBB_SMTP_PASSWORD", "smtp-password-from-the-environment")
 
 	cfg, err := Load()
 	if err != nil {
@@ -108,11 +125,11 @@ func TestLoadPrefersTheEnvironmentOverTheConfigFile(t *testing.T) {
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want the value from the environment %q", cfg.Port, "8080")
 	}
-	if cfg.ResendAPIKey != "resend-api-key-from-the-environment" {
-		t.Error("ResendAPIKey should come from the environment when it is set there")
+	if cfg.SMTPPassword != "smtp-password-from-the-environment" {
+		t.Error("SMTPPassword should come from the environment when it is set there")
 	}
-	if cfg.EmailFrom != "noreply@example.dev" {
-		t.Errorf("EmailFrom = %q, want the value from the file %q", cfg.EmailFrom, "noreply@example.dev")
+	if cfg.SMTPUsername != "smtp-user" {
+		t.Errorf("SMTPUsername = %q, want the value from the file %q", cfg.SMTPUsername, "smtp-user")
 	}
 }
 
@@ -181,13 +198,13 @@ func TestLoadRejectsAMissingExplicitConfigFile(t *testing.T) {
 // 示されることを検証する。設定を書いていないのと同じ状態で動くインスタンスを残さないため。
 func TestLoadRejectsUnknownConfigFileKeys(t *testing.T) {
 	clearEnv(t)
-	writeConfigFile(t, "[email]\nfrom_address = \"noreply@example.dev\"\n")
+	writeConfigFile(t, "[email.smtp]\nhostname = \"smtp.example.dev\"\n")
 
 	_, err := Load()
 	if err == nil {
 		t.Fatal("Load() should reject a key that matches no setting")
 	}
-	if !strings.Contains(err.Error(), "email.from_address") {
+	if !strings.Contains(err.Error(), "email.smtp.hostname") {
 		t.Errorf("the error should name the unknown key, got: %v", err)
 	}
 }
@@ -201,7 +218,7 @@ func TestLoadRejectsUnknownConfigFileKeys(t *testing.T) {
 // トークンを引用し、そのトークンはパスワードでありうる。
 func TestLoadConfigFileSyntaxErrorOmitsTheFileContents(t *testing.T) {
 	clearEnv(t)
-	writeConfigFile(t, "[email]\nresend_api_key = hunter2\n")
+	writeConfigFile(t, "[email.smtp]\npassword = hunter2\n")
 
 	_, err := Load()
 	if err == nil {
@@ -243,16 +260,16 @@ func TestLoadMissingSettingNamesBothSources(t *testing.T) {
 // いない場所を探すことになる。
 func TestLoadInvalidSettingNamesTheSourceItCameFrom(t *testing.T) {
 	clearEnv(t)
-	writeConfigFile(t, strings.Replace(fullConfigFile, "port = 9090", "port = 70000", 1))
+	writeConfigFile(t, strings.Replace(fullConfigFile, "port = 587", "port = 70000", 1))
 
 	_, err := Load()
 	if err == nil {
-		t.Fatal("Load() should reject a server port outside the valid range")
+		t.Fatal("Load() should reject an SMTP port outside the valid range")
 	}
-	if !strings.Contains(err.Error(), "server.port") {
+	if !strings.Contains(err.Error(), "email.smtp.port") {
 		t.Errorf("the error should name the file key the value came from, got: %v", err)
 	}
-	if strings.Contains(err.Error(), "GROOBB_PORT") {
+	if strings.Contains(err.Error(), "GROOBB_SMTP_PORT") {
 		t.Errorf("the error should not name the environment variable, which sets nothing here, got: %v", err)
 	}
 }
@@ -298,14 +315,16 @@ func TestExampleConfigFileLoads(t *testing.T) {
 	}
 
 	clearEnv(t)
-	// The example deliberately leaves the continuation token key empty so that a
-	// copied file cannot start with a public key. Supply a test-only value while
-	// checking the rest of the example through Load.
+	// The example deliberately leaves the continuation token key and the SMTP
+	// host empty so that a copied file cannot start with a public key or on a
+	// placeholder relay. Supply test-only values for both while checking the rest
+	// of the example through Load.
 	//
-	// [Ja] サンプルは、コピーしたファイルが公開済みの鍵で起動しないよう、continuation
-	// token の鍵を意図的に空にしている。残りのサンプルを Load で確認する間だけ、テスト用の
-	// 値を与える。
+	// [Ja] サンプルは、コピーしたファイルが公開済みの鍵やプレースホルダーのリレーで起動
+	// しないよう、continuation token の鍵と SMTP のホストを意図的に空にしている。残りの
+	// サンプルを Load で確認する間だけ、両方にテスト用の値を与える。
 	t.Setenv("GROOBB_CONTINUATION_TOKEN_KEY", "groobb-test-continuation-token-key-32-bytes")
+	t.Setenv("GROOBB_SMTP_HOST", "smtp.example.dev")
 	t.Setenv(configFileEnvName, path)
 
 	if _, err := Load(); err != nil {
@@ -358,6 +377,7 @@ func TestLoadRejectsPortZeroFromTheConfigFile(t *testing.T) {
 		fileKey string
 	}{
 		{name: "server", old: "port = 9090", fileKey: "server.port"},
+		{name: "SMTP", old: "port = 587", fileKey: "email.smtp.port"},
 	}
 
 	for _, tt := range tests {

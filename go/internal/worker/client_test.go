@@ -3,6 +3,7 @@ package worker_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/config"
@@ -62,5 +63,56 @@ func TestNewClient(t *testing.T) {
 
 	if err := client.Stop(ctx); err != nil {
 		t.Fatalf("Stop に失敗: %v", err)
+	}
+}
+
+// TestNewClient_SMTPProvider builds the client with the SMTP transport selected,
+// confirming the configuration is accepted and wired without contacting a relay.
+//
+// [Ja] TestNewClient_SMTPProvider は SMTP の transport を選択してクライアントを構築し、
+// リレーに接続することなく設定が受け入れられ配線されることを確認する。
+func TestNewClient_SMTPProvider(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	cfg := &config.Config{
+		EmailProvider: config.EmailProviderSMTP,
+		SMTPHost:      "smtp.example.dev",
+		SMTPPort:      587,
+		EmailFrom:     "noreply@example.dev",
+	}
+
+	client, err := worker.NewClient(ctx, testutil.SetupDBPath(t), cfg)
+	if err != nil {
+		t.Fatalf("NewClient に失敗: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Stop(ctx) })
+
+	if client.Client() == nil {
+		t.Fatal("Client() は基盤の River クライアントを返すべきです")
+	}
+}
+
+// TestNewClient_UnknownEmailProvider verifies an unusable email provider fails
+// the build. The database path is unopenable too, so the reported error also
+// shows the sender is built before any connection is opened.
+//
+// [Ja] TestNewClient_UnknownEmailProvider は、使用できないメールプロバイダーが構築を
+// 失敗させることを検証する。データベースパスも開けないものにしてあるため、返るエラーは
+// 接続を開く前に sender が構築されることも示す。
+func TestNewClient_UnknownEmailProvider(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "missing", "groobb.sqlite")
+
+	client, err := worker.NewClient(context.Background(), path, &config.Config{EmailProvider: "sendmail"})
+	if err == nil {
+		t.Fatal("未知のメールプロバイダーに対してエラーが返るべきです")
+	}
+	if client != nil {
+		t.Error("エラー時は client が nil であるべきです")
+	}
+	if !strings.Contains(err.Error(), "sendmail") {
+		t.Errorf("エラーはメールプロバイダーの失敗を示すべきです: %v", err)
 	}
 }

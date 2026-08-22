@@ -6,6 +6,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	"github.com/groobb/groobb/go/internal/email"
 )
 
 // clearEnv moves the test into an empty working directory and unsets every
@@ -30,9 +32,15 @@ func clearEnv(t *testing.T) {
 		"GROOBB_DATABASE_PATH",
 		"GROOBB_CONTINUATION_TOKEN_KEY",
 		"GROOBB_APP_URL",
+		"GROOBB_EMAIL_PROVIDER",
 		"GROOBB_EMAIL_FROM",
 		"GROOBB_EMAIL_FROM_NAME",
 		"GROOBB_RESEND_API_KEY",
+		"GROOBB_SMTP_HOST",
+		"GROOBB_SMTP_PORT",
+		"GROOBB_SMTP_USERNAME",
+		"GROOBB_SMTP_PASSWORD",
+		"GROOBB_SMTP_TLS_MODE",
 		"GROOBB_TURNSTILE_SITE_KEY",
 		"GROOBB_TURNSTILE_SECRET_KEY",
 		"GROOBB_TURNSTILE_DISABLE",
@@ -572,6 +580,262 @@ func TestVCSRevisionFromSettings(t *testing.T) {
 	}
 }
 
+// TestLoadEmailProviderDefaultsToResend verifies an unset provider keeps the
+// Resend transport, so a deployment made before the setting existed is unchanged.
+//
+// [Ja] TestLoadEmailProviderDefaultsToResend は、プロバイダー未設定のとき Resend の
+// transport が維持されることを検証する。この設定が存在する前のデプロイが変わらないため。
+func TestLoadEmailProviderDefaultsToResend(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if cfg.EmailProvider != EmailProviderResend {
+		t.Errorf("EmailProvider = %q, want %q", cfg.EmailProvider, EmailProviderResend)
+	}
+}
+
+// TestLoadRejectsUnknownEmailProvider verifies a provider outside the supported
+// set stops startup rather than silently falling back to one of them.
+//
+// [Ja] TestLoadRejectsUnknownEmailProvider は、対応していないプロバイダーが指定された
+// とき、いずれかへ黙ってフォールバックせず起動を止めることを検証する。
+func TestLoadRejectsUnknownEmailProvider(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("GROOBB_EMAIL_PROVIDER", "sendmail")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() should reject an unknown GROOBB_EMAIL_PROVIDER")
+	}
+}
+
+// setSMTPEnv sets a complete, valid set of SMTP settings that individual cases
+// then break in one place.
+//
+// [Ja] setSMTPEnv は妥当で完全な SMTP 設定一式を設定する。各ケースはそこから 1 箇所だけを
+// 壊す。
+func setSMTPEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("GROOBB_EMAIL_PROVIDER", EmailProviderSMTP)
+	t.Setenv("GROOBB_EMAIL_FROM", "noreply@example.dev")
+	t.Setenv("GROOBB_SMTP_HOST", "smtp.example.dev")
+	t.Setenv("GROOBB_SMTP_PORT", "587")
+	t.Setenv("GROOBB_SMTP_USERNAME", "smtp-user")
+	t.Setenv("GROOBB_SMTP_PASSWORD", "smtp-password")
+	t.Setenv("GROOBB_SMTP_TLS_MODE", smtpTLSModeStartTLS)
+}
+
+// TestLoadReadsSMTPSettings verifies the relay settings are read into the
+// configuration when the SMTP provider is selected.
+//
+// [Ja] TestLoadReadsSMTPSettings は、SMTP プロバイダーが選択されたときにリレーの設定が
+// 設定へ読み込まれることを検証する。
+func TestLoadReadsSMTPSettings(t *testing.T) {
+	setRequiredEnv(t)
+	setSMTPEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if cfg.EmailProvider != EmailProviderSMTP {
+		t.Errorf("EmailProvider = %q, want %q", cfg.EmailProvider, EmailProviderSMTP)
+	}
+	if cfg.SMTPHost != "smtp.example.dev" {
+		t.Errorf("SMTPHost = %q, want %q", cfg.SMTPHost, "smtp.example.dev")
+	}
+	if cfg.SMTPPort != 587 {
+		t.Errorf("SMTPPort = %d, want 587", cfg.SMTPPort)
+	}
+	if cfg.SMTPUsername != "smtp-user" {
+		t.Errorf("SMTPUsername = %q, want %q", cfg.SMTPUsername, "smtp-user")
+	}
+	if cfg.SMTPPassword != "smtp-password" {
+		t.Errorf("SMTPPassword was not loaded from the environment")
+	}
+	if cfg.SMTPTLSMode != smtpTLSModeStartTLS {
+		t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
+	}
+}
+
+// TestLoadDefaultsSMTPTLSModeToStartTLS verifies an unset TLS mode secures the
+// connection rather than leaving it in the clear.
+//
+// [Ja] TestLoadDefaultsSMTPTLSModeToStartTLS は、TLS モード未設定のときに接続を平文の
+// ままにせず保護することを検証する。
+func TestLoadDefaultsSMTPTLSModeToStartTLS(t *testing.T) {
+	setRequiredEnv(t)
+	setSMTPEnv(t)
+	t.Setenv("GROOBB_SMTP_TLS_MODE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if cfg.SMTPTLSMode != smtpTLSModeStartTLS {
+		t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
+	}
+}
+
+// TestLoadAcceptsSMTPTLSModes fixes every supported mode at the environment
+// boundary so none can disappear from startup configuration while the sender's
+// direct tests continue to pass.
+//
+// [Ja] TestLoadAcceptsSMTPTLSModes は、サポートするすべてのモードを環境変数との
+// 境界で固定する。Sender の直接テストが通り続ける一方で、起動設定からいずれかの
+// モードが欠落することを防ぐため。
+func TestLoadAcceptsSMTPTLSModes(t *testing.T) {
+	tests := []string{
+		smtpTLSModeStartTLS,
+		smtpTLSModeImplicit,
+		smtpTLSModeNone,
+	}
+
+	for _, mode := range tests {
+		t.Run(mode, func(t *testing.T) {
+			setRequiredEnv(t)
+			setSMTPEnv(t)
+			t.Setenv("GROOBB_SMTP_TLS_MODE", mode)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load() returned an unexpected error: %v", err)
+			}
+
+			if cfg.SMTPTLSMode != mode {
+				t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, mode)
+			}
+		})
+	}
+}
+
+// TestLoadAcceptsSMTPWithoutCredentials verifies a relay that authorises by
+// source address is a valid configuration.
+//
+// [Ja] TestLoadAcceptsSMTPWithoutCredentials は、送信元アドレスで認可するリレーが妥当な
+// 設定であることを検証する。
+func TestLoadAcceptsSMTPWithoutCredentials(t *testing.T) {
+	setRequiredEnv(t)
+	setSMTPEnv(t)
+	t.Setenv("GROOBB_SMTP_USERNAME", "")
+	t.Setenv("GROOBB_SMTP_PASSWORD", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if cfg.SMTPUsername != "" || cfg.SMTPPassword != "" {
+		t.Error("credentials should stay empty when neither variable is set")
+	}
+}
+
+// TestLoadRejectsIncompleteSMTPSettings checks each way the relay settings can be
+// wrong, so an operator gets a startup error instead of mail that never arrives.
+//
+// [Ja] TestLoadRejectsIncompleteSMTPSettings はリレー設定が誤りうる各ケースを確認する。
+// 運用者が、届かないメールではなく起動時エラーを受け取るようにするため。
+func TestLoadRejectsIncompleteSMTPSettings(t *testing.T) {
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{name: "host missing", key: "GROOBB_SMTP_HOST", value: ""},
+		{name: "port missing", key: "GROOBB_SMTP_PORT", value: ""},
+		{name: "port not a number", key: "GROOBB_SMTP_PORT", value: "submission"},
+		{name: "port out of range", key: "GROOBB_SMTP_PORT", value: "70000"},
+		{name: "port zero", key: "GROOBB_SMTP_PORT", value: "0"},
+		{name: "username without password", key: "GROOBB_SMTP_PASSWORD", value: ""},
+		{name: "password without username", key: "GROOBB_SMTP_USERNAME", value: ""},
+		{name: "unknown TLS mode", key: "GROOBB_SMTP_TLS_MODE", value: "ssl"},
+		{name: "From address missing", key: "GROOBB_EMAIL_FROM", value: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			setSMTPEnv(t)
+			t.Setenv(tt.key, tt.value)
+
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load() should reject %s = %q", tt.key, tt.value)
+			}
+		})
+	}
+}
+
+// TestLoadWarnsOnUnencryptedSMTPInProduction verifies the unencrypted relay is
+// allowed but called out, since it is only safe on a trusted local channel.
+//
+// [Ja] TestLoadWarnsOnUnencryptedSMTPInProduction は、暗号化しないリレーが許容されつつ
+// 指摘されることを検証する。安全なのは信頼できるローカル経路に限られるため。
+func TestLoadWarnsOnUnencryptedSMTPInProduction(t *testing.T) {
+	setRequiredEnv(t)
+	setSMTPEnv(t)
+	t.Setenv("APP_ENV", "prod")
+	t.Setenv("GROOBB_SMTP_TLS_MODE", smtpTLSModeNone)
+
+	var buf bytes.Buffer
+	original := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(original) })
+
+	if _, err := Load(); err != nil {
+		t.Fatalf("Load() returned an unexpected error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "SMTP") {
+		t.Errorf("expected a warning about the unencrypted relay, got: %s", buf.String())
+	}
+}
+
+// TestSMTPTLSModeValuesMatchEmailPackage pins the literals this package repeats
+// to the email package's constants. Only the worker's unchecked string
+// conversion joins the two at runtime, so a value that drifts on one side would
+// still load here and then fall through to the sender's STARTTLS default.
+//
+// The import is test-only: the production config package avoids importing the
+// email package, which would pull in the mail templates while config is imported
+// by nearly every package.
+//
+// [Ja] TestSMTPTLSModeValuesMatchEmailPackage は、本パッケージが再掲しているリテラルを
+// email パッケージの定数に固定する。実行時に両者を繋ぐのはワーカーの検査を伴わない文字列
+// 変換だけなので、片側の値がずれてもここでは読み込めてしまい、Sender 側では STARTTLS の
+// 既定へ落ちてしまう。
+//
+// この import はテスト専用であり、本番の config パッケージが email パッケージを import
+// しないようにする。email パッケージはメールテンプレートを引き込む一方、config はほぼ
+// すべてのパッケージから import されるためである。
+func TestSMTPTLSModeValuesMatchEmailPackage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		got  string
+		want email.SMTPTLSMode
+	}{
+		{name: "starttls", got: smtpTLSModeStartTLS, want: email.SMTPTLSModeStartTLS},
+		{name: "implicit", got: smtpTLSModeImplicit, want: email.SMTPTLSModeImplicit},
+		{name: "none", got: smtpTLSModeNone, want: email.SMTPTLSModeNone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if tt.got != string(tt.want) {
+				t.Errorf("config value = %q, want %q from the email package", tt.got, tt.want)
+			}
+		})
+	}
+}
+
 // TestLogValueRedactsSecrets verifies that logging a Config keeps the values
 // that authenticate the instance out of the log, while still showing which
 // secrets are set and every setting that is not one.
@@ -584,8 +848,10 @@ func TestLogValueRedactsSecrets(t *testing.T) {
 
 	cfg := Config{
 		Env:                  "prod",
+		SMTPHost:             "smtp.example.dev",
 		ContinuationTokenKey: "continuation-token-key-that-must-not-be-logged",
 		ResendAPIKey:         "resend-api-key-that-must-not-be-logged",
+		SMTPPassword:         "smtp-password-that-must-not-be-logged",
 		TurnstileSecretKey:   "turnstile-secret-key-that-must-not-be-logged",
 	}
 
@@ -606,6 +872,7 @@ func TestLogValueRedactsSecrets(t *testing.T) {
 			secrets := []string{
 				cfg.ContinuationTokenKey,
 				cfg.ResendAPIKey,
+				cfg.SMTPPassword,
 				cfg.TurnstileSecretKey,
 			}
 			for _, secret := range secrets {
@@ -617,7 +884,7 @@ func TestLogValueRedactsSecrets(t *testing.T) {
 			if !strings.Contains(logged, redactedSecret) {
 				t.Errorf("the log should mark the secrets that are set, got: %s", logged)
 			}
-			if !strings.Contains(logged, cfg.Env) {
+			if !strings.Contains(logged, cfg.SMTPHost) {
 				t.Errorf("the log should keep the settings that are not secrets, got: %s", logged)
 			}
 		})

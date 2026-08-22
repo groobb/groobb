@@ -17,6 +17,7 @@
 # 使ってください。
 #
 # ファイル自体は任意です。環境変数だけで設定するインスタンスはファイル無しで起動します。
+
 [app]
 # The running environment: "dev", "test", or "prod". A self-hosted instance runs
 # as "prod". APP_ENV overrides it.
@@ -65,16 +66,51 @@ path = "/var/lib/groobb/groobb.sqlite"
 continuation_token_key = ""
 
 [email]
-# The sender identity outgoing email carries, and the Resend API key it is
-# delivered with. GROOBB_EMAIL_FROM, GROOBB_EMAIL_FROM_NAME, and
-# GROOBB_RESEND_API_KEY override these.
+# The transport that delivers outgoing email: "resend" for the Resend HTTP API,
+# or "smtp" for a relay. Naming "smtp" states that mail is configured, so the
+# [email.smtp] settings below are then validated at startup. The From address is
+# required for the SMTP transport, because a relay rejects mail with an empty
+# envelope sender. GROOBB_EMAIL_PROVIDER, GROOBB_EMAIL_FROM,
+# GROOBB_EMAIL_FROM_NAME, and GROOBB_RESEND_API_KEY override these.
 #
-# [Ja] 送信メールが名乗る送信元と、配送に使う Resend の API キー。
-# GROOBB_EMAIL_FROM / GROOBB_EMAIL_FROM_NAME / GROOBB_RESEND_API_KEY が
-# 上書きします。
+# [Ja] 送信メールを配送する transport ("resend" は Resend の HTTP API、"smtp" はリレー)。
+# "smtp" を指定することはメールを設定済みだという表明なので、その場合は下の [email.smtp]
+# の設定を起動時に検証します。From アドレスは SMTP では必須です。エンベロープ送信者が空の
+# メールはリレーに拒否されるためです。GROOBB_EMAIL_PROVIDER / GROOBB_EMAIL_FROM /
+# GROOBB_EMAIL_FROM_NAME / GROOBB_RESEND_API_KEY が上書きします。
+provider = "smtp"
 from = "noreply@groobb.example.com"
 from_name = "Groobb"
 resend_api_key = ""
+
+[email.smtp]
+# The relay to send through, used when the provider above is "smtp". The port
+# has no default because the right value follows from the TLS mode (465 for
+# "implicit", 587 for "starttls"), and a guess would fail at delivery time
+# rather than at startup. The TLS mode is "starttls", "implicit", or "none";
+# "none" is only safe on a trusted local channel, since the mail carries
+# sign-in and password-reset links. Leave the credentials empty for a relay that
+# authorises by source address, and set both otherwise. The host is empty here
+# so that a copy of this file stops at startup naming the setting, rather than
+# starting on a placeholder relay whose failures surface only in the worker's
+# log. GROOBB_SMTP_HOST, GROOBB_SMTP_PORT, GROOBB_SMTP_USERNAME,
+# GROOBB_SMTP_PASSWORD, and GROOBB_SMTP_TLS_MODE override these.
+#
+# [Ja] 送信に使うリレー。上の provider が "smtp" のときに使います。ポートに既定値が無いのは、
+# 適切な値が TLS モードに従って決まり ("implicit" なら 465、"starttls" なら 587)、推測した
+# 値は起動時ではなく配送時に失敗するためです。TLS モードは "starttls" / "implicit" / "none"
+# のいずれかで、"none" が安全なのは信頼できるローカル経路に限られます (メールはサインインと
+# パスワードリセットのリンクを運ぶため)。送信元アドレスで認可するリレーでは認証情報を空に、
+# それ以外では両方を設定してください。host をここで空にしているのは、このファイルをコピー
+# しただけのインスタンスが、プレースホルダーのリレーで起動してワーカーのログにしか現れない
+# 配送失敗を積むのではなく、設定名を挙げて起動時に止まるようにするためです。
+# GROOBB_SMTP_HOST / GROOBB_SMTP_PORT / GROOBB_SMTP_USERNAME /
+# GROOBB_SMTP_PASSWORD / GROOBB_SMTP_TLS_MODE が上書きします。
+host = ""
+port = 587
+username = ""
+password = ""
+tls_mode = "starttls"
 
 [turnstile]
 # The Cloudflare Turnstile keys for bot protection on the public forms. With

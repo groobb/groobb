@@ -89,14 +89,17 @@ type Config struct {
 	// From address and name are used by either provider. They are optional rather
 	// than required so that an instance whose mail is not provisioned yet still
 	// boots and can be reached to finish configuring itself; a send then fails on
-	// the job instead of at startup.
+	// the job instead of at startup. The SMTP settings below are validated at
+	// startup instead, because naming that provider is an explicit statement that
+	// mail is configured.
 	//
 	// [Ja] ResendAPIKey / EmailFrom / EmailFromName は送信メールを設定します。ワーカー
 	// クライアントがバックグラウンドジョブ用の email sender を構築する際に使い、API キーは
 	// EmailProvider が Resend を選んだときにのみ、From アドレスと名前はどちらの
 	// プロバイダーでも使います。必須ではなく任意とするのは、メールが未設定のインスタンスでも
 	// 起動して設定を仕上げるために到達できる必要があるためです。この場合、送信は起動時では
-	// なくジョブ側で失敗します。
+	// なくジョブ側で失敗します。下の SMTP 設定は代わりに起動時に検証します。そのプロバイダーを
+	// 名指しすること自体が、メールを設定済みだという明示的な表明だからです。
 	ResendAPIKey string
 
 	// EmailFrom is the sender address used in the From header of outgoing email.
@@ -110,6 +113,47 @@ type Config struct {
 	// [Ja] EmailFromName は From ヘッダーで EmailFrom と並べて表示する送信元の表示名
 	// です。
 	EmailFromName string
+
+	// EmailProvider selects which transport delivers outgoing email: Resend's
+	// HTTP API or an SMTP relay. It is an explicit setting rather than something
+	// inferred from which credentials happen to be present, so that a typo in an
+	// SMTP setting surfaces as a startup error naming the missing setting
+	// instead of silently leaving the other provider in charge.
+	//
+	// [Ja] EmailProvider は送信メールをどの transport で配送するか (Resend の HTTP API か
+	// SMTP リレーか) を選択します。どの認証情報が設定されているかから推測するのではなく
+	// 明示的な設定にしているのは、SMTP の設定のタイプミスが、黙ってもう一方の
+	// プロバイダーを使い続ける状態ではなく、不足している設定名を挙げた起動時エラーとして
+	// 現れるようにするためです。
+	EmailProvider string
+
+	// SMTPHost and SMTPPort address the SMTP relay. The port has no default
+	// because the right value follows from the relay's TLS mode (465 and 587 are
+	// both common), and a default guessed here would fail at delivery time rather
+	// than at startup.
+	//
+	// [Ja] SMTPHost と SMTPPort は SMTP リレーの宛先です。ポートに既定値を持たせないのは、
+	// 適切な値がリレーの TLS モードに従って決まり (465 も 587 も一般的)、ここで推測した
+	// 既定値は起動時ではなく配送時に失敗するためです。
+	SMTPHost string
+	SMTPPort int
+
+	// SMTPUsername and SMTPPassword authenticate to the relay. Both may be empty
+	// for a relay that authorises by source address; setting only one is rejected
+	// at startup as an incomplete configuration.
+	//
+	// [Ja] SMTPUsername と SMTPPassword はリレーへの認証情報です。送信元アドレスで
+	// 認可するリレーのために両方空にできますが、片方だけの設定は不完全な設定として
+	// 起動時に拒否します。
+	SMTPUsername string
+	SMTPPassword string
+
+	// SMTPTLSMode selects how the connection to the relay is secured. Its values
+	// are those of email.SMTPTLSMode, which the worker client converts it to.
+	//
+	// [Ja] SMTPTLSMode はリレーへの接続の保護方式を選択します。値は email.SMTPTLSMode の
+	// ものであり、ワーカークライアントがその型へ変換します。
+	SMTPTLSMode string
 
 	// AppURL is the public base URL of the application (e.g.
 	// "https://groobb.example.dev" in production, "http://localhost:8080" in
@@ -218,6 +262,10 @@ func Load() (*Config, error) {
 	cfg.EmailFrom = newSetting("GROOBB_EMAIL_FROM", "email.from", file.Email.From).value
 	cfg.EmailFromName = newSetting("GROOBB_EMAIL_FROM_NAME", "email.from_name", file.Email.FromName).value
 
+	if err := loadEmailProvider(cfg, file); err != nil {
+		return nil, err
+	}
+
 	// AppURL is read without requiring it, for the same reason as the email
 	// settings above (see the field docs).
 	//
@@ -287,7 +335,7 @@ func Load() (*Config, error) {
 //
 // It exists because slog renders a struct field by field: without it, a single
 // call that logs a Config anywhere would write out the continuation token key,
-// the Resend API key, and the Turnstile secret key.
+// the Resend API key, the SMTP password, and the Turnstile secret key.
 //
 // [Ja] LogValue は構造化ログ向けに設定を整形し、秘密情報を置き換えます。Config を
 // ログに出しても、インスタンスの認証に使う値がログへ入らないようにするためです。
@@ -296,7 +344,7 @@ func Load() (*Config, error) {
 //
 // これが必要なのは、slog が構造体をフィールドごとに展開するためです。これが無いと、
 // どこか 1 箇所で Config をログに渡すだけで、continuation token の鍵・Resend の
-// API キー・Turnstile のシークレットキーが書き出されます。
+// API キー・SMTP のパスワード・Turnstile のシークレットキーが書き出されます。
 func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("env", c.Env),
@@ -304,11 +352,17 @@ func (c Config) LogValue() slog.Value {
 		slog.String("database_path", c.DatabasePath),
 		slog.String("asset_version", c.AssetVersion),
 		slog.String("app_url", c.AppURL),
+		slog.String("email_provider", c.EmailProvider),
 		slog.String("email_from", c.EmailFrom),
 		slog.String("email_from_name", c.EmailFromName),
+		slog.String("smtp_host", c.SMTPHost),
+		slog.Int("smtp_port", c.SMTPPort),
+		slog.String("smtp_username", c.SMTPUsername),
+		slog.String("smtp_tls_mode", c.SMTPTLSMode),
 		slog.String("turnstile_site_key", c.TurnstileSiteKey),
 		slog.String("continuation_token_key", redactSecret(c.ContinuationTokenKey)),
 		slog.String("resend_api_key", redactSecret(c.ResendAPIKey)),
+		slog.String("smtp_password", redactSecret(c.SMTPPassword)),
 		slog.String("turnstile_secret_key", redactSecret(c.TurnstileSecretKey)),
 	)
 }
@@ -451,4 +505,130 @@ func vcsRevisionFromSettings(settings []debug.BuildSetting) string {
 	}
 
 	return ""
+}
+
+// Email provider values for EmailProvider.
+//
+// [Ja] EmailProvider が取る送信プロバイダーの値。
+const (
+	// EmailProviderResend delivers through the Resend HTTP API.
+	//
+	// [Ja] EmailProviderResend は Resend の HTTP API 経由で配送する。
+	EmailProviderResend = "resend"
+
+	// EmailProviderSMTP delivers through an SMTP relay.
+	//
+	// [Ja] EmailProviderSMTP は SMTP リレー経由で配送する。
+	EmailProviderSMTP = "smtp"
+)
+
+// SMTP TLS mode values for SMTPTLSMode. They mirror the constants of
+// email.SMTPTLSMode, which the worker client converts the setting to. The
+// literals are repeated here rather than imported so that config does not
+// import the email package: that package pulls in the mail templates, and
+// config is imported by nearly every package.
+//
+// [Ja] SMTPTLSMode が取る TLS モードの値。ワーカークライアントが設定を変換する先である
+// email.SMTPTLSMode の定数に対応する。import せずに文字列を再掲しているのは、config が
+// email パッケージを import しないようにするため。email パッケージはメールテンプレートを
+// 引き込む一方、config はほぼすべてのパッケージから import される。
+const (
+	smtpTLSModeStartTLS = "starttls"
+	smtpTLSModeImplicit = "implicit"
+	smtpTLSModeNone     = "none"
+)
+
+// loadEmailProvider reads the email provider selection and, when it names SMTP,
+// the relay settings that go with it.
+//
+// [Ja] loadEmailProvider は送信プロバイダーの選択を読み込み、SMTP が指定されている場合は
+// それに伴うリレーの設定も読み込む。
+func loadEmailProvider(cfg *Config, file *fileConfig) error {
+	provider := newSetting("GROOBB_EMAIL_PROVIDER", "email.provider", file.Email.Provider)
+
+	cfg.EmailProvider = provider.value
+	if cfg.EmailProvider == "" {
+		cfg.EmailProvider = EmailProviderResend
+	}
+
+	switch cfg.EmailProvider {
+	case EmailProviderResend:
+		return nil
+	case EmailProviderSMTP:
+		return loadSMTPSettings(cfg, file)
+	default:
+		return fmt.Errorf("the email provider from %s must be %q or %q, but is %q", provider.source(), EmailProviderResend, EmailProviderSMTP, cfg.EmailProvider)
+	}
+}
+
+// loadSMTPSettings reads and validates the SMTP relay settings. Every missing or
+// malformed value is reported as a startup error naming the setting: an operator
+// configuring a relay has stated that mail should work, so a setting they got
+// wrong must stop the instance rather than surface later as mail that silently
+// never arrives.
+//
+// [Ja] loadSMTPSettings は SMTP リレーの設定を読み込んで検証する。欠落や不正な値は
+// すべて、設定名を挙げた起動時エラーとして報告する。リレーを設定した運用者はメールが
+// 機能すべきだと表明しているのだから、設定の誤りは、後になって「メールが黙って届かない」
+// 形で表面化するのではなく、インスタンスを止めなければならない。
+func loadSMTPSettings(cfg *Config, file *fileConfig) error {
+	smtpConfigured := fmt.Sprintf("the email provider is %q", EmailProviderSMTP)
+
+	host := newSetting("GROOBB_SMTP_HOST", "email.smtp.host", file.Email.SMTP.Host)
+	if !host.isSet() {
+		return host.missingWhenError(smtpConfigured)
+	}
+	cfg.SMTPHost = host.value
+
+	port := newSetting("GROOBB_SMTP_PORT", "email.smtp.port", intFileValue(file.Email.SMTP.Port))
+	if !port.isSet() {
+		return port.missingWhenError(smtpConfigured)
+	}
+	parsedPort, err := port.tcpPort("SMTP port")
+	if err != nil {
+		return err
+	}
+	cfg.SMTPPort = parsedPort
+
+	username := newSetting("GROOBB_SMTP_USERNAME", "email.smtp.username", file.Email.SMTP.Username)
+	password := newSetting("GROOBB_SMTP_PASSWORD", "email.smtp.password", file.Email.SMTP.Password)
+	if username.isSet() != password.isSet() {
+		return fmt.Errorf("%s and %s must be set together, or both left unset", username.names(), password.names())
+	}
+	cfg.SMTPUsername = username.value
+	cfg.SMTPPassword = password.value
+
+	tlsMode := newSetting("GROOBB_SMTP_TLS_MODE", "email.smtp.tls_mode", file.Email.SMTP.TLSMode)
+	cfg.SMTPTLSMode = tlsMode.value
+	if cfg.SMTPTLSMode == "" {
+		cfg.SMTPTLSMode = smtpTLSModeStartTLS
+	}
+	switch cfg.SMTPTLSMode {
+	case smtpTLSModeStartTLS, smtpTLSModeImplicit, smtpTLSModeNone:
+	default:
+		return fmt.Errorf("the SMTP TLS mode from %s must be %q, %q, or %q, but is %q", tlsMode.source(), smtpTLSModeStartTLS, smtpTLSModeImplicit, smtpTLSModeNone, cfg.SMTPTLSMode)
+	}
+
+	// The From address has no fallback in SMTP: an empty envelope sender is what
+	// bounce notifications use, and relays reject mail sent with one.
+	//
+	// [Ja] SMTP では From アドレスに代替が無い。空のエンベロープ送信者はバウンス通知が
+	// 使うものであり、それで送られたメールをリレーは拒否する。
+	if cfg.EmailFrom == "" {
+		return newSetting("GROOBB_EMAIL_FROM", "email.from", file.Email.From).missingWhenError(smtpConfigured)
+	}
+
+	// An unencrypted relay is legitimate on a trusted local channel, so this is a
+	// warning rather than a startup error; in production it is worth saying out
+	// loud, because the mail Groobb sends carries sign-in and password-reset
+	// links.
+	//
+	// [Ja] 暗号化しないリレーは信頼できるローカル経路では正当なため、起動時エラーではなく
+	// 警告に留める。ただし本番では明示的に言う価値がある。Groobb が送るメールはサインインや
+	// パスワードリセットのリンクを運ぶためである。
+	if cfg.IsProduction() && cfg.SMTPTLSMode == smtpTLSModeNone {
+		slog.Warn("SMTP の TLS を無効にしています (本番でメールの内容が平文で流れます)")
+	}
+
+	return nil
 }

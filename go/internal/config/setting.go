@@ -78,6 +78,15 @@ func (s setting) missingError() error {
 	return fmt.Errorf("%s is required, but is not configured", s.names())
 }
 
+// missingWhenError is missingError for a setting that becomes required under a
+// condition, so that the message says what made it required.
+//
+// [Ja] missingWhenError は、ある条件のもとで必須になる設定向けの missingError です。
+// 何によって必須になったのかをメッセージに含めます。
+func (s setting) missingWhenError(condition string) error {
+	return fmt.Errorf("%s is required when %s, but is not configured", s.names(), condition)
+}
+
 // tcpPort parses the setting as a TCP port. subject names the port in the
 // message, because a configuration holds more than one of them and the operator
 // needs to know which one they got wrong.

@@ -39,14 +39,14 @@ const (
 // grouped into the tables an operator edits.
 //
 // The tables follow the environment variable names, with the component a
-// variable names becoming the table (GROOBB_TURNSTILE_SITE_KEY is "site_key"
-// under [turnstile], APP_ENV is "env" under [app]), so that each setting has one
+// variable names becoming the table (GROOBB_SMTP_HOST is "host" under
+// [email.smtp], APP_ENV is "env" under [app]), so that each setting has one
 // name on each side and the two can be read off each other. No setting sits at
 // the top level: in TOML a key written after a table belongs to that table, so
 // a top-level key would be a trap in a hand-edited file.
 //
 // A numeric setting is a pointer so that a written value is distinguishable
-// from an absent key. The port here rejects 0, and folding it into "absent"
+// from an absent key. Both ports here reject 0, and folding it into "absent"
 // would answer an operator who wrote `port = 0` with a message saying the
 // setting is not configured. A list setting needs no such distinction: an
 // empty list and an absent key both leave the setting off.
@@ -55,13 +55,13 @@ const (
 // 運用者が編集する単位でテーブルにまとめています。
 //
 // テーブルの分け方は環境変数の名前に従い、変数名が示す構成要素をテーブルにします
-// (GROOBB_TURNSTILE_SITE_KEY は [turnstile] の "site_key"、APP_ENV は [app] の "env")。
+// (GROOBB_SMTP_HOST は [email.smtp] の "host"、APP_ENV は [app] の "env")。
 // これにより設定ごとの名前が両者で 1 対 1 に対応し、一方から他方を読み取れます。
 // トップレベルに置く設定はありません。TOML ではテーブルより後ろに書いたキーはその
 // テーブルに属するため、トップレベルのキーは手で編集するファイルでは罠になります。
 //
 // 数値の設定はポインタにして、書かれた値とキーの不在を区別できるようにしています。
-// ここにあるポートは 0 を拒否しますが、0 を「不在」に畳み込むと、
+// ここにある 2 つのポートはどちらも 0 を拒否しますが、0 を「不在」に畳み込むと、
 // `port = 0` と書いた運用者に「設定されていない」と返してしまうためです。リストの設定に
 // この区別は要りません。空のリストとキーの不在は、どちらも設定を無効のままにします。
 type fileConfig struct {
@@ -91,9 +91,19 @@ type fileSecurity struct {
 }
 
 type fileEmail struct {
-	From         string `toml:"from"`
-	FromName     string `toml:"from_name"`
-	ResendAPIKey string `toml:"resend_api_key"`
+	Provider     string   `toml:"provider"`
+	From         string   `toml:"from"`
+	FromName     string   `toml:"from_name"`
+	ResendAPIKey string   `toml:"resend_api_key"`
+	SMTP         fileSMTP `toml:"smtp"`
+}
+
+type fileSMTP struct {
+	Host     string `toml:"host"`
+	Port     *int   `toml:"port"`
+	Username string `toml:"username"`
+	Password string `toml:"password"`
+	TLSMode  string `toml:"tls_mode"`
 }
 
 type fileTurnstile struct {
