@@ -16,12 +16,14 @@ import (
 // TestShow verifies that the top page returns HTTP 200 with an HTML body that
 // renders the localized hero text, the sign-up and sign-in calls to action,
 // the request-locale lang attribute, the footer, and the versioned asset
-// references for each supported locale.
+// references for each supported locale, and that it does not carry the shared
+// signed-in header, which belongs to the pages behind authentication.
 //
 // [Ja] TestShow はトップページが HTTP 200 と、サポートする各ロケールについて、
 // ローカライズされたヒーロー文言・サインアップ / サインインの CTA・リクエスト
 // ロケールの lang 属性・フッター・バージョン付きのアセット参照を描画した HTML
-// ボディを返すことを検証します。
+// ボディを返すこと、そして認証の背後のページに属するサインイン済みページ共通の
+// ヘッダーを持たないことを検証します。
 func TestShow(t *testing.T) {
 	t.Parallel()
 
@@ -33,9 +35,10 @@ func TestShow(t *testing.T) {
 		wantHeading    string
 		wantSignUpLink string
 		wantSignInLink string
+		noHeaderNav    string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン", noHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in", noHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -73,6 +76,10 @@ func TestShow(t *testing.T) {
 				if !strings.Contains(body, want) {
 					t.Errorf("response body does not contain %q", want)
 				}
+			}
+
+			if strings.Contains(body, `aria-label="`+tt.noHeaderNav+`"`) {
+				t.Error("未サインインのトップページにサインイン済みページ共通のヘッダーが含まれている")
 			}
 		})
 	}

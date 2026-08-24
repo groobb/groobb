@@ -122,3 +122,28 @@ func TestNotFoundFallsBackToPlainText(t *testing.T) {
 		t.Errorf("response body = %q, want %q", got, "Not Found\n")
 	}
 }
+
+// TestNotFoundHasNoSignedInHeader verifies that the 404 page does not render the
+// signed-in header. The route it answers is reached by anyone, and the renderer
+// resolves no user, so the header — whose link leads to a page behind
+// authentication — must not appear on it.
+//
+// [Ja] TestNotFoundHasNoSignedInHeader は 404 ページがサインイン済みページ共通の
+// ヘッダーを描画しないことを検証します。ここが応じるルートには誰でも到達し、Renderer は
+// ユーザーを解決しないため、認証の背後のページへ導くリンクを持つヘッダーは出しては
+// なりません。
+func TestNotFoundHasNoSignedInHeader(t *testing.T) {
+	t.Parallel()
+
+	renderer := httperror.NewRenderer(&config.Config{Env: "dev"})
+
+	req := httptest.NewRequest(http.MethodGet, "/no-such-page", nil)
+	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	rec := httptest.NewRecorder()
+
+	renderer.NotFound(rec, req)
+
+	if got := rec.Body.String(); strings.Contains(got, `aria-label="グローバルナビゲーション"`) {
+		t.Error("response body contains the signed-in header navigation")
+	}
+}

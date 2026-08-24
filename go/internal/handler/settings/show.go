@@ -26,6 +26,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	meta := viewmodel.DefaultPageMeta(ctx, h.cfg)
 	meta.Title = i18n.T(ctx, "settings_show_title")
 	meta.NoIndex = true
+	meta.SignedIn = true
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := layouts.Default(meta, settingspage.Show()).Render(ctx, w); err != nil {

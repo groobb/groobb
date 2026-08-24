@@ -42,6 +42,7 @@ import (
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -274,6 +275,16 @@ func main() {
 	// [Ja] Accept-Language からリクエストのロケールを解決して context に格納し、
 	// ハンドラーとテンプレートがローカライズされたテキストを描画できるようにする。
 	r.Use(i18n.Middleware)
+
+	// Store the request path in the context so the shared layout's navigation can
+	// mark a link that points at the page being rendered with aria-current="page".
+	// It wraps every route because the layout, which any page can render, reads
+	// the path from the context.
+	//
+	// [Ja] リクエストパスを context に格納し、共通レイアウトのナビゲーションが今描画して
+	// いるページを指すリンクに aria-current="page" を付けられるようにする。どのページも
+	// 描画しうるレイアウトが context からパスを読むため、全ルートに掛ける。
+	r.Use(templates.CurrentPathMiddleware)
 
 	// Issue and verify CSRF tokens for every route: safe requests mint the token
 	// for forms to embed, and unsafe requests (the sign-up POST and later forms)

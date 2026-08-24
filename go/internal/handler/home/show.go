@@ -32,6 +32,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	meta := viewmodel.DefaultPageMeta(ctx, h.cfg)
 	meta.Title = i18n.T(ctx, "home_show_title")
 	meta.NoIndex = true
+	meta.SignedIn = true
 
 	data := homepage.ShowPageData{
 		Atname:    user.Atname,

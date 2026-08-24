@@ -87,6 +87,7 @@ func (h *Handler) renderCreated(w http.ResponseWriter, r *http.Request, recovery
 	meta.Title = i18n.T(ctx, "settings_two_factor_auth_create_title")
 	meta.Description = i18n.T(ctx, "settings_two_factor_auth_create_description")
 	meta.NoIndex = true
+	meta.SignedIn = true
 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

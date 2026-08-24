@@ -116,12 +116,13 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
+		name          string
+		locale        string
+		wantHeading   string
+		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "2 段階認証の設定"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Set up two-factor authentication"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "2 段階認証の設定", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Set up two-factor authentication", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -171,6 +172,8 @@ func TestNew(t *testing.T) {
 				`method="POST"`,
 				`name="csrf_token"`,
 				`name="code"`,
+				`aria-label="` + tt.wantHeaderNav + `"`,
+				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
 				`lang="` + tt.locale + `"`,
 			}
@@ -213,6 +216,8 @@ func TestNew_AlreadyEnabled(t *testing.T) {
 		`value="DELETE"`,
 		`name="current_password"`,
 		`name="code"`,
+		`aria-label="グローバルナビゲーション"`,
+		`href="/home"`,
 	}
 	for _, want := range wants {
 		if !strings.Contains(body, want) {

@@ -12,9 +12,11 @@ import (
 	"github.com/groobb/groobb/go/internal/i18n"
 )
 
-// PageMeta holds the per-page metadata rendered into the HTML <head>.
+// PageMeta holds the per-page metadata the shared layout renders: the contents
+// of the HTML <head>, and which of the layout's shared parts the page carries.
 //
-// [Ja] PageMeta は HTML の <head> に描画されるページ単位のメタ情報を保持します。
+// [Ja] PageMeta は共通レイアウトが描画するページ単位のメタ情報 (HTML の <head> の
+// 内容と、そのページが備えるレイアウトの共通部品) を保持します。
 type PageMeta struct {
 	// Title is the page title rendered into the <title> tag.
 	//
@@ -41,6 +43,22 @@ type PageMeta struct {
 	// (例: ホームページ) で設定します。公開ページは false のままとし、暗黙の
 	// index, follow の既定に従います。
 	NoIndex bool
+
+	// SignedIn, when true, renders the shared header carrying the navigation back
+	// to home. The handlers registered behind RequireAuth set it: only a signed-in
+	// visitor reaches their pages, and without the header the visitor has nothing
+	// but the browser's back button to leave them by. Which of the layout's shared
+	// parts a page carries is decided by the handler and carried here, the same
+	// way NoIndex is, so the layout renders what the page asked for instead of
+	// inspecting the request for itself.
+	//
+	// [Ja] SignedIn が true のとき、ホームへ戻る導線を持つ共通ヘッダーを描画します。
+	// RequireAuth の背後に登録されたハンドラーが設定します。それらのページにはサイン
+	// イン済みの訪問者しか到達せず、ヘッダーが無いとブラウザの戻る操作以外にそこから
+	// 出る手段がありません。ページがレイアウトのどの共通部品を備えるかは NoIndex と
+	// 同じくハンドラーが決めてここで運び、レイアウトは自分でリクエストを調べるのでは
+	// なくページが求めたものを描画します。
+	SignedIn bool
 }
 
 // DefaultPageMeta returns the metadata used as a baseline for every page. The

@@ -46,6 +46,14 @@ other = "退会しました"
 description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
 other = "2 段階認証を無効にしました"
 
+[header_home_link]
+description = "サインイン済みページ共通ヘッダーからホームへ誘導するリンクのテキスト"
+other = "ホーム"
+
+[header_nav_label]
+description = "サインイン済みページ共通ヘッダーのナビゲーションランドマークのアクセシブルラベル"
+other = "グローバルナビゲーション"
+
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"

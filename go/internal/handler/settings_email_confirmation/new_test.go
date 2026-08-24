@@ -30,13 +30,14 @@ func TestNew(t *testing.T) {
 	handler := settings_email_confirmation.NewHandler(&config.Config{Env: "dev"}, nil, nil)
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
-		wantSubmit  string
+		name          string
+		locale        string
+		wantHeading   string
+		wantSubmit    string
+		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "確認コードの入力", wantSubmit: "メールアドレスを変更"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Enter confirmation code", wantSubmit: "Change email address"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "確認コードの入力", wantSubmit: "メールアドレスを変更", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Enter confirmation code", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -64,6 +65,8 @@ func TestNew(t *testing.T) {
 				`method="POST"`,
 				`name="csrf_token"`,
 				`name="code"`,
+				`aria-label="` + tt.wantHeaderNav + `"`,
+				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
 				`lang="` + tt.locale + `"`,
 			}
