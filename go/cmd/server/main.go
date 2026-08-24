@@ -227,6 +227,20 @@ func main() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 
+	// Name Groobb as the issuer of every redirect the application writes, so that a
+	// URL which bounces unexpectedly can be traced to a layer by reading one header
+	// instead of the configurations of Cloudflare and the proxy in front of us. It
+	// is registered above the trailing-slash normalization because that
+	// normalization answers a request itself, and a middleware only reaches a
+	// response that a middleware below it wrote.
+	//
+	// [Ja] アプリケーションが書き出すすべてのリダイレクトの発行元として Groobb を示す。
+	// 意図せず転送される URL を、前段の Cloudflare とプロキシの設定を読むのではなく、
+	// ヘッダー 1 つを読んでどの層のものか辿れるようにするためである。末尾スラッシュの正規化
+	// より上に登録するのは、その正規化が自身でリクエストに応答するためであり、ミドルウェアが
+	// 到達できるのはそれより下のミドルウェアが書いたレスポンスだけである。
+	r.Use(middleware.RedirectBy)
+
 	// Give every HTML response a private revalidation policy unless a more specific
 	// handler or middleware has already selected one. The routes below issue and
 	// embed visitor-specific CSRF tokens, so their responses may be kept by the
