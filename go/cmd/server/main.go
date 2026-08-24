@@ -224,6 +224,20 @@ func main() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 
+	// Send a URL carrying a trailing slash on to the same URL without one, so a
+	// page answers from a single address instead of two that hold the same
+	// content. It runs ahead of the middlewares below because a request that ends
+	// here never reaches a handler: resolving a locale or minting a CSRF token
+	// would be wasted, and the flash middleware would consume the one-off message
+	// the visitor is on their way to read.
+	//
+	// [Ja] 末尾スラッシュ付きの URL を、スラッシュ無しの同じ URL へ送る。ページが
+	// 同じ内容を持つ 2 つのアドレスではなく 1 つのアドレスから応答するようにするため
+	// である。下のミドルウェアより前に走らせるのは、ここで終わるリクエストがハンドラーに
+	// 到達しないためである。ロケールの解決も CSRF トークンの発行も無駄になり、フラッシュの
+	// ミドルウェアは訪問者がこれから読む一度きりのメッセージを消費してしまう。
+	r.Use(chimiddleware.RedirectSlashes)
+
 	// Resolve the request locale from Accept-Language and store it in the
 	// context so handlers and templates can render localized text.
 	//
