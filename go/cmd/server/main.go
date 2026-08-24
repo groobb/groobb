@@ -37,6 +37,7 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
+	"github.com/groobb/groobb/go/internal/httperror"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/repository"
@@ -198,6 +199,8 @@ func main() {
 	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
 
+	errorRenderer := httperror.NewRenderer(cfg)
+
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -274,6 +277,17 @@ func main() {
 	// 消去する。これによりハンドラーのリダイレクト先で一度だけ描画される (例: サインアウト成功の
 	// toast)。フラッシュはどのページも描画しうる共通レイアウトが context から読むため、全ルートに掛ける。
 	r.Use(flashMgr.Middleware)
+
+	// Answer a request matching no route with the shared 404 page instead of chi's
+	// default line of plain text. It is registered on the router rather than
+	// wrapped around it, so the middlewares above still run: the page needs the
+	// locale they resolve to render in the visitor's language.
+	//
+	// [Ja] どのルートにも一致しないリクエストには、chi の既定の平文 1 行ではなく共通の
+	// 404 ページで応答する。ルーターを包むのではなくルーターに登録するため、上のミドル
+	// ウェアは変わらず走る。ページは訪問者の言語で描画するのに、それらが解決するロケールを
+	// 必要とする。
+	r.NotFound(errorRenderer.NotFound)
 
 	// Health check (no authentication required).
 	//
