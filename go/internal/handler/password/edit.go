@@ -35,11 +35,15 @@ func (h *Handler) Edit(w http.ResponseWriter, r *http.Request) {
 // renderEdit renders the new-password form with the given status and data. It is
 // shared by Edit (200) and Update's re-render after a validation error (422). The
 // status is written before rendering, so callers pass the final status here
-// rather than setting it separately.
+// rather than setting it separately. The body can carry the plaintext password
+// reset token, so every response rendered here uniformly uses Cache-Control:
+// no-store to prevent HTTP caches from retaining that bearer secret.
 //
 // [Ja] renderEdit は指定したステータスとデータで新パスワードフォームを描画します。
 // Edit (200) と、Update のバリデーションエラー後の再描画 (422) で共有します。ステータスは
-// 描画前に書き込むため、呼び出し側は別途設定せずここに最終ステータスを渡します。
+// 描画前に書き込むため、呼び出し側は別途設定せずここに最終ステータスを渡します。ボディは
+// 平文のパスワードリセットトークンを運びうるため、ここで描画するすべてのレスポンスに一律で
+// Cache-Control: no-store を付け、HTTP キャッシュにその bearer secret が残らないようにします。
 func (h *Handler) renderEdit(w http.ResponseWriter, r *http.Request, status int, data passwordpage.EditPageData) {
 	ctx := r.Context()
 
@@ -47,6 +51,7 @@ func (h *Handler) renderEdit(w http.ResponseWriter, r *http.Request, status int,
 	meta.Title = i18n.T(ctx, "password_edit_title")
 	meta.Description = i18n.T(ctx, "password_edit_description")
 
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := layouts.Default(meta, passwordpage.Edit(data)).Render(ctx, w); err != nil {
