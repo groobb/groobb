@@ -34,13 +34,14 @@ func TestEdit(t *testing.T) {
 	handler := settings_email.NewHandler(&config.Config{Env: "dev"}, nil)
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
-		wantSubmit  string
+		name          string
+		locale        string
+		wantHeading   string
+		wantSubmit    string
+		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Change email address", wantSubmit: "Change email address"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Change email address", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -73,6 +74,8 @@ func TestEdit(t *testing.T) {
 				`name="csrf_token"`,
 				`name="email"`,
 				`name="current_password"`,
+				`aria-label="` + tt.wantHeaderNav + `"`,
+				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
 				`lang="` + tt.locale + `"`,
 			}

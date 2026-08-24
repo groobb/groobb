@@ -1,0 +1,33 @@
+package errors
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// NotFound renders the body of the 404 page: what happened, in plain words, and
+// a link on to the top page so the visitor is not left at a dead end.
+//
+// The link points at the top page rather than at home, because the page answers
+// requests from anyone: the top page hands a signed-in visitor on to home,
+// while a link straight to home would send an anonymous one to the sign-in form
+// instead of anywhere they asked for.
+//
+// [Ja] NotFound は 404 ページの本文を描画します。何が起きたのかを平易な言葉で示し、
+// 訪問者を行き止まりに残さないようトップページへのリンクを置きます。
+//
+// リンク先をホームではなくトップページにするのは、このページが誰からのリクエストにも
+// 応じるためです。トップページはサインイン済みの訪問者をホームへ引き渡しますが、直接
+// ホームへリンクすると匿名の訪問者は、求めてもいないサインインフォームへ送られます。
+templ NotFound() {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "error_not_found_heading") }</h1>
+				<p>{ templates.T(ctx, "error_not_found_message") }</p>
+			</header>
+			<footer>
+				<a href={ templates.RootPath().SafeURL() } class="btn w-full">
+					{ templates.T(ctx, "error_not_found_back_to_home") }
+				</a>
+			</footer>
+		</div>
+	</div>
+}

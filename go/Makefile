@@ -188,4 +188,15 @@ db-new: ## Create a new migration file (usage: make db-new name=create_users). [
 
 .PHONY: sqlc-generate
 sqlc-generate: ## Generate Go code from SQL queries. [Ja] SQL クエリから Go コードを生成
-	sqlc generate
+	go tool sqlc generate
+
+# `sqlc diff` reports the same drift regenerating would, without writing to the
+# working tree, so a failing check leaves no stray diff behind in the branch
+# being worked on. Generating stays the job of sqlc-generate.
+#
+# [Ja] `sqlc diff` は再生成と同じずれを、作業ツリーへ書き込まずに報告する。
+# 検査が落ちても、作業中のブランチに意図しない差分が残らない。生成は sqlc-generate
+# の責務のままとする。
+.PHONY: sqlc-diff
+sqlc-diff: ## Check the generated code is in sync with the SQL (fails on diff). [Ja] 生成コードが SQL と同期しているかチェック (差分があれば失敗)
+	go tool sqlc diff

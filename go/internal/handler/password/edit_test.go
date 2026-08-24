@@ -51,13 +51,13 @@ func getPasswordEdit(token, locale string) *http.Request {
 
 // TestEdit verifies that GET /password/edit returns HTTP 200 with the new-password
 // form (password and password-confirmation fields, the CSRF and reset-token
-// hidden fields, and the _method=PATCH override) and the localized heading for
-// each supported locale.
+// hidden fields, and the _method=PATCH override), Cache-Control: no-store, and
+// the localized heading for each supported locale.
 //
 // [Ja] TestEdit は、GET /password/edit が HTTP 200 と、新パスワードフォーム (password /
 // password_confirmation フィールド・CSRF とリセットトークンの hidden フィールド・
-// _method=PATCH オーバーライド) を、サポートする各ロケールのローカライズ済み見出しとともに
-// 返すことを検証する。
+// _method=PATCH オーバーライド)、Cache-Control: no-store、サポートする各ロケールの
+// ローカライズ済み見出しを返すことを検証する。
 func TestEdit(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +86,9 @@ func TestEdit(t *testing.T) {
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
 				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+			}
+			if got := rec.Result().Header.Get("Cache-Control"); got != "no-store" {
+				t.Errorf("Cache-Control = %q, want %q", got, "no-store")
 			}
 
 			body := rec.Body.String()

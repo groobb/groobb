@@ -6,9 +6,21 @@ other = "Groobb"
 description = "デフォルトのページ説明文 (meta description)"
 other = "Groobb は掲示板サービスです。"
 
+[error_not_found_title]
+description = "404 ページのタイトル (title タグ)"
+other = "ページが見つかりません"
+
+[error_not_found_heading]
+description = "404 ページの見出し"
+other = "ページが見つかりません"
+
 [error_not_found_message]
 description = "リクエストされた URL に対応するものが存在しないときに 404 で返す説明文"
-other = "ページが見つかりません"
+other = "お探しのページは見つかりませんでした。URL が変更されたか、ページが削除された可能性があります。"
+
+[error_not_found_back_to_home]
+description = "404 ページからトップページ (/) へ移動するリンクのテキスト"
+other = "トップページへ"
 
 [field_required]
 description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通の UI 部品)"
@@ -33,6 +45,14 @@ other = "退会しました"
 [flash_two_factor_auth_disabled]
 description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
 other = "2 段階認証を無効にしました"
+
+[header_home_link]
+description = "サインイン済みページ共通ヘッダーからホームへ誘導するリンクのテキスト"
+other = "ホーム"
+
+[header_nav_label]
+description = "サインイン済みページ共通ヘッダーのナビゲーションランドマークのアクセシブルラベル"
+other = "グローバルナビゲーション"
 
 [posts_count]
 description = "UI に表示する投稿数"

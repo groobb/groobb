@@ -1,0 +1,44 @@
+package components
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// Header renders the navigation shared by the signed-in pages. It carries the
+// way back to home, which is what keeps a signed-in page from being a dead end:
+// the pages behind authentication are otherwise left only by the browser's back
+// button. The wider site navigation belongs to the pages it would navigate
+// between, so the bar holds the one link until they exist.
+//
+// The <nav> is labeled because the settings hub renders a second <nav> in the
+// page content, and the label is what lets assistive technology tell the two
+// navigation regions apart. On the home page itself the link carries
+// aria-current="page", so a reader who arrives at the link is told it points at
+// where they already are rather than somewhere to go.
+//
+// [Ja] Header はサインイン済みページが共有するナビゲーションを描画します。ホームへ
+// 戻る導線を持ち、これがサインイン済みページを行き止まりにしないためのものです。
+// 認証の背後のページは、これが無いとブラウザの戻る操作でしか出られません。サイト
+// 全体のナビゲーションは、それが行き来する対象のページができてから決まるものなので、
+// それまではこの 1 本のリンクだけを持ちます。
+//
+// <nav> にラベルを付けるのは、設定ハブがページ内容にもう 1 つ <nav> を描画するため
+// です。支援技術が 2 つのナビゲーション領域を区別できるのはこのラベルによります。
+// ホームページ自身ではリンクに aria-current="page" を付け、リンクに辿り着いた読者に、
+// そこが行き先ではなく既にいる場所を指していることを伝えます。
+templ Header() {
+	<header class="border-b border-border">
+		<nav
+			class="mx-auto flex w-full max-w-md items-center px-4 py-3"
+			aria-label={ templates.T(ctx, "header_nav_label") }
+		>
+			<a
+				href={ templates.HomePath().SafeURL() }
+				class="font-semibold tracking-tight"
+				if templates.IsCurrentPath(ctx, templates.HomePath().String()) {
+					aria-current="page"
+				}
+			>
+				{ templates.T(ctx, "header_home_link") }
+			</a>
+		</nav>
+	</header>
+}

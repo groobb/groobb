@@ -115,6 +115,7 @@ func (h *Handler) renderNew(w http.ResponseWriter, r *http.Request, status int, 
 	meta.Title = i18n.T(ctx, "settings_two_factor_auth_new_title")
 	meta.Description = i18n.T(ctx, "settings_two_factor_auth_new_description")
 	meta.NoIndex = true
+	meta.SignedIn = true
 
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

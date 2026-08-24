@@ -6,9 +6,21 @@ other = "Groobb"
 description = "Default meta description for the page"
 other = "Groobb is a bulletin board service."
 
+[error_not_found_title]
+description = "404 page title (title tag)"
+other = "Page not found"
+
+[error_not_found_heading]
+description = "404 page heading"
+other = "Page not found"
+
 [error_not_found_message]
 description = "Message returned with a 404 when nothing matches the requested URL"
-other = "Page not found"
+other = "The page you were looking for was not found. Its URL may have changed, or the page may have been deleted."
+
+[error_not_found_back_to_home]
+description = "Link text on the 404 page that leads to the top page (/)"
+other = "Go to the home page"
 
 [field_required]
 description = "Marker added to the label of a required field (UI element shared by every form)"
@@ -33,6 +45,14 @@ other = "Your account has been deleted."
 [flash_two_factor_auth_disabled]
 description = "Flash message shown on the settings hub after two-factor authentication is disabled"
 other = "Two-factor authentication is now off."
+
+[header_home_link]
+description = "Link text in the shared signed-in header that leads to the home page"
+other = "Home"
+
+[header_nav_label]
+description = "Accessible label for the navigation landmark in the shared signed-in header"
+other = "Global navigation"
 
 [posts_count]
 description = "Number of posts shown in the UI"

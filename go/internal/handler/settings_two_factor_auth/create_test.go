@@ -86,6 +86,12 @@ func TestCreate_Success(t *testing.T) {
 	if !strings.Contains(body, "2 段階認証を有効にしました") {
 		t.Error("有効化完了の見出しが描画されていない")
 	}
+	if !strings.Contains(body, `aria-label="グローバルナビゲーション"`) {
+		t.Error("サインイン済みページ共通ヘッダーのナビゲーションが描画されていない")
+	}
+	if !strings.Contains(body, `href="/home"`) {
+		t.Error("サインイン済みページ共通ヘッダーのホームリンクが描画されていない")
+	}
 	for _, recoveryCode := range stored.RecoveryCodes {
 		if !strings.Contains(body, recoveryCode) {
 			t.Errorf("リカバリーコード %q が描画されていない", recoveryCode)

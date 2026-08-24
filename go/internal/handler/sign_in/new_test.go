@@ -15,16 +15,18 @@ import (
 // TestNew verifies that GET /sign_in returns HTTP 200 with an HTML form carrying
 // the email and password fields and the CSRF hidden field, with the localized
 // heading and required marker for each supported locale, while keeping the bare
-// sign-in URL indexable. New does not touch the session manager, UseCases, or the
-// Turnstile verifier, so they are left nil here. This page stands in for the
-// forms sharing components.RequiredFieldLabel: it confirms the shared marker
-// reaches a page through the layout and the locale of the request.
+// sign-in URL indexable and free of the shared signed-in header. New does not
+// touch the session manager, UseCases, or the Turnstile verifier, so they are
+// left nil here. This page stands in for the forms sharing
+// components.RequiredFieldLabel: it confirms the shared marker reaches a page
+// through the layout and the locale of the request.
 //
 // [Ja] TestNew は GET /sign_in が HTTP 200 と、email・password フィールド・CSRF hidden
 // フィールドを持つ HTML フォームを、サポートする各ロケールのローカライズ済み見出しと必須
-// マーカーとともに返し、素のサインイン URL をインデックス対象に保つことを検証します。New は
-// セッションマネージャ・UseCase・Turnstile 検証器に触れないため、ここでは nil にします。
-// 本ページは components.RequiredFieldLabel を共有するフォームの代表であり、共通マーカーが
+// マーカーとともに返し、素のサインイン URL をインデックス対象に保ち、サインイン済み
+// ページ共通のヘッダーを持たないことを検証します。New はセッションマネージャ・
+// UseCase・Turnstile 検証器に触れないため、ここでは nil にします。本ページは
+// components.RequiredFieldLabel を共有するフォームの代表であり、共通マーカーが
 // レイアウトとリクエストのロケールを通してページに届くことを確認します。
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -36,9 +38,10 @@ func TestNew(t *testing.T) {
 		locale       string
 		wantHeading  string
 		wantRequired string
+		noHeaderNav  string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb にログイン", wantRequired: "必須"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Sign in to Groobb", wantRequired: "Required"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb にログイン", wantRequired: "必須", noHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Sign in to Groobb", wantRequired: "Required", noHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -75,6 +78,9 @@ func TestNew(t *testing.T) {
 			}
 			if strings.Contains(body, `name="robots" content="noindex"`) {
 				t.Error("素の /sign_in に noindex が含まれている")
+			}
+			if strings.Contains(body, `aria-label="`+tt.noHeaderNav+`"`) {
+				t.Error("未サインインのサインインページにサインイン済みページ共通のヘッダーが含まれている")
 			}
 		})
 	}

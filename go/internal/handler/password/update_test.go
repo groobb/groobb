@@ -101,11 +101,12 @@ func TestUpdate_Success(t *testing.T) {
 
 // TestUpdate_InvalidPasswordRetainsToken verifies that a field error (here, a
 // mismatched confirmation) re-renders the form with 422, keeps the token in the
-// hidden field (the link is still valid), and shows the mismatch message.
+// hidden field (the link is still valid), marks the response as no-store, and shows
+// the mismatch message.
 //
 // [Ja] TestUpdate_InvalidPasswordRetainsToken は、フィールドエラー (ここでは確認の不一致)
 // が 422 でフォームを再描画し、トークンを hidden フィールドに保ち (リンクはまだ有効)、
-// 不一致メッセージを表示することを検証する。
+// レスポンスを no-store にして、不一致メッセージを表示することを検証する。
 func TestUpdate_InvalidPasswordRetainsToken(t *testing.T) {
 	t.Parallel()
 
@@ -119,6 +120,9 @@ func TestUpdate_InvalidPasswordRetainsToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	if got := rec.Result().Header.Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, want %q", got, "no-store")
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "パスワードが一致しません") {

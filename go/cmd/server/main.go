@@ -37,10 +37,12 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
+	"github.com/groobb/groobb/go/internal/httperror"
 	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
@@ -198,6 +200,8 @@ func main() {
 	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
 
+	errorRenderer := httperror.NewRenderer(cfg)
+
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
 	homeHandler := home.NewHandler(cfg)
@@ -224,12 +228,63 @@ func main() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 
+	// Name Groobb as the issuer of every redirect the application writes, so that a
+	// URL which bounces unexpectedly can be traced to a layer by reading one header
+	// instead of the configurations of Cloudflare and the proxy in front of us. It
+	// is registered above the trailing-slash normalization because that
+	// normalization answers a request itself, and a middleware only reaches a
+	// response that a middleware below it wrote.
+	//
+	// [Ja] アプリケーションが書き出すすべてのリダイレクトの発行元として Groobb を示す。
+	// 意図せず転送される URL を、前段の Cloudflare とプロキシの設定を読むのではなく、
+	// ヘッダー 1 つを読んでどの層のものか辿れるようにするためである。末尾スラッシュの正規化
+	// より上に登録するのは、その正規化が自身でリクエストに応答するためであり、ミドルウェアが
+	// 到達できるのはそれより下のミドルウェアが書いたレスポンスだけである。
+	r.Use(middleware.RedirectBy)
+
+	// Give every HTML response a private revalidation policy unless a more specific
+	// handler or middleware has already selected one. The routes below issue and
+	// embed visitor-specific CSRF tokens, so their responses may be kept by the
+	// browser but not a shared cache. It also wraps the slash redirect, while asset,
+	// sensitive, and 404 responses retain their own policies.
+	//
+	// [Ja] より具体的なハンドラーやミドルウェアが方針を選んでいない HTML レスポンスに、
+	// private な再検証ポリシーを与える。下のルートは訪問者固有の CSRF トークンを発行して
+	// 埋め込むため、ブラウザには保存を許可しつつ共有キャッシュには保存させない。末尾
+	// スラッシュのリダイレクトも包み、アセット・機密・404 のレスポンスはそれぞれの方針を
+	// 維持する。
+	r.Use(middleware.HTMLCache)
+
+	// Send a URL carrying a trailing slash on to the same URL without one, so a
+	// page answers from a single address instead of two that hold the same
+	// content. It runs ahead of the middlewares below because a request that ends
+	// here never reaches a handler: resolving a locale or minting a CSRF token
+	// would be wasted, and the flash middleware would consume the one-off message
+	// the visitor is on their way to read.
+	//
+	// [Ja] 末尾スラッシュ付きの URL を、スラッシュ無しの同じ URL へ送る。ページが
+	// 同じ内容を持つ 2 つのアドレスではなく 1 つのアドレスから応答するようにするため
+	// である。下のミドルウェアより前に走らせるのは、ここで終わるリクエストがハンドラーに
+	// 到達しないためである。ロケールの解決も CSRF トークンの発行も無駄になり、フラッシュの
+	// ミドルウェアは訪問者がこれから読む一度きりのメッセージを消費してしまう。
+	r.Use(chimiddleware.RedirectSlashes)
+
 	// Resolve the request locale from Accept-Language and store it in the
 	// context so handlers and templates can render localized text.
 	//
 	// [Ja] Accept-Language からリクエストのロケールを解決して context に格納し、
 	// ハンドラーとテンプレートがローカライズされたテキストを描画できるようにする。
 	r.Use(i18n.Middleware)
+
+	// Store the request path in the context so the shared layout's navigation can
+	// mark a link that points at the page being rendered with aria-current="page".
+	// It wraps every route because the layout, which any page can render, reads
+	// the path from the context.
+	//
+	// [Ja] リクエストパスを context に格納し、共通レイアウトのナビゲーションが今描画して
+	// いるページを指すリンクに aria-current="page" を付けられるようにする。どのページも
+	// 描画しうるレイアウトが context からパスを読むため、全ルートに掛ける。
+	r.Use(templates.CurrentPathMiddleware)
 
 	// Issue and verify CSRF tokens for every route: safe requests mint the token
 	// for forms to embed, and unsafe requests (the sign-up POST and later forms)
@@ -260,6 +315,17 @@ func main() {
 	// 消去する。これによりハンドラーのリダイレクト先で一度だけ描画される (例: サインアウト成功の
 	// toast)。フラッシュはどのページも描画しうる共通レイアウトが context から読むため、全ルートに掛ける。
 	r.Use(flashMgr.Middleware)
+
+	// Answer a request matching no route with the shared 404 page instead of chi's
+	// default line of plain text. It is registered on the router rather than
+	// wrapped around it, so the middlewares above still run: the page needs the
+	// locale they resolve to render in the visitor's language.
+	//
+	// [Ja] どのルートにも一致しないリクエストには、chi の既定の平文 1 行ではなく共通の
+	// 404 ページで応答する。ルーターを包むのではなくルーターに登録するため、上のミドル
+	// ウェアは変わらず走る。ページは訪問者の言語で描画するのに、それらが解決するロケールを
+	// 必要とする。
+	r.NotFound(errorRenderer.NotFound)
 
 	// Health check (no authentication required).
 	//

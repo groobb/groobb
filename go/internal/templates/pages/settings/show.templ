@@ -17,11 +17,11 @@ import "github.com/groobb/groobb/go/internal/templates"
 templ Show() {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">
-			<h1 class="text-3xl font-bold tracking-tight">
+			<h1 id="settings-show-heading" class="text-3xl font-bold tracking-tight">
 				{ templates.T(ctx, "settings_show_heading") }
 			</h1>
 		</div>
-		<nav class="flex flex-col gap-2">
+		<nav aria-labelledby="settings-show-heading" class="flex flex-col gap-2">
 			<a href={ templates.SettingsEmailEditPath().SafeURL() } class="btn w-full" data-variant="outline">
 				{ templates.T(ctx, "settings_show_email_change_link") }
 			</a>

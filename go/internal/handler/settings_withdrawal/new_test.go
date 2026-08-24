@@ -31,13 +31,14 @@ func TestNew(t *testing.T) {
 	handler := settings_withdrawal.NewHandler(&config.Config{Env: "dev"}, nil, nil, nil)
 
 	tests := []struct {
-		name        string
-		locale      string
-		wantHeading string
-		wantSubmit  string
+		name          string
+		locale        string
+		wantHeading   string
+		wantSubmit    string
+		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "退会", wantSubmit: "退会する"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Delete account", wantSubmit: "Delete account"},
+		{name: "Japanese", locale: i18n.LangJa, wantHeading: "退会", wantSubmit: "退会する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: i18n.LangEn, wantHeading: "Delete account", wantSubmit: "Delete account", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -68,6 +69,8 @@ func TestNew(t *testing.T) {
 				`name="current_password"`,
 				`autocomplete="current-password"`,
 				`onsubmit=`,
+				`aria-label="` + tt.wantHeaderNav + `"`,
+				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
 				`lang="` + tt.locale + `"`,
 			}

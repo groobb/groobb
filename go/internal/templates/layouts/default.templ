@@ -11,11 +11,14 @@ import (
 
 // Default is the base HTML layout that wraps page content with the shared
 // <head>, a footer, and the body shell. The lang attribute reflects the request
-// locale resolved by the i18n middleware.
+// locale resolved by the i18n middleware. A page marked SignedIn also gets the
+// shared header above the content, so every page behind authentication carries
+// the same way out of itself.
 //
 // [Ja] Default はページコンテンツを共通の <head>、フッター、ボディの外枠で包む
 // 基本の HTML レイアウトです。lang 属性は i18n ミドルウェアが解決したリクエストの
-// ロケールを反映します。
+// ロケールを反映します。SignedIn が付いたページはコンテンツの上に共通ヘッダーも
+// 備え、認証の背後のどのページも同じ出口を持つようにします。
 templ Default(meta viewmodel.PageMeta, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang={ templates.Locale(ctx) }>
@@ -23,6 +26,9 @@ templ Default(meta viewmodel.PageMeta, content templ.Component) {
 			@components.Head(meta)
 		</head>
 		<body class="flex min-h-screen flex-col">
+			if meta.SignedIn {
+				@components.Header()
+			}
 			<main class="flex flex-1 flex-col">
 				@content
 			</main>

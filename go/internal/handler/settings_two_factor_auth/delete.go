@@ -94,6 +94,7 @@ func (h *Handler) renderDisable(w http.ResponseWriter, r *http.Request, status i
 	meta.Title = i18n.T(ctx, "settings_two_factor_auth_delete_title")
 	meta.Description = i18n.T(ctx, "settings_two_factor_auth_delete_description")
 	meta.NoIndex = true
+	meta.SignedIn = true
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)

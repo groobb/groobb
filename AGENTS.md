@@ -11,6 +11,10 @@ This file provides guidance for coding agents when working in this repository.
 Groobb is a bulletin board service.
 Users can create their own bulletin boards and interact with one another.
 
+An **instance** is one running Groobb: a single process together with the SQLite file and the data it owns.
+An instance serves exactly one community, so a single server may run several instances.
+"Instance" never refers to the server itself.
+
 ## Project Structure
 
 This repository mainly manages a service implemented in Go.
