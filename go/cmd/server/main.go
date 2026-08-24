@@ -227,6 +227,19 @@ func main() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 
+	// Give every HTML response a private revalidation policy unless a more specific
+	// handler or middleware has already selected one. The routes below issue and
+	// embed visitor-specific CSRF tokens, so their responses may be kept by the
+	// browser but not a shared cache. It also wraps the slash redirect, while asset,
+	// sensitive, and 404 responses retain their own policies.
+	//
+	// [Ja] より具体的なハンドラーやミドルウェアが方針を選んでいない HTML レスポンスに、
+	// private な再検証ポリシーを与える。下のルートは訪問者固有の CSRF トークンを発行して
+	// 埋め込むため、ブラウザには保存を許可しつつ共有キャッシュには保存させない。末尾
+	// スラッシュのリダイレクトも包み、アセット・機密・404 のレスポンスはそれぞれの方針を
+	// 維持する。
+	r.Use(middleware.HTMLCache)
+
 	// Send a URL carrying a trailing slash on to the same URL without one, so a
 	// page answers from a single address instead of two that hold the same
 	// content. It runs ahead of the middlewares below because a request that ends
