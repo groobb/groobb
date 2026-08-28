@@ -32,6 +32,25 @@ const AtnameMaxLength = 20
 // 式をミラーする。
 var atnameRegex = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
+// IsValidAtname reports whether atname is one an account can hold: within
+// AtnameMaxLength and matching the allowed format.
+//
+// AccountCreateValidator keeps the length and the format apart so that a form
+// can report them as separate messages. A caller outside a form only needs to
+// know whether the value is usable, and asking here rather than repeating the
+// rule is what keeps a second copy of it from drifting away from this one.
+//
+// [Ja] IsValidAtname は、atname がアカウントの持てるもの (AtnameMaxLength 以内で、
+// 許可された形式に適合するもの) かどうかを返します。
+//
+// AccountCreateValidator が長さと形式を分けているのは、フォームがそれらを別々の
+// メッセージとして報告できるようにするためです。フォームの外の呼び出し元が知る必要が
+// あるのは値が使えるかどうかだけであり、規則を書き写すのではなくここへ尋ねることが、
+// 2 つ目の写しがこの規則から離れていくのを防ぎます。
+func IsValidAtname(atname string) bool {
+	return len(atname) <= AtnameMaxLength && atnameRegex.MatchString(atname)
+}
+
 // AccountCreateValidator validates the account-creation form: the chosen atname
 // is well-formed and not already taken, the password meets the strength policy,
 // and the confirmation field matches it. It depends on userRepo for the atname

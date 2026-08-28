@@ -9,6 +9,7 @@
 /groobb
 /groobb.toml
 /node_modules
+/seed-users.toml
 /static/css/*
 !/static/css/.gitkeep
 /static/js/*

@@ -237,3 +237,37 @@ func TestAccountCreateValidator_Validate_AtnameMessages(t *testing.T) {
 		})
 	}
 }
+
+// TestIsValidAtname verifies the rule a caller outside a form asks about: an
+// atname is usable when it is within the length bound and holds only the
+// allowed characters.
+//
+// [Ja] TestIsValidAtname は、フォームの外の呼び出し元が尋ねる規則を検証する。
+// atname が使えるのは、長さの上限に収まり、許可された文字だけを持つときである。
+func TestIsValidAtname(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		atname string
+		want   bool
+	}{
+		{name: "letters, digits and underscores", atname: "seed_user1", want: true},
+		{name: "at the length bound", atname: strings.Repeat("a", validator.AtnameMaxLength), want: true},
+		{name: "past the length bound", atname: strings.Repeat("a", validator.AtnameMaxLength+1), want: false},
+		{name: "empty", atname: "", want: false},
+		{name: "holding a space", atname: "seed user", want: false},
+		{name: "holding a hyphen", atname: "seed-user", want: false},
+		{name: "holding a non-ASCII letter", atname: "シードユーザー", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := validator.IsValidAtname(tt.atname); got != tt.want {
+				t.Errorf("IsValidAtname(%q) = %v, want %v", tt.atname, got, tt.want)
+			}
+		})
+	}
+}

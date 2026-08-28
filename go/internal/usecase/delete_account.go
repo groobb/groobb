@@ -77,7 +77,7 @@ func (uc *DeleteAccountUsecase) Execute(ctx context.Context, input DeleteAccount
 		return err
 	}
 
-	return uc.deleteAccount(ctx, input.UserID, anonymizedEmail(input.UserID), anonymizedAtname(input.UserID))
+	return uc.deleteAccount(ctx, input.UserID, model.AnonymizedEmail(input.UserID), model.AnonymizedAtname(input.UserID))
 }
 
 // deleteAccount soft-deletes and anonymizes the user and deletes all of their
@@ -111,54 +111,4 @@ func (uc *DeleteAccountUsecase) deleteAccount(ctx context.Context, userID model.
 		return fmt.Errorf("トランザクションのコミットに失敗: %w", err)
 	}
 	return nil
-}
-
-// anonymizedEmail derives the placeholder email a withdrawn account's email is
-// overwritten with. It embeds the user id so the value is distinct per account,
-// freeing the original address for re-registration.
-//
-// The reserved .invalid TLD (RFC 2606) is what makes the value unreachable: both
-// sign-up and an email change require a confirmation code delivered to the
-// address, and .invalid can never receive one, so no account can hold this value
-// and the overwrite cannot lose the users.email UNIQUE constraint to a live row.
-//
-// [Ja] anonymizedEmail は退会済みアカウントの email を上書きする代替 email を導出します。
-// ユーザー id を埋め込むことで値をアカウントごとに別のものにし、元のアドレスを再登録用に
-// 解放します。
-//
-// 値を到達不能にしているのは予約 TLD の .invalid (RFC 2606) です。サインアップもメール
-// アドレス変更も、アドレスへ配送された確認コードを要求しますが、.invalid はそれを受け取れ
-// ません。そのためこの値を保持できるアカウントは存在せず、上書きが実在の行との間で
-// users.email の UNIQUE 制約に負けることがありません。
-func anonymizedEmail(userID model.UserID) string {
-	return fmt.Sprintf("deleted-%s@deleted.invalid", userID.String())
-}
-
-// anonymizedAtname derives the placeholder atname a withdrawn account's atname is
-// overwritten with. It embeds the user id so the value is distinct per account,
-// freeing the original atname for reuse.
-//
-// The hyphen is what makes the value unreachable: it is outside the atname
-// character set of ASCII letters, digits, and underscore, so no account can ever
-// hold this value and the overwrite cannot lose the users.atname UNIQUE
-// constraint to a live row. A separator inside that character set would not be
-// enough, because an id in decimal is short enough to spell a tombstone that
-// passes the account form and squats the value the owner's withdrawal needs.
-// users.atname is NOCASE-collated TEXT with no length bound or format check, so
-// the column accepts the hyphen; this tombstone value is never re-validated or
-// shown as a handle.
-//
-// [Ja] anonymizedAtname は退会済みアカウントの atname を上書きする代替 atname を導出
-// します。ユーザー id を埋め込むことで値をアカウントごとに別のものにし、元の atname を
-// 再利用向けに解放します。
-//
-// 値を到達不能にしているのはハイフンです。ハイフンは atname の文字集合である ASCII
-// 英数字 / アンダースコアの外にあるため、この値を保持できるアカウントは存在せず、上書きが
-// 実在の行との間で users.atname の UNIQUE 制約に負けることがありません。区切りを文字集合
-// 内の文字にするとこれは成り立ちません。10 進表記の id は短く、アカウントフォームを通る
-// 墓標値を綴れてしまうため、退会に必要な値を先取りされうるからです。users.atname は長さ
-// 上限も形式チェックも無い NOCASE 照合の TEXT のため、カラム自体はハイフンを受け付けます。
-// この墓標値は再検証もハンドルとしての表示もされません。
-func anonymizedAtname(userID model.UserID) string {
-	return "deleted-" + userID.String()
 }

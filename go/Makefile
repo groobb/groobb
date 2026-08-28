@@ -186,6 +186,30 @@ db-new: ## Create a new migration file (usage: make db-new name=create_users). [
 	printf -- '-- +goose Up\n\n-- +goose Down\n' > "$$file"; \
 	echo "Created $$file"
 
+# seed rebuilds the development database with the data its screens are looked at
+# with. It reads the database path from .env, which op run loads before the
+# command starts, and the account roster from the working directory, which is
+# why it runs from the Go module root like the commands above.
+#
+# profile picks the state of the community to generate, and defaults to the
+# mature one. `make seed profile=cold-start` produces the state an instance opens
+# in, which is what a screen showing few rows has to be checked against
+# (ADR 0010). A name nothing is written under is answered with the states the
+# subcommand accepts, before anything is deleted.
+#
+# [Ja] seed は開発用データベースを、その画面を見るために使うデータで作り直す。
+# データベースのパスは .env から読み、op run がコマンドの起動前にそれを読み込む。
+# アカウントの名簿は作業ディレクトリから読むため、上のコマンドと同じく Go モジュールの
+# ルートで実行する。
+#
+# profile は生成するコミュニティの状態を選ぶもので、既定は成熟した状態である。
+# `make seed profile=cold-start` はインスタンスが開くときの状態を作る。行数の少ない画面を
+# 確かめる先はこちらになる (ADR 0010)。何も書かれていない名前を渡した実行は、何かを削除
+# する前に、受け付ける状態を挙げて終わる。
+.PHONY: seed
+seed: ## Rebuild the development database with seed data (e.g. make seed profile=cold-start). [Ja] 開発用データベースをシードデータで作り直す (例: make seed profile=cold-start)
+	$(OP_RUN_DEV) go run ./cmd/groobb seed $(profile)
+
 .PHONY: sqlc-generate
 sqlc-generate: ## Generate Go code from SQL queries. [Ja] SQL クエリから Go コードを生成
 	go tool sqlc generate
