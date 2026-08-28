@@ -6,6 +6,43 @@ other = "Groobb"
 description = "Default meta description for the page"
 other = "Groobb is a bulletin board service."
 
+[breadcrumb_label]
+description = "Accessible label for the breadcrumb navigation region"
+other = "Breadcrumb"
+
+[datetime_just_now]
+description = "Relative rendering of an instant less than a minute ago"
+other = "Just now"
+
+[datetime_minutes_ago]
+description = "Relative rendering of an instant less than an hour ago, in minutes"
+one = "{{.Count}} minute ago"
+other = "{{.Count}} minutes ago"
+
+[datetime_hours_ago]
+description = "Relative rendering of an instant less than a day ago, in hours"
+one = "{{.Count}} hour ago"
+other = "{{.Count}} hours ago"
+
+[datetime_days_ago]
+description = "Relative rendering of an instant less than about a month ago, in days"
+one = "{{.Count}} day ago"
+other = "{{.Count}} days ago"
+
+[datetime_months_ago]
+description = "Relative rendering of an instant less than about a year ago, in months"
+one = "{{.Count}} month ago"
+other = "{{.Count}} months ago"
+
+[datetime_years_ago]
+description = "Relative rendering of an instant about a year ago or more, in years"
+one = "{{.Count}} year ago"
+other = "{{.Count}} years ago"
+
+[document_title]
+description = "Format of the <title> element, with the name of the page itself (Page) and the name of the site it belongs to (Site, the name of the community this instance hosts) interpolated"
+other = "{{.Page}} - {{.Site}}"
+
 [error_not_found_title]
 description = "404 page title (title tag)"
 other = "Page not found"
@@ -59,6 +96,42 @@ description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
 other = "{{.Count}} posts"
 
+[sidebar_boards_label]
+description = "Accessible label for the board list's navigation landmark in the community shell's shared sidebar"
+other = "Boards in this community"
+
+[sidebar_label]
+description = "Accessible label for the complementary region wrapping the community shell's shared sidebar (community identity, board navigation, account controls)"
+other = "Community"
+
+[sidebar_no_boards]
+description = "Message shown in the sidebar's board list when the community holds no boards"
+other = "No boards yet."
+
+[sidebar_settings_link]
+description = "Link text in the sidebar's account section that leads to the settings hub"
+other = "Settings"
+
+[sidebar_sign_in_link]
+description = "Link text shown to an anonymous visitor in the sidebar, leading to the sign-in form"
+other = "Sign in"
+
+[sidebar_sign_out_button]
+description = "Sign-out button in the sidebar's account section"
+other = "Sign out"
+
+[sidebar_sign_out_confirm]
+description = "Confirmation prompt shown before signing out from the sidebar"
+other = "Sign out?"
+
+[sidebar_sign_up_link]
+description = "Link text shown to an anonymous visitor in the sidebar, leading to the sign-up form"
+other = "Sign up"
+
+[skip_to_main_content]
+description = "Skip link text in the community shell that jumps past the sidebar to the main content (shared UI part across pages)"
+other = "Skip to main content"
+
 [welcome_show_title]
 description = "Top page title (title tag)"
 other = "Groobb"
@@ -88,24 +161,100 @@ description = "Home page title (title tag)"
 other = "Home"
 
 [home_show_heading]
-description = "Home page heading"
-other = "Home"
+description = "Home page (community home) heading"
+other = "Community home"
 
-[home_show_greeting]
-description = "Home page greeting addressed to the signed-in user's atname"
-other = "Welcome, @{{.Atname}}."
+[home_show_no_boards]
+description = "Text shown on the home page when the community holds no boards"
+other = "This community has no boards yet."
 
-[home_show_sign_out_button]
-description = "Home page sign-out button"
-other = "Sign out"
+[home_show_board_no_threads]
+description = "Text shown in a board's section on the home page when the board holds no threads"
+other = "No threads yet."
 
-[home_show_sign_out_confirm]
-description = "Confirmation prompt shown before signing out from the home page"
-other = "Are you sure you want to sign out?"
+[home_show_last_posted_label]
+description = "Label placed before the last-posted time in the home page's thread listings"
+other = "Last post"
 
-[home_show_settings_link]
-description = "Link text on the home page that leads to the settings hub"
-other = "Settings"
+[category_show_title]
+description = "Category page title (title tag), with the category name interpolated"
+other = "{{.Name}}"
+
+[category_show_description]
+description = "Category page meta description, with the category name interpolated"
+other = "The boards in the {{.Name}} category."
+
+[category_show_no_boards]
+description = "Text shown on the category page when the category holds no boards"
+other = "This category has no boards yet."
+
+[category_show_board_prompt]
+description = "Prompt in the category page's reading column inviting the visitor to pick a board from the list"
+other = "Choose a board to see the threads in it."
+
+[category_show_no_boards_thread_prompt]
+description = "Text shown in the category page's reading column when the category holds no boards, so there is none to choose"
+other = "Threads appear here once a board is placed in this category."
+
+[category_show_board_prompt_region_label]
+description = "Accessible label for the category page's reading column, the region standing in for a thread that has not been opened yet"
+other = "Reading a thread"
+
+[board_show_title]
+description = "Board page title (title tag), with the board name interpolated"
+other = "{{.Name}}"
+
+[board_show_description]
+description = "Board page meta description, used when the board carries no description of its own, with the board name interpolated"
+other = "The threads in the {{.Name}} board."
+
+[board_show_no_threads]
+description = "Text shown on the board page when the board holds no threads"
+other = "This board has no threads yet."
+
+[board_show_last_posted_label]
+description = "Label placed before the last-post time in the board page's thread list"
+other = "Last post"
+
+[board_show_thread_prompt]
+description = "Prompt in the board page's reading column inviting the visitor to pick a thread from the list"
+other = "Choose a thread to see the posts in it."
+
+[board_show_no_threads_post_prompt]
+description = "Text shown in the board page's reading column when the board holds no threads, so there is none to choose"
+other = "Posts appear here once a thread is started in this board."
+
+[board_show_thread_prompt_region_label]
+description = "Accessible label for the board page's reading column, the region standing in for a thread that has not been opened yet"
+other = "Reading a thread"
+
+[thread_show_title]
+description = "Thread page title (title tag), with the thread's title interpolated"
+other = "{{.Title}}"
+
+[thread_show_description]
+description = "Thread page meta description, with the thread's title and its board's name interpolated"
+other = "The posts in the {{.Title}} thread, in the {{.Board}} board."
+
+[thread_show_board_threads_region_label]
+description = "Accessible label for the thread page's list column, the region holding the threads of the board this thread was posted in"
+other = "Threads in this board"
+
+[thread_show_post_link_label]
+description = "Accessible name for the link a post carries to itself (its reply number) on the thread page, with the reply number interpolated"
+other = "Post {{.Number}}"
+
+[thread_show_withdrawn_author]
+description = "Text shown in place of the author of a post on the thread page when that author has withdrawn"
+other = "A withdrawn member"
+
+[thread_show_replies_label]
+description = "Label placed before the reply numbers of the posts that replied to a post on the thread page"
+other = "Replies"
+
+[thread_show_full_notice]
+description = "Text shown on the thread page when the thread has reached the number of posts it can hold, with the cap interpolated"
+other = "This thread has reached its limit of {{.Limit}} posts. Nothing more can be written here."
 
 [email_confirmation_subject]
 description = "Subject line for the email confirmation code email"
