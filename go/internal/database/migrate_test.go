@@ -4,17 +4,37 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/groobb/groobb/go/internal/database"
 )
 
-// riverMigratedTableNames are the tables the most recent migration creates, for
-// River (the background job queue).
+// latestMigratedTableNames are the tables the most recent migration creates,
+// for the content of the community. The rollback test reads this as what the
+// last migration owns, so adding a migration after this one means moving its
+// tables here and leaving these ones in earlierMigratedTableNames.
 //
-// [Ja] riverMigratedTableNames は、最新のマイグレーションがバックグラウンドジョブキュー
-// River のために作るテーブルです。
+// [Ja] latestMigratedTableNames は、最新のマイグレーションがコミュニティの中身のために
+// 作るテーブルです。ロールバックのテストはこれを「最後のマイグレーションが所有するもの」
+// として読むため、このあとにマイグレーションを追加するときは、そのテーブルをここへ移し、
+// これらを earlierMigratedTableNames へ残します。
+var latestMigratedTableNames = []string{
+	"boards",
+	"categories",
+	"post_references",
+	"posts",
+	"threads",
+}
+
+// riverMigratedTableNames are the tables migrated for River (the background job
+// queue). They sit apart from the application's own tables because River, not
+// Groobb, owns what they hold.
+//
+// [Ja] riverMigratedTableNames は、バックグラウンドジョブキュー River のために
+// マイグレートされるテーブルです。中身を所有するのが Groobb ではなく River であるため、
+// アプリケーション自身のテーブルとは分けています。
 var riverMigratedTableNames = []string{
 	"river_job",
 	"river_leader",
@@ -23,7 +43,7 @@ var riverMigratedTableNames = []string{
 	"river_queue",
 }
 
-var migratedTableNames = []string{
+var earlierMigratedTableNames = []string{
 	"communities",
 	"email_confirmations",
 	"password_reset_tokens",
@@ -62,7 +82,7 @@ func TestMigrate_CreatesTheSchema(t *testing.T) {
 
 	db := migratedTestDB(t)
 
-	for _, table := range migratedTableNames {
+	for _, table := range slices.Concat(earlierMigratedTableNames, latestMigratedTableNames) {
 		var name string
 		err := db.Reader.QueryRowContext(
 			context.Background(),
@@ -199,7 +219,7 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		t.Fatalf("failed to roll back the migration: %v", err)
 	}
 
-	for _, table := range riverMigratedTableNames {
+	for _, table := range latestMigratedTableNames {
 		var name string
 		err := db.Reader.QueryRowContext(
 			ctx,
@@ -215,7 +235,7 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		}
 	}
 
-	for _, table := range migratedTableNames {
+	for _, table := range slices.Concat(earlierMigratedTableNames, riverMigratedTableNames) {
 		var name string
 		if err := db.Reader.QueryRowContext(
 			ctx,
