@@ -15,7 +15,7 @@ help: ## Show this help. [Ja] このヘルプを表示
 
 .PHONY: run
 run: ## Start the HTTP server. [Ja] HTTP サーバーを起動
-	$(OP_RUN_DEV) go run ./cmd/server
+	$(OP_RUN_DEV) go run ./cmd/groobb serve
 
 .PHONY: browse-login
 browse-login: ## Log in to the dev site in a browser (other user: make browse-login BROWSE_USER=2). [Ja] dev サイトへブラウザでログイン (別ユーザーは make browse-login BROWSE_USER=2)
@@ -58,8 +58,8 @@ ASSET_VERSION ?= $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 ASSET_VERSION_LDFLAGS = -X github.com/groobb/groobb/go/internal/config.assetVersion=$(ASSET_VERSION)
 
 .PHONY: build
-build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
-	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/server ./cmd/server
+build: ## Build the groobb binary into bin/groobb. [Ja] groobb バイナリを bin/groobb にビルド
+	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/groobb ./cmd/groobb
 
 .PHONY: templ-generate
 templ-generate: ## Generate Go code from templ files (also runs goimports). [Ja] templ ファイルから Go コードを生成 (goimports も実行)
@@ -162,11 +162,11 @@ test-verbose: ## Run all tests with verbose logs (for debugging). [Ja] 詳細ロ
 
 .PHONY: db-migrate
 db-migrate: ## Apply pending migrations. [Ja] 未適用のマイグレーションを実行
-	$(OP_RUN_DEV) go run ./cmd/migrate up
+	$(OP_RUN_DEV) go run ./cmd/groobb migrate up
 
 .PHONY: db-rollback
 db-rollback: ## Roll back the most recent migration. [Ja] 直近のマイグレーションをロールバック
-	$(OP_RUN_DEV) go run ./cmd/migrate down
+	$(OP_RUN_DEV) go run ./cmd/groobb migrate down
 
 # The generated file holds the two annotations goose reads to split a migration
 # into its up and down halves, under a UTC timestamp that fixes the order the

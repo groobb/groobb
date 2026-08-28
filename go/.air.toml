@@ -9,9 +9,9 @@ tmp_dir = "tmp"
 # [Ja] templ コードを再生成してからコンパイルする。op run はバイナリ実行時 (起動時に
 # データベースへ ping する) にのみ必要でコンパイルには不要なため、cmd ではなく
 # full_bin で包む。CI は air を使わないため、op run 依存はローカル限定。
-cmd = "make templ-generate && go build -o ./tmp/main ./cmd/server"
+cmd = "make templ-generate && go build -o ./tmp/main ./cmd/groobb"
 bin = "./tmp/main"
-full_bin = "APP_ENV=dev op run --env-file=.env -- ./tmp/main"
+full_bin = "APP_ENV=dev op run --env-file=.env -- ./tmp/main serve"
 delay = 1000
 # static/ is watched, and css / js are watched extensions, because the binary
 # embeds the assets: a rebuilt style.css only reaches the browser once the server
