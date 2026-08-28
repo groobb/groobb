@@ -122,7 +122,7 @@ func SetupDBPath(t *testing.T) string {
 // 本番のコストでパスワードをハッシュ化するとそのテストの実行時間の大半を占めるためです。
 func prepareSchemaSnapshot() ([]byte, error) {
 	schemaSnapshotOnce.Do(func() {
-		lowerBcryptCost()
+		LowerBcryptCost()
 
 		schemaSnapshot, schemaSnapshotErr = buildSchemaSnapshot()
 	})

@@ -150,6 +150,78 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 	})
 }
 
+// TestUserRepository_ListByIDs verifies the bulk lookup a thread's page resolves
+// its authors through: the accounts still there come back in one query, the ids
+// it is handed twice yield one row, an id naming nobody is simply absent, and a
+// withdrawn account is left out the way it is left out of every other lookup
+// here — which is what lets the page tell a withdrawn author from a present one
+// by whether an id resolved at all.
+//
+// [Ja] TestUserRepository_ListByIDs は、スレッドのページが作者を解決するときの一括
+// ルックアップを検証する。まだ存在するアカウントが 1 クエリで返ること、2 度渡された id が
+// 1 行になること、誰も指さない id が単に含まれないこと、そして退会済みのアカウントが、
+// ここの他のルックアップと同じく除外されることである。最後の点により、ページは id が
+// そもそも解決したかどうかで、退会した作者と現存する作者を区別できる。
+func TestUserRepository_ListByIDs(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserRepository(db)
+	ctx := context.Background()
+
+	alice := testutil.NewUserBuilder(t, db).WithAtname("listalice").WithEmail("listalice@example.com").Build()
+	bob := testutil.NewUserBuilder(t, db).WithAtname("listbob").WithEmail("listbob@example.com").Build()
+	withdrawn := testutil.NewUserBuilder(t, db).
+		WithAtname("listwithdrawn").
+		WithEmail("listwithdrawn@example.com").
+		WithDeletedAt(time.Now().Add(-24 * time.Hour)).
+		Build()
+
+	t.Run("渡した id のアカウントをまとめて返す", func(t *testing.T) {
+		users, err := repo.ListByIDs(ctx, []model.UserID{bob, alice, alice})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(users) != 2 {
+			t.Fatalf("len(users) = %d, want 2", len(users))
+		}
+
+		atnames := map[model.UserID]string{}
+		for _, user := range users {
+			atnames[user.ID] = user.Atname
+		}
+		if atnames[alice] != "listalice" {
+			t.Errorf("alice の atname = %q, want %q", atnames[alice], "listalice")
+		}
+		if atnames[bob] != "listbob" {
+			t.Errorf("bob の atname = %q, want %q", atnames[bob], "listbob")
+		}
+	})
+
+	t.Run("退会済みのアカウントと存在しない id は含まれない", func(t *testing.T) {
+		users, err := repo.ListByIDs(ctx, []model.UserID{alice, withdrawn, alice + 100000})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(users) != 1 {
+			t.Fatalf("len(users) = %d, want 1", len(users))
+		}
+		if users[0].ID != alice {
+			t.Errorf("users[0].ID = %v, want %v", users[0].ID, alice)
+		}
+	})
+
+	t.Run("id が空なら空のスライスを返す", func(t *testing.T) {
+		users, err := repo.ListByIDs(ctx, nil)
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(users) != 0 {
+			t.Errorf("len(users) = %d, want 0", len(users))
+		}
+	})
+}
+
 func TestUserRepository_FindBySessionToken(t *testing.T) {
 	t.Parallel()
 

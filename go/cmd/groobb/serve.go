@@ -1,6 +1,3 @@
-// Command server is the entry point for the Groobb HTTP server.
-//
-// [Ja] server コマンドは Groobb HTTP サーバーのエントリポイントです。
 package main
 
 import (
@@ -21,6 +18,8 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/account"
+	"github.com/groobb/groobb/go/internal/handler/board"
+	"github.com/groobb/groobb/go/internal/handler/category"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
 	"github.com/groobb/groobb/go/internal/handler/health"
 	"github.com/groobb/groobb/go/internal/handler/home"
@@ -35,6 +34,7 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor"
 	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor_recovery"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
+	"github.com/groobb/groobb/go/internal/handler/thread"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/httperror"
@@ -46,11 +46,16 @@ import (
 	"github.com/groobb/groobb/go/internal/turnstile"
 	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/validator"
+	"github.com/groobb/groobb/go/internal/viewmodel"
 	"github.com/groobb/groobb/go/internal/worker"
 	"github.com/groobb/groobb/go/static"
 )
 
-func main() {
+// runServe starts the HTTP server and blocks until it has finished shutting
+// down.
+//
+// [Ja] runServe は HTTP サーバーを起動し、シャットダウンが完了するまでブロックします。
+func runServe() {
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load the configuration", "error", err)
@@ -136,6 +141,12 @@ func main() {
 	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(db)
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
+	communityRepo := repository.NewCommunityRepository(db)
+	categoryRepo := repository.NewCategoryRepository(db)
+	boardRepo := repository.NewBoardRepository(db)
+	threadRepo := repository.NewThreadRepository(db)
+	postRepo := repository.NewPostRepository(db)
+	postReferenceRepo := repository.NewPostReferenceRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -200,11 +211,23 @@ func main() {
 	enableTwoFactorAuthUC := usecase.NewEnableTwoFactorAuthUsecase(settingsTwoFactorAuthCreateValidator, userTwoFactorAuthRepo)
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
 
+	getCommunityUC := usecase.NewGetCommunityUsecase(communityRepo)
+	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(communityRepo, boardRepo)
+	getCommunityHomeUC := usecase.NewGetCommunityHomeUsecase(boardRepo, threadRepo)
+	getCategoryUC := usecase.NewGetCategoryUsecase(categoryRepo)
+	getCategoryBoardsUC := usecase.NewGetCategoryBoardsUsecase(boardRepo)
+	getBoardUC := usecase.NewGetBoardUsecase(boardRepo, categoryRepo)
+	getBoardThreadsUC := usecase.NewGetBoardThreadsUsecase(threadRepo)
+	getThreadUC := usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo, postRepo, postReferenceRepo, userRepo)
+
 	errorRenderer := httperror.NewRenderer(cfg)
 
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
-	homeHandler := home.NewHandler(cfg)
+	homeHandler := home.NewHandler(cfg, getCommunityNavigationUC, getCommunityHomeUC)
+	categoryHandler := category.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getCategoryUC, getCategoryBoardsUC)
+	boardHandler := board.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getBoardUC, getBoardThreadsUC)
+	threadHandler := thread.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getThreadUC, getBoardThreadsUC)
 	signUpHandler := sign_up.NewHandler(cfg, sessionMgr, createSignUpUC, turnstileVerifier)
 	emailConfirmationHandler := email_confirmation.NewHandler(cfg, sessionMgr, verifyEmailConfirmationUC)
 	accountHandler := account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
@@ -221,6 +244,19 @@ func main() {
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
+	siteName := middleware.NewSiteName(
+		func(ctx context.Context) (string, error) {
+			output, err := getCommunityUC.Execute(ctx)
+			if err != nil {
+				return "", err
+			}
+			if output.Community == nil {
+				return "", nil
+			}
+			return output.Community.Name, nil
+		},
+		viewmodel.SetSiteName,
+	)
 	csrf := middleware.NewCSRF(cfg)
 
 	r := chi.NewRouter()
@@ -285,6 +321,18 @@ func main() {
 	// いるページを指すリンクに aria-current="page" を付けられるようにする。どのページも
 	// 描画しうるレイアウトが context からパスを読むため、全ルートに掛ける。
 	r.Use(templates.CurrentPathMiddleware)
+
+	// Store the name of the community this instance hosts in the context so the
+	// title of the page being rendered can end with it. It wraps every route
+	// because the site is the same one whatever page is rendered, and the pages
+	// outside the community shell (the sign-in form, the 404) load no community of
+	// their own to name it from.
+	//
+	// [Ja] このインスタンスが運営するコミュニティの名前を context に格納し、今描画して
+	// いるページのタイトルがそれで終われるようにする。どのページを描画してもサイトは同じ
+	// 1 つであり、コミュニティのシェルの外のページ (サインインフォーム・404) は名前を
+	// 取り出せるコミュニティを自前では読み込まないため、全ルートに掛ける。
+	r.Use(siteName.Middleware)
 
 	// Issue and verify CSRF tokens for every route: safe requests mint the token
 	// for forms to embed, and unsafe requests (the sign-up POST and later forms)
@@ -364,6 +412,34 @@ func main() {
 	// [Ja] ホーム: サインイン済みの着地ページ。RequireAuth はハンドラーが走る前に
 	// 匿名の訪問者を /sign_in へリダイレクトする。
 	r.With(authMiddleware.RequireAuth).Get("/home", homeHandler.Show)
+
+	// Category: the boards a category groups. It is readable while signed out, so
+	// SetUser resolves the visitor rather than RequireAuth demanding one: the
+	// community's pages are public, and the sidebar renders the account controls
+	// only when there is an account behind them. The route is scoped to SetUser for
+	// the same reason the top page is, rather than the middleware being applied
+	// globally.
+	//
+	// [Ja] カテゴリー: そのカテゴリーがまとめる掲示板。サインアウト状態でも読めるため、
+	// RequireAuth がサインインを要求するのではなく SetUser が訪問者を解決する。コミュニティの
+	// ページは公開であり、サイドバーはその背後にアカウントがあるときだけアカウント操作を
+	// 描画する。ミドルウェアをグローバルに掛けずこのルートに限定するのは、トップページと
+	// 同じ理由である。
+	r.With(authMiddleware.SetUser).Get("/c/{slug}", categoryHandler.Show)
+
+	// Board: the threads posted in a board. It is readable while signed out for
+	// the same reason a category is, and is registered the same way.
+	//
+	// [Ja] 掲示板: その掲示板に立っているスレッド。カテゴリーと同じ理由でサインアウト
+	// 状態でも読め、同じように登録する。
+	r.With(authMiddleware.SetUser).Get("/b/{slug}", boardHandler.Show)
+
+	// Thread: the posts written in a thread. It is readable while signed out for
+	// the same reason a board is, and is registered the same way.
+	//
+	// [Ja] スレッド: そのスレッドに書かれた投稿。掲示板と同じ理由でサインアウト状態でも
+	// 読め、同じように登録する。
+	r.With(authMiddleware.SetUser).Get("/t/{id}", threadHandler.Show)
 
 	// Sign-up: show the form and accept an email to issue a confirmation code.
 	//

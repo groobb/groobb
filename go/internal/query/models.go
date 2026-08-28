@@ -10,6 +10,26 @@ import (
 	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
+type Board struct {
+	ID          int64           `json:"id"`
+	CategoryID  *int64          `json:"category_id"`
+	Slug        string          `json:"slug"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Position    int64           `json:"position"`
+	CreatedAt   sqlitetime.Time `json:"created_at"`
+	UpdatedAt   sqlitetime.Time `json:"updated_at"`
+}
+
+type Category struct {
+	ID        int64           `json:"id"`
+	Slug      string          `json:"slug"`
+	Name      string          `json:"name"`
+	Position  int64           `json:"position"`
+	CreatedAt sqlitetime.Time `json:"created_at"`
+	UpdatedAt sqlitetime.Time `json:"updated_at"`
+}
+
 type Community struct {
 	ID        int64           `json:"id"`
 	Name      string          `json:"name"`
@@ -38,6 +58,24 @@ type PasswordResetToken struct {
 	UsedAt      *sqlitetime.Time `json:"used_at"`
 	CreatedAt   sqlitetime.Time  `json:"created_at"`
 	UpdatedAt   sqlitetime.Time  `json:"updated_at"`
+}
+
+type Post struct {
+	ID        int64           `json:"id"`
+	ThreadID  int64           `json:"thread_id"`
+	UserID    *int64          `json:"user_id"`
+	Number    int64           `json:"number"`
+	Body      string          `json:"body"`
+	CreatedAt sqlitetime.Time `json:"created_at"`
+	UpdatedAt sqlitetime.Time `json:"updated_at"`
+}
+
+type PostReference struct {
+	ID               int64           `json:"id"`
+	PostID           int64           `json:"post_id"`
+	ReferencedPostID int64           `json:"referenced_post_id"`
+	CreatedAt        sqlitetime.Time `json:"created_at"`
+	UpdatedAt        sqlitetime.Time `json:"updated_at"`
 }
 
 type RiverJob struct {
@@ -95,6 +133,18 @@ type Role struct {
 	Scopes    string          `json:"scopes"`
 	CreatedAt sqlitetime.Time `json:"created_at"`
 	UpdatedAt sqlitetime.Time `json:"updated_at"`
+}
+
+type Thread struct {
+	ID           int64           `json:"id"`
+	BoardID      int64           `json:"board_id"`
+	UserID       *int64          `json:"user_id"`
+	Title        string          `json:"title"`
+	PostsCount   int64           `json:"posts_count"`
+	LastPostID   *int64          `json:"last_post_id"`
+	LastPostedAt sqlitetime.Time `json:"last_posted_at"`
+	CreatedAt    sqlitetime.Time `json:"created_at"`
+	UpdatedAt    sqlitetime.Time `json:"updated_at"`
 }
 
 type User struct {

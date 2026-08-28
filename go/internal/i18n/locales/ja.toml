@@ -6,6 +6,38 @@ other = "Groobb"
 description = "デフォルトのページ説明文 (meta description)"
 other = "Groobb は掲示板サービスです。"
 
+[breadcrumb_label]
+description = "パンくずのナビゲーション領域のアクセシブルラベル"
+other = "パンくず"
+
+[datetime_just_now]
+description = "1 分未満前の時刻の相対表示"
+other = "たった今"
+
+[datetime_minutes_ago]
+description = "1 時間未満前の時刻の相対表示 (分単位)"
+other = "{{.Count}} 分前"
+
+[datetime_hours_ago]
+description = "24 時間未満前の時刻の相対表示 (時間単位)"
+other = "{{.Count}} 時間前"
+
+[datetime_days_ago]
+description = "約 1 か月未満前の時刻の相対表示 (日単位)"
+other = "{{.Count}} 日前"
+
+[datetime_months_ago]
+description = "約 1 年未満前の時刻の相対表示 (月単位)"
+other = "{{.Count}} か月前"
+
+[datetime_years_ago]
+description = "約 1 年以上前の時刻の相対表示 (年単位)"
+other = "{{.Count}} 年前"
+
+[document_title]
+description = "<title> 要素の書式。ページ自身の名前 (Page) と、それが属するサイトの名前 (Site。このインスタンスが運営するコミュニティの名前) を差し込む"
+other = "{{.Page}} - {{.Site}}"
+
 [error_not_found_title]
 description = "404 ページのタイトル (title タグ)"
 other = "ページが見つかりません"
@@ -58,6 +90,42 @@ other = "グローバルナビゲーション"
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
 
+[sidebar_boards_label]
+description = "コミュニティのシェル共通のサイドバーで、掲示板一覧のナビゲーションランドマークに付けるアクセシブルラベル"
+other = "このコミュニティの板"
+
+[sidebar_label]
+description = "コミュニティのシェル共通のサイドバー (コミュニティの識別・掲示板のナビゲーション・アカウント操作) を包む補助領域のアクセシブルラベル"
+other = "コミュニティ"
+
+[sidebar_no_boards]
+description = "サイドバーの掲示板一覧で、コミュニティが掲示板を 1 つも持たないときに表示する文言"
+other = "まだ掲示板がありません。"
+
+[sidebar_settings_link]
+description = "サイドバーのアカウント欄から設定ハブへ誘導するリンクのテキスト"
+other = "設定"
+
+[sidebar_sign_in_link]
+description = "サイドバーの、匿名の訪問者に表示するログインリンクのテキスト"
+other = "ログイン"
+
+[sidebar_sign_out_button]
+description = "サイドバーのアカウント欄のログアウトボタン"
+other = "ログアウト"
+
+[sidebar_sign_out_confirm]
+description = "サイドバーからログアウトする前に表示する確認文言"
+other = "ログアウトしますか？"
+
+[sidebar_sign_up_link]
+description = "サイドバーの、匿名の訪問者に表示する新規登録リンクのテキスト"
+other = "新規登録"
+
+[skip_to_main_content]
+description = "コミュニティのシェルで、サイドバーを飛ばして本文へ移動するスキップリンクのテキスト (全ページ共通の UI 部品)"
+other = "本文へスキップ"
+
 [welcome_show_title]
 description = "トップページのページタイトル (title タグ)"
 other = "Groobb"
@@ -87,24 +155,100 @@ description = "ホームページのタイトル (title タグ)"
 other = "ホーム"
 
 [home_show_heading]
-description = "ホームページの見出し"
-other = "ホーム"
+description = "ホームページ (コミュニティのトップ) の見出し"
+other = "コミュニティのトップ"
 
-[home_show_greeting]
-description = "ホームページのサインイン済みユーザーの atname 宛ての挨拶"
-other = "@{{.Atname}} さん、ようこそ。"
+[home_show_no_boards]
+description = "ホームページで、コミュニティが掲示板を 1 つも持たないときに表示する文言"
+other = "このコミュニティにはまだ掲示板がありません。"
 
-[home_show_sign_out_button]
-description = "ホームページのログアウトボタン"
-other = "ログアウト"
+[home_show_board_no_threads]
+description = "ホームページの掲示板の区画で、その掲示板がスレッドを 1 つも持たないときに表示する文言"
+other = "まだスレッドがありません。"
 
-[home_show_sign_out_confirm]
-description = "ホームページからログアウトする前に表示する確認文言"
-other = "ログアウトしますか？"
+[home_show_last_posted_label]
+description = "ホームページのスレッド一覧で、最終投稿日時の前に置くラベル"
+other = "最終投稿"
 
-[home_show_settings_link]
-description = "ホームページから設定ハブへ誘導するリンクのテキスト"
-other = "設定"
+[category_show_title]
+description = "カテゴリーページのタイトル (title タグ)。カテゴリー名を差し込む"
+other = "{{.Name}}"
+
+[category_show_description]
+description = "カテゴリーページの meta description。カテゴリー名を差し込む"
+other = "{{.Name}} カテゴリーの掲示板の一覧です。"
+
+[category_show_no_boards]
+description = "カテゴリーページで、そのカテゴリーが掲示板を 1 つも持たないときに表示する文言"
+other = "このカテゴリーにはまだ掲示板がありません。"
+
+[category_show_board_prompt]
+description = "カテゴリーページの読むためのカラムで、一覧から掲示板を選ぶよう促す文言"
+other = "掲示板を選ぶと、その中のスレッドが表示されます。"
+
+[category_show_no_boards_thread_prompt]
+description = "カテゴリーページの読むためのカラムで、そのカテゴリーが掲示板を 1 つも持たず、選べる掲示板が無いときに表示する文言"
+other = "掲示板が置かれると、そのスレッドがここに表示されます。"
+
+[category_show_board_prompt_region_label]
+description = "カテゴリーページの読むためのカラムのアクセシブルラベル。まだスレッドを開いていない状態の領域であることを表す"
+other = "スレッドの閲覧"
+
+[board_show_title]
+description = "掲示板ページのタイトル (title タグ)。掲示板名を差し込む"
+other = "{{.Name}}"
+
+[board_show_description]
+description = "掲示板ページの meta description。掲示板が説明を持たないときに使い、掲示板名を差し込む"
+other = "{{.Name}} のスレッドの一覧です。"
+
+[board_show_no_threads]
+description = "掲示板ページで、その掲示板がスレッドを 1 つも持たないときに表示する文言"
+other = "この掲示板にはまだスレッドがありません。"
+
+[board_show_last_posted_label]
+description = "掲示板ページのスレッド一覧で、最終投稿の時刻に添えるラベル"
+other = "最終投稿"
+
+[board_show_thread_prompt]
+description = "掲示板ページの読むためのカラムで、一覧からスレッドを選ぶよう促す文言"
+other = "スレッドを選ぶと、その投稿が表示されます。"
+
+[board_show_no_threads_post_prompt]
+description = "掲示板ページの読むためのカラムで、その掲示板がスレッドを 1 つも持たず、選べるスレッドが無いときに表示する文言"
+other = "スレッドが立つと、その投稿がここに表示されます。"
+
+[board_show_thread_prompt_region_label]
+description = "掲示板ページの読むためのカラムのアクセシブルラベル。まだスレッドを開いていない状態の領域であることを表す"
+other = "スレッドの閲覧"
+
+[thread_show_title]
+description = "スレッドページのタイトル (title タグ)。スレッドのタイトルを差し込む"
+other = "{{.Title}}"
+
+[thread_show_description]
+description = "スレッドページの meta description。スレッドのタイトルと掲示板名を差し込む"
+other = "{{.Board}} に立っているスレッド「{{.Title}}」の投稿の一覧です。"
+
+[thread_show_board_threads_region_label]
+description = "スレッドページの一覧カラムのアクセシブルラベル。そのスレッドが属する掲示板のスレッド一覧であることを表す"
+other = "この板のスレッド"
+
+[thread_show_post_link_label]
+description = "スレッドページで、投稿自身へのリンク (レス番号) に与えるアクセシブルネーム。レス番号を差し込む"
+other = "レス {{.Number}}"
+
+[thread_show_withdrawn_author]
+description = "スレッドページで、作者が退会した投稿の投稿者欄に表示する文言"
+other = "退会した利用者"
+
+[thread_show_replies_label]
+description = "スレッドページで、その投稿に返信した投稿のレス番号の並びに添えるラベル"
+other = "返信"
+
+[thread_show_full_notice]
+description = "スレッドページで、投稿数が上限に達したスレッドに表示する文言。上限の件数を差し込む"
+other = "このスレッドは投稿数の上限 ({{.Limit}} 件) に達しました。これ以上は書き込めません。"
 
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"

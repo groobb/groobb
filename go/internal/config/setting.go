@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -112,6 +113,47 @@ func (s setting) tcpPort(subject string) (int, error) {
 	}
 
 	return port, nil
+}
+
+// httpBaseURL validates an optional public base URL. Leaving the setting empty
+// is valid, but a supplied value must be safe to concatenate with an
+// application path: it names an HTTP(S) address by scheme and host alone, and
+// carries nothing after the host that would absorb or reinterpret the path.
+//
+// A path is rejected along with the rest, a bare trailing slash included. Every
+// address this application builds is rooted at "/", so a base URL carrying a
+// path would name pages under a prefix the instance does not serve, and the
+// absolute URLs built from it would point at addresses that answer 404.
+//
+// [Ja] httpBaseURL は任意の公開ベース URL を検証します。未設定は有効ですが、指定する
+// 値はアプリケーションのパスと安全に連結できる必要があります。スキームとホストだけで
+// HTTP(S) のアドレスを名指し、パスを吸収・再解釈するものをホストの後ろに持たないことを
+// 検証します。
+//
+// パスは、末尾スラッシュだけのものも含めて拒否します。このアプリケーションが組み立てる
+// アドレスはすべて "/" を根に持つため、パスを持つベース URL は、インスタンスが配信しない
+// 接頭辞の下のページを名指すことになり、そこから組み立てた絶対 URL は 404 を返すアドレスを
+// 指します。
+func (s setting) httpBaseURL(subject string) (string, error) {
+	if !s.isSet() {
+		return "", nil
+	}
+
+	invalid := func() error {
+		return fmt.Errorf("the %s from %s must be an absolute HTTP or HTTPS URL naming only a scheme and a host, without a path (a bare trailing slash included), user information, a query, or a fragment, but is %q", subject, s.source(), s.value)
+	}
+
+	parsed, err := url.Parse(s.value)
+	if err != nil {
+		return "", invalid()
+	}
+	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" ||
+		parsed.Path != "" || parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery ||
+		strings.Contains(s.value, "#") {
+		return "", invalid()
+	}
+
+	return s.value, nil
 }
 
 // intFileValue renders a numeric setting from the file as text, so that it

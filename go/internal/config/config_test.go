@@ -140,38 +140,91 @@ func TestLoadReadsEmailSettings(t *testing.T) {
 	})
 }
 
-// TestLoadReadsAppURL verifies the optional AppURL is read from the environment,
-// and defaults to empty when unset (it is not required for the same reason as
-// the email settings: a deployment without it must still boot).
+// TestLoadReadsAppURL verifies the optional AppURL accepts public HTTP and HTTPS
+// base URLs from the environment, and defaults to empty when unset (it is not
+// required for the same reason as the email settings: a deployment without it
+// must still boot).
 //
-// [Ja] TestLoadReadsAppURL は任意の AppURL が環境変数から読み込まれ、未設定時は空に
-// なることを検証する (メール設定と同じ理由で必須ではない: 未設定でも起動できる必要がある)。
+// [Ja] TestLoadReadsAppURL は任意の AppURL が公開 HTTP・HTTPS ベース URL を環境変数
+// から受け入れ、未設定時は空になることを検証する (メール設定と同じ理由で必須ではない:
+// 未設定でも起動できる必要がある)。
 func TestLoadReadsAppURL(t *testing.T) {
-	t.Run("set", func(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{name: "HTTPS", value: "https://groobb.example.dev"},
+		{name: "HTTP with a port", value: "http://localhost:8080"},
+		{name: "unset defaults to empty without error", value: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("GROOBB_APP_URL", tt.value)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load() returned an unexpected error: %v", err)
+			}
+
+			if cfg.AppURL != tt.value {
+				t.Errorf("AppURL = %q, want %q", cfg.AppURL, tt.value)
+			}
+		})
+	}
+}
+
+// TestLoadRejectsInvalidAppURL verifies a supplied AppURL is an absolute public
+// HTTP(S) base URL that can be joined to an application path without changing
+// its meaning. The error names the source that supplied the bad value, so an
+// operator knows which input to correct.
+//
+// [Ja] TestLoadRejectsInvalidAppURL は、指定された AppURL がアプリケーションのパスの
+// 意味を変えずに連結できる絶対公開 HTTP(S) ベース URL であることを検証します。エラーは
+// 不正な値を与えた入力元を名指しし、運用者が修正すべき入力を分かるようにします。
+func TestLoadRejectsInvalidAppURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{name: "relative", value: "groobb.example.dev"},
+		{name: "unsupported scheme", value: "ftp://groobb.example.dev"},
+		{name: "missing host", value: "https:///groobb"},
+		{name: "user information", value: "https://alice@groobb.example.dev"},
+		{name: "query", value: "https://groobb.example.dev?view=full"},
+		{name: "empty query", value: "https://groobb.example.dev?"},
+		{name: "fragment", value: "https://groobb.example.dev#top"},
+		{name: "empty fragment", value: "https://groobb.example.dev#"},
+		{name: "trailing slash", value: "https://groobb.example.dev/"},
+		{name: "path", value: "https://groobb.example.dev/community"},
+	}
+
+	for _, tt := range tests {
+		t.Run("environment/"+tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("GROOBB_APP_URL", tt.value)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("Load() should reject AppURL %q", tt.value)
+			}
+			if got := err.Error(); !strings.Contains(got, "the environment variable GROOBB_APP_URL") {
+				t.Errorf("error = %q, want the environment source", got)
+			}
+		})
+	}
+
+	t.Run("configuration file source", func(t *testing.T) {
 		setRequiredEnv(t)
-		t.Setenv("GROOBB_APP_URL", "https://groobb.example.dev")
+		writeConfigFile(t, "[app]\nurl = \"https://groobb.example.dev/\"\n")
 
-		cfg, err := Load()
-		if err != nil {
-			t.Fatalf("Load() returned an unexpected error: %v", err)
+		_, err := Load()
+		if err == nil {
+			t.Fatal("Load() should reject an invalid AppURL from the configuration file")
 		}
-
-		if cfg.AppURL != "https://groobb.example.dev" {
-			t.Errorf("AppURL = %q, want %q", cfg.AppURL, "https://groobb.example.dev")
-		}
-	})
-
-	t.Run("unset defaults to empty without error", func(t *testing.T) {
-		setRequiredEnv(t)
-		t.Setenv("GROOBB_APP_URL", "")
-
-		cfg, err := Load()
-		if err != nil {
-			t.Fatalf("Load() should not fail when AppURL is missing: %v", err)
-		}
-
-		if cfg.AppURL != "" {
-			t.Errorf("AppURL should default to empty, got %q", cfg.AppURL)
+		if got := err.Error(); !strings.Contains(got, `"app.url" in the configuration file`) {
+			t.Errorf("error = %q, want the configuration file source", got)
 		}
 	})
 }

@@ -1,0 +1,62 @@
+# The roster of development accounts `groobb seed` creates. The roster in use
+# holds personal email addresses, so it is kept out of version control and this
+# file is committed in its place. To set the seed up, copy this file to
+# go/seed-users.toml, which .gitignore excludes, and replace the addresses with
+# ones whose mail you can read.
+#
+# Every account signs in with a password alone: the browser verification walks a
+# single-step sign-in, so an account with two-factor auth enabled would stop it.
+# What each role is for is written where the generators name it, in
+# internal/seed/user.go.
+#
+# [Ja] `groobb seed` が作成する開発用アカウントの名簿。実際に使う名簿は個人のメール
+# アドレスを持つためバージョン管理には入れず、代わりに本ファイルをコミットしている。
+# シードを使えるようにするには、本ファイルを .gitignore が除外している
+# go/seed-users.toml へコピーし、アドレスを自分がメールを読めるものへ置き換える。
+#
+# どのアカウントもサインインはパスワードだけで完了する。ブラウザ確認は単一ステップの
+# サインインを通るため、2 要素認証を有効にしたアカウントはそれを止めてしまう。それぞれの
+# 役割が何のためにあるのかは、生成器がそれを名指ししている internal/seed/user.go に
+# 書いてある。
+
+# password is shared by every account below. The seed refuses to run outside a
+# development environment and the dev site itself sits behind basic auth, so a
+# password per account would buy nothing.
+#
+# [Ja] password は以下のすべてのアカウントで共通。シードは開発環境以外での実行を拒否し、
+# dev サイト自体も Basic 認証の内側にあるため、アカウントごとに別のパスワードを持たせても
+# 得るものが無い。
+password = "password"
+
+# The account that opens threads, and the one the browser verification signs in
+# as unless another role is asked for.
+#
+# [Ja] スレッドを立てるアカウントで、別の役割を指定しない限りブラウザ確認がサインイン
+# するアカウント。
+[[users]]
+role = "starter"
+atname = "seeduser1"
+email = "seeduser1@example.com"
+note = "opens the threads a board lists; the default account to sign in as"
+
+# The account that answers threads it did not open, which is what makes a thread
+# read as a conversation rather than as one person writing.
+#
+# [Ja] 自分が立てたのではないスレッドに返信するアカウント。スレッドが、1 人が書き続けて
+# いるものではなく会話として読めるようになるのはこのアカウントによる。
+[[users]]
+role = "replier"
+atname = "seeduser2"
+email = "seeduser2@example.com"
+note = "replies with >>N, so a post can be seen with its back references"
+
+# The account a post is looked at without its author. A withdrawal leaves what
+# was written in place and takes only the name off it.
+#
+# [Ja] 投稿を作者抜きで眺めるためのアカウント。退会は書かれたものをその場に残し、名前だけを
+# 外す。
+[[users]]
+role = "withdrawn"
+atname = "seeduser3"
+email = "seeduser3@example.com"
+note = "withdraws, so a post can be seen with its author gone"

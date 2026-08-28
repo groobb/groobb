@@ -15,10 +15,10 @@ help: ## Show this help. [Ja] このヘルプを表示
 
 .PHONY: run
 run: ## Start the HTTP server. [Ja] HTTP サーバーを起動
-	$(OP_RUN_DEV) go run ./cmd/server
+	$(OP_RUN_DEV) go run ./cmd/groobb serve
 
 .PHONY: browse-login
-browse-login: ## Log in to the dev site in a browser (other user: make browse-login BROWSE_USER=2). [Ja] dev サイトへブラウザでログイン (別ユーザーは make browse-login BROWSE_USER=2)
+browse-login: ## Log in to the dev site in a browser (other account: make browse-login BROWSE_USER=replier). [Ja] dev サイトへブラウザでログイン (別アカウントは make browse-login BROWSE_USER=replier)
 	$(OP_RUN_DEV) bash scripts/browse.sh login $(BROWSE_USER)
 
 .PHONY: browse-shot
@@ -58,8 +58,8 @@ ASSET_VERSION ?= $(shell git rev-parse HEAD 2>/dev/null || echo dev)
 ASSET_VERSION_LDFLAGS = -X github.com/groobb/groobb/go/internal/config.assetVersion=$(ASSET_VERSION)
 
 .PHONY: build
-build: ## Build the server binary into bin/server. [Ja] サーバーバイナリを bin/server にビルド
-	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/server ./cmd/server
+build: ## Build the groobb binary into bin/groobb. [Ja] groobb バイナリを bin/groobb にビルド
+	go build -ldflags "$(ASSET_VERSION_LDFLAGS)" -o bin/groobb ./cmd/groobb
 
 .PHONY: templ-generate
 templ-generate: ## Generate Go code from templ files (also runs goimports). [Ja] templ ファイルから Go コードを生成 (goimports も実行)
@@ -162,11 +162,11 @@ test-verbose: ## Run all tests with verbose logs (for debugging). [Ja] 詳細ロ
 
 .PHONY: db-migrate
 db-migrate: ## Apply pending migrations. [Ja] 未適用のマイグレーションを実行
-	$(OP_RUN_DEV) go run ./cmd/migrate up
+	$(OP_RUN_DEV) go run ./cmd/groobb migrate up
 
 .PHONY: db-rollback
 db-rollback: ## Roll back the most recent migration. [Ja] 直近のマイグレーションをロールバック
-	$(OP_RUN_DEV) go run ./cmd/migrate down
+	$(OP_RUN_DEV) go run ./cmd/groobb migrate down
 
 # The generated file holds the two annotations goose reads to split a migration
 # into its up and down halves, under a UTC timestamp that fixes the order the
@@ -185,6 +185,30 @@ db-new: ## Create a new migration file (usage: make db-new name=create_users). [
 	@file="db/migrations/$$(date -u +%Y%m%d%H%M%S)_$(name).sql"; \
 	printf -- '-- +goose Up\n\n-- +goose Down\n' > "$$file"; \
 	echo "Created $$file"
+
+# seed rebuilds the development database with the data its screens are looked at
+# with. It reads the database path from .env, which op run loads before the
+# command starts, and the account roster from the working directory, which is
+# why it runs from the Go module root like the commands above.
+#
+# profile picks the state of the community to generate, and defaults to the
+# mature one. `make seed profile=cold-start` produces the state an instance opens
+# in, which is what a screen showing few rows has to be checked against
+# (ADR 0010). A name nothing is written under is answered with the states the
+# subcommand accepts, before anything is deleted.
+#
+# [Ja] seed は開発用データベースを、その画面を見るために使うデータで作り直す。
+# データベースのパスは .env から読み、op run がコマンドの起動前にそれを読み込む。
+# アカウントの名簿は作業ディレクトリから読むため、上のコマンドと同じく Go モジュールの
+# ルートで実行する。
+#
+# profile は生成するコミュニティの状態を選ぶもので、既定は成熟した状態である。
+# `make seed profile=cold-start` はインスタンスが開くときの状態を作る。行数の少ない画面を
+# 確かめる先はこちらになる (ADR 0010)。何も書かれていない名前を渡した実行は、何かを削除
+# する前に、受け付ける状態を挙げて終わる。
+.PHONY: seed
+seed: ## Rebuild the development database with seed data (e.g. make seed profile=cold-start). [Ja] 開発用データベースをシードデータで作り直す (例: make seed profile=cold-start)
+	$(OP_RUN_DEV) go run ./cmd/groobb seed $(profile)
 
 .PHONY: sqlc-generate
 sqlc-generate: ## Generate Go code from SQL queries. [Ja] SQL クエリから Go コードを生成

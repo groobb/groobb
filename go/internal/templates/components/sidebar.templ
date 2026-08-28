@@ -1,0 +1,144 @@
+package components
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// Sidebar renders the left column of the community shell: who this community
+// is, the boards it offers, and the controls for the account viewing them.
+//
+// Those three are wrapped in a complementary landmark with a name of its own,
+// so that a visitor moving between landmarks reaches the identity and the
+// account controls rather than only the navigation nested inside. The board
+// list is the <nav> landmark, named by its visible label so that assistive
+// technology tells it apart from any navigation a page renders in its content.
+// That label is a plain span rather than a document heading: the sidebar
+// precedes the page's <h1>, so putting a heading here would invert the page
+// outline. The boards are listed flat rather than divided by the categories
+// that group them, since a community of a handful of boards gains nothing from
+// labelled groups holding one board each (ADR 0011). Every link that can be the
+// current one is marked with something hovering cannot produce, so that the
+// place the visitor is now stays distinguishable from the place their pointer
+// happens to rest. A community holding no boards yet says so under the label
+// instead of leaving an empty list there: a label standing over nothing reads
+// as a list that failed to arrive, where an instance that has yet to place its
+// first board is a state every one of them passes through. The account block is
+// not navigation — it carries the sign-out form — so it sits outside that
+// <nav>. It is what keeps a visitor from being stranded: a signed-in one leaves
+// the community pages through it, and an anonymous one finds sign-in and
+// sign-up in the same place, since the community's pages are readable without an
+// account and would otherwise offer no way into one. The sign-in link carries
+// the page it is rendered on, so a visitor who signs in from here comes back to
+// what they were reading rather than landing on the home page. The footer is
+// left outside the complementary landmark, since a <footer> nested in a
+// sectioning element stops being the page's contentinfo.
+//
+// On a wide viewport the column sticks to the top of the screen and scrolls
+// within itself, so a long board list never pushes the account controls out of
+// reach. On a narrow one the three columns fall into a single stack and this
+// column simply comes first, which is what the layout's skip link exists to
+// jump over.
+//
+// [Ja] Sidebar はコミュニティのシェルの左カラムを描画します。このコミュニティが何で
+// あるか、それが提供する掲示板、そしてそれを見ているアカウントの操作です。
+//
+// この 3 つは独自の名前を持つ補助のランドマークで包みます。ランドマーク間を移動する
+// 訪問者が、その中に入れ子になったナビゲーションだけでなく、識別とアカウント操作にも
+// 辿り着けるようにするためです。掲示板の一覧が <nav> ランドマークで、見えるラベルで
+// 名付けることにより、支援技術はページがコンテンツ内に描画するナビゲーションと区別
+// できます。そのラベルは文書の見出しではなく素の span です。サイドバーがページの <h1>
+// より先に来るため、ここに見出しを置くとページのアウトラインが逆転するためです。掲示板は
+// それをまとめるカテゴリーで区切らず、フラットに並べます。掲示板が数個のコミュニティは、
+// 掲示板 1 つずつのラベル付きグループからは何も得られないためです (ADR 0011)。現在位置に
+// なりうるリンクには、hover では生じない印を付けます。訪問者が今いる場所と、ポインタが
+// たまたま乗っている場所とを見分けられるようにするためです。掲示板をまだ 1 つも持たない
+// コミュニティは、ラベルの下を空の一覧のままにせず、その旨を伝えます。何も無いものの上に
+// 立つラベルは届かなかった一覧として読まれる一方、最初の掲示板をまだ置いていない状態は、
+// どのインスタンスも通るものだからです。アカウントのブロックはサインアウトフォームを持つ
+// ナビゲーションではないため、その <nav> の外に置きます。
+// これが訪問者を行き止まりにしないためのものです。サインイン済みの訪問者はここから
+// コミュニティのページを出ますし、匿名の訪問者は同じ場所でサインインと新規登録に
+// 出会います。コミュニティのページはアカウント無しで読めるため、これが無いとアカウントを
+// 持つための導線がどこにもなくなります。サインインのリンクはそれが描画されているページを
+// 運ぶため、ここからサインインした訪問者は、ホームに着地するのではなく読んでいたものへ
+// 戻ってきます。フッターは補助のランドマークの外に残します。セクショニング要素の中に
+// 入れ子になった <footer> はページの contentinfo ではなくなるためです。
+//
+// 広いビューポートではカラムが画面上部に貼り付き、自身の中でスクロールするため、長い
+// 掲示板の一覧がアカウント操作を手の届かない位置へ押し出すことはありません。狭い
+// ビューポートでは 3 カラムが 1 つの積み重ねに畳まれ、このカラムは単に先頭に来ます。
+// レイアウトのスキップリンクはそれを飛び越えるために存在します。
+templ Sidebar(data viewmodel.Sidebar) {
+	<div class="flex flex-col gap-6 border-b border-border px-4 py-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
+		<aside class="flex flex-1 flex-col gap-6" aria-label={ templates.T(ctx, "sidebar_label") }>
+			if data.CommunityName != "" {
+				<header>
+					<a
+						href={ templates.HomePath().SafeURL() }
+						class="text-lg font-semibold tracking-tight"
+						if templates.IsCurrentPath(ctx, templates.HomePath().String()) {
+							aria-current="page"
+						}
+					>
+						{ data.CommunityName }
+					</a>
+				</header>
+			}
+			<nav class="flex flex-1 flex-col gap-4" aria-labelledby="sidebar-boards-label">
+				<span id="sidebar-boards-label" class="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+					{ templates.T(ctx, "sidebar_boards_label") }
+				</span>
+				if len(data.Boards) == 0 {
+					<p class="px-2 text-sm text-muted-foreground">{ templates.T(ctx, "sidebar_no_boards") }</p>
+				} else {
+					<ul class="flex flex-col">
+						for _, board := range data.Boards {
+							<li>
+								<a
+									href={ templates.BoardPath(board.Slug).SafeURL() }
+									class="block rounded-md px-2 py-2 text-sm hover:bg-accent aria-[current]:bg-accent aria-[current]:font-medium"
+									if templates.IsCurrentPath(ctx, templates.BoardPath(board.Slug).String()) {
+										aria-current="page"
+									}
+								>
+									{ board.Name }
+								</a>
+							</li>
+						}
+					</ul>
+				}
+			</nav>
+			if data.SignedIn {
+				<div class="flex flex-col gap-2 border-t border-border pt-4">
+					<p class="truncate text-sm text-muted-foreground">{ "@" + data.Atname }</p>
+					<a href={ templates.SettingsPath().SafeURL() } class="btn w-full" data-variant="outline">
+						{ templates.T(ctx, "sidebar_settings_link") }
+					</a>
+					<form
+						action={ templates.UserSessionPath().SafeURL() }
+						method="POST"
+						data-confirm={ templates.T(ctx, "sidebar_sign_out_confirm") }
+						onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"
+					>
+						<input type="hidden" name="_method" value="DELETE"/>
+						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+						<button type="submit" class="btn w-full" data-variant="ghost">
+							{ templates.T(ctx, "sidebar_sign_out_button") }
+						</button>
+					</form>
+				</div>
+			} else {
+				<div class="flex flex-col gap-2 border-t border-border pt-4">
+					<a href={ templates.SignInPath().WithReturnTo(data.ReturnTo).SafeURL() } class="btn w-full">
+						{ templates.T(ctx, "sidebar_sign_in_link") }
+					</a>
+					<a href={ templates.SignUpPath().SafeURL() } class="btn w-full" data-variant="outline">
+						{ templates.T(ctx, "sidebar_sign_up_link") }
+					</a>
+				</div>
+			}
+		</aside>
+		@Footer()
+	</div>
+}

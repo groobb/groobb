@@ -1,0 +1,154 @@
+package board
+
+import (
+	"time"
+
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// ShowPageData is the data for a board's page: the board itself, the trail
+// naming where it sits, and the threads posted in it, the most recently
+// posted-in first.
+//
+// The breadcrumb is part of the page rather than of the community shell, because
+// only a page knows where it sits: the shell is drawn the same way for /home,
+// which sits nowhere in particular.
+//
+// [Ja] ShowPageData は掲示板ページのデータです。掲示板自身と、その在り処を示す経路、
+// そしてそこに立っているスレッドを、最後に投稿されたものから順に持ちます。
+//
+// パンくずがコミュニティのシェルではなくページのものであるのは、自分がどこに位置するかを
+// 知っているのはページだけだからです。シェルは、特にどこにも位置しない /home に対しても
+// 同じように描かれます。
+type ShowPageData struct {
+	Name        string
+	Description string
+	Breadcrumb  components.BreadcrumbData
+	Threads     []ShowThread
+}
+
+// ShowThread is one thread of the listing, carrying the two denormalized facts a
+// row shows without reading its posts: how many there are, and when the last one
+// arrived. It carries the id as well, because the title is the link to the
+// thread and /t/{id} is what addresses one.
+//
+// [Ja] ShowThread は一覧に並ぶスレッド 1 つであり、投稿を読まずに 1 行が示す 2 つの
+// 非正規化された事実 — 何件あるか、最後の 1 件がいつ届いたか — を運びます。id も併せて
+// 運ぶのは、タイトルがそのスレッドへのリンクであり、スレッドを指すのが /t/{id} である
+// ためです。
+type ShowThread struct {
+	ID           viewmodel.ThreadID
+	Title        string
+	PostsCount   int
+	LastPostedAt time.Time
+}
+
+// ShowHeadingID is the id of this page's main heading. The community layout
+// points the <main> landmark at it with aria-labelledby, so the region's
+// accessible name and the heading a sighted visitor reads are the same text.
+//
+// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
+// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// 目で見る訪問者が読む見出しが同じ文字列になります。
+const ShowHeadingID = "board-show-heading"
+
+// ShowCenter renders the list column of a board's page: the trail naming where
+// the board sits, the board's name as the page heading, and the threads posted
+// in it. This is the page's main column, because a board is the list of its
+// threads and nothing else.
+//
+// Each thread is a card headed by its title, so the titles form the second level
+// of the page outline below the board. The title itself is the link to the
+// thread, so the link text alone says where it leads.
+//
+// A row carries the number of posts and how long ago the last one arrived, the
+// two facts a visitor scans a board with to see where the conversation is. The
+// exact instant sits in the datetime attribute beside the text that says the
+// distance from now.
+//
+// A board with no threads says so instead of rendering an empty list: nobody has
+// started one yet, and a bare list would leave the visitor unsure whether the
+// page failed to load.
+//
+// [Ja] ShowCenter は掲示板ページの一覧カラムを描画します。掲示板の在り処を示す経路、
+// ページ見出しとしての掲示板名、そしてそこに立っているスレッドです。掲示板とはその
+// スレッドの一覧にほかならないため、これがページの主カラムです。
+//
+// 各スレッドは自身のタイトルを見出しに持つカードであり、タイトルは掲示板の下、ページの
+// アウトラインの第 2 階層をなします。タイトル自身がそのスレッドへのリンクであるため、
+// リンクテキストだけで行き先が分かります。
+//
+// 各行は投稿の件数と、最後の 1 件がどれだけ前に届いたかを運びます。訪問者が掲示板を
+// 見渡して会話がどこにあるかを掴むための 2 つの事実です。正確な時点は、今からの隔たりを
+// 述べるテキストの傍らの datetime 属性に置きます。
+//
+// スレッドを 1 つも持たない掲示板は、空の一覧ではなくその旨を伝えます。まだ誰も立てて
+// いない状態であり、素の空一覧では訪問者がページの読み込みに失敗したのかどうか判断
+// できないためです。
+templ ShowCenter(data ShowPageData) {
+	<div class="flex flex-col gap-6">
+		<div class="flex flex-col gap-2">
+			@components.Breadcrumb(data.Breadcrumb)
+			<h1 id={ ShowHeadingID } class="text-2xl font-bold tracking-tight">{ data.Name }</h1>
+			if data.Description != "" {
+				<p class="text-muted-foreground">{ data.Description }</p>
+			}
+		</div>
+		if len(data.Threads) == 0 {
+			<p class="text-muted-foreground">{ templates.T(ctx, "board_show_no_threads") }</p>
+		} else {
+			<ul class="flex flex-col gap-3">
+				for _, thread := range data.Threads {
+					<li>
+						<div class="card" data-size="sm">
+							<header>
+								<h2>
+									<a href={ templates.ThreadPath(thread.ID).SafeURL() } class="inline-flex min-h-6 min-w-6 items-center hover:underline">
+										{ thread.Title }
+									</a>
+								</h2>
+								<p class="flex flex-wrap items-center gap-x-3">
+									<span>{ templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}) }</span>
+									<span>
+										{ templates.T(ctx, "board_show_last_posted_label") }
+										<time datetime={ templates.MachineDateTime(thread.LastPostedAt) }>
+											{ templates.RelativeTime(ctx, thread.LastPostedAt) }
+										</time>
+									</span>
+								</p>
+							</header>
+						</div>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// ShowRight renders the reading column of a board's page. A board holds no posts
+// of its own, so the column that shows a thread everywhere else says here that
+// none has been opened yet, and points back at the thread list beside it.
+//
+// A board with no threads is told what will fill this column instead of being
+// invited to choose one, since the list beside it is the empty state rather than
+// a set of choices. Pointing at threads that are not there would contradict the
+// column the visitor is reading.
+//
+// [Ja] ShowRight は掲示板ページの読むためのカラムを描画します。掲示板自身は投稿を
+// 持たないため、他のページではスレッドを表示するこのカラムが、ここではまだスレッドが
+// 開かれていないことを伝え、隣のスレッドの一覧を指し示します。
+//
+// スレッドを 1 つも持たない掲示板には、選ぶよう促すのではなく、このカラムに何が現れる
+// のかを伝えます。隣の一覧は選択肢ではなく空状態だからです。そこに無いスレッドを指し
+// 示せば、訪問者が読んでいるカラムと矛盾してしまいます。
+templ ShowRight(data ShowPageData) {
+	<div class="flex h-full flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
+		if len(data.Threads) == 0 {
+			<p>{ templates.T(ctx, "board_show_no_threads_post_prompt") }</p>
+		} else {
+			<p>{ templates.T(ctx, "board_show_thread_prompt") }</p>
+		}
+	</div>
+}

@@ -65,3 +65,90 @@ func TestDefaultPageMeta(t *testing.T) {
 		})
 	}
 }
+
+// TestDefaultPageMeta_SiteName verifies that the baseline metadata picks the
+// site name up from the context, and leaves it empty when the context carries
+// none, so a handler sets the name of its own page and nothing else of the
+// title.
+//
+// [Ja] TestDefaultPageMeta_SiteName は、基準となるメタ情報がサイトの名前を context から
+// 取得し、context がそれを持たないときは空のままにすることを検証します。これにより
+// ハンドラーは自身のページの名前だけを設定し、タイトルの他の部分には触れません。
+func TestDefaultPageMeta_SiteName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		setSite  bool
+		wantSite string
+	}{
+		{name: "コミュニティを持つインスタンス", setSite: true, wantSite: "ジャズ喫茶"},
+		{name: "まだ立ち上げられていないインスタンス", setSite: false, wantSite: ""},
+	}
+
+	cfg := &config.Config{Env: "prod", AssetVersion: "abc123"}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			if tt.setSite {
+				ctx = viewmodel.SetSiteName(ctx, tt.wantSite)
+			}
+
+			if got := viewmodel.DefaultPageMeta(ctx, cfg).SiteName; got != tt.wantSite {
+				t.Errorf("SiteName = %q, want %q", got, tt.wantSite)
+			}
+		})
+	}
+}
+
+// TestPageMeta_DocumentTitle verifies what the <title> element carries: the name
+// of the page followed by the name of the site, in either locale, and the name
+// of the page alone on an instance that has no community to name.
+//
+// [Ja] TestPageMeta_DocumentTitle は <title> 要素が運ぶものを検証します。どちらの
+// ロケールでもページの名前に続いてサイトの名前が並び、名指すコミュニティを持たない
+// インスタンスではページの名前だけになります。
+func TestPageMeta_DocumentTitle(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		locale string
+		meta   viewmodel.PageMeta
+		want   string
+	}{
+		{
+			name:   "Japanese",
+			locale: i18n.LangJa,
+			meta:   viewmodel.PageMeta{Title: "ジャズ・ファンク", SiteName: "ジャズ喫茶"},
+			want:   "ジャズ・ファンク - ジャズ喫茶",
+		},
+		{
+			name:   "English",
+			locale: i18n.LangEn,
+			meta:   viewmodel.PageMeta{Title: "Sign in", SiteName: "Jazz Cafe"},
+			want:   "Sign in - Jazz Cafe",
+		},
+		{
+			name:   "コミュニティを持たないインスタンスはページの名前だけを運ぶ",
+			locale: i18n.LangJa,
+			meta:   viewmodel.PageMeta{Title: "ジャズ・ファンク"},
+			want:   "ジャズ・ファンク",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := i18n.SetLocale(context.Background(), tt.locale)
+
+			if got := tt.meta.DocumentTitle(ctx); got != tt.want {
+				t.Errorf("DocumentTitle() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
