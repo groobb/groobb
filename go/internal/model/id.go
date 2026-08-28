@@ -95,3 +95,79 @@ type UserTwoFactorAuthID int64
 //
 // [Ja] String は UserTwoFactorAuthID を 10 進表記で返します。
 func (id UserTwoFactorAuthID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// CommunityID is the typed identifier for a community. Like UserID it wraps
+// int64 so community IDs cannot be mixed up with other entities' IDs, even
+// though an instance hosts exactly one community (ADR 0006) and its row is
+// always id 1.
+//
+// [Ja] CommunityID はコミュニティの型付き識別子です。1 インスタンスがちょうど 1 つの
+// コミュニティを運営し (ADR 0006)、その行が常に id 1 であっても、UserID と同様に
+// int64 をラップし、コミュニティ ID を他エンティティの ID と取り違えられないように
+// します。
+type CommunityID int64
+
+// String returns the decimal form of the CommunityID.
+//
+// [Ja] String は CommunityID を 10 進表記で返します。
+func (id CommunityID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// CategoryID is the typed identifier for a category. Like UserID it wraps int64
+// so category IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] CategoryID はカテゴリーの型付き識別子です。UserID と同様に int64 をラップし、
+// カテゴリー ID を他エンティティの ID と取り違えられないようにします。
+type CategoryID int64
+
+// String returns the decimal form of the CategoryID.
+//
+// [Ja] String は CategoryID を 10 進表記で返します。
+func (id CategoryID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// BoardID is the typed identifier for a board. Like UserID it wraps int64 so
+// board IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] BoardID は掲示板の型付き識別子です。UserID と同様に int64 をラップし、
+// 掲示板 ID を他エンティティの ID と取り違えられないようにします。
+type BoardID int64
+
+// String returns the decimal form of the BoardID.
+//
+// [Ja] String は BoardID を 10 進表記で返します。
+func (id BoardID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// ThreadID is the typed identifier for a thread. Like UserID it wraps int64 so
+// thread IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] ThreadID はスレッドの型付き識別子です。UserID と同様に int64 をラップし、
+// スレッド ID を他エンティティの ID と取り違えられないようにします。
+type ThreadID int64
+
+// String returns the decimal form of the ThreadID.
+//
+// [Ja] String は ThreadID を 10 進表記で返します。
+func (id ThreadID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// PostID is the typed identifier for a post. Like UserID it wraps int64 so post
+// IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] PostID は投稿の型付き識別子です。UserID と同様に int64 をラップし、投稿 ID を
+// 他エンティティの ID と取り違えられないようにします。
+type PostID int64
+
+// String returns the decimal form of the PostID.
+//
+// [Ja] String は PostID を 10 進表記で返します。
+func (id PostID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// PostReferenceID is the typed identifier for a post reference. Like UserID it
+// wraps int64 so reference IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] PostReferenceID はレス参照の型付き識別子です。UserID と同様に int64 をラップし、
+// 参照 ID を他エンティティの ID と取り違えられないようにします。
+type PostReferenceID int64
+
+// String returns the decimal form of the PostReferenceID.
+//
+// [Ja] String は PostReferenceID を 10 進表記で返します。
+func (id PostReferenceID) String() string { return strconv.FormatInt(int64(id), 10) }
