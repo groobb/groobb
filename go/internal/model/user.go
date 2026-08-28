@@ -2,26 +2,29 @@ package model
 
 import "time"
 
-// User is the global, canonical identity that authentication hangs off of. It
-// holds identity-level attributes: email (also the contact address), a globally
-// unique atname (the @handle identifying who a user is), and the account-level
-// locale and time zone used when rendering messages outside of any space context
-// (e.g. password-reset emails rendered asynchronously).
+// User is the canonical identity that authentication hangs off of: one per
+// account on this instance. It holds identity-level attributes: email (also
+// the contact address), an atname unique within the instance (the @handle
+// identifying who a user is), and the account-level locale and time zone used
+// when rendering messages outside of a request (e.g. password-reset emails
+// rendered asynchronously by a job).
 //
-// atname lives here on the global user, not per space: it is a stable, globally
-// unique handle so a person is the same identity in every space (ADR 0003). A
-// display name and role are deliberately not modeled yet; until the need arises
-// the atname doubles as the name shown for a user. The password digest is kept
-// in a separate credentials table, so it is absent here.
+// An instance hosts exactly one community (ADR 0006), so there is no unit below
+// it to scope an identity to, and the uniqueness of an atname closes at the
+// instance boundary (ADR 0007). A display name is deliberately not modeled yet;
+// until the need arises the atname doubles as the name shown for a user. The
+// password digest is kept in a separate credentials table, so it is absent
+// here.
 //
-// [Ja] User は認証がぶら下がるグローバルで正準な身元。身元レベルの属性を持つ。すなわち
-// email (連絡先も兼ねる)、グローバルに一意な atname (ユーザーが何者かを示す @ハンドル)、
-// そしてスペース文脈の外でメッセージを描画するときに使うアカウントレベルの
-// locale / time zone (例: 非同期に描画するパスワードリセットメール) である。
+// [Ja] User は認証がぶら下がる正準な身元で、このインスタンス上のアカウント 1 つに
+// つき 1 つ存在する。身元レベルの属性を持つ。すなわち email (連絡先も兼ねる)、
+// インスタンス内で一意な atname (ユーザーが何者かを示す @ハンドル)、そしてリクエストの
+// 外でメッセージを描画するときに使うアカウントレベルの locale / time zone
+// (例: ジョブが非同期に描画するパスワードリセットメール) である。
 //
-// atname はスペース単位ではなくこのグローバルな user が持つ。安定したグローバルに一意な
-// ハンドルとし、どのスペースでも同一人物が同一の身元になるようにするためである
-// (ADR 0003)。表示名やロールは意図的にまだモデル化しておらず、必要が生じるまでは atname を
+// 1 インスタンスはちょうど 1 つのコミュニティを運営する (ADR 0006) ため、身元を
+// インスタンスより下の単位に閉じ込める器が無く、atname の一意性はインスタンスの境界で
+// 閉じる (ADR 0007)。表示名は意図的にまだモデル化しておらず、必要が生じるまでは atname を
 // ユーザーの表示名としても用いる。パスワードダイジェストは別の資格情報テーブルに保持する
 // ため、ここには無い。
 type User struct {
