@@ -1,0 +1,289 @@
+package thread
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// ShowPageData is the data for a thread's page: the thread and its posts, the
+// trail naming where it sits, and the board it was posted in together with the
+// other threads standing there.
+//
+// The board's threads come along because this page's list column is that board's
+// listing: a visitor reading one thread is one step from the next one, and
+// without it leaving a thread means going back to /b/{slug} first.
+//
+// [Ja] ShowPageData はスレッドページのデータです。スレッドとその投稿、在り処を示す経路、
+// そしてそれが立った掲示板と、そこに立っている他のスレッドを持ちます。
+//
+// 掲示板のスレッドが伴うのは、このページの一覧カラムがその掲示板の一覧だからです。
+// 1 つのスレッドを読んでいる訪問者は次のスレッドまで 1 歩の距離にあり、これが無ければ
+// スレッドを離れるにはまず /b/{slug} へ戻ることになります。
+type ShowPageData struct {
+	Title      string
+	Breadcrumb components.BreadcrumbData
+	PostsCount int
+	Posts      []ShowPost
+	Board      ShowBoard
+
+	// Full says the thread has reached the number of posts it can hold, so the
+	// page tells the visitor that nothing more can be written here (ADR 0009).
+	//
+	// [Ja] Full はスレッドが持てる投稿数に達したことを表し、ページはここへはもう何も
+	// 書けないことを訪問者に伝えます (ADR 0009)。
+	Full bool
+
+	// PostLimit is the cap Full was reached at, shown in the notice so the number
+	// the visitor reads is the one the application enforces.
+	//
+	// [Ja] PostLimit は Full に達した上限で、訪問者が読む数値がアプリケーションの
+	// 適用する数値と同じであるよう、その旨の文言に差し込みます。
+	PostLimit int
+}
+
+// ShowPost is one post as the page renders it: its reply number, who wrote it,
+// when it arrived, what it says, and the reply numbers of the posts that
+// answered it.
+//
+// [Ja] ShowPost はページが描画する形の投稿 1 つです。レス番号・書いた人・届いた時刻・
+// 述べていること・それに答えた投稿のレス番号を持ちます。
+type ShowPost struct {
+	Number int
+
+	// Author is the atname of the account that wrote the post, without the
+	// leading @, and "" when the author has withdrawn. The post is shown either
+	// way: a withdrawal takes the name off what was written, not the writing.
+	//
+	// [Ja] Author は投稿を書いたアカウントの atname で、先頭の @ を含みません。作者が
+	// 退会しているときは "" です。どちらの場合も投稿は表示します。退会が外すのは書かれた
+	// ものから名前であって、書かれたものではありません。
+	Author string
+
+	PostedAt time.Time
+	Body     viewmodel.PostBody
+
+	// ReplyNumbers are the posts that referenced this one, by reply number. They
+	// are rendered under the body as the other half of a >>N: the body carries
+	// the link forward, and this carries it back.
+	//
+	// [Ja] ReplyNumbers はこの投稿を参照した投稿を、レス番号で持ちます。本文の下に
+	// 描画され、>>N のもう半分をなします。本文が前向きのリンクを運び、こちらが逆向きの
+	// リンクを運びます。
+	ReplyNumbers []int
+}
+
+// ShowBoard is the board this thread was posted in and the threads standing in
+// it, which is what the page's list column holds.
+//
+// [Ja] ShowBoard はこのスレッドが立った掲示板と、そこに立っているスレッドです。
+// ページの一覧カラムが持つものがこれです。
+type ShowBoard struct {
+	Slug    string
+	Name    string
+	Threads []ShowBoardThread
+}
+
+// ShowBoardThread is one thread of the board's listing, carrying what a row
+// shows without reading any post: its title, how many posts there are, and when
+// the last one arrived.
+//
+// [Ja] ShowBoardThread は掲示板の一覧に並ぶスレッド 1 つで、投稿を 1 件も読まずに
+// 1 行が示すもの — タイトル・投稿の件数・最後の 1 件が届いた時刻 — を運びます。
+type ShowBoardThread struct {
+	ID           viewmodel.ThreadID
+	Title        string
+	PostsCount   int
+	LastPostedAt time.Time
+}
+
+// ShowHeadingID is the id of this page's main heading. The community layout
+// points the <main> landmark at it with aria-labelledby, so the region's
+// accessible name and the heading a sighted visitor reads are the same text.
+//
+// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
+// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// 目で見る訪問者が読む見出しが同じ文字列になります。
+const ShowHeadingID = "thread-show-heading"
+
+// postLabelID returns the id of the element naming the post with the given reply
+// number. It is derived from the same rule the anchor target is, so the name and
+// the post it names cannot drift apart.
+//
+// [Ja] postLabelID は、指定されたレス番号の投稿を名付ける要素の id を返します。アンカーの
+// 飛び先と同じ規則から導くため、名前とそれが名付ける投稿が離れていくことはありません。
+func postLabelID(number int) string {
+	return templates.PostElementID(number) + "-label"
+}
+
+// replyReference renders a reply number the way a body writes one, so a link
+// back to a post reads as the same notation as the link that went to it.
+//
+// [Ja] replyReference はレス番号を、本文がそれを書くのと同じ形で描画します。投稿へ
+// 戻るリンクが、そこへ向かったリンクと同じ記法として読めるようにするためです。
+func replyReference(number int) string {
+	return ">>" + strconv.Itoa(number)
+}
+
+// ShowCenter renders the list column of a thread's page: the board this thread
+// was posted in, and the threads standing in it. It is the complementary column
+// here, since the page is opened to read one thread rather than to choose
+// between them; the thread being read is marked as the current one, so the
+// listing says where in it the visitor is.
+//
+// It carries no heading. This column precedes the thread in the document, and a
+// heading before the page's <h1> would put the outline out of order — the same
+// reason the sidebar labels its groups instead of heading them. The board's name
+// is a link rather than a title: it is both what this listing is and the way
+// back to the whole of it.
+//
+// [Ja] ShowCenter はスレッドページの一覧カラムを描画します。このスレッドが立った掲示板と、
+// そこに立っているスレッドです。ここではこれが補助のカラムです。このページはスレッドを
+// 選ぶためではなく 1 つを読むために開かれるためです。読んでいるスレッドには現在地の印を
+// 付け、一覧が訪問者のその中での位置を述べるようにします。
+//
+// 見出しは持ちません。このカラムは文書の中でスレッドより前に来るため、ページの <h1> より
+// 前に見出しを置くとアウトラインの順序が崩れます。サイドバーが自身のグループを見出しでは
+// なくラベルで名付けるのと同じ理由です。掲示板の名前はタイトルではなくリンクです。それが
+// この一覧が何であるかを述べると同時に、その全体へ戻る道でもあるためです。
+templ ShowCenter(data ShowPageData) {
+	<div class="flex flex-col gap-3">
+		<a
+			href={ templates.BoardPath(data.Board.Slug).SafeURL() }
+			class="inline-flex min-h-6 min-w-6 items-center px-2 text-sm font-semibold hover:underline"
+		>
+			{ data.Board.Name }
+		</a>
+		<ul class="flex flex-col">
+			for _, thread := range data.Board.Threads {
+				<li>
+					<a
+						href={ templates.ThreadPath(thread.ID).SafeURL() }
+						class="block rounded-md px-2 py-2 hover:bg-accent aria-[current]:bg-accent"
+						if templates.IsCurrentPath(ctx, templates.ThreadPath(thread.ID).String()) {
+							aria-current="page"
+						}
+					>
+						<span class="block text-sm">{ thread.Title }</span>
+						<span class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+							<span>{ templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}) }</span>
+							<time datetime={ templates.MachineDateTime(thread.LastPostedAt) }>
+								{ templates.RelativeTime(ctx, thread.LastPostedAt) }
+							</time>
+						</span>
+					</a>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+// ShowRight renders the reading column of a thread's page: the trail naming
+// where the thread sits, its title as the page heading, and every post in it in
+// reply-number order. This is the page's main column, because a thread is what
+// the visitor came here to read.
+//
+// A post is an article of its own, named by its reply number and its author, and
+// carries that number as the id a >>N and a shared #p12 resolve to. The number is
+// also a link to itself, which is how a visitor takes the address of one post out
+// of a page that serves the whole thread under a single URL.
+//
+// Each post can skip rendering while it is far outside the viewport. Its
+// intrinsic-size fallback matches the measured one-line desktop shape: 4.5625rem
+// for the header, body and border, plus 2rem when a replies footer is present.
+// Distinguishing the two keeps placeholder error from accumulating ahead of a
+// deep #pN target. Print restores ordinary rendering so every post reaches the
+// printed document even when it was outside the screen viewport.
+//
+// The posts that answered a post are listed under it, in the same >>N notation
+// their bodies wrote to get there, so a conversation can be followed in both
+// directions. A thread that has reached its cap says so after the last post,
+// where the next one would have gone.
+//
+// [Ja] ShowRight はスレッドページの読むためのカラムを描画します。スレッドの在り処を示す
+// 経路、ページ見出しとしてのタイトル、そしてその中のすべての投稿をレス番号順に描きます。
+// 訪問者がここへ読みに来たものがスレッドであるため、これがページの主カラムです。
+//
+// 各投稿はそれ自身が article であり、レス番号と作者で名付けられ、その番号を、>>N と
+// 共有された #p12 が解決する先の id として持ちます。番号は自分自身へのリンクでもあります。
+// スレッド全体を 1 つの URL で配信するページから、訪問者が投稿 1 つのアドレスを取り出す
+// 手立てがこれです。
+//
+// 各投稿は、ビューポートから遠く離れている間は描画を省けます。その固有サイズの代替値は、
+// 1 行の本文を持つデスクトップ表示の実測値に合わせます。ヘッダー・本文・境界線で
+// 4.5625rem、返信フッターがあるときはさらに 2rem です。この 2 つを分けることで、深い
+// #pN の飛び先より前に代替値の誤差が積み重なるのを防ぎます。印刷時は通常の描画へ戻し、
+// 画面のビューポート外にあった投稿もすべて印刷文書へ渡します。
+//
+// ある投稿に答えた投稿は、その下に、それらの本文がそこへ辿り着くために書いたのと同じ
+// >>N の記法で並べます。会話を両方向に辿れるようにするためです。上限に達したスレッドは、
+// 次の投稿が入るはずだった場所、すなわち最後の投稿の後ろでその旨を述べます。
+templ ShowRight(data ShowPageData) {
+	<div class="flex flex-col gap-6">
+		<div class="flex flex-col gap-2">
+			@components.Breadcrumb(data.Breadcrumb)
+			<h1 id={ ShowHeadingID } class="text-2xl font-bold tracking-tight">{ data.Title }</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "posts_count", map[string]any{"Count": data.PostsCount}) }
+			</p>
+		</div>
+		<ol class="flex flex-col gap-4">
+			for _, post := range data.Posts {
+				<li
+					id={ templates.PostElementID(post.Number) }
+					class={
+						"scroll-mt-4",
+						"[content-visibility:auto]",
+						"print:[content-visibility:visible]",
+						templ.KV("[contain-intrinsic-size:auto_6.5625rem]", len(post.ReplyNumbers) > 0),
+						templ.KV("[contain-intrinsic-size:auto_4.5625rem]", len(post.ReplyNumbers) == 0),
+					}
+				>
+					<article aria-labelledby={ postLabelID(post.Number) } class="flex flex-col gap-2 border-b border-border pb-4">
+						<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+							<span id={ postLabelID(post.Number) } class="flex flex-wrap items-baseline gap-x-2">
+								<a
+									href={ templates.PostAnchor(post.Number).SafeURL() }
+									aria-label={ templates.T(ctx, "thread_show_post_link_label", map[string]any{"Number": post.Number}) }
+									class="inline-flex min-h-6 min-w-6 items-center justify-center font-semibold text-foreground hover:underline"
+								>
+									{ strconv.Itoa(post.Number) }
+								</a>
+								if post.Author != "" {
+									<span>{ "@" + post.Author }</span>
+								} else {
+									<span>{ templates.T(ctx, "thread_show_withdrawn_author") }</span>
+								}
+							</span>
+							<time datetime={ templates.MachineDateTime(post.PostedAt) }>
+								{ templates.RelativeTime(ctx, post.PostedAt) }
+							</time>
+						</header>
+						@components.PostBody(post.Body)
+						if len(post.ReplyNumbers) > 0 {
+							<footer class="flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
+								<span>{ templates.T(ctx, "thread_show_replies_label") }</span>
+								for _, number := range post.ReplyNumbers {
+									<a
+										href={ templates.PostAnchor(number).SafeURL() }
+										class="inline-flex min-h-6 min-w-6 items-center underline underline-offset-2"
+									>
+										{ replyReference(number) }
+									</a>
+								}
+							</footer>
+						}
+					</article>
+				</li>
+			}
+		</ol>
+		if data.Full {
+			<p class="rounded-md border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+				{ templates.T(ctx, "thread_show_full_notice", map[string]any{"Limit": data.PostLimit}) }
+			</p>
+		}
+	</div>
+}
