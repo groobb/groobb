@@ -18,7 +18,7 @@ run: ## Start the HTTP server. [Ja] HTTP サーバーを起動
 	$(OP_RUN_DEV) go run ./cmd/groobb serve
 
 .PHONY: browse-login
-browse-login: ## Log in to the dev site in a browser (other user: make browse-login BROWSE_USER=2). [Ja] dev サイトへブラウザでログイン (別ユーザーは make browse-login BROWSE_USER=2)
+browse-login: ## Log in to the dev site in a browser (other account: make browse-login BROWSE_USER=replier). [Ja] dev サイトへブラウザでログイン (別アカウントは make browse-login BROWSE_USER=replier)
 	$(OP_RUN_DEV) bash scripts/browse.sh login $(BROWSE_USER)
 
 .PHONY: browse-shot

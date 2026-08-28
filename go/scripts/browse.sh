@@ -4,25 +4,48 @@
 # it generates the Basic-auth config, runs the single-step dev sign-in, reuses
 # the logged-in session for screenshots, and cleans up.
 #
-# It expects KORYLUS_BROWSING_* in the environment, so run it under the op-run
-# wrapper (see the browse-* targets in go/Makefile). Reading credentials through
-# op-run avoids evaluating the .env in a shell, which would corrupt any
-# credential containing a `$`. The dev server must run with Turnstile disabled
-# (GROOBB_TURNSTILE_DISABLE=true in the dev .env) or bot verification blocks the
-# sign-in submit.
+# The sign-in credentials come from the roster the seed creates its accounts
+# from (go/seed-users.toml), read through `groobb devcreds`, so that the account
+# signed in as here is the account the seed actually created. The base URL is
+# still expected in KORYLUS_BROWSING_BASE_URL, so run this under the op-run
+# wrapper (see the browse-* targets in go/Makefile). Reading that URL through
+# op-run avoids evaluating the .env in a shell, which would corrupt the
+# basic-auth credentials it carries when they contain a `$`. The dev server must
+# run with Turnstile disabled (GROOBB_TURNSTILE_DISABLE=true in the dev .env) or
+# bot verification blocks the sign-in submit.
 #
 # [Ja] browse.sh は playwright-cli を駆動して dev サイトのブラウザ確認を行う。
 # Basic 認証 config の生成・単一ステップの dev サインイン・ログイン済み
 # セッションでのスクショ・後片付けをまとめる。
 #
-# KORYLUS_BROWSING_* が環境にある前提なので、op run ラッパー配下 (go/Makefile の
-# browse-* ターゲット) から実行する。creds を op run 経由で読むことで、.env を
-# シェル評価して `$` を含む creds を壊すのを避ける。dev サーバは Turnstile を
-# 無効化 (dev の .env で GROOBB_TURNSTILE_DISABLE=true) して起動している必要が
-# あり、でないと Bot 検証でサインインの送信が弾かれる。
+# サインインに使う資格情報は、シードがアカウントを作成する元にしている名簿
+# (go/seed-users.toml) から `groobb devcreds` を通して読む。ここでサインインする
+# アカウントを、シードが実際に作成したアカウントそのものにするため。ベース URL は
+# 引き続き KORYLUS_BROWSING_BASE_URL を前提とするため、op run ラッパー配下
+# (go/Makefile の browse-* ターゲット) から実行する。この URL を op run 経由で読む
+# ことで、.env をシェル評価して、そこに含まれる Basic 認証 creds を壊すのを避ける
+# (creds が `$` を含む場合)。dev サーバは Turnstile を無効化 (dev の .env で
+# GROOBB_TURNSTILE_DISABLE=true) して起動している必要があり、でないと Bot 検証で
+# サインインの送信が弾かれる。
 set -euo pipefail
 
 SESSION=dev
+# The account signed in as when no role is named. The starter opens the threads
+# a board lists, so the screens reached from what it wrote are the ones most
+# often looked at.
+#
+# [Ja] 役割の指定が無いときにサインインするアカウント。starter は掲示板に並ぶスレッドを
+# 立てるアカウントで、そこが書いたものから辿れる画面が、もっともよく見られる画面になる。
+DEFAULT_ROLE=starter
+# The Go module root, derived from this script's location so that the helper it
+# runs (groobb devcreds) resolves no matter which directory the script is
+# invoked from. It is also where the roster is looked for, which groobb devcreds
+# names relative to the module root.
+#
+# [Ja] Go モジュールのルート。本スクリプトの位置から求めることで、どのディレクトリから
+# 実行してもヘルパー (groobb devcreds) を解決できるようにする。名簿を探す基準もここに
+# なる。groobb devcreds が名簿のパスをモジュールルートからの相対で持っているため。
+GO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR=/workspace/tmp
 CONFIG_FILE="$TMP_DIR/browse-cli.config.json"
 ORIGIN_FILE="$TMP_DIR/browse-cli.origin"
@@ -104,13 +127,26 @@ cleanup_session() {
 }
 
 cmd_login() {
-  local n="${1:-1}"
-  local email_var="KORYLUS_BROWSING_USER${n}_EMAIL"
-  local pass_var="KORYLUS_BROWSING_USER${n}_PASSWORD"
-  local email="${!email_var:-}"
-  local pass="${!pass_var:-}"
-  if [ -z "$email" ] || [ -z "$pass" ]; then
-    echo "USER${n} credentials are not set (${email_var} / ${pass_var})" >&2
+  local role="${1:-$DEFAULT_ROLE}"
+
+  # The credentials come from the roster the seed reads (go/seed-users.toml), by
+  # way of `groobb devcreds`, which prints the email and the password one per
+  # line. Asking the file the seed asked is what keeps the sign-in that follows a
+  # seed working: an account cannot be changed in one place and left as it was in
+  # the other.
+  #
+  # [Ja] 資格情報は、シードが読むのと同じ名簿 (go/seed-users.toml) から
+  # `groobb devcreds` を通して受け取る。devcreds はメールアドレスとパスワードを 1 行ずつ
+  # 出力する。シードが尋ねたファイルに尋ねることが、シード直後のサインインが通り続ける
+  # 理由になる。片方だけを変えてもう片方が元のまま、ということが起こらないため。
+  local credentials
+  credentials="$(cd "$GO_DIR" && go run ./cmd/groobb devcreds "$role")"
+  local lines=()
+  mapfile -t lines <<<"$credentials"
+  local email="${lines[0]:-}"
+  local pass="${lines[1]:-}"
+  if [ "${#lines[@]}" -ne 2 ] || [ -z "$email" ] || [ -z "$pass" ]; then
+    echo "no credentials for role '$role': groobb devcreds must print exactly two non-empty lines" >&2
     exit 1
   fi
 
@@ -206,7 +242,7 @@ cmd_login() {
     exit 1
   fi
   trap - EXIT
-  echo "logged in as USER${n}: ${result#SIGNED_IN }"
+  echo "logged in as $role: ${result#SIGNED_IN }"
 }
 
 cmd_shot() {
@@ -283,7 +319,7 @@ cmd_close() {
 case "${1:-}" in
   login)
     shift
-    cmd_login "${1:-1}"
+    cmd_login "${1:-$DEFAULT_ROLE}"
     ;;
   shot)
     shift
@@ -293,7 +329,7 @@ case "${1:-}" in
     cmd_close
     ;;
   *)
-    echo "usage: browse.sh {login [user_number] | shot <path> | close}" >&2
+    echo "usage: browse.sh {login [role] | shot <path> | close}" >&2
     exit 2
     ;;
 esac
