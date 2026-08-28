@@ -1,0 +1,112 @@
+package category
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// ShowPageData is the data for a category's page: the category's own name and
+// the boards it groups, in the order the community placed them.
+//
+// [Ja] ShowPageData はカテゴリーページのデータです。カテゴリー自身の名前と、それが
+// まとめる掲示板を、コミュニティが並べた順で持ちます。
+type ShowPageData struct {
+	Name   string
+	Boards []ShowBoard
+}
+
+// ShowBoard is one board of the listing. It carries the slug rather than the id
+// because /b/{slug} is what addresses a board.
+//
+// [Ja] ShowBoard は一覧に並ぶ掲示板 1 つです。掲示板を指すのは /b/{slug} であるため、
+// id ではなく slug を運びます。
+type ShowBoard struct {
+	Slug        string
+	Name        string
+	Description string
+}
+
+// ShowHeadingID is the id of this page's main heading. The community layout
+// points the <main> landmark at it with aria-labelledby, so the region's
+// accessible name and the heading a sighted visitor reads are the same text.
+//
+// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
+// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// 目で見る訪問者が読む見出しが同じ文字列になります。
+const ShowHeadingID = "category-show-heading"
+
+// ShowCenter renders the list column of a category's page: the category's name
+// as the page heading, and the boards it groups below it. This is the page's
+// main column, because a category is the list of its boards and nothing else.
+//
+// Each board is a card headed by its name, so the board names form the second
+// level of the page outline below the category. The link is the name itself
+// rather than a trailing "open" control, which is what makes the link text say
+// where it leads when read on its own.
+//
+// A category with no boards says so instead of rendering an empty list: the
+// community placed the category and has yet to place a board in it, and a bare
+// list would leave the visitor unsure whether the page failed to load.
+//
+// [Ja] ShowCenter はカテゴリーページの一覧カラムを描画します。ページ見出しとしての
+// カテゴリー名と、その下にそれがまとめる掲示板です。カテゴリーとはその掲示板の一覧に
+// ほかならないため、これがページの主カラムです。
+//
+// 各掲示板は自身の名前を見出しに持つカードであり、掲示板名はカテゴリーの下、ページの
+// アウトラインの第 2 階層をなします。リンクは末尾の「開く」といった操作ではなく名前
+// そのものであり、これによりリンクのテキストは単独で読まれてもどこへ導くかを述べます。
+//
+// 掲示板を 1 つも持たないカテゴリーは、空の一覧ではなくその旨を伝えます。コミュニティが
+// カテゴリーを置き、まだそこに掲示板を置いていない状態であり、素の空一覧では訪問者が
+// ページの読み込みに失敗したのかどうか判断できないためです。
+templ ShowCenter(data ShowPageData) {
+	<div class="flex flex-col gap-6">
+		<h1 id={ ShowHeadingID } class="text-2xl font-bold tracking-tight">{ data.Name }</h1>
+		if len(data.Boards) == 0 {
+			<p class="text-muted-foreground">{ templates.T(ctx, "category_show_no_boards") }</p>
+		} else {
+			<ul class="flex flex-col gap-3">
+				for _, board := range data.Boards {
+					<li>
+						<div class="card" data-size="sm">
+							<header>
+								<h2>
+									<a href={ templates.BoardPath(board.Slug).SafeURL() } class="inline-flex min-h-6 min-w-6 items-center hover:underline">
+										{ board.Name }
+									</a>
+								</h2>
+								if board.Description != "" {
+									<p>{ board.Description }</p>
+								}
+							</header>
+						</div>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// ShowRight renders the reading column of a category's page. A category holds
+// no thread of its own, so the column that shows a thread everywhere else says
+// here that none has been opened yet, and points back at the board list beside
+// it.
+//
+// A category with no boards is told what will fill this column instead of being
+// invited to choose one, since the list beside it is the empty state rather than
+// a set of choices. Pointing at boards that are not there would contradict the
+// column the visitor is reading.
+//
+// [Ja] ShowRight はカテゴリーページの読むためのカラムを描画します。カテゴリー自身は
+// スレッドを持たないため、他のページではスレッドを表示するこのカラムが、ここではまだ
+// スレッドが開かれていないことを伝え、隣の掲示板の一覧を指し示します。
+//
+// 掲示板を 1 つも持たないカテゴリーには、選ぶよう促すのではなく、このカラムに何が
+// 現れるのかを伝えます。隣の一覧は選択肢ではなく空状態だからです。そこに無い掲示板を
+// 指し示せば、訪問者が読んでいるカラムと矛盾してしまいます。
+templ ShowRight(data ShowPageData) {
+	<div class="flex h-full flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
+		if len(data.Boards) == 0 {
+			<p>{ templates.T(ctx, "category_show_no_boards_thread_prompt") }</p>
+		} else {
+			<p>{ templates.T(ctx, "category_show_board_prompt") }</p>
+		}
+	</div>
+}
