@@ -183,21 +183,35 @@ type Config struct {
 
 	// AppURL is the public base URL of the application (e.g.
 	// "https://groobb.example.dev" in production, "http://localhost:8080" in
-	// dev), with no trailing slash. It is needed to build absolute links in
-	// outgoing email (such as the password reset link), which a relative path
-	// cannot express. A full base URL is stored rather than a bare domain so it
-	// can carry the scheme and port that dev (plain HTTP on a port) requires. It
-	// is optional rather than required for the same reason as the email settings
-	// (a deployment without email configured must still boot); when the link is
-	// built from an empty AppURL the URL is simply host-relative.
+	// dev): a scheme and a host, with no path and no trailing slash. Every
+	// absolute address the instance publishes is built under it — the links in
+	// outgoing email (such as the password reset link), and the canonical URL and
+	// BreadcrumbList structured data by which the public pages declare
+	// themselves. None of them can be expressed by a relative path, since each is
+	// read away from the document it was written in. A full base URL is stored
+	// rather than a bare domain so it can carry the scheme and port that dev
+	// (plain HTTP on a port) requires.
+	//
+	// It is optional rather than required for the same reason as the email
+	// settings (a deployment without email configured must still boot), and a
+	// supplied value is validated at startup (see httpBaseURL). What an empty one
+	// leaves behind differs by caller: an email link falls back to a
+	// host-relative URL, while the public pages render neither a canonical link
+	// nor structured data rather than name an address they cannot resolve.
 	//
 	// [Ja] AppURL はアプリケーションの公開ベース URL (例: 本番は
-	// "https://groobb.example.dev"、dev は "http://localhost:8080") で、末尾スラッシュは
-	// 付けません。送信メール内の絶対リンク (パスワードリセットリンクなど) を組み立てるのに
-	// 必要で、相対パスでは表現できません。素のドメインではなくベース URL 全体を保持するのは、
-	// dev (ポート上の平文 HTTP) が要求するスキームとポートを含められるようにするためです。
-	// メール設定と同じ理由で必須ではなく任意とします (メール未設定のデプロイでも起動できる
-	// 必要があるため)。空の AppURL からリンクを組み立てた場合、URL は単にホスト相対になります。
+	// "https://groobb.example.dev"、dev は "http://localhost:8080") で、スキームとホスト
+	// だけを持ち、パスも末尾スラッシュも付けません。インスタンスが公開する絶対アドレスは
+	// すべてこの値の下で組み立てられます。送信メール内のリンク (パスワードリセットリンク
+	// など) と、公開ページが自身を宣言する canonical URL・BreadcrumbList の構造化データが
+	// それです。いずれもそれが書かれた文書から離れて読まれるため、相対パスでは表現でき
+	// ません。素のドメインではなくベース URL 全体を保持するのは、dev (ポート上の平文 HTTP)
+	// が要求するスキームとポートを含められるようにするためです。
+	//
+	// メール設定と同じ理由で必須ではなく任意とし (メール未設定のデプロイでも起動できる
+	// 必要があるため)、指定された値は起動時に検証します (httpBaseURL を参照)。空のときに
+	// 残るものは呼び出し側で異なります。メールのリンクはホスト相対の URL になり、公開ページ
+	// は解決できないアドレスを名指す代わりに canonical のリンクも構造化データも描画しません。
 	AppURL string
 
 	// TurnstileSiteKey and TurnstileSecretKey configure Cloudflare Turnstile bot
@@ -299,11 +313,16 @@ func Load() (*Config, error) {
 	}
 
 	// AppURL is read without requiring it, for the same reason as the email
-	// settings above (see the field docs).
+	// settings above, but a supplied value is validated before it can reach URL
+	// construction (see the field docs).
 	//
-	// [Ja] AppURL は必須にせず読み込む。理由は上のメール設定と同じ (フィールドの
-	// ドキュメントを参照)。
-	cfg.AppURL = newSetting("GROOBB_APP_URL", "app.url", file.App.URL).value
+	// [Ja] AppURL は必須にせず読み込む。理由は上のメール設定と同じですが、指定された値は
+	// URL の組み立てに届く前に検証します (フィールドのドキュメントを参照)。
+	appURL := newSetting("GROOBB_APP_URL", "app.url", file.App.URL)
+	cfg.AppURL, err = appURL.httpBaseURL("application URL")
+	if err != nil {
+		return nil, err
+	}
 
 	// Turnstile keys are read without requiring them: Turnstile is enabled
 	// operationally by provisioning the real keys, so a deployment must still boot

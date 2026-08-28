@@ -23,15 +23,21 @@
 # The running environment: "dev", "test", or "prod". A self-hosted instance runs
 # as "prod". APP_ENV overrides it.
 #
-# The public base URL, with no trailing slash. It is what the links in outgoing
-# email are built from, so a wrong value sends people to the wrong host.
-# GROOBB_APP_URL overrides it.
+# The public base URL: a scheme and a host, with no path and no trailing slash.
+# The links in outgoing email and the canonical URL each public page declares
+# itself by are built from it, so a wrong value sends people to the wrong host
+# and tells search engines an address this instance does not serve. A value that
+# is not such a URL stops startup. An instance without one starts and publishes
+# neither. GROOBB_APP_URL overrides it.
 #
 # [Ja] 実行環境 ("dev" / "test" / "prod")。セルフホストのインスタンスは "prod" で
 # 動かします。APP_ENV が上書きします。
 #
-# 公開ベース URL (末尾スラッシュなし)。送信メール内のリンクはこの値から組み立てられる
-# ため、誤った値は受信者を別のホストへ送ってしまいます。GROOBB_APP_URL が上書きします。
+# 公開ベース URL。スキームとホストだけを書き、パスも末尾スラッシュも付けません。送信メール
+# 内のリンクと、公開ページがそれぞれ自身を宣言する canonical URL はこの値から組み立てられる
+# ため、誤った値は受信者を別のホストへ送り、このインスタンスが配信しないアドレスを検索
+# エンジンへ伝えます。その形でない値は起動を止めます。未設定でもインスタンスは起動し、
+# そのときはどちらも出しません。GROOBB_APP_URL が上書きします。
 env = "prod"
 url = "https://groobb.example.com"
 
