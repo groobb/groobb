@@ -1,0 +1,94 @@
+package layouts
+
+import (
+	"github.com/a-h/templ"
+
+	"github.com/groobb/groobb/go/internal/session"
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// Community is the shell every page inside the community is drawn in: a sidebar
+// it renders itself, and the two content columns the page hands over. It exists
+// beside Default rather than as a branch inside it, because Default narrows its
+// content to a single centered column for the authentication forms, and a layout
+// that did both would be read by no one looking for either.
+//
+// The page's own column is the <main> landmark, so there is exactly one whatever
+// side it is on, and the skip link at the top of the body jumps a keyboard
+// visitor straight to it past the sidebar. The other column is complementary and
+// is dropped below the three-column breakpoint: keeping it would put a long list
+// between the visitor and what they opened the page for, and it is reachable at
+// its own address anyway. The sidebar is never dropped, since it is how the rest
+// of the community is reached.
+//
+// A page that hands over no complementary column is drawn beside the sidebar
+// alone, in a grid of two tracks rather than three left with a gap where a
+// column was expected. The column it did hand over is the <main> landmark, so
+// one nil settles both the tracks and the regions and the two cannot disagree.
+// That column then has the whole width to itself, so the measure is capped here
+// instead of by each such page, keeping the text of one that spans a wide
+// display readable.
+//
+// [Ja] Community はコミュニティ内のどのページも描かれるシェルです。自身が描画する
+// サイドバーと、ページから渡される 2 つのコンテンツカラムから成ります。Default の中の
+// 分岐ではなく Default の隣に置くのは、Default が認証系フォームのためにコンテンツを
+// 中央 1 カラムへ絞る作りであり、両方を兼ねるレイアウトはどちらを探す人にも読まれなく
+// なるためです。
+//
+// ページ自身のカラムが <main> ランドマークであり、それが左右どちらであってもちょうど
+// 1 つ存在します。body 先頭のスキップリンクは、キーボードの訪問者をサイドバーを飛び越えて
+// そこへ直接連れて行きます。もう一方のカラムは補足であり、3 カラムのブレークポイントより
+// 下では落とします。残せば、訪問者とそのページを開いた目的の間に長い一覧が挟まることに
+// なり、そのカラムの中身はそれ自身のアドレスからも辿れるためです。サイドバーは落としま
+// せん。コミュニティの他の場所へ辿り着く手立てがそれだからです。
+//
+// 補足のカラムを渡さないページは、サイドバーの隣に 1 カラムだけで描きます。カラムが
+// あるはずの場所を空けた 3 トラックではなく、2 トラックのグリッドにします。渡されたほうの
+// カラムが <main> ランドマークになるため、トラック数と領域は 1 つの nil 判定で決まり、
+// 両者が食い違うことはありません。そのカラムは幅を独り占めするため、1 行の長さの上限は
+// そうしたページごとにではなくここで与え、広いディスプレイいっぱいに伸びたテキストが
+// 読めなくならないようにします。
+templ Community(data CommunityLayoutData) {
+	<!DOCTYPE html>
+	<html lang={ templates.Locale(ctx) }>
+		<head>
+			@components.Head(data.Meta)
+		</head>
+		<body class="min-h-screen">
+			<a
+				href="#main"
+				class="btn sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50"
+			>
+				{ templates.T(ctx, "skip_to_main_content") }
+			</a>
+			<div
+				class={ "lg:grid lg:min-h-screen",
+					templ.KV("lg:grid-cols-[16rem_minmax(0,1fr)_minmax(0,1.5fr)]", data.Columns.Right != nil),
+					templ.KV("lg:grid-cols-[16rem_minmax(0,1fr)]", data.Columns.Right == nil) }
+			>
+				@components.Sidebar(data.Sidebar)
+				if data.Columns.Right == nil {
+					<main id="main" tabindex="-1" aria-labelledby={ data.Columns.MainLabelledBy } class="min-w-0 px-4 py-6 lg:max-w-3xl">
+						@data.Columns.Center
+					</main>
+				} else if data.Columns.Main == CommunityCenterColumn {
+					<main id="main" tabindex="-1" aria-labelledby={ data.Columns.MainLabelledBy } class="min-w-0 px-4 py-6">
+						@data.Columns.Center
+					</main>
+					<aside aria-label={ data.Columns.ComplementaryLabel } class="hidden min-w-0 px-4 py-6 lg:block">
+						@data.Columns.Right
+					</aside>
+				} else {
+					<aside aria-label={ data.Columns.ComplementaryLabel } class="hidden min-w-0 px-4 py-6 lg:block">
+						@data.Columns.Center
+					</aside>
+					<main id="main" tabindex="-1" aria-labelledby={ data.Columns.MainLabelledBy } class="min-w-0 px-4 py-6">
+						@data.Columns.Right
+					</main>
+				}
+			</div>
+			@components.Flash(session.FlashFromContext(ctx))
+		</body>
+	</html>
+}

@@ -2,8 +2,11 @@ package templates
 
 import (
 	"net/url"
+	"strconv"
 
 	"github.com/a-h/templ"
+
+	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
 // ReturnToParam is the query and form parameter that carries where to send a
@@ -39,6 +42,33 @@ func (p Path) String() string {
 // [Ja] SafeURL はパスを href / action 属性で使うための templ.SafeURL として返します。
 func (p Path) SafeURL() templ.SafeURL {
 	return templ.SafeURL(p)
+}
+
+// AbsoluteURL returns p as an absolute URL under baseURL: the form a page
+// declares its own canonical address in, and the form it names the steps of its
+// breadcrumb to a crawler in. Both are read away from the document they were
+// found on, so a host-relative path there leaves it to the reader to decide
+// which host was meant.
+//
+// An empty baseURL yields an empty string. The instance's public base URL is
+// optional configuration, and one that has not been told its own address cannot
+// name it; the callers then render nothing rather than publish a relative URL
+// where an absolute one is expected.
+//
+// [Ja] AbsoluteURL は p を baseURL の下の絶対 URL として返します。ページが自身の正規
+// アドレスを宣言する形であり、パンくずの各段をクローラーへ名指す形でもあります。どちらも
+// それが書かれた文書から離れて読まれるため、ホスト相対のパスでは、どのホストのことなのか
+// の判断が読み手に委ねられます。
+//
+// baseURL が空のときは空文字列を返します。インスタンスの公開ベース URL は任意の設定で
+// あり、自身のアドレスを教えられていないインスタンスはそれを名指せません。その場合
+// 呼び出し側は、絶対 URL が期待される場所へ相対 URL を出すのではなく、何も描画しません。
+func (p Path) AbsoluteURL(baseURL string) string {
+	if baseURL == "" {
+		return ""
+	}
+
+	return baseURL + string(p)
 }
 
 // WithReturnTo returns the path carrying returnTo in the return_to query
@@ -254,4 +284,97 @@ func SettingsWithdrawalNewPath() Path {
 // 到達します)。
 func SettingsWithdrawalPath() Path {
 	return Path("/settings/withdrawal")
+}
+
+// CategoryPath returns the path to the category with the given slug. A category
+// groups boards in the sidebar rather than forming part of a board's address, so
+// it has an address of its own instead of a prefix the board paths sit under.
+//
+// The slug is placed into the path as written, under the same expectation
+// BoardPath documents: it is one model.IsValidSlug accepts, so every
+// character that rule admits stands for itself in a URL path.
+//
+// [Ja] CategoryPath は指定 slug のカテゴリーのパスを返します。カテゴリーは掲示板の
+// アドレスの一部ではなく、サイドバーで掲示板をまとめるものであるため、掲示板のパスが
+// その下に並ぶ接頭辞ではなく自身のアドレスを持ちます。
+//
+// slug はそのままパスへ置きます。前提は BoardPath が記すものと同じで、
+// model.IsValidSlug が受理する値であり、その規則が許す文字はいずれも URL の
+// パスの中でそれ自身を表します。
+func CategoryPath(slug string) Path {
+	return Path("/c/" + slug)
+}
+
+// BoardPath returns the path to the board with the given slug. The slug is the
+// board's own identifier rather than a path under its category, so the address
+// survives the board being moved between categories.
+//
+// The slug is placed into the path as written, so it is expected to be one
+// model.IsValidSlug accepts: every character that rule admits stands for
+// itself in a URL path. A slug carrying a path or query character would produce
+// a link pointing somewhere other than the board, which is why the rule is
+// applied where boards are created rather than escaped here.
+//
+// [Ja] BoardPath は指定 slug の掲示板のパスを返します。slug はカテゴリー配下のパスでは
+// なく掲示板自身の識別子であるため、掲示板がカテゴリー間で移されてもアドレスは
+// 保たれます。
+//
+// slug はそのままパスへ置くため、model.IsValidSlug が受理する値であることを前提と
+// します。その規則が許す文字はいずれも URL のパスの中でそれ自身を表すためです。パスや
+// クエリの文字を含む slug は掲示板ではないどこかを指すリンクを作ってしまいます。ここで
+// エスケープするのではなく掲示板を作る側で規則を適用しているのはそのためです。
+func BoardPath(slug string) Path {
+	return Path("/b/" + slug)
+}
+
+// PostElementID returns the id of the element that renders the post with the
+// given reply number. A reply number is a post's permanent address within its
+// thread — the thread answers under one URL with every post on it (ADR 0009) —
+// so this is what a >>N in a body, a shared link ending in #p12, and the element
+// a browser scrolls to all resolve to.
+//
+// It sits beside PostAnchor, which builds the link to it, so that the id and the
+// links pointing at it are derived from one rule. Written in two places they
+// could drift, and a page whose anchors were built by the other rule would look
+// right and scroll nowhere.
+//
+// [Ja] PostElementID は、指定されたレス番号の投稿を描画する要素の id を返します。レス
+// 番号はスレッドの中でのその投稿の永久アドレス (スレッドは全投稿を載せた 1 つの URL で
+// 応答します。ADR 0009) であるため、本文の中の >>N も、#p12 で終わる共有されたリンクも、
+// ブラウザがスクロールする先の要素も、これに解決します。
+//
+// これへのリンクを組み立てる PostAnchor の隣に置き、id とそれを指すリンクが 1 つの規則
+// から導かれるようにしています。2 箇所に書けば離れていくことがあり、もう一方の規則で
+// アンカーを組み立てたページは、正しく見えてどこへもスクロールしません。
+func PostElementID(number int) string {
+	return "p" + strconv.Itoa(number)
+}
+
+// PostAnchor returns the link to the post with the given reply number, as a
+// same-document reference. A post has no address of its own: a thread is served
+// whole, so the post is already on the page every link to it is written on.
+//
+// [Ja] PostAnchor は、指定されたレス番号の投稿へのリンクを、同一文書内の参照として
+// 返します。投稿は自身のアドレスを持ちません。スレッドは丸ごと配信されるため、投稿は
+// それへのリンクが書かれるページの上に既にあります。
+func PostAnchor(number int) Path {
+	return Path("#" + PostElementID(number))
+}
+
+// ThreadPath returns the path to the thread with the given id. A thread is
+// addressed by id rather than by a slug because its title can be edited, and by
+// its own id rather than by a path under its board, so the address survives a
+// moderator moving the thread to another board.
+//
+// It takes the Presentation layer's id type, so that a caller cannot hand it
+// some other entity's id and get a path that leads to a different thread.
+//
+// [Ja] ThreadPath は指定 id のスレッドのパスを返します。slug ではなく id で指すのは
+// タイトルが編集されうるためで、掲示板配下のパスではなく自身の id で指すのは、
+// モデレーターがスレッドを別の掲示板へ移してもアドレスが保たれるようにするためです。
+//
+// Presentation 層の id 型を受け取るため、呼び出し側が別のエンティティの id を渡して
+// 別のスレッドへ繋がるパスを得ることはできません。
+func ThreadPath(id viewmodel.ThreadID) Path {
+	return Path("/t/" + id.String())
 }

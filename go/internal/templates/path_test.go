@@ -7,9 +7,9 @@ import (
 )
 
 // TestStaticPaths verifies that the no-argument path helpers return the exact
-// route strings registered in cmd/server/main.go, so the two never drift apart.
+// route strings registered in cmd/groobb/serve.go, so the two never drift apart.
 //
-// [Ja] TestStaticPaths は引数なしのパスヘルパーが cmd/server/main.go で登録された
+// [Ja] TestStaticPaths は引数なしのパスヘルパーが cmd/groobb/serve.go で登録された
 // ルート文字列と完全に一致することを検証し、両者が乖離しないようにします。
 func TestStaticPaths(t *testing.T) {
 	t.Parallel()
@@ -45,6 +45,50 @@ func TestStaticPaths(t *testing.T) {
 
 			if tt.got != tt.want {
 				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPath_AbsoluteURL verifies that a path is named under the instance's
+// public base URL, and that an instance which has not been told its own address
+// yields nothing rather than a host-relative one. The callers publish these to
+// machines that read them away from the page they were written on, where a path
+// by itself names no host.
+//
+// [Ja] TestPath_AbsoluteURL は、パスがインスタンスの公開ベース URL の下で名指される
+// こと、そして自身のアドレスを教えられていないインスタンスでは、ホスト相対の URL では
+// なく何も返らないことを検証します。呼び出し側はこれらを、それが書かれたページから離れて
+// 読む機械に向けて公開します。そこではパスだけではどのホストのことかが定まりません。
+func TestPath_AbsoluteURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		path    templates.Path
+		baseURL string
+		want    string
+	}{
+		{
+			name:    "ベース URL の下の絶対 URL になる",
+			path:    templates.BoardPath("jazz"),
+			baseURL: "https://groobb.example.com",
+			want:    "https://groobb.example.com/b/jazz",
+		},
+		{
+			name:    "ベース URL が空なら空になる",
+			path:    templates.BoardPath("jazz"),
+			baseURL: "",
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := tt.path.AbsoluteURL(tt.baseURL); got != tt.want {
+				t.Errorf("AbsoluteURL(%q) = %q, want %q", tt.baseURL, got, tt.want)
 			}
 		})
 	}
@@ -114,5 +158,60 @@ func TestAfterSignInPath(t *testing.T) {
 	}
 	if got := templates.AfterSignInPath(""); got != templates.HomePath() {
 		t.Errorf("AfterSignInPath(%q) = %q, want %q", "", got, templates.HomePath())
+	}
+}
+
+// TestCategoryPath verifies that a category's slug is placed under the /c prefix
+// the category route is registered on, so a sidebar link and the route stay in
+// step.
+//
+// [Ja] TestCategoryPath はカテゴリーの slug が、カテゴリーのルートが登録されている
+// /c の接頭辞の下に置かれることを検証します。サイドバーのリンクとルートが乖離しない
+// ためです。
+func TestCategoryPath(t *testing.T) {
+	t.Parallel()
+
+	if got, want := templates.CategoryPath("music"), templates.Path("/c/music"); got != want {
+		t.Errorf("CategoryPath(%q) = %q, want %q", "music", got, want)
+	}
+}
+
+// TestBoardPath verifies that a board's slug is placed under the /b prefix the
+// board route is registered on, so a sidebar link and the route stay in step.
+//
+// [Ja] TestBoardPath は掲示板の slug が、掲示板のルートが登録されている /b の接頭辞の
+// 下に置かれることを検証します。サイドバーのリンクとルートが乖離しないためです。
+func TestBoardPath(t *testing.T) {
+	t.Parallel()
+
+	if got, want := templates.BoardPath("jazz"), templates.Path("/b/jazz"); got != want {
+		t.Errorf("BoardPath(%q) = %q, want %q", "jazz", got, want)
+	}
+}
+
+// TestPostElementID verifies that a reply number becomes the id the post is
+// rendered with, since that is what an anchor ending in #p12 has to find on the
+// page.
+//
+// [Ja] TestPostElementID はレス番号が、その投稿が描画される際の id になることを検証
+// します。#p12 で終わるアンカーがページ上で見つけねばならないものがこれであるためです。
+func TestPostElementID(t *testing.T) {
+	t.Parallel()
+
+	if got, want := templates.PostElementID(12), "p12"; got != want {
+		t.Errorf("PostElementID(%d) = %q, want %q", 12, got, want)
+	}
+}
+
+// TestPostAnchor verifies that a link to a post is a same-document reference to
+// that post's id, so a >>N in a body leads to the element PostElementID names.
+//
+// [Ja] TestPostAnchor は投稿へのリンクが、その投稿の id への同一文書内の参照になること
+// を検証します。本文の >>N が PostElementID の名指す要素へ繋がるようにするためです。
+func TestPostAnchor(t *testing.T) {
+	t.Parallel()
+
+	if got, want := templates.PostAnchor(12), templates.Path("#p12"); got != want {
+		t.Errorf("PostAnchor(%d) = %q, want %q", 12, got, want)
 	}
 }
