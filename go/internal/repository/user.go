@@ -101,6 +101,59 @@ func (r *UserRepository) FindByAtname(ctx context.Context, atname string) (*mode
 	return r.toModel(row), nil
 }
 
+// ListByIDs returns the accounts among the given ids that are still there, so a
+// caller rendering a thread learns in one query who wrote each of the posts it
+// is about to display. It takes the ids together rather than one at a time
+// because the alternative is one query per post on a page that carries up to a
+// thousand of them.
+//
+// A withdrawn account is left out, the same way every other lookup here leaves
+// it out. An account withdraws by having its atname overwritten with a
+// tombstone, so returning the row would hand the caller a name nobody chose and
+// nobody can be reached at. What was written stays either way, and the caller
+// showing an id it got no account back for is what a withdrawn author looks
+// like: an id that resolves to nothing, exactly like the nil id a purged account
+// leaves behind.
+//
+// An empty slice of ids returns an empty slice without querying: there is
+// nothing to look accounts up by.
+//
+// [Ja] ListByIDs は指定した id のうち、まだ存在するアカウントを返し、スレッドを描く
+// 呼び出し元が、これから表示する各投稿を誰が書いたかを 1 クエリで知れるようにします。
+// id を 1 つずつではなくまとめて取るのは、そうしなければ最大 1000 件の投稿を載せる
+// ページで投稿 1 件につき 1 クエリになるためです。
+//
+// 退会済みのアカウントは、ここの他のルックアップと同じく除外します。退会はアカウントの
+// atname を墓標の値で上書きすることで行われるため、その行を返せば、誰も選んでおらず誰にも
+// 辿り着けない名前を呼び出し元へ渡すことになります。書かれたものはいずれにせよ残り、
+// アカウントが返ってこない id を呼び出し元が表示する形が、退会した作者の姿そのものです。
+// すなわち何にも解決しない id であり、これは物理削除されたアカウントが残す nil の id と
+// まったく同じです。
+//
+// 空の id スライスに対してはクエリを発行せず空のスライスを返します。アカウントを引く
+// 手がかりが無いためです。
+func (r *UserRepository) ListByIDs(ctx context.Context, ids []model.UserID) ([]*model.User, error) {
+	if len(ids) == 0 {
+		return []*model.User{}, nil
+	}
+
+	rawIDs := make([]int64, len(ids))
+	for i, id := range ids {
+		rawIDs[i] = int64(id)
+	}
+
+	rows, err := r.reader.ListUsersByIDs(ctx, rawIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*model.User, len(rows))
+	for i, row := range rows {
+		users[i] = r.toModel(row)
+	}
+	return users, nil
+}
+
 // FindBySessionToken returns the user that owns the session with the given
 // token, or (nil, nil) when no session matches the token (an unknown, stale, or
 // forged cookie). It resolves the session and its user in a single JOIN so the

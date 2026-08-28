@@ -7,6 +7,11 @@ SELECT * FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1;
 -- name: GetUserByAtname :one
 SELECT * FROM users WHERE atname = ? AND deleted_at IS NULL LIMIT 1;
 
+-- name: ListUsersByIDs :many
+SELECT * FROM users
+WHERE id IN (sqlc.slice('ids')) AND deleted_at IS NULL
+ORDER BY id;
+
 -- name: GetUserBySessionToken :one
 SELECT users.* FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
