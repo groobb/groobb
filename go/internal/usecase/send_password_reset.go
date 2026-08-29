@@ -1,6 +1,10 @@
 package usecase
 
-import "context"
+import (
+	"context"
+
+	"github.com/groobb/groobb/go/internal/model"
+)
 
 // PasswordResetSender renders and sends a password reset mail. Like
 // EmailConfirmationSender the interface is declared here, on the consumer side,
@@ -13,7 +17,7 @@ import "context"
 // email / templates パッケージを import しないようにします。main.go (worker クライアント
 // 経由) が具体的な email.PasswordResetSender を注入し、テストではフェイクを注入します。
 type PasswordResetSender interface {
-	Send(ctx context.Context, to, resetURL, locale string) error
+	Send(ctx context.Context, to, resetURL string, locale model.Locale) error
 }
 
 // SendPasswordResetUsecase sends a password reset mail. It is the worker-side
@@ -42,7 +46,7 @@ func NewSendPasswordResetUsecase(sender PasswordResetSender) *SendPasswordResetU
 type SendPasswordResetInput struct {
 	Email    string
 	ResetURL string
-	Locale   string
+	Locale   model.Locale
 }
 
 // Execute sends the password reset mail. Any send failure is returned as-is so

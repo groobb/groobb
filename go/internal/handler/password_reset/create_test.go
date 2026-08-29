@@ -14,6 +14,7 @@ import (
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -76,7 +77,7 @@ func seedUser(t *testing.T, db *database.DB) string {
 //
 // [Ja] postPasswordReset は指定した email をフォームデータとして運ぶ
 // POST /password_reset リクエストを組み立て、context にロケールを設定する。
-func postPasswordReset(email, locale string) *http.Request {
+func postPasswordReset(email string, locale model.Locale) *http.Request {
 	form := url.Values{"email": {email}}
 	req := httptest.NewRequest(http.MethodPost, "/password_reset", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -97,7 +98,7 @@ func TestCreate_KnownEmail(t *testing.T) {
 	email := seedUser(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postPasswordReset(email, i18n.LangJa))
+	handler.Create(rec, postPasswordReset(email, model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -129,7 +130,7 @@ func TestCreate_UnknownEmail(t *testing.T) {
 	email := "nobody-h@example.com"
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postPasswordReset(email, i18n.LangJa))
+	handler.Create(rec, postPasswordReset(email, model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -155,7 +156,7 @@ func TestCreate_InvalidEmail(t *testing.T) {
 	handler, inserter, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postPasswordReset("not-an-email", i18n.LangJa))
+	handler.Create(rec, postPasswordReset("not-an-email", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -216,7 +217,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/password_reset", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 
 			rec := httptest.NewRecorder()
 			handler.Create(rec, req)

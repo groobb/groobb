@@ -155,7 +155,7 @@ func newHandlerForDatabases(boardDB, navigationDB, threadDB *database.DB) *board
 // リクエストを組み立てます。slug は chi のルート context に、ロケール・現在のパス・
 // 閲覧者はリクエスト context に、i18n・templates・認証の各ミドルウェアがするのと同じ
 // ように直接置きます。user が nil のときは匿名の訪問者です。
-func newRequest(t *testing.T, slug, locale string, user *model.User) *http.Request {
+func newRequest(t *testing.T, slug string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
 	path := templates.BoardPath(slug).String()
@@ -197,7 +197,7 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantPostsCount  string
 		wantLastPosted  string
 		wantRegionLabel string
@@ -205,7 +205,7 @@ func TestShow(t *testing.T) {
 	}{
 		{
 			name:            "Japanese",
-			locale:          i18n.LangJa,
+			locale:          model.LocaleJa,
 			wantPostsCount:  "42 件の投稿",
 			wantLastPosted:  "30 分前",
 			wantRegionLabel: "スレッドの閲覧",
@@ -213,7 +213,7 @@ func TestShow(t *testing.T) {
 		},
 		{
 			name:            "English",
-			locale:          i18n.LangEn,
+			locale:          model.LocaleEn,
 			wantPostsCount:  "42 posts",
 			wantLastPosted:  "30 minutes ago",
 			wantRegionLabel: "Reading a thread",
@@ -247,7 +247,7 @@ func TestShow(t *testing.T) {
 				"ジャズ喫茶",
 				`href="/settings"`,
 				`action="/user_session"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -334,7 +334,7 @@ func TestShow_Breadcrumb(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	body := rec.Body.String()
 
@@ -399,7 +399,7 @@ func TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, nil))
 
 	body := rec.Body.String()
 
@@ -436,7 +436,7 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDB(db).Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	newHandlerForDB(db).Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -476,7 +476,7 @@ func TestShow_RedirectsCaseVariantToCanonicalSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	req := newRequest(t, "JAZZ", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "JAZZ", model.LocaleJa, &model.User{Atname: "alice"})
 	req.URL.RawQuery = "utm_source=newsletter"
 
 	handler.Show(rec, req)
@@ -509,7 +509,7 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, nil))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -547,7 +547,7 @@ func TestShow_EmptyBoard(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "quiet", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "quiet", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -583,7 +583,7 @@ func TestShow_UnknownSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "no-such-board", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "no-such-board", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
@@ -606,7 +606,7 @@ func TestShow_LookupFailure(t *testing.T) {
 	t.Parallel()
 
 	handler := newHandler(t)
-	req := newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"})
 	ctx, cancel := context.WithCancel(req.Context())
 	cancel()
 	rec := httptest.NewRecorder()
@@ -642,7 +642,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(boardDB, navigationDB, boardDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
@@ -675,7 +675,7 @@ func TestShow_ThreadListingFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(boardDB, boardDB, threadDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

@@ -157,7 +157,7 @@ func (uc *VerifyEmailChangeUsecase) Execute(ctx context.Context, input VerifyEma
 // 添えて) ログに記録するが返さないため、完了済みの変更は成功として報告される。メールは
 // アカウントに保存されたロケールで描画する。通知は現在のリクエストの言語に紐づくのでは
 // なく、アカウントの所有者に宛てるものだからである。
-func (uc *VerifyEmailChangeUsecase) notifyOldAddress(ctx context.Context, oldEmail, newEmail, locale string) {
+func (uc *VerifyEmailChangeUsecase) notifyOldAddress(ctx context.Context, oldEmail, newEmail string, locale model.Locale) {
 	if err := uc.dispatcher.EnqueueEmailChangeNotification(ctx, oldEmail, newEmail, locale); err != nil {
 		slog.ErrorContext(ctx, "メールアドレス変更通知メールのジョブ投入に失敗", "error", err, "email", oldEmail)
 	}

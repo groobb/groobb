@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 )
@@ -164,7 +163,7 @@ func createUser(
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    account.email,
 		Atname:   account.atname,
-		Locale:   i18n.DefaultLang,
+		Locale:   model.DefaultLocale,
 		TimeZone: seedUserTimeZone,
 	})
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
@@ -20,19 +21,19 @@ func TestDefaultPageMeta(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantTitle       string
 		wantDescription string
 	}{
 		{
 			name:            "Japanese",
-			locale:          i18n.LangJa,
+			locale:          model.LocaleJa,
 			wantTitle:       "Groobb",
 			wantDescription: "Groobb は掲示板サービスです。",
 		},
 		{
 			name:            "English",
-			locale:          i18n.LangEn,
+			locale:          model.LocaleEn,
 			wantTitle:       "Groobb",
 			wantDescription: "Groobb is a bulletin board service.",
 		},
@@ -92,7 +93,7 @@ func TestDefaultPageMeta_SiteName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 			if tt.setSite {
 				ctx = viewmodel.SetSiteName(ctx, tt.wantSite)
 			}
@@ -116,25 +117,25 @@ func TestPageMeta_DocumentTitle(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		locale string
+		locale model.Locale
 		meta   viewmodel.PageMeta
 		want   string
 	}{
 		{
 			name:   "Japanese",
-			locale: i18n.LangJa,
+			locale: model.LocaleJa,
 			meta:   viewmodel.PageMeta{Title: "ジャズ・ファンク", SiteName: "ジャズ喫茶"},
 			want:   "ジャズ・ファンク - ジャズ喫茶",
 		},
 		{
 			name:   "English",
-			locale: i18n.LangEn,
+			locale: model.LocaleEn,
 			meta:   viewmodel.PageMeta{Title: "Sign in", SiteName: "Jazz Cafe"},
 			want:   "Sign in - Jazz Cafe",
 		},
 		{
 			name:   "コミュニティを持たないインスタンスはページの名前だけを運ぶ",
-			locale: i18n.LangJa,
+			locale: model.LocaleJa,
 			meta:   viewmodel.PageMeta{Title: "ジャズ・ファンク"},
 			want:   "ジャズ・ファンク",
 		},

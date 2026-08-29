@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestNew verifies that GET /settings/email/confirmation/new returns HTTP 200 with
@@ -31,13 +32,13 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		locale        string
+		locale        model.Locale
 		wantHeading   string
 		wantSubmit    string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "確認コードの入力", wantSubmit: "メールアドレスを変更", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Enter confirmation code", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "確認コードの入力", wantSubmit: "メールアドレスを変更", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Enter confirmation code", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -68,7 +69,7 @@ func TestNew(t *testing.T) {
 				`aria-label="` + tt.wantHeaderNav + `"`,
 				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {

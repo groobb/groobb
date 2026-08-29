@@ -27,7 +27,7 @@ func TestSettingsWithdrawalDeleteValidator_Validate(t *testing.T) {
 	db := testutil.SetupDB(t)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	v := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	// The requesting account: a matching password.
 	//

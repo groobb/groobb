@@ -91,7 +91,7 @@ func seedUserWithPassword(t *testing.T, db *database.DB, email string) *model.Us
 // [Ja] patchSettingsEmail は新しい email と現在のパスワードをフォームデータとして運ぶ
 // PATCH /settings/email リクエストを組み立て、(RequireAuth が置くように) ユーザーを context に
 // 載せ、ロケールを設定する。
-func patchSettingsEmail(user *model.User, newEmail, currentPassword, locale string) *http.Request {
+func patchSettingsEmail(user *model.User, newEmail, currentPassword string, locale model.Locale) *http.Request {
 	form := url.Values{
 		"email":            {newEmail},
 		"current_password": {currentPassword},
@@ -120,7 +120,7 @@ func TestUpdate_Success(t *testing.T) {
 	newEmail := "ec-h-new@example.com"
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", i18n.LangJa))
+	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -158,7 +158,7 @@ func TestUpdate_ValidationError(t *testing.T) {
 	newEmail := "ec-h-ve-new@example.com"
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchSettingsEmail(user, newEmail, "wrongpassword", i18n.LangJa))
+	handler.Update(rec, patchSettingsEmail(user, newEmail, "wrongpassword", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -212,7 +212,7 @@ func TestUpdate_EnqueueFailure(t *testing.T) {
 	newEmail := "ec-h-enq-new@example.com"
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", i18n.LangJa))
+	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

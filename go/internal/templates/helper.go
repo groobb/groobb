@@ -18,10 +18,13 @@ func T(ctx context.Context, messageID string, data ...map[string]any) string {
 	return i18n.T(ctx, messageID, data...)
 }
 
-// Locale returns the current locale stored in ctx, used for the html lang
-// attribute.
+// Locale returns the current locale stored in ctx as the string form, used for
+// the html lang attribute. The attribute takes a BCP 47 tag, which is what the
+// underlying model.Locale spells, so the value goes into the markup as it is.
 //
-// [Ja] Locale は ctx に格納された現在のロケールを返す。html の lang 属性に用いる。
+// [Ja] Locale は ctx に格納された現在のロケールを文字列の形で返す。html の lang 属性に
+// 用いる。この属性が取るのは BCP 47 の言語タグであり、それは背後の model.Locale が
+// 綴っているものそのものであるため、値はそのままマークアップへ入る。
 func Locale(ctx context.Context) string {
-	return i18n.GetLocale(ctx)
+	return string(i18n.GetLocale(ctx))
 }

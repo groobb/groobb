@@ -58,7 +58,7 @@ func setupTwoFactorAuthHandler(t *testing.T, db *database.DB) (*settings_two_fac
 //
 // [Ja] getNew は (RequireAuth が置くように) context にユーザーを載せ、ロケールを設定した
 // GET /settings/two_factor_auth/new リクエストを組み立てる。
-func getNew(user *model.User, locale string) *http.Request {
+func getNew(user *model.User, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/settings/two_factor_auth/new", nil)
 	ctx := i18n.SetLocale(req.Context(), locale)
 	ctx = middleware.SetUserToContext(ctx, user)
@@ -117,12 +117,12 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		locale        string
+		locale        model.Locale
 		wantHeading   string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "2 段階認証の設定", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Set up two-factor authentication", wantHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "2 段階認証の設定", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Set up two-factor authentication", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -175,7 +175,7 @@ func TestNew(t *testing.T) {
 				`aria-label="` + tt.wantHeaderNav + `"`,
 				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -203,7 +203,7 @@ func TestNew_AlreadyEnabled(t *testing.T) {
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(user.ID).WithEnabled(true).Build()
 
 	rec := httptest.NewRecorder()
-	h.New(rec, getNew(user, i18n.LangJa))
+	h.New(rec, getNew(user, model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)

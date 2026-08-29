@@ -182,7 +182,7 @@ func (r *UserRepository) FindBySessionToken(ctx context.Context, token string) (
 type CreateUserInput struct {
 	Email    string
 	Atname   string
-	Locale   string
+	Locale   model.Locale
 	TimeZone string
 }
 
@@ -195,7 +195,7 @@ func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*mo
 	row, err := r.writer.CreateUser(ctx, query.CreateUserParams{
 		Email:    input.Email,
 		Atname:   input.Atname,
-		Locale:   input.Locale,
+		Locale:   string(input.Locale),
 		TimeZone: input.TimeZone,
 	})
 	if err != nil {
@@ -286,7 +286,7 @@ func (r *UserRepository) toModel(row query.User) *model.User {
 		ID:        model.UserID(row.ID),
 		Email:     row.Email,
 		Atname:    row.Atname,
-		Locale:    row.Locale,
+		Locale:    model.Locale(row.Locale),
 		TimeZone:  row.TimeZone,
 		DeletedAt: sqlitetime.TimePtr(row.DeletedAt),
 		CreatedAt: time.Time(row.CreatedAt),

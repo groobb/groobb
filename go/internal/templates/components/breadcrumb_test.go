@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -26,7 +27,7 @@ const breadcrumbBaseURL = "https://groobb.example.com"
 func renderBreadcrumb(t *testing.T, data components.BreadcrumbData) string {
 	t.Helper()
 
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	var buf bytes.Buffer
 	if err := components.Breadcrumb(data).Render(ctx, &buf); err != nil {

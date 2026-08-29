@@ -26,7 +26,7 @@ func TestCreateSignInTwoFactorUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-uc@example.com").Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
@@ -54,7 +54,7 @@ func TestCreateSignInTwoFactorUsecase_Execute_WrongCode(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-uc-bad@example.com").Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()

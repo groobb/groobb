@@ -80,7 +80,7 @@ func seedConfirmUser(t *testing.T, db *database.DB, email string) *model.User {
 // [Ja] postConfirmation はコードをフォームデータとして運ぶ POST
 // /settings/email/confirmation リクエストを組み立て、(RequireAuth が置くように) ユーザーを
 // context に載せ、ロケールを設定する。
-func postConfirmation(user *model.User, code, locale string) *http.Request {
+func postConfirmation(user *model.User, code string, locale model.Locale) *http.Request {
 	form := url.Values{"code": {code}}
 	req := httptest.NewRequest(http.MethodPost, "/settings/email/confirmation", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -137,7 +137,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postConfirmation(user, "123456", i18n.LangJa))
+	handler.Create(rec, postConfirmation(user, "123456", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -183,7 +183,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postConfirmation(user, "000000", i18n.LangJa))
+	handler.Create(rec, postConfirmation(user, "000000", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)

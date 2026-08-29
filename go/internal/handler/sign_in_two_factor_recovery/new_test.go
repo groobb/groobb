@@ -88,7 +88,7 @@ func seedUserWithRecoveryCodes(t *testing.T, db *database.DB, recoveryCodes []st
 	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    testutil.UniqueEmail(db, "2fa-rc"),
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -117,7 +117,7 @@ func seedUserWithRecoveryCodes(t *testing.T, db *database.DB, recoveryCodes []st
 //
 // [Ja] getNew は pendingUserID を pending Cookie に載せた
 // GET /sign_in/two_factor/recovery/new リクエストを組み立て、context にロケールを設定する。
-func getNew(pendingUserID, locale string) *http.Request {
+func getNew(pendingUserID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/sign_in/two_factor/recovery/new", nil)
 	req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: pendingUserID})
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
@@ -141,11 +141,11 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "リカバリーコード"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Recovery code"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "リカバリーコード"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Recovery code"},
 	}
 
 	for _, tt := range tests {
@@ -231,7 +231,7 @@ func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 			t.Parallel()
 
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 			rec := httptest.NewRecorder()
 
 			handler.New(rec, req)
@@ -295,7 +295,7 @@ func TestNew_ReturnTo(t *testing.T) {
 				Name:  session.TwoFactorPendingCookieName,
 				Value: twoFactorPendingToken(t, model.UserID(testutil.UnusedID)),
 			})
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 			rec := httptest.NewRecorder()
 
 			handler.New(rec, req)

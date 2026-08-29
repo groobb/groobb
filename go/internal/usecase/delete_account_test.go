@@ -115,7 +115,7 @@ func TestDeleteAccountUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc := newDeleteAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedWithdrawalUser(t, db)
 
 	if err := uc.Execute(ctx, usecase.DeleteAccountInput{
@@ -168,7 +168,7 @@ func TestDeleteAccountUsecase_Execute_ValidationError(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc := newDeleteAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedWithdrawalUser(t, db)
 
 	err := uc.Execute(ctx, usecase.DeleteAccountInput{
@@ -218,7 +218,7 @@ func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *tes
 	db := testutil.SetupDB(t)
 
 	uc := newDeleteAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedWithdrawalUser(t, db)
 
 	lookAlike := fmt.Sprintf("deleted_%d", int64(userID))

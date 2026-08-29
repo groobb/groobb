@@ -89,7 +89,7 @@ func TestCreateEmailChangeUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, inserter := newCreateEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedEmailChangeUser(t, db, "ec-uc-cur@example.com")
 	newEmail := "ec-uc-new@example.com"
 
@@ -97,7 +97,7 @@ func TestCreateEmailChangeUsecase_Execute_Success(t *testing.T) {
 		UserID:          userID,
 		NewEmail:        newEmail,
 		CurrentPassword: "password123",
-		Locale:          i18n.LangJa,
+		Locale:          model.LocaleJa,
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v, want nil", err)
@@ -143,18 +143,18 @@ func TestCreateEmailChangeUsecase_Execute_ReplacesPending(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, _ := newCreateEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedEmailChangeUser(t, db, "ec-uc-rep@example.com")
 	firstEmail := "ec-uc-rep1@example.com"
 	secondEmail := "ec-uc-rep2@example.com"
 
 	if _, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
-		UserID: userID, NewEmail: firstEmail, CurrentPassword: "password123", Locale: i18n.LangJa,
+		UserID: userID, NewEmail: firstEmail, CurrentPassword: "password123", Locale: model.LocaleJa,
 	}); err != nil {
 		t.Fatalf("1 回目の Execute() error = %v", err)
 	}
 	if _, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
-		UserID: userID, NewEmail: secondEmail, CurrentPassword: "password123", Locale: i18n.LangJa,
+		UserID: userID, NewEmail: secondEmail, CurrentPassword: "password123", Locale: model.LocaleJa,
 	}); err != nil {
 		t.Fatalf("2 回目の Execute() error = %v", err)
 	}
@@ -192,14 +192,14 @@ func TestCreateEmailChangeUsecase_Execute_ValidationError(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, inserter := newCreateEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedEmailChangeUser(t, db, "ec-uc-ve@example.com")
 
 	_, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID:          userID,
 		NewEmail:        "ec-uc-ve-new@example.com",
 		CurrentPassword: "wrongpassword",
-		Locale:          i18n.LangJa,
+		Locale:          model.LocaleJa,
 	})
 	if ve := model.AsValidationError(err); ve == nil {
 		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
@@ -230,14 +230,14 @@ func TestCreateEmailChangeUsecase_Execute_EnqueueFailure(t *testing.T) {
 
 	uc, inserter := newCreateEmailChangeUsecase(t, db)
 	inserter.Err = errors.New("queue unavailable")
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedEmailChangeUser(t, db, "ec-uc-enq@example.com")
 
 	_, err := uc.Execute(ctx, usecase.CreateEmailChangeInput{
 		UserID:          userID,
 		NewEmail:        "ec-uc-enq-new@example.com",
 		CurrentPassword: "password123",
-		Locale:          i18n.LangJa,
+		Locale:          model.LocaleJa,
 	})
 	if ae := model.AsAppError(err); ae == nil {
 		t.Fatalf("Execute() error = %v, want *model.AppError", err)

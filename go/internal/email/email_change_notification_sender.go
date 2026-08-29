@@ -6,6 +6,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/emails/email_change_notification"
 )
 
@@ -35,14 +36,16 @@ func NewEmailChangeNotificationSender(sender Sender) *EmailChangeNotificationSen
 
 // Send renders the notification mail for the given locale and sends it to (the
 // user's old address), telling them the account email was changed to newEmail.
-// The locale drives both the i18n subject and the body templates; an unknown
-// locale falls back to English, matching the i18n default.
+// The locale drives both the i18n subject and the body templates. model.Locale
+// only holds display languages, so the default branch is English, the one locale
+// besides Japanese, rather than a fallback for an unknown value.
 //
 // [Ja] Send は指定ロケールで通知メールを描画し、アカウントのメールが newEmail に
 // 変更されたことを伝えて to (ユーザーの旧アドレス) へ送信します。ロケールは i18n の
-// 件名と本文テンプレートの双方を切り替えます。未知のロケールは i18n の既定に合わせて
-// 英語へフォールバックします。
-func (s *EmailChangeNotificationSender) Send(ctx context.Context, to, newEmail, locale string) error {
+// 件名と本文テンプレートの双方を切り替えます。model.Locale は表示言語しか持たないため、
+// default 節は未知の値へのフォールバックではなく、日本語以外の唯一のロケールである英語を
+// 表します。
+func (s *EmailChangeNotificationSender) Send(ctx context.Context, to, newEmail string, locale model.Locale) error {
 	ctx = i18n.SetLocale(ctx, locale)
 	subject := i18n.T(ctx, "email_change_notification_subject")
 
@@ -50,7 +53,7 @@ func (s *EmailChangeNotificationSender) Send(ctx context.Context, to, newEmail, 
 
 	var htmlBody, textBody templ.Component
 	switch locale {
-	case "ja":
+	case model.LocaleJa:
 		htmlBody = email_change_notification.JaHTML(data)
 		textBody = email_change_notification.JaText(data)
 	default:

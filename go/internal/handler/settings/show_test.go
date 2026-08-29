@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/settings"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
@@ -40,15 +41,15 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		locale             string
+		locale             model.Locale
 		wantHeading        string
 		wantEmailLink      string
 		wantTwoFactorLink  string
 		wantWithdrawalLink string
 		wantHeaderNav      string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "設定", wantEmailLink: "メールアドレスの変更", wantTwoFactorLink: "2 段階認証", wantWithdrawalLink: "退会", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Settings", wantEmailLink: "Change email address", wantTwoFactorLink: "Two-factor authentication", wantWithdrawalLink: "Delete account", wantHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "設定", wantEmailLink: "メールアドレスの変更", wantTwoFactorLink: "2 段階認証", wantWithdrawalLink: "退会", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Settings", wantEmailLink: "Change email address", wantTwoFactorLink: "Two-factor authentication", wantWithdrawalLink: "Delete account", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -84,7 +85,7 @@ func TestShow(t *testing.T) {
 				`id="settings-show-heading"`,
 				`aria-labelledby="settings-show-heading"`,
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {

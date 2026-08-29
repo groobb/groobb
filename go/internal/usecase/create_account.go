@@ -78,7 +78,7 @@ type CreateAccountInput struct {
 	Atname               string
 	Password             string
 	PasswordConfirmation string
-	Locale               string
+	Locale               model.Locale
 }
 
 // CreateAccountOutput carries the created user so the handler can issue a session
@@ -149,7 +149,7 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 // [Ja] createAccount はユーザーとそのパスワード資格情報を 1 トランザクションで作成し、
 // パスワードの無いアカウント (またはその逆) が決して生じないようにします。パスワード
 // ダイジェストは事前に Execute が計算済みで、トランザクションを純粋な永続化に保ちます。
-func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname, locale, passwordDigest string) (*CreateAccountOutput, error) {
+func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname string, locale model.Locale, passwordDigest string) (*CreateAccountOutput, error) {
 	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("トランザクションの開始に失敗: %w", err)

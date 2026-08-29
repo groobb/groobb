@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
@@ -18,12 +19,12 @@ type fakeConfirmationSender struct {
 	called     bool
 	to         string
 	code       string
-	locale     string
+	locale     model.Locale
 	returnErr  error
 	callsCount int
 }
 
-func (f *fakeConfirmationSender) Send(_ context.Context, to, code, locale string) error {
+func (f *fakeConfirmationSender) Send(_ context.Context, to, code string, locale model.Locale) error {
 	f.called = true
 	f.callsCount++
 	f.to = to

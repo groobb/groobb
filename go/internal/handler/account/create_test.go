@@ -23,7 +23,7 @@ import (
 // [Ja] postAccount は atname と password フィールドをフォームデータとして運ぶ
 // POST /account リクエストを組み立て、confirmationID が空でなければ受け渡し Cookie を
 // 付け、context にロケールを設定する。
-func postAccount(confirmationID, atname, password, passwordConfirmation, locale string) *http.Request {
+func postAccount(confirmationID, atname, password, passwordConfirmation string, locale model.Locale) *http.Request {
 	form := url.Values{
 		"atname":                {atname},
 		"password":              {password},
@@ -93,7 +93,7 @@ func TestCreate_Success(t *testing.T) {
 	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(emailConfirmationToken(t, id), atname, "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), atname, "password123", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -137,7 +137,7 @@ func TestCreate_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount("", testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount("", testutil.UniqueAtname(db), "password123", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -163,7 +163,7 @@ func TestCreate_UnsignedNumericCookieCannotCreateAccount(t *testing.T) {
 	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(id.String(), testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(id.String(), testutil.UniqueAtname(db), "password123", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -200,7 +200,7 @@ func TestCreate_ValidationError(t *testing.T) {
 	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(emailConfirmationToken(t, id), testutil.UniqueAtname(db), "password123", "different456", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), testutil.UniqueAtname(db), "password123", "different456", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -233,7 +233,7 @@ func TestCreate_InvalidAtnameEchoesValue(t *testing.T) {
 	id := seedSucceededConfirmation(t, db, email)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(emailConfirmationToken(t, id), "bad-name", "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, id), "bad-name", "password123", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -265,7 +265,7 @@ func TestCreate_StaleConfirmationRedirectsToSignUp(t *testing.T) {
 	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postAccount(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), testutil.UniqueAtname(db), "password123", "password123", i18n.LangJa))
+	handler.Create(rec, postAccount(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), testutil.UniqueAtname(db), "password123", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)

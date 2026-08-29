@@ -55,7 +55,7 @@ func TestVerifyEmailChangeUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	currentEmail := "ec-vc-cur@example.com"
 	userID := seedEmailChangeUser(t, db, currentEmail)
@@ -134,7 +134,7 @@ func TestVerifyEmailChangeUsecase_Execute_WrongCode(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	currentEmail := "ec-vc-wc-cur@example.com"
 	userID := seedEmailChangeUser(t, db, currentEmail)
@@ -205,7 +205,7 @@ func TestVerifyEmailChangeUsecase_Execute_UniqueConflict(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, repo, userRepo, inserter := newVerifyEmailChangeUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	currentEmail := "ec-vc-cf-cur@example.com"
 	takenEmail := "ec-vc-cf-taken@example.com"

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
@@ -19,12 +20,12 @@ type fakeEmailChangeNotificationSender struct {
 	called     bool
 	to         string
 	newEmail   string
-	locale     string
+	locale     model.Locale
 	returnErr  error
 	callsCount int
 }
 
-func (f *fakeEmailChangeNotificationSender) Send(_ context.Context, to, newEmail, locale string) error {
+func (f *fakeEmailChangeNotificationSender) Send(_ context.Context, to, newEmail string, locale model.Locale) error {
 	f.called = true
 	f.callsCount++
 	f.to = to

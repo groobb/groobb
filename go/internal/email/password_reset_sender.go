@@ -34,13 +34,15 @@ func NewPasswordResetSender(sender Sender) *PasswordResetSender {
 
 // Send renders the password reset mail for the given locale and sends it to,
 // presenting resetURL as the link to follow. The locale drives both the i18n
-// subject and the body templates; an unknown locale falls back to English,
-// matching the i18n default.
+// subject and the body templates. model.Locale only holds display languages, so
+// the default branch is English, the one locale besides Japanese, rather than a
+// fallback for an unknown value.
 //
 // [Ja] Send は指定ロケールでパスワードリセットメールを描画し、たどるべきリンクとして
 // resetURL を提示して to へ送信します。ロケールは i18n の件名と本文テンプレートの双方を
-// 切り替えます。未知のロケールは i18n の既定に合わせて英語へフォールバックします。
-func (s *PasswordResetSender) Send(ctx context.Context, to, resetURL, locale string) error {
+// 切り替えます。model.Locale は表示言語しか持たないため、default 節は未知の値への
+// フォールバックではなく、日本語以外の唯一のロケールである英語を表します。
+func (s *PasswordResetSender) Send(ctx context.Context, to, resetURL string, locale model.Locale) error {
 	ctx = i18n.SetLocale(ctx, locale)
 	subject := i18n.T(ctx, "password_reset_email_subject")
 
@@ -58,7 +60,7 @@ func (s *PasswordResetSender) Send(ctx context.Context, to, resetURL, locale str
 
 	var htmlBody, textBody templ.Component
 	switch locale {
-	case "ja":
+	case model.LocaleJa:
 		htmlBody = password_reset.JaHTML(data)
 		textBody = password_reset.JaText(data)
 	default:

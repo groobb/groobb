@@ -23,7 +23,7 @@ func TestSignUpCreateValidator_Validate(t *testing.T) {
 	db := testutil.SetupDB(t)
 	userRepo := repository.NewUserRepository(db)
 	v := validator.NewSignUpCreateValidator(userRepo)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	// Seed one existing account so the duplicate case has something to collide
 	// with. The format cases use addresses that do not exist.

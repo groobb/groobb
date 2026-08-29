@@ -29,7 +29,7 @@ func TestEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	db := testutil.SetupDB(t)
 	repo := repository.NewEmailConfirmationRepository(db)
 	v := validator.NewEmailConfirmationCreateValidator(repo)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	// An active confirmation with a known stored code. The format-failure cases
 	// reference its id too, but fail before the database lookup, so the stored

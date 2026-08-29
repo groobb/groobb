@@ -33,7 +33,7 @@ import (
 // 解析し、その後でメソッドを DELETE に切り替える。これはメソッドオーバーライドミドルウェアの
 // 再現で、Go の ParseForm は POST/PUT/PATCH のときだけボディを読むため、最初から DELETE として
 // 組み立てると FormValue が空になる。
-func deleteTwoFactorAuth(user *model.User, currentPassword, code, locale string) *http.Request {
+func deleteTwoFactorAuth(user *model.User, currentPassword, code string, locale model.Locale) *http.Request {
 	form := url.Values{}
 	if currentPassword != "" {
 		form.Set("current_password", currentPassword)
@@ -69,7 +69,7 @@ func TestDelete_SuccessWithPassword(t *testing.T) {
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
 
 	rec := httptest.NewRecorder()
-	h.Delete(rec, deleteTwoFactorAuth(user, testutil.DefaultBuilderPassword, "", i18n.LangJa))
+	h.Delete(rec, deleteTwoFactorAuth(user, testutil.DefaultBuilderPassword, "", model.LocaleJa))
 
 	assertDisabled(t, rec, repo, user.ID)
 }
@@ -95,7 +95,7 @@ func TestDelete_SuccessWithCode(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.Delete(rec, deleteTwoFactorAuth(user, "", code, i18n.LangJa))
+	h.Delete(rec, deleteTwoFactorAuth(user, "", code, model.LocaleJa))
 
 	assertDisabled(t, rec, repo, user.ID)
 }
@@ -116,7 +116,7 @@ func TestDelete_ValidationError(t *testing.T) {
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
 
 	rec := httptest.NewRecorder()
-	h.Delete(rec, deleteTwoFactorAuth(user, "wrongpassword", "", i18n.LangJa))
+	h.Delete(rec, deleteTwoFactorAuth(user, "wrongpassword", "", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -167,7 +167,7 @@ func assertDisabled(t *testing.T, rec *httptest.ResponseRecorder, repo *reposito
 	if flash.Type != session.FlashSuccess {
 		t.Errorf("flash type = %q, want %q", flash.Type, session.FlashSuccess)
 	}
-	want := i18n.T(i18n.SetLocale(context.Background(), i18n.LangJa), "flash_two_factor_auth_disabled")
+	want := i18n.T(i18n.SetLocale(context.Background(), model.LocaleJa), "flash_two_factor_auth_disabled")
 	if flash.Message != want {
 		t.Errorf("flash message = %q, want %q", flash.Message, want)
 	}

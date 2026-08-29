@@ -49,7 +49,7 @@ func seedRecoveryUser(t *testing.T, db *database.DB, recoveryCodes []string) mod
 	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    "2fa-rc-uc@example.com",
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -105,7 +105,7 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc := newCreateSignInTwoFactorRecoveryUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedRecoveryUser(t, db, []string{"abcd1234", "efgh5678"})
 
 	out, err := uc.Execute(ctx, usecase.CreateSignInTwoFactorRecoveryInput{
@@ -154,7 +154,7 @@ func TestCreateSignInTwoFactorRecoveryUsecase_Execute_WrongCode(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc := newCreateSignInTwoFactorRecoveryUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	userID := seedRecoveryUser(t, db, []string{"abcd1234", "efgh5678"})
 
 	out, err := uc.Execute(ctx, usecase.CreateSignInTwoFactorRecoveryInput{

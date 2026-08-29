@@ -40,6 +40,6 @@ func (w *SendPasswordResetWorker) Work(ctx context.Context, job *river.Job[dispa
 	return w.uc.Execute(ctx, usecase.SendPasswordResetInput{
 		Email:    job.Args.Email,
 		ResetURL: job.Args.ResetURL,
-		Locale:   job.Args.Locale,
+		Locale:   parseLocale(ctx, job.Args.Locale),
 	})
 }

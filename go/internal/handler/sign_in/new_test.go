@@ -10,6 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestNew verifies that GET /sign_in returns HTTP 200 with an HTML form carrying
@@ -35,13 +36,13 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		locale       string
+		locale       model.Locale
 		wantHeading  string
 		wantRequired string
 		noHeaderNav  string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb にログイン", wantRequired: "必須", noHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Sign in to Groobb", wantRequired: "Required", noHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "Groobb にログイン", wantRequired: "必須", noHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Sign in to Groobb", wantRequired: "Required", noHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -108,7 +109,7 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 	handler := sign_in.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/sign_in", nil)
-	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 	rec := httptest.NewRecorder()
 
 	handler.New(rec, req)
@@ -180,7 +181,7 @@ func TestNew_ReturnTo(t *testing.T) {
 
 			target := "/sign_in?return_to=" + url.QueryEscape(tt.returnTo)
 			req := httptest.NewRequest(http.MethodGet, target, nil)
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 			rec := httptest.NewRecorder()
 
 			handler.New(rec, req)

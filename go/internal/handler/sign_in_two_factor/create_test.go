@@ -23,7 +23,7 @@ import (
 // [Ja] postCreate は TOTP コードと任意の returnTo をフォームデータとして、pendingUserID を
 // pending Cookie に載せた POST /sign_in/two_factor リクエストを組み立て、context に
 // ロケールを設定する。
-func postCreate(pendingUserID, code, returnTo, locale string) *http.Request {
+func postCreate(pendingUserID, code, returnTo string, locale model.Locale) *http.Request {
 	form := url.Values{"code": {code}}
 	if returnTo != "" {
 		form.Set("return_to", returnTo)
@@ -67,7 +67,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), code, "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), code, "", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -108,7 +108,7 @@ func TestCreate_UnsignedNumericCookieCannotCompleteSignIn(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(userID.String(), code, "", i18n.LangJa))
+	handler.Create(rec, postCreate(userID.String(), code, "", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -146,7 +146,7 @@ func TestCreate_WrongCode(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), wrongCode, "/settings", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), wrongCode, "/settings", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -183,7 +183,7 @@ func TestCreate_InvalidFormat(t *testing.T) {
 	userID := seedUserWithEnabledTwoFactor(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), "abc", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, userID), "abc", "", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -215,7 +215,7 @@ func TestCreate_NoEnabledTwoFactor(t *testing.T) {
 	// A random user id that has no enabled 2FA setting: the challenge cannot succeed.
 	//
 	// [Ja] 有効な 2FA 設定を持たないランダムなユーザー id: チャレンジは成功しえない。
-	handler.Create(rec, postCreate(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), "123456", "", i18n.LangJa))
+	handler.Create(rec, postCreate(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), "123456", "", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -276,7 +276,7 @@ func TestCreate_NoCookieRedirectsToSignIn(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in/two_factor", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 			rec := httptest.NewRecorder()
 
 			handler.Create(rec, req)
@@ -328,7 +328,7 @@ func TestCreate_ReturnTo(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/sign_in/two_factor", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: twoFactorPendingToken(t, userID)})
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 			rec := httptest.NewRecorder()
 
 			handler.Create(rec, req)

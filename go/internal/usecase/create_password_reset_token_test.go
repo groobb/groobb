@@ -106,7 +106,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, userRepo, inserter := newCreatePasswordResetTokenUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	user := seedUser(t, ctx, db, userRepo)
 
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
@@ -173,7 +173,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_UnknownEmail(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, _, inserter := newCreatePasswordResetTokenUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "nobody@example.com"
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
@@ -203,7 +203,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_InvalidEmail(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, _, inserter := newCreatePasswordResetTokenUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	out, err := uc.Execute(ctx, usecase.CreatePasswordResetTokenInput{
 		Email:  "not-an-email",
@@ -233,7 +233,7 @@ func TestCreatePasswordResetTokenUsecase_Execute_ReplacesOutstandingToken(t *tes
 	db := testutil.SetupDB(t)
 
 	uc, userRepo, _ := newCreatePasswordResetTokenUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	user := seedUser(t, ctx, db, userRepo)
 
 	for i := 0; i < 2; i++ {

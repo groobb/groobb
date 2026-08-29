@@ -1,6 +1,10 @@
 package usecase
 
-import "context"
+import (
+	"context"
+
+	"github.com/groobb/groobb/go/internal/model"
+)
 
 // EmailChangeNotificationSender renders and sends the mail notifying a user's old
 // address that their account email was changed. Like the other mail-sender
@@ -14,7 +18,7 @@ import "context"
 // import しないようにします。main.go (worker クライアント経由) が具体的な
 // email.EmailChangeNotificationSender を注入し、テストではフェイクを注入します。
 type EmailChangeNotificationSender interface {
-	Send(ctx context.Context, to, newEmail, locale string) error
+	Send(ctx context.Context, to, newEmail string, locale model.Locale) error
 }
 
 // SendEmailChangeNotificationUsecase sends the email-change notification mail. It
@@ -47,7 +51,7 @@ func NewSendEmailChangeNotificationUsecase(sender EmailChangeNotificationSender)
 type SendEmailChangeNotificationInput struct {
 	Email    string
 	NewEmail string
-	Locale   string
+	Locale   model.Locale
 }
 
 // Execute sends the notification mail. Any send failure is returned as-is so the

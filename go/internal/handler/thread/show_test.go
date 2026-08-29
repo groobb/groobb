@@ -209,7 +209,7 @@ func newHandlerForDatabases(threadDB, navigationDB, listingDB *database.DB) *thr
 // user が nil のときは匿名の訪問者です。
 //
 // id は数ではなく書かれたままの形で渡すため、ケースは正規でない綴りでスレッドを指せます。
-func newRequest(t *testing.T, id, locale string, user *model.User) *http.Request {
+func newRequest(t *testing.T, id string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
 	path := "/t/" + id
@@ -274,7 +274,7 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDB(db).Show(rec, newRequest(t, created.ID.String(), i18n.LangJa, &model.User{Atname: "alice"}))
+	newHandlerForDB(db).Show(rec, newRequest(t, created.ID.String(), model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -319,7 +319,7 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		locale            string
+		locale            model.Locale
 		wantAuthor        string
 		wantDescription   string
 		wantPostLinkLabel string
@@ -330,7 +330,7 @@ func TestShow(t *testing.T) {
 	}{
 		{
 			name:              "Japanese",
-			locale:            i18n.LangJa,
+			locale:            model.LocaleJa,
 			wantAuthor:        "@alice",
 			wantDescription:   "ジャズ・ファンク に立っているスレッド「枯葉の名演」の投稿の一覧です。",
 			wantPostLinkLabel: "レス 1",
@@ -341,7 +341,7 @@ func TestShow(t *testing.T) {
 		},
 		{
 			name:              "English",
-			locale:            i18n.LangEn,
+			locale:            model.LocaleEn,
 			wantAuthor:        "@alice",
 			wantDescription:   "The posts in the 枯葉の名演 thread, in the ジャズ・ファンク board.",
 			wantPostLinkLabel: "Post 1",
@@ -381,7 +381,7 @@ func TestShow(t *testing.T) {
 				`href="/c/music"`,
 				"ジャズ喫茶",
 				`href="/settings"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -472,7 +472,7 @@ func TestShow_PostReferences(t *testing.T) {
 
 	fixture := newFixture(t)
 	rec := httptest.NewRecorder()
-	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), i18n.LangJa, nil))
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
 
 	body := rec.Body.String()
 
@@ -502,7 +502,7 @@ func TestShow_FullThread(t *testing.T) {
 	fixture := newFixture(t)
 
 	rec := httptest.NewRecorder()
-	fixture.handler.Show(rec, newRequest(t, fixture.full.String(), i18n.LangJa, nil))
+	fixture.handler.Show(rec, newRequest(t, fixture.full.String(), model.LocaleJa, nil))
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
 	}
@@ -511,7 +511,7 @@ func TestShow_FullThread(t *testing.T) {
 	}
 
 	open := httptest.NewRecorder()
-	fixture.handler.Show(open, newRequest(t, fixture.open.String(), i18n.LangJa, nil))
+	fixture.handler.Show(open, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
 	if strings.Contains(open.Body.String(), "これ以上は書き込めません。") {
 		t.Error("上限に達していないスレッドのレスポンスに、書き込めない旨の文言が含まれている")
 	}
@@ -534,7 +534,7 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 
 	fixture := newFixture(t)
 	rec := httptest.NewRecorder()
-	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), i18n.LangJa, nil))
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -576,7 +576,7 @@ func TestShow_DeclaresItsCanonicalURL(t *testing.T) {
 
 	f := newFixture(t)
 	rec := httptest.NewRecorder()
-	f.handler.Show(rec, newRequest(t, f.open.String(), i18n.LangJa, nil))
+	f.handler.Show(rec, newRequest(t, f.open.String(), model.LocaleJa, nil))
 
 	canonical := testutil.OpeningTag(t, rec.Body.String(), `rel="canonical"`)
 	if want := `href="` + appURL + "/t/" + f.open.String() + `"`; !strings.Contains(canonical, want) {
@@ -609,7 +609,7 @@ func TestShow_RedirectsNonCanonicalIDToCanonicalPath(t *testing.T) {
 
 	fixture := newFixture(t)
 	rec := httptest.NewRecorder()
-	req := newRequest(t, "0"+fixture.open.String(), i18n.LangJa, nil)
+	req := newRequest(t, "0"+fixture.open.String(), model.LocaleJa, nil)
 	req.URL.RawQuery = "utm_source=newsletter"
 
 	fixture.handler.Show(rec, req)
@@ -658,7 +658,7 @@ func TestShow_UnknownID(t *testing.T) {
 			t.Parallel()
 
 			rec := httptest.NewRecorder()
-			fixture.handler.Show(rec, newRequest(t, tt.id, i18n.LangJa, nil))
+			fixture.handler.Show(rec, newRequest(t, tt.id, model.LocaleJa, nil))
 
 			if rec.Code != http.StatusNotFound {
 				t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
@@ -683,7 +683,7 @@ func TestShow_LookupFailure(t *testing.T) {
 	t.Parallel()
 
 	fixture := newFixture(t)
-	req := newRequest(t, fixture.open.String(), i18n.LangJa, nil)
+	req := newRequest(t, fixture.open.String(), model.LocaleJa, nil)
 	ctx, cancel := context.WithCancel(req.Context())
 	cancel()
 	rec := httptest.NewRecorder()
@@ -717,7 +717,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDatabases(threadDB, navigationDB, threadDB).Show(rec, newRequest(t, id.String(), i18n.LangJa, nil))
+	newHandlerForDatabases(threadDB, navigationDB, threadDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
@@ -747,7 +747,7 @@ func TestShow_BoardThreadListingFailure(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDatabases(threadDB, threadDB, listingDB).Show(rec, newRequest(t, id.String(), i18n.LangJa, nil))
+	newHandlerForDatabases(threadDB, threadDB, listingDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

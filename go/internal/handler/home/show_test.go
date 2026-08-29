@@ -175,7 +175,7 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		locale           string
+		locale           model.Locale
 		wantHeading      string
 		wantSignOutBtn   string
 		wantSettings     string
@@ -189,7 +189,7 @@ func TestShow(t *testing.T) {
 	}{
 		{
 			name:             "Japanese",
-			locale:           i18n.LangJa,
+			locale:           model.LocaleJa,
 			wantHeading:      "コミュニティのトップ",
 			wantSignOutBtn:   "ログアウト",
 			wantSettings:     "設定",
@@ -203,7 +203,7 @@ func TestShow(t *testing.T) {
 		},
 		{
 			name:             "English",
-			locale:           i18n.LangEn,
+			locale:           model.LocaleEn,
 			wantHeading:      "Community home",
 			wantSignOutBtn:   "Sign out",
 			wantSettings:     "Settings",
@@ -267,7 +267,7 @@ func TestShow(t *testing.T) {
 				`name="csrf_token"`,
 				"data-confirm",
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -366,7 +366,7 @@ func TestShow_EmptyInstance(t *testing.T) {
 
 	handler := newHandlerForDB(testutil.SetupDB(t))
 	req := httptest.NewRequest(http.MethodGet, "/home", nil)
-	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
 	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
 	ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
 	req = req.WithContext(ctx)
@@ -467,7 +467,7 @@ func TestShow_MarksOnlyTheCurrentPage(t *testing.T) {
 	handler := newHandler(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/home", nil)
-	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
 	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
 	ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
 	req = req.WithContext(ctx)

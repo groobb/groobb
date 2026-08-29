@@ -9,6 +9,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/layouts"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/viewmodel"
@@ -42,7 +43,7 @@ func TestCommunity_WithoutRightColumn(t *testing.T) {
 			Main:               layouts.CommunityRightColumn,
 		},
 	}
-	ctx := i18n.SetLocale(context.Background(), i18n.LangEn)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleEn)
 
 	var buf strings.Builder
 	if err := layouts.Community(data).Render(ctx, &buf); err != nil {
