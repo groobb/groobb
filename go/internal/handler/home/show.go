@@ -70,6 +70,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 			threads[j] = homepage.ShowThread{
 				ID:           viewmodel.ThreadID(thread.ID),
 				Title:        thread.Title,
+				Language:     viewmodel.NewThreadLanguage(thread.Language),
 				PostsCount:   thread.PostsCount,
 				LastPostedAt: thread.LastPostedAt,
 			}

@@ -11,6 +11,7 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
@@ -57,8 +58,18 @@ type ShowBoard struct {
 // 運ぶのは、タイトルがそのスレッドへのリンクであり、スレッドを指すのが /t/{id} である
 // ためです。
 type ShowThread struct {
-	ID           viewmodel.ThreadID
-	Title        string
+	ID    viewmodel.ThreadID
+	Title string
+
+	// Language is the language the thread is written in, shown as a badge on the
+	// row and declared on the title. A board is not divided by language, so this
+	// is what tells the threads of one section apart.
+	//
+	// [Ja] Language はスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
+	// 宣言します。掲示板は言語で分けないため、1 つの区画に並ぶスレッドを見分けさせる
+	// ものがこれです。
+	Language viewmodel.ThreadLanguage
+
 	PostsCount   int
 	LastPostedAt time.Time
 }
@@ -82,6 +93,11 @@ const ShowHeadingID = "home-show-heading"
 // while the name alone already says where it leads when the link text is read on
 // its own.
 //
+// A thread's row carries its primary language, because a board is not divided by
+// language and one section holds threads in several. The badge says which, and
+// the title declares it, so a screen reader reads a title by the rules of the
+// language it is written in rather than by the page's.
+//
 // A board nobody has posted in yet says so in its own section rather than being
 // left out of the listing. The sidebar lists that board, and a home page holding
 // fewer boards than the sidebar would read as something failing to load rather
@@ -95,6 +111,11 @@ const ShowHeadingID = "home-show-heading"
 // 掲示板の名前がそのページへのリンクであり、区画に必要なのはそれだけです。傍らに置く
 // 「すべて見る」は同じアドレスへの 2 つ目のリンクにしかならず、名前だけで既に、リンクの
 // テキストが単独で読まれてもどこへ導くかを述べているためです。
+//
+// スレッドの行はその主言語を運びます。掲示板を言語で分けないため、1 つの区画が複数の
+// 言語のスレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。
+// これによりスクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている
+// 言語の規則で読み上げます。
 //
 // まだ誰も書き込んでいない掲示板は、一覧から落とすのではなく自身の区画でその旨を伝え
 // ます。サイドバーはその掲示板を並べており、サイドバーより少ない掲示板しか持たない
@@ -128,7 +149,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ShowHeadingID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 98, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 119, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -141,7 +162,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 98, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 119, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +180,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_no_boards"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 100, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 121, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -182,7 +203,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardPath(board.Slug).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 108, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 129, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -195,7 +216,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(board.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 109, Col: 22}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 130, Col: 22}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -213,7 +234,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_board_no_threads"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 115, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 136, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -236,98 +257,129 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var8 templ.SafeURL
 						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templates.ThreadPath(thread.ID).SafeURL())
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 121, Col: 64}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 143, Col: 62}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" class=\"inline-flex min-h-6 min-w-6 items-center hover:underline\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" class=\"inline-flex min-h-6 min-w-6 items-center hover:underline\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var9 string
-						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(thread.Title)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 122, Col: 28}
+						if thread.Language.Declared() {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " lang=\"")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var9 string
+							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(thread.Language.Tag)
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 146, Col: 41}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\"")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</a></h3><p class=\"flex flex-wrap items-center gap-x-3 text-muted-foreground\"><span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, ">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var10 string
-						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}))
+						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(thread.Title)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 126, Col: 96}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 149, Col: 28}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span> <span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</a></h3><p class=\"flex flex-wrap items-center gap-x-3 text-muted-foreground\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = components.ThreadLanguageBadge(thread.Language).Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var11 string
-						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_last_posted_label"))
+						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 128, Col: 63}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 154, Col: 96}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " <time datetime=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span> <span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var12 string
-						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.MachineDateTime(thread.LastPostedAt))
+						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_last_posted_label"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 129, Col: 77}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 156, Col: 63}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " <time datetime=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var13 string
-						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templates.RelativeTime(ctx, thread.LastPostedAt))
+						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.MachineDateTime(thread.LastPostedAt))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 130, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 157, Col: 77}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</time></span></p></li>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var14 string
+						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(templates.RelativeTime(ctx, thread.LastPostedAt))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 158, Col: 65}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</time></span></p></li>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</ul>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</ul>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</section></div></li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</section></div></li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</ul>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</ul>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

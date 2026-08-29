@@ -27,13 +27,16 @@ type Profile struct {
 	plan          contentPlan
 
 	// scripts are the threads written out post by post. The profile holds them
-	// rather than the generator because they are content a community has
-	// accumulated: on its first days it has neither the exchanges they show nor
-	// the busy board they are posted in.
+	// rather than the generator because which of them a community has depends on
+	// how long it has been going: on its first days it has none of the exchanges
+	// they show. A script every profile holds is still listed in each of them, so
+	// that what a profile writes out is read off the profile alone.
 	//
 	// [Ja] scripts は投稿ごとに書き下したスレッドです。生成器ではなくプロファイルが
-	// 持つのは、それらがコミュニティの蓄積した中身だからです。立ち上げ直後の
-	// コミュニティは、それらが見せるやり取りも、それらが立つ賑わった掲示板も持ちません。
+	// 持つのは、そのどれをコミュニティが持つのかが、続いてきた長さによって変わるから
+	// です。立ち上げ直後のコミュニティは、それらが見せるやり取りをまだ持ちません。
+	// どのプロファイルにも入る台本も各プロファイルに書き並べるのは、プロファイルが何を
+	// 書き下すのかを、そのプロファイルだけで読めるようにするためです。
 	scripts []scriptedThread
 }
 
@@ -50,7 +53,7 @@ var matureProfile = Profile{
 	categories:    matureCategories,
 	boards:        matureBoards,
 	plan:          matureContentPlan,
-	scripts:       []scriptedThread{referenceScript, withdrawnScript},
+	scripts:       []scriptedThread{referenceScript, withdrawnScript, englishScript, otherLanguageScript},
 }
 
 // coldStartProfile is the community on its first days, which every instance
@@ -59,15 +62,25 @@ var matureProfile = Profile{
 // left behind by an author who has withdrawn, because none of those exist yet in
 // a community that has just opened.
 //
+// The English thread is the one written-out thread it does hold. What a
+// community accumulates is left out here, and a board carrying more than one
+// language is not that: the lounge takes Japanese and English from the day it
+// opens.
+//
 // [Ja] coldStartProfile は立ち上げ直後のコミュニティです。どのインスタンスも必ず通る
 // 状態であり、そのため画面はこれに照らして確かめる必要があります (ADR 0010)。
 // カテゴリーも、投稿数の上限に近いスレッドも、退会した作者が残した投稿もありません。
 // 開いたばかりのコミュニティには、そのいずれもまだ存在しないためです。
+//
+// 唯一持つ書き下しのスレッドが英語のスレッドです。ここで省くのはコミュニティが蓄積する
+// ものであり、複数の言語が並ぶ掲示板はそれに当たりません。ラウンジは開いた日から日本語と
+// 英語を受け付けています。
 var coldStartProfile = Profile{
 	name:          "cold-start",
 	communityName: coldStartCommunityName,
 	boards:        coldStartBoards,
 	plan:          coldStartContentPlan,
+	scripts:       []scriptedThread{englishScript},
 }
 
 // profiles lists the profiles a command line can name, the default first.

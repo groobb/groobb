@@ -46,6 +46,16 @@ type Thread struct {
 
 	Title string
 
+	// Language is the language the thread is written in, chosen when it is
+	// started. It is an attribute of the thread rather than of each post: a reply
+	// in another language is accepted, so a post carries no language of its own
+	// and is never labelled with the thread's.
+	//
+	// [Ja] Language はスレッドが書かれている言語で、スレッドを立てるときに選ばれます。
+	// 投稿ごとではなくスレッドの属性です。別の言語での返信も受け付けるため、投稿は自身の
+	// 言語を持たず、スレッドの言語を名乗ることもありません。
+	Language ThreadLanguage
+
 	// PostsCount, LastPostID and LastPostedAt are denormalized from the thread's
 	// posts. A row of a board's thread list needs all three, and deriving them
 	// per row would mean one aggregate per thread on every page view. They are

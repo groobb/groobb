@@ -132,14 +132,17 @@ func TestProfiles_NameTheirCommunity(t *testing.T) {
 // produces the state an instance opens in: one board with no category, a few
 // threads in it, and a few posts in each. It is the state ADR 0010 asks the
 // screens to be checked in, so nothing a community accumulates over months — a
-// thread at the post limit, the threads written out post by post — may appear
-// in it.
+// thread at the post limit, the exchanges the written-out threads show — may
+// appear in it. The English thread is the exception, because a board carrying
+// both languages is what the lounge opens with rather than what it accumulates.
 //
 // [Ja] TestRunner_GenerateThreads_ColdStart は、cold-start プロファイルがインスタンスの
 // 開くときの状態を生むことを検証します。カテゴリーを持たない掲示板 1 つ、そこに立つ
 // 数本のスレッド、各スレッドの数件の投稿です。ADR 0010 が画面を確かめる先として求める
 // のがこの状態であるため、コミュニティが何ヶ月もかけて蓄積するもの (投稿数の上限に
-// 達したスレッドや、投稿ごとに書き下したスレッド) が現れてはなりません。
+// 達したスレッドや、書き下したスレッドが見せるやり取り) が現れてはなりません。英語の
+// スレッドだけは例外です。両方の言語が並ぶ掲示板は、ラウンジが蓄積するものではなく、
+// 開いた時点から持つものであるためです。
 func TestRunner_GenerateThreads_ColdStart(t *testing.T) {
 	t.Parallel()
 
@@ -164,20 +167,37 @@ func TestRunner_GenerateThreads_ColdStart(t *testing.T) {
 	}
 
 	threads := threadsOf(t, db, ctx, board.ID)
-	if want := coldStartContentPlan.quietBoardThreads; len(threads) != want {
+	if want := coldStartContentPlan.quietBoardThreads + writtenThreadCount(coldStartProfile); len(threads) != want {
 		t.Fatalf("thread count = %d, want %d", len(threads), want)
+	}
+
+	// The board an instance opens with already reads in two languages, so the
+	// thread that puts English on it has to be among the rows above.
+	//
+	// [Ja] インスタンスが開くときに持つ掲示板は、すでに 2 つの言語で読めます。そのため
+	// 英語を持ち込むスレッドは、上の行のなかに無ければなりません。
+	english := findThread(t, threads, englishScript.title)
+	if english.Language != englishScript.language {
+		t.Errorf("the thread %q is written in %q, want %q", english.Title, english.Language, englishScript.language)
 	}
 
 	for _, thread := range threads {
 		if thread.Title == fullThreadTitle {
 			t.Errorf("the thread %q was generated, want no thread that has reached the limit", thread.Title)
 		}
-		if thread.Title == referenceScript.title || thread.Title == withdrawnScript.title {
-			t.Errorf("the written-out thread %q was generated, want only the ordinary ones", thread.Title)
+		if thread.Title == referenceScript.title || thread.Title == withdrawnScript.title || thread.Title == otherLanguageScript.title {
+			t.Errorf("the written-out thread %q was generated, want it left to the mature community", thread.Title)
 		}
 
 		posts := postsOf(t, db, ctx, thread.ID)
-		if len(posts) < coldStartContentPlan.minPostsPerThread || len(posts) > coldStartContentPlan.maxPostsPerThread {
+
+		// How many posts a written-out thread holds is its script's to say, so
+		// the plan's bounds are asked of the ordinary threads alone.
+		//
+		// [Ja] 書き下したスレッドがいくつの投稿を持つのかは、その台本が述べることです。
+		// そのため plan の上下限は通常のスレッドにだけ問います。
+		if thread.Title != englishScript.title &&
+			(len(posts) < coldStartContentPlan.minPostsPerThread || len(posts) > coldStartContentPlan.maxPostsPerThread) {
 			t.Errorf(
 				"the thread %q holds %d posts, want between %d and %d",
 				thread.Title, len(posts), coldStartContentPlan.minPostsPerThread, coldStartContentPlan.maxPostsPerThread,

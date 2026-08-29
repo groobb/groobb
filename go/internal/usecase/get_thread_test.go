@@ -69,7 +69,7 @@ func newGetThreadUsecase(t *testing.T) threadFixture {
 		WithDeletedAt(time.Now().Add(-24 * time.Hour)).
 		Build()
 
-	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, UserID: &author, Title: "枯葉の名演"})
+	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, UserID: &author, Title: "枯葉の名演", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -103,7 +103,7 @@ func newGetThreadUsecase(t *testing.T) threadFixture {
 		t.Fatalf("UpdateLastPost() error = %v", err)
 	}
 
-	other, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "別のスレッド"})
+	other, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "別のスレッド", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

@@ -54,6 +54,18 @@ type fixture struct {
 	// アカウントによるもので、先行する投稿を指して戻る返信があります。
 	open model.ThreadID
 
+	// english is the English thread opened by the language declaration test.
+	//
+	// [Ja] english は言語宣言のテストで開く英語のスレッドです。
+	english model.ThreadID
+
+	// other is the thread written in a language the application has no locale
+	// for, opened by the test for the page that declares no language.
+	//
+	// [Ja] other はアプリがロケールを持たない言語で書かれたスレッドで、どの言語も宣言
+	// しないページのテストで開きます。
+	other model.ThreadID
+
 	// full is the thread that has reached the number of posts it can hold, which
 	// is the state the page has a notice for.
 	//
@@ -62,13 +74,29 @@ type fixture struct {
 }
 
 // newFixture builds the thread Handler over a database holding one community
-// whose "music" category lists a "jazz" board with two threads: one that is read
-// as an ordinary thread, and one whose posts_count has reached the cap.
+// whose "music" category lists a "jazz" board with four threads: one that is
+// read as an ordinary thread, one written in English, one written in a language
+// the application has no locale for, and one whose posts_count has reached the
+// cap.
+//
+// The two that are not in the page's own language are there because a board is
+// not divided by language: the listing beside the thread being read holds
+// threads in several, and one holding only threads in the page's own language
+// would not show whether a row says which language it is in. The one resolving
+// to no display language is also opened as the thread being read, which is where
+// the heading and the trail are checked for declaring nothing.
 //
 // [Ja] newFixture は、1 つのコミュニティを持つデータベース上に thread Handler を構築
-// します。その "music" カテゴリーは "jazz" 掲示板を並べ、その中に 2 つのスレッドが
-// 立っています。1 つは普通のスレッドとして読むもので、もう 1 つは posts_count が上限に
-// 達したものです。
+// します。その "music" カテゴリーは "jazz" 掲示板を並べ、その中に 4 つのスレッドが
+// 立っています。1 つは普通のスレッドとして読むもの、1 つは英語で書かれたもの、1 つは
+// アプリがロケールを持たない言語で書かれたもの、もう 1 つは posts_count が上限に達した
+// ものです。
+//
+// ページ自身の言語でない 2 つがあるのは、掲示板を言語で分けないためです。読んでいる
+// スレッドの傍らの一覧は複数の言語のスレッドを持ちますが、ページ自身の言語のスレッドしか
+// 持たない一覧では、行が自身の言語を述べているかどうかを確かめられません。どの表示言語にも
+// 解決しない 1 本は読んでいるスレッドとしても開き、見出しと経路が何も宣言しないことを
+// そこで確かめます。
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 
@@ -101,7 +129,7 @@ func newFixture(t *testing.T) fixture {
 		WithDeletedAt(time.Now().Add(-24 * time.Hour)).
 		Build()
 
-	open, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, UserID: &author, Title: "枯葉の名演"})
+	open, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, UserID: &author, Title: "枯葉の名演", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -138,7 +166,39 @@ func newFixture(t *testing.T) fixture {
 		t.Fatalf("UpdateLastPost() error = %v", err)
 	}
 
-	full, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "埋まったスレッド"})
+	english, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "Records I picked up", Language: model.LocaleEn.ThreadLanguage()})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	englishPost, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: english.ID, Number: 1, Body: "What have you been listening to?"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := threadRepo.UpdateLastPost(ctx, english.ID, repository.UpdateThreadLastPostInput{
+		PostsCount:   1,
+		LastPostID:   englishPost.ID,
+		LastPostedAt: time.Now().Add(-6 * time.Hour),
+	}); err != nil {
+		t.Fatalf("UpdateLastPost() error = %v", err)
+	}
+
+	other, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "Mes derniers disques", Language: model.ThreadLanguageOther})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	otherPost, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: other.ID, Number: 1, Body: "Bonjour, quels disques écoutez-vous ?"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := threadRepo.UpdateLastPost(ctx, other.ID, repository.UpdateThreadLastPostInput{
+		PostsCount:   1,
+		LastPostID:   otherPost.ID,
+		LastPostedAt: time.Now().Add(-12 * time.Hour),
+	}); err != nil {
+		t.Fatalf("UpdateLastPost() error = %v", err)
+	}
+
+	full, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: "埋まったスレッド", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -154,7 +214,7 @@ func newFixture(t *testing.T) fixture {
 		t.Fatalf("UpdateLastPost() error = %v", err)
 	}
 
-	return fixture{handler: newHandlerForDB(db), open: open.ID, full: full.ID}
+	return fixture{handler: newHandlerForDB(db), open: open.ID, english: english.ID, other: other.ID, full: full.ID}
 }
 
 // newHandlerForDB builds the thread Handler over the supplied application
@@ -253,7 +313,7 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 	threadRepo := repository.NewThreadRepository(db)
-	created, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: board.ID, Title: "枯葉の名演"})
+	created, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: board.ID, Title: "枯葉の名演", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -381,7 +441,15 @@ func TestShow(t *testing.T) {
 				`href="/c/music"`,
 				"ジャズ喫茶",
 				`href="/settings"`,
-				`lang="` + string(tt.locale) + `"`,
+				// The page's own language is asserted on the <html> element
+				// itself. The heading and the rows beside it carry lang attributes
+				// of their own, so a page-wide search for the tag is satisfied by
+				// a thread's title or its badge whatever the document declares.
+				//
+				// [Ja] ページ自身の言語は <html> 要素そのもので検証する。見出しとその傍らの
+				// 行が自身の lang 属性を持つため、タグをページ全体から探す形では、文書が
+				// 何を宣言していてもスレッドのタイトルかそのバッジで満たされてしまう。
+				`<html lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -456,6 +524,156 @@ func TestShow(t *testing.T) {
 				t.Errorf("現在地の印を持つ要素 = %s, want the link to the thread being read", current)
 			}
 		})
+	}
+}
+
+// TestShow_ThreadLanguage verifies that the page says which language the thread
+// being read is written in — a badge beside the heading, and both the heading
+// and repeated breadcrumb title declared as that language — and that each row
+// of the listing beside it says the same about its own thread. The posts are
+// left undeclared, since a reply in another language is accepted and the
+// thread's language is not theirs to claim.
+//
+// The row for the thread whose language resolves to no display language is
+// checked for the opposite: the badge falls back to the translated word, and the
+// title declares nothing rather than an empty or invented tag.
+//
+// [Ja] TestShow_ThreadLanguage は、読んでいるスレッドの言語をページが述べること
+// (見出しの傍らのバッジと、その言語として宣言された見出しおよびパンくず内で繰り返される
+// タイトル) と、その傍らの一覧の各行が自身のスレッドについて同じことを述べることを検証
+// します。投稿は宣言しません。別の言語での返信も受け付けるため、スレッドの言語は投稿が
+// 名乗れるものではないからです。
+//
+// どの表示言語にも解決しない言語のスレッドの行では、その逆を確かめます。バッジは訳語へ
+// 退き、タイトルは空のタグやでっち上げたタグではなく、何も宣言しません。
+func TestShow_ThreadLanguage(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t)
+	rec := httptest.NewRecorder()
+	f.handler.Show(rec, newRequest(t, f.english.String(), model.LocaleJa, &model.User{Atname: "alice"}))
+
+	body := rec.Body.String()
+
+	heading := testutil.OpeningTag(t, body, `id="thread-show-heading"`)
+	if !strings.Contains(heading, `lang="en"`) {
+		t.Errorf("スレッドの見出し = %s, want lang=\"en\"", heading)
+	}
+
+	// The badge sits beside the heading rather than inside it, so the heading's
+	// text stays the thread's title alone.
+	//
+	// [Ja] バッジは見出しの中ではなく傍らに置く。見出しのテキストがスレッドの
+	// タイトルだけであり続けるようにするため。
+	if strings.Contains(heading, "badge") {
+		t.Errorf("スレッドの見出し = %s, want バッジを見出しの外に置く", heading)
+	}
+	if !strings.Contains(body, `<span lang="en">English</span>`) {
+		t.Error("読んでいるスレッドにバッジが無い")
+	}
+
+	breadcrumb := testutil.Element(t, body, `class="breadcrumb`, "</nav>")
+	current := testutil.OpeningTag(t, breadcrumb, `aria-current="page"`)
+	if !strings.Contains(current, `lang="en"`) || !strings.Contains(breadcrumb, ">Records I picked up</span>") {
+		t.Errorf("パンくずの現在地 = %s, want 英語として宣言されたスレッドタイトル", breadcrumb)
+	}
+
+	// The row of the listing carries the declaration on the element holding the
+	// title alone, since the rest of the row is written in the language of the
+	// page.
+	//
+	// [Ja] 一覧の行では、タイトルだけを持つ要素が宣言を担う。行の残りはページの言語で
+	// 書かれているためである。
+	title := testutil.OpeningTag(t, body, ">枯葉の名演<")
+	if !strings.Contains(title, `lang="ja"`) {
+		t.Errorf("日本語のスレッドのタイトル = %s, want lang=\"ja\"", title)
+	}
+	row := testutil.Element(t, body, ">枯葉の名演<", "</a>")
+	if !strings.Contains(row, `<span lang="ja">日本語</span>`) {
+		t.Errorf("日本語のスレッドの行 = %s, want その言語自身の名前のバッジ", row)
+	}
+
+	// A post carries no language of its own, so the only declarations on the page
+	// are the ones the thread's language put there.
+	//
+	// [Ja] 投稿は自身の言語を持たないため、ページ上の宣言はスレッドの言語が置いた
+	// ものだけである。
+	article := testutil.OpeningTag(t, body, `aria-labelledby="p1-label"`)
+	if strings.Contains(article, "lang=") {
+		t.Errorf("投稿の要素 = %s, want 投稿に lang を付けない", article)
+	}
+
+	// The row for the thread written in a language the application has no locale
+	// for declares none. There is no tag to declare, and an invented one would
+	// have a screen reader pronounce the title by the rules of a language it is
+	// not written in, so the badge carries the translated word instead.
+	//
+	// [Ja] アプリがロケールを持たない言語で書かれたスレッドの行は、どの言語も宣言
+	// しない。宣言するタグが無く、でっち上げたタグは、そのタイトルが書かれていない言語の
+	// 規則でスクリーンリーダーに発音させることになるため、バッジは代わりに訳語を載せる。
+	otherTitle := testutil.OpeningTag(t, body, ">Mes derniers disques<")
+	if strings.Contains(otherTitle, "lang=") {
+		t.Errorf("other のスレッドのタイトル = %s, want lang 属性なし", otherTitle)
+	}
+	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</a>")
+	if !strings.Contains(otherRow, "その他") {
+		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
+	}
+}
+
+// TestShow_ThreadLanguageOther verifies that opening a thread whose language
+// resolves to no display language leaves the two places its title is repeated
+// outside the listing — the page heading and the trail's current step —
+// declaring no language, while the badge beside the heading still names the
+// thread's language with the translated word.
+//
+// This is the page that repeats a thread's title outside the row it is listed
+// in, so it is where a title carrying an empty or invented tag would first be
+// read aloud by the rules of a language it is not written in.
+//
+// [Ja] TestShow_ThreadLanguageOther は、どの表示言語にも解決しない言語のスレッドを開いた
+// とき、タイトルが一覧の外で繰り返される 2 箇所 — ページ見出しと経路の現在地 — がどの
+// 言語も宣言しないこと、そして見出しの傍らのバッジは訳語でスレッドの言語を述べ続けることを
+// 検証します。
+//
+// スレッドのタイトルを、それが並ぶ行の外で繰り返すのはこのページです。空のタグや
+// でっち上げたタグを持つタイトルが、それが書かれていない言語の規則で読み上げられるのは
+// まずここになります。
+func TestShow_ThreadLanguageOther(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t)
+	rec := httptest.NewRecorder()
+	f.handler.Show(rec, newRequest(t, f.other.String(), model.LocaleJa, &model.User{Atname: "alice"}))
+
+	body := rec.Body.String()
+
+	heading := testutil.OpeningTag(t, body, `id="thread-show-heading"`)
+	if strings.Contains(heading, "lang=") {
+		t.Errorf("スレッドの見出し = %s, want lang 属性なし", heading)
+	}
+
+	breadcrumb := testutil.Element(t, body, `class="breadcrumb`, "</nav>")
+	current := testutil.OpeningTag(t, breadcrumb, `aria-current="page"`)
+	if strings.Contains(current, "lang=") {
+		t.Errorf("パンくずの現在地 = %s, want lang 属性なし", current)
+	}
+
+	// The badge beside the heading is still drawn, so a thread without a
+	// declarable language is not read as one whose language went missing. It is
+	// taken from the heading's own region rather than from the page, which the
+	// same thread's row in the listing would satisfy on its own.
+	//
+	// [Ja] 見出しの傍らのバッジは変わらず描かれる。宣言できる言語を持たないスレッドが、
+	// 言語の抜け落ちたスレッドとして読まれないようにするため。ページ全体ではなく見出し
+	// 自身の領域から取り出すのは、ページ全体では同じスレッドの一覧の行だけでも満たされて
+	// しまうためである。
+	headingRegion := testutil.Element(t, body, `id="thread-show-heading"`, "</div>")
+	if !strings.Contains(headingRegion, "その他") {
+		t.Errorf("見出しの領域 = %s, want 「その他」の訳語のバッジ", headingRegion)
+	}
+	if strings.Contains(headingRegion, "lang=") {
+		t.Errorf("見出しの領域 = %s, want lang 属性なし", headingRegion)
 	}
 }
 
@@ -780,7 +998,7 @@ func newThreadDB(t *testing.T) (*database.DB, model.ThreadID) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	created, err := repository.NewThreadRepository(db).Create(ctx, repository.CreateThreadInput{BoardID: board.ID, Title: "枯葉の名演"})
+	created, err := repository.NewThreadRepository(db).Create(ctx, repository.CreateThreadInput{BoardID: board.ID, Title: "枯葉の名演", Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

@@ -131,6 +131,37 @@ func TestBreadcrumb_StructuredData(t *testing.T) {
 	}
 }
 
+// TestBreadcrumb_ItemLanguages verifies that each step can declare the
+// language of its own wording, whether it is linked or current, while an empty
+// language continues to inherit from the page.
+//
+// [Ja] TestBreadcrumb_ItemLanguages は、リンクの段と現在地の段のどちらでも、それぞれの
+// 文言の言語を宣言でき、言語が空なら引き続きページから継承することを検証します。
+func TestBreadcrumb_ItemLanguages(t *testing.T) {
+	t.Parallel()
+
+	markup := renderBreadcrumb(t, components.BreadcrumbData{
+		Items: []components.BreadcrumbItem{
+			{Name: "音楽", Path: templates.CategoryPath("music")},
+			{Name: "English board", Path: templates.BoardPath("english"), Lang: "en"},
+			{Name: "Records I picked up", Lang: "en"},
+		},
+	})
+
+	inherited := testutil.OpeningTag(t, markup, ">音楽<")
+	if strings.Contains(inherited, "lang=") {
+		t.Errorf("言語を持たない段 = %s, want lang 属性なし", inherited)
+	}
+	linked := testutil.OpeningTag(t, markup, ">English board<")
+	if !strings.Contains(linked, `lang="en"`) {
+		t.Errorf("言語を持つリンクの段 = %s, want lang=\"en\"", linked)
+	}
+	current := testutil.OpeningTag(t, markup, `aria-current="page"`)
+	if !strings.Contains(current, `lang="en"`) {
+		t.Errorf("言語を持つ現在地の段 = %s, want lang=\"en\"", current)
+	}
+}
+
 // TestBreadcrumb_WithoutABaseURL verifies that an instance which has not been
 // told its own public address still draws the trail for its visitors but
 // publishes no structured data. Every linked step there is an absolute address,

@@ -24,7 +24,19 @@ import (
 // 1 つのスレッドを読んでいる訪問者は次のスレッドまで 1 歩の距離にあり、これが無ければ
 // スレッドを離れるにはまず /b/{slug} へ戻ることになります。
 type ShowPageData struct {
-	Title      string
+	Title string
+
+	// Language is the language this thread is written in, shown as a badge beside
+	// the heading and declared on the heading itself. The posts below carry no
+	// language of their own: a reply in another language is accepted, so applying
+	// the thread's language to a body would have it claim one it is not in.
+	//
+	// [Ja] Language はこのスレッドが書かれている言語で、見出しの傍らにバッジとして
+	// 見せ、見出し自身に宣言します。下に並ぶ投稿は自身の言語を持ちません。別の言語での
+	// 返信も受け付けるため、スレッドの言語を本文に適用すれば、本文はそれが書かれていない
+	// 言語を名乗ることになります。
+	Language viewmodel.ThreadLanguage
+
 	Breadcrumb components.BreadcrumbData
 	PostsCount int
 	Posts      []ShowPost
@@ -94,8 +106,18 @@ type ShowBoard struct {
 // [Ja] ShowBoardThread は掲示板の一覧に並ぶスレッド 1 つで、投稿を 1 件も読まずに
 // 1 行が示すもの — タイトル・投稿の件数・最後の 1 件が届いた時刻 — を運びます。
 type ShowBoardThread struct {
-	ID           viewmodel.ThreadID
-	Title        string
+	ID    viewmodel.ThreadID
+	Title string
+
+	// Language is the language the thread is written in, shown as a badge on the
+	// row and declared on the title. A board is not divided by language, so this
+	// is what tells the threads of one listing apart.
+	//
+	// [Ja] Language はスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
+	// 宣言します。掲示板は言語で分けないため、1 つの一覧に並ぶスレッドを見分けさせる
+	// ものがこれです。
+	Language viewmodel.ThreadLanguage
+
 	PostsCount   int
 	LastPostedAt time.Time
 }
@@ -140,6 +162,11 @@ func replyReference(number int) string {
 // is a link rather than a title: it is both what this listing is and the way
 // back to the whole of it.
 //
+// A row carries the thread's primary language, because a board is not divided by
+// language and one listing holds threads in several. The badge says which, and
+// the title declares it, so a screen reader reads a title by the rules of the
+// language it is written in rather than by the page's.
+//
 // [Ja] ShowCenter はスレッドページの一覧カラムを描画します。このスレッドが立った掲示板と、
 // そこに立っているスレッドです。ここではこれが補助のカラムです。このページはスレッドを
 // 選ぶためではなく 1 つを読むために開かれるためです。読んでいるスレッドには現在地の印を
@@ -149,6 +176,11 @@ func replyReference(number int) string {
 // 前に見出しを置くとアウトラインの順序が崩れます。サイドバーが自身のグループを見出しでは
 // なくラベルで名付けるのと同じ理由です。掲示板の名前はタイトルではなくリンクです。それが
 // この一覧が何であるかを述べると同時に、その全体へ戻る道でもあるためです。
+//
+// 各行はスレッドの主言語を運びます。掲示板を言語で分けないため、1 つの一覧が複数の言語の
+// スレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。これにより
+// スクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている言語の規則で
+// 読み上げます。
 templ ShowCenter(data ShowPageData) {
 	<div class="flex flex-col gap-3">
 		<a
@@ -167,8 +199,16 @@ templ ShowCenter(data ShowPageData) {
 							aria-current="page"
 						}
 					>
-						<span class="block text-sm">{ thread.Title }</span>
+						<span
+							class="block text-sm"
+							if thread.Language.Declared() {
+								lang={ thread.Language.Tag }
+							}
+						>
+							{ thread.Title }
+						</span>
 						<span class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+							@components.ThreadLanguageBadge(thread.Language)
 							<span>{ templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}) }</span>
 							<time datetime={ templates.MachineDateTime(thread.LastPostedAt) }>
 								{ templates.RelativeTime(ctx, thread.LastPostedAt) }
@@ -203,6 +243,11 @@ templ ShowCenter(data ShowPageData) {
 // directions. A thread that has reached its cap says so after the last post,
 // where the next one would have gone.
 //
+// The heading carries the thread's primary language: a badge beside it says
+// which, and the heading itself declares it. The posts do not, because a reply
+// in another language is accepted, and labelling a body with the thread's
+// language would have it claim one it is not written in.
+//
 // [Ja] ShowRight はスレッドページの読むためのカラムを描画します。スレッドの在り処を示す
 // 経路、ページ見出しとしてのタイトル、そしてその中のすべての投稿をレス番号順に描きます。
 // 訪問者がここへ読みに来たものがスレッドであるため、これがページの主カラムです。
@@ -221,11 +266,26 @@ templ ShowCenter(data ShowPageData) {
 // ある投稿に答えた投稿は、その下に、それらの本文がそこへ辿り着くために書いたのと同じ
 // >>N の記法で並べます。会話を両方向に辿れるようにするためです。上限に達したスレッドは、
 // 次の投稿が入るはずだった場所、すなわち最後の投稿の後ろでその旨を述べます。
+//
+// 見出しはスレッドの主言語を運びます。どの言語かは傍らのバッジが述べ、見出し自身が
+// それを宣言します。投稿は宣言しません。別の言語での返信も受け付けるため、本文に
+// スレッドの言語を付ければ、本文はそれが書かれていない言語を名乗ることになります。
 templ ShowRight(data ShowPageData) {
 	<div class="flex flex-col gap-6">
 		<div class="flex flex-col gap-2">
 			@components.Breadcrumb(data.Breadcrumb)
-			<h1 id={ ShowHeadingID } class="text-2xl font-bold tracking-tight">{ data.Title }</h1>
+			<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				<h1
+					id={ ShowHeadingID }
+					class="text-2xl font-bold tracking-tight"
+					if data.Language.Declared() {
+						lang={ data.Language.Tag }
+					}
+				>
+					{ data.Title }
+				</h1>
+				@components.ThreadLanguageBadge(data.Language)
+			</div>
 			<p class="text-sm text-muted-foreground">
 				{ templates.T(ctx, "posts_count", map[string]any{"Count": data.PostsCount}) }
 			</p>

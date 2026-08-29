@@ -12,25 +12,32 @@ import (
 )
 
 const createThread = `-- name: CreateThread :one
-INSERT INTO threads (board_id, user_id, title)
-VALUES (?, ?, ?)
-RETURNING id, board_id, user_id, title, posts_count, last_post_id, last_posted_at, created_at, updated_at
+INSERT INTO threads (board_id, user_id, title, language)
+VALUES (?, ?, ?, ?)
+RETURNING id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at
 `
 
 type CreateThreadParams struct {
-	BoardID int64  `json:"board_id"`
-	UserID  *int64 `json:"user_id"`
-	Title   string `json:"title"`
+	BoardID  int64  `json:"board_id"`
+	UserID   *int64 `json:"user_id"`
+	Title    string `json:"title"`
+	Language string `json:"language"`
 }
 
 func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
-	row := q.db.QueryRowContext(ctx, createThread, arg.BoardID, arg.UserID, arg.Title)
+	row := q.db.QueryRowContext(ctx, createThread,
+		arg.BoardID,
+		arg.UserID,
+		arg.Title,
+		arg.Language,
+	)
 	var i Thread
 	err := row.Scan(
 		&i.ID,
 		&i.BoardID,
 		&i.UserID,
 		&i.Title,
+		&i.Language,
 		&i.PostsCount,
 		&i.LastPostID,
 		&i.LastPostedAt,
@@ -41,7 +48,7 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thr
 }
 
 const getThreadByID = `-- name: GetThreadByID :one
-SELECT id, board_id, user_id, title, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads WHERE id = ? LIMIT 1
+SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetThreadByID(ctx context.Context, id int64) (Thread, error) {
@@ -52,6 +59,7 @@ func (q *Queries) GetThreadByID(ctx context.Context, id int64) (Thread, error) {
 		&i.BoardID,
 		&i.UserID,
 		&i.Title,
+		&i.Language,
 		&i.PostsCount,
 		&i.LastPostID,
 		&i.LastPostedAt,
@@ -62,7 +70,7 @@ func (q *Queries) GetThreadByID(ctx context.Context, id int64) (Thread, error) {
 }
 
 const listRecentThreadsPerBoard = `-- name: ListRecentThreadsPerBoard :many
-SELECT threads.id, threads.board_id, threads.user_id, threads.title, threads.posts_count, threads.last_post_id, threads.last_posted_at, threads.created_at, threads.updated_at FROM boards
+SELECT threads.id, threads.board_id, threads.user_id, threads.title, threads.language, threads.posts_count, threads.last_post_id, threads.last_posted_at, threads.created_at, threads.updated_at FROM boards
 JOIN threads ON threads.id IN (
     SELECT recent.id FROM threads AS recent
     WHERE recent.board_id = boards.id
@@ -86,6 +94,7 @@ func (q *Queries) ListRecentThreadsPerBoard(ctx context.Context, perBoard int64)
 			&i.BoardID,
 			&i.UserID,
 			&i.Title,
+			&i.Language,
 			&i.PostsCount,
 			&i.LastPostID,
 			&i.LastPostedAt,
@@ -106,7 +115,7 @@ func (q *Queries) ListRecentThreadsPerBoard(ctx context.Context, perBoard int64)
 }
 
 const listThreadsByBoardID = `-- name: ListThreadsByBoardID :many
-SELECT id, board_id, user_id, title, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads
+SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads
 WHERE board_id = ?
 ORDER BY last_posted_at DESC, id DESC
 `
@@ -125,6 +134,7 @@ func (q *Queries) ListThreadsByBoardID(ctx context.Context, boardID int64) ([]Th
 			&i.BoardID,
 			&i.UserID,
 			&i.Title,
+			&i.Language,
 			&i.PostsCount,
 			&i.LastPostID,
 			&i.LastPostedAt,

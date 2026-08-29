@@ -132,6 +132,14 @@ other = "Sign up"
 description = "Skip link text in the community shell that jumps past the sidebar to the main content (shared UI part across pages)"
 other = "Skip to main content"
 
+[thread_language_label]
+description = "Visually hidden label on a thread's primary-language badge, telling a screen reader what the badge's wording is a value of"
+other = "Primary language:"
+
+[thread_language_other]
+description = "Wording on a thread's primary-language badge for a thread written in a language the application has no locale for"
+other = "Other"
+
 [welcome_show_title]
 description = "Top page title (title tag)"
 other = "Groobb"
