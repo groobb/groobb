@@ -140,6 +140,7 @@ type Thread struct {
 	BoardID      int64           `json:"board_id"`
 	UserID       *int64          `json:"user_id"`
 	Title        string          `json:"title"`
+	Language     string          `json:"language"`
 	PostsCount   int64           `json:"posts_count"`
 	LastPostID   *int64          `json:"last_post_id"`
 	LastPostedAt sqlitetime.Time `json:"last_posted_at"`

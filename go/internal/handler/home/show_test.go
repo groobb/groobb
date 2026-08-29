@@ -27,11 +27,22 @@ import (
 // even though neither the sidebar nor this page draws one, so that the listing is
 // exercised on a board that has one.
 //
+// That board's threads are written in three languages, because a board is not
+// divided by language: a section holding only threads in the page's own language
+// would not show whether a row says which language it is in. The one written in
+// a language the application has no locale for is what the row that declares no
+// language at all is checked on.
+//
 // [Ja] newHandler は、1 つのコミュニティと 2 つの掲示板 — 書き込まれたものと、まだ
 // 書き込まれていないもの — を持つデータベース上に home Handler を構築します。スレッドを
 // 並べる区画と、スレッドが無いことを伝える区画の両方をページが描画する最小の構成です。
 // サイドバーもこのページもカテゴリーを描かないにもかかわらず、書き込まれた掲示板に
 // カテゴリーを与えているのは、一覧をカテゴリーを持つ掲示板で動かすためです。
+//
+// その掲示板のスレッドは 3 つの言語で書かれています。掲示板は言語で分けないためで、
+// ページ自身の言語のスレッドしか持たない区画では、行が自身の言語を述べているかどうかを
+// 確かめられません。アプリがロケールを持たない言語で書かれた 1 本は、どの言語も宣言
+// しない行を確かめる先です。
 func newHandler(t *testing.T) *home.Handler {
 	t.Helper()
 
@@ -72,8 +83,10 @@ func newHandler(t *testing.T) *home.Handler {
 	// [Ja] 最終投稿の時刻は現在時刻からの相対で与えます。ページがそれを今からの隔たり
 	// として述べるためです。
 	now := time.Now()
-	createThread(t, ctx, db, board.ID, "モードジャズの話", 7, now.Add(-5*time.Hour))
-	createThread(t, ctx, db, board.ID, "最近買ったレコード", 3, now.Add(-2*time.Hour))
+	createThread(t, ctx, db, board.ID, "モードジャズの話", model.LocaleJa.ThreadLanguage(), 7, now.Add(-5*time.Hour))
+	createThread(t, ctx, db, board.ID, "Mes derniers disques", model.ThreadLanguageOther, 2, now.Add(-4*time.Hour))
+	createThread(t, ctx, db, board.ID, "Records I picked up", model.LocaleEn.ThreadLanguage(), 5, now.Add(-3*time.Hour))
+	createThread(t, ctx, db, board.ID, "最近買ったレコード", model.LocaleJa.ThreadLanguage(), 3, now.Add(-2*time.Hour))
 
 	return newHandlerForDB(db)
 }
@@ -85,13 +98,13 @@ func newHandler(t *testing.T) *home.Handler {
 // [Ja] createThread は、実際にスレッドが存在する形 — 最初の投稿を伴い、非正規化列が
 // スレッドの投稿を表している状態 — でスレッドを挿入します。一覧はその並び順も、示す
 // 2 つの事実も、この列から読みます。
-func createThread(t *testing.T, ctx context.Context, db *database.DB, boardID model.BoardID, title string, postsCount int, lastPostedAt time.Time) {
+func createThread(t *testing.T, ctx context.Context, db *database.DB, boardID model.BoardID, title string, language model.ThreadLanguage, postsCount int, lastPostedAt time.Time) {
 	t.Helper()
 
 	threadRepo := repository.NewThreadRepository(db)
 	postRepo := repository.NewPostRepository(db)
 
-	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: boardID, Title: title})
+	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: boardID, Title: title, Language: language})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -175,7 +188,7 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		locale           string
+		locale           model.Locale
 		wantHeading      string
 		wantSignOutBtn   string
 		wantSettings     string
@@ -189,7 +202,7 @@ func TestShow(t *testing.T) {
 	}{
 		{
 			name:             "Japanese",
-			locale:           i18n.LangJa,
+			locale:           model.LocaleJa,
 			wantHeading:      "コミュニティのトップ",
 			wantSignOutBtn:   "ログアウト",
 			wantSettings:     "設定",
@@ -203,7 +216,7 @@ func TestShow(t *testing.T) {
 		},
 		{
 			name:             "English",
-			locale:           i18n.LangEn,
+			locale:           model.LocaleEn,
 			wantHeading:      "Community home",
 			wantSignOutBtn:   "Sign out",
 			wantSettings:     "Settings",
@@ -267,7 +280,15 @@ func TestShow(t *testing.T) {
 				`name="csrf_token"`,
 				"data-confirm",
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				// The page's own language is asserted on the <html> element
+				// itself. The rows below carry lang attributes of their own, so a
+				// page-wide search for the tag is satisfied by a thread's title or
+				// its badge whatever the document declares.
+				//
+				// [Ja] ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
+				// lang 属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
+				// いてもスレッドのタイトルかそのバッジで満たされてしまう。
+				`<html lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -366,7 +387,7 @@ func TestShow_EmptyInstance(t *testing.T) {
 
 	handler := newHandlerForDB(testutil.SetupDB(t))
 	req := httptest.NewRequest(http.MethodGet, "/home", nil)
-	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
 	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
 	ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
 	req = req.WithContext(ctx)
@@ -467,7 +488,7 @@ func TestShow_MarksOnlyTheCurrentPage(t *testing.T) {
 	handler := newHandler(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/home", nil)
-	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
 	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
 	ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
 	req = req.WithContext(ctx)
@@ -482,5 +503,80 @@ func TestShow_MarksOnlyTheCurrentPage(t *testing.T) {
 	}
 	if boardLink := testutil.OpeningTag(t, body, `href="/b/jazz"`); strings.Contains(boardLink, "aria-current") {
 		t.Errorf("掲示板のリンクに aria-current が付いている: %s", boardLink)
+	}
+}
+
+// TestShow_ThreadLanguage verifies that each row of a board's section says which
+// language its thread is written in: a badge carrying the language's own name,
+// and the title declared as that language. Home crosses every board, so it is
+// where the languages of the whole community meet, and without this a visitor
+// cannot tell which of the listed conversations they can read.
+//
+// The row for a thread whose language resolves to no display language is checked
+// for the opposite: the badge falls back to the translated word, and the title
+// declares nothing rather than an empty or invented tag.
+//
+// [Ja] TestShow_ThreadLanguage は、掲示板の区画の各行が自身のスレッドの言語を述べる
+// ことを検証します。その言語自身の名前を載せたバッジと、その言語として宣言された
+// タイトルです。ホームはすべての掲示板を横断するため、コミュニティ全体の言語が出会う
+// 場所であり、これが無いと訪問者は並んだ会話のうちどれを読めるのかを見分けられません。
+//
+// どの表示言語にも解決しない言語のスレッドの行では、その逆を確かめます。バッジは訳語へ
+// 退き、タイトルは空のタグやでっち上げたタグではなく、何も宣言しません。
+func TestShow_ThreadLanguage(t *testing.T) {
+	t.Parallel()
+
+	handler := newHandler(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/home", nil)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
+	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
+	ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
+	handler.Show(rec, req.WithContext(ctx))
+
+	body := rec.Body.String()
+
+	// The title's own element carries the declaration, so the tag covers the
+	// title and nothing else on the row.
+	//
+	// [Ja] 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
+	// ものではない。
+	link := testutil.OpeningTag(t, body, ">Records I picked up<")
+	if !strings.Contains(link, `lang="en"`) {
+		t.Errorf("英語のスレッドのタイトル = %s, want lang=\"en\"", link)
+	}
+
+	row := testutil.Element(t, body, ">Records I picked up<", "</p>")
+	for _, want := range []string{`<span class="sr-only">主言語:</span>`, `<span lang="en">English</span>`} {
+		if !strings.Contains(row, want) {
+			t.Errorf("英語のスレッドの行 = %s, want %q", row, want)
+		}
+	}
+
+	// Every row is badged, not only the ones in another language, so that a
+	// missing badge never has to be read as "this one is in my language".
+	//
+	// [Ja] バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
+	// 「これは自分の言語だ」と読む必要が生じないようにするため。
+	if !strings.Contains(body, `<span lang="ja">日本語</span>`) {
+		t.Error("日本語のスレッドにバッジが無い")
+	}
+
+	// The thread written in a language the application has no locale for is the
+	// one row that declares none. There is no tag to declare, and an invented one
+	// would have a screen reader pronounce the title by the rules of a language
+	// it is not written in, so the badge carries the translated word instead.
+	//
+	// [Ja] アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
+	// 唯一の行である。宣言するタグが無く、でっち上げたタグは、そのタイトルが書かれて
+	// いない言語の規則でスクリーンリーダーに発音させることになるため、バッジは代わりに
+	// 訳語を載せる。
+	otherTitle := testutil.OpeningTag(t, body, ">Mes derniers disques<")
+	if strings.Contains(otherTitle, "lang=") {
+		t.Errorf("other のスレッドのタイトル = %s, want lang 属性なし", otherTitle)
+	}
+	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</p>")
+	if !strings.Contains(otherRow, "その他") {
+		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
 	}
 }

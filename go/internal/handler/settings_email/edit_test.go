@@ -35,13 +35,13 @@ func TestEdit(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		locale        string
+		locale        model.Locale
 		wantHeading   string
 		wantSubmit    string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Change email address", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Change email address", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -77,7 +77,7 @@ func TestEdit(t *testing.T) {
 				`aria-label="` + tt.wantHeaderNav + `"`,
 				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {

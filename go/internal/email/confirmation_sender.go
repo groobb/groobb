@@ -6,6 +6,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/emails/email_confirmation"
 )
 
@@ -31,13 +32,15 @@ func NewConfirmationSender(sender Sender) *ConfirmationSender {
 }
 
 // Send renders the confirmation mail for the given locale and sends it to. The
-// locale drives both the i18n subject and the body templates; an unknown locale
-// falls back to English, matching the i18n default.
+// locale drives both the i18n subject and the body templates. model.Locale only
+// holds display languages, so the default branch is English, the one locale
+// besides Japanese, rather than a fallback for an unknown value.
 //
 // [Ja] Send は指定ロケールで確認メールを描画し to へ送信します。ロケールは i18n の
-// 件名と本文テンプレートの双方を切り替えます。未知のロケールは i18n の既定に合わせて
-// 英語へフォールバックします。
-func (s *ConfirmationSender) Send(ctx context.Context, to, code, locale string) error {
+// 件名と本文テンプレートの双方を切り替えます。model.Locale は表示言語しか持たないため、
+// default 節は未知の値へのフォールバックではなく、日本語以外の唯一のロケールである英語を
+// 表します。
+func (s *ConfirmationSender) Send(ctx context.Context, to, code string, locale model.Locale) error {
 	ctx = i18n.SetLocale(ctx, locale)
 	subject := i18n.T(ctx, "email_confirmation_subject")
 
@@ -45,7 +48,7 @@ func (s *ConfirmationSender) Send(ctx context.Context, to, code, locale string) 
 
 	var htmlBody, textBody templ.Component
 	switch locale {
-	case "ja":
+	case model.LocaleJa:
 		htmlBody = email_confirmation.JaHTML(data)
 		textBody = email_confirmation.JaText(data)
 	default:

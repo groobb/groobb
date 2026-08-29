@@ -68,7 +68,7 @@ func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
 //
 // [Ja] getAccountNew は GET /account/new リクエストを組み立て、confirmationID が空で
 // なければ受け渡し Cookie を付け、context にロケールを設定する。
-func getAccountNew(confirmationID, locale string) *http.Request {
+func getAccountNew(confirmationID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/account/new", nil)
 	if confirmationID != "" {
 		req.AddCookie(&http.Cookie{Name: session.EmailConfirmationCookieName, Value: confirmationID})
@@ -94,12 +94,12 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 		wantLabel   string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "アカウントを作成", wantLabel: "アットネーム"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Create your account", wantLabel: "Atname"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "アカウントを作成", wantLabel: "アットネーム"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Create your account", wantLabel: "Atname"},
 	}
 
 	for _, tt := range tests {
@@ -153,7 +153,7 @@ func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler := newAccountHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.New(rec, getAccountNew("", i18n.LangJa))
+	handler.New(rec, getAccountNew("", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)

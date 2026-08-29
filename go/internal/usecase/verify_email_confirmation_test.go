@@ -68,7 +68,7 @@ func TestVerifyEmailConfirmationUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
 
@@ -109,7 +109,7 @@ func TestVerifyEmailConfirmationUsecase_Execute_WrongCode(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
 
@@ -156,7 +156,7 @@ func TestVerifyEmailConfirmationUsecase_Execute_WrongCodeReachesLimit(t *testing
 	db := testutil.SetupDB(t)
 
 	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
 
@@ -200,7 +200,7 @@ func TestVerifyEmailConfirmationUsecase_Execute_AttemptsExhausted(t *testing.T) 
 
 	db := testutil.SetupDB(t)
 	uc, repo := newVerifyEmailConfirmationUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	confirmation := seedActiveConfirmation(t, ctx, repo, "123456")
 

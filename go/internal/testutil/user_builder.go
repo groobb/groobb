@@ -21,7 +21,7 @@ type UserBuilder struct {
 	db        *database.DB
 	email     string
 	atname    string
-	locale    string
+	locale    model.Locale
 	timeZone  string
 	deletedAt *time.Time
 }
@@ -43,7 +43,7 @@ func NewUserBuilder(t *testing.T, db *database.DB) *UserBuilder {
 		db:       db,
 		email:    fmt.Sprintf("test-%d@example.com", sequence),
 		atname:   fmt.Sprintf("u%d", sequence),
-		locale:   "ja",
+		locale:   model.DefaultLocale,
 		timeZone: "Asia/Tokyo",
 	}
 }
@@ -95,7 +95,7 @@ func (b *UserBuilder) WithAtname(atname string) *UserBuilder {
 // WithLocale sets the locale.
 //
 // [Ja] WithLocale は locale を設定します。
-func (b *UserBuilder) WithLocale(locale string) *UserBuilder {
+func (b *UserBuilder) WithLocale(locale model.Locale) *UserBuilder {
 	b.locale = locale
 	return b
 }
@@ -133,7 +133,7 @@ func (b *UserBuilder) Build() model.UserID {
 	var id int64
 	err := b.db.Writer.QueryRowContext(context.Background(),
 		`INSERT INTO users (email, atname, locale, time_zone, deleted_at) VALUES (?, ?, ?, ?, ?) RETURNING id`,
-		b.email, b.atname, b.locale, b.timeZone, sqlitetime.Ptr(b.deletedAt),
+		b.email, b.atname, string(b.locale), b.timeZone, sqlitetime.Ptr(b.deletedAt),
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーの作成に失敗: %v", err)

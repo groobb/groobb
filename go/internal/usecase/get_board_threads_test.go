@@ -75,7 +75,7 @@ func (r *boardThreadRepos) createBoard(t *testing.T, ctx context.Context, slug s
 func (r *boardThreadRepos) createThread(t *testing.T, ctx context.Context, boardID model.BoardID, title string, postsCount int, lastPostedAt time.Time) *model.Thread {
 	t.Helper()
 
-	thread, err := r.thread.Create(ctx, repository.CreateThreadInput{BoardID: boardID, Title: title})
+	thread, err := r.thread.Create(ctx, repository.CreateThreadInput{BoardID: boardID, Title: title, Language: model.LocaleJa.ThreadLanguage()})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

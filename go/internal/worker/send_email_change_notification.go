@@ -40,6 +40,6 @@ func (w *SendEmailChangeNotificationWorker) Work(ctx context.Context, job *river
 	return w.uc.Execute(ctx, usecase.SendEmailChangeNotificationInput{
 		Email:    job.Args.Email,
 		NewEmail: job.Args.NewEmail,
-		Locale:   job.Args.Locale,
+		Locale:   parseLocale(ctx, job.Args.Locale),
 	})
 }

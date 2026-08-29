@@ -134,6 +134,18 @@ const postInterval = 11 * time.Minute
 // 見どころが言葉の働きそのものにあるスレッド (どの投稿がどれに答えるか、URL を含む本文、
 // マークアップに見える本文) は、取り替えのきく文を並べても組み立てられません。
 type scriptedThread struct {
+	// language is the thread's primary language and the language of its title.
+	// Individual posts may use another language, so it does not describe every
+	// body below. A script carries it because the wording is what the language is:
+	// a script rewritten into another language and left declaring the old one
+	// would put the wrong tag on the title, which is what declaring one is for.
+	//
+	// [Ja] language はスレッドの主言語であり、題名の言語です。個々の投稿は別の言語を
+	// 使えるため、下の本文すべての言語を表すものではありません。台本がこれを持つのは、
+	// 文面そのものが言語だからです。別の言語へ書き直した台本が元の言語を宣言したままなら、
+	// 題名には誤ったタグが付きます。宣言はそれを避けるために行うものです。
+	language model.ThreadLanguage
+
 	title string
 	posts []scriptedPost
 }
@@ -161,7 +173,8 @@ type scriptedPost struct {
 // 本文を描画するときに決まるものであり、本文が何を持てるのかを見せるスレッドがその
 // 置き場所になります。
 var referenceScript = scriptedThread{
-	title: "レス参照の見え方を確かめるスレ",
+	language: model.LocaleJa.ThreadLanguage(),
+	title:    "レス参照の見え方を確かめるスレ",
 	posts: []scriptedPost{
 		{role: roleStarter, body: "1 つ目の投稿です。ここに返信が集まると、この投稿の下に逆参照が並びます。"},
 		{role: roleReplier, body: ">>1 まずは 1 つ目の返信です。"},
@@ -185,12 +198,82 @@ var referenceScript = scriptedThread{
 // 答えた返信はその場に残ります。退会が外すのは書かれたものから名前であって、書かれたもの
 // そのものではありません。
 var withdrawnScript = scriptedThread{
-	title: "退会した人の投稿が残っているスレ",
+	language: model.LocaleJa.ThreadLanguage(),
+	title:    "退会した人の投稿が残っているスレ",
 	posts: []scriptedPost{
 		{role: roleWithdrawn, body: "このスレッドを立てたアカウントは、このあと退会します。"},
 		{role: roleReplier, body: ">>1 立てた人がいなくなっても、スレッドと投稿はここに残ります。"},
 		{role: roleWithdrawn, body: ">>2 返信の宛先も残るので、会話としてはそのまま読めるはずです。"},
 		{role: roleStarter, body: ">>1 >>3 作者のいない投稿がどう見えるかは、この 2 つで確かめられます。"},
+	},
+}
+
+// englishScript is the thread a board list is read with more than one language
+// in it. An instance serves one community (ADR 0006), so the lounge does not
+// answer two languages with two instances: the two sit side by side in one
+// board, which is what a board ordinarily looks like rather than an exception
+// to be pictured.
+//
+// It is written into every profile, the first days included. A community that
+// takes both languages does so from the day it opens, and a first-day screen
+// checked against a list of Japanese alone would be checked against a state the
+// lounge is never in (ADR 0010).
+//
+// One of its replies is Japanese, because a reply is not held to the language
+// the thread was opened in. Were every post to agree with the thread's own
+// language, the mixed thread would have nowhere to be looked at, and that is the
+// thread a post body has to be read in to see why it declares no language.
+//
+// [Ja] englishScript は、複数の言語が並んだ状態でスレッド一覧を読むためのスレッドです。
+// 1 インスタンスは 1 つのコミュニティを運営する (ADR 0006) ため、ラウンジは 2 つの言語に
+// 2 つのインスタンスで応えることをしません。両者は 1 つの掲示板に隣り合って並び、それが
+// 掲示板の通常の見え方であって、例外として思い浮かべるものではありません。
+//
+// どのプロファイルにも置きます。立ち上げ直後も同様です。両方の言語を受け付けるコミュニティは
+// 開いた日からそうしているため、日本語だけが並んだ一覧に照らして確かめた初日の画面は、
+// ラウンジが一度も置かれない状態に照らしたものになります (ADR 0010)。
+//
+// 返信のうち 1 件は日本語です。返信はスレッドを立てたときの言語に縛られないためです。
+// どの投稿もスレッド自身の言語と一致するのなら、言語が混ざったスレッドを眺める場所が
+// どこにも無くなります。投稿の本文が言語を宣言しない理由は、そのスレッドでしか読み取れません。
+var englishScript = scriptedThread{
+	language: model.LocaleEn.ThreadLanguage(),
+	title:    "Reading this board with a dictionary open",
+	posts: []scriptedPost{
+		{role: roleStarter, body: "Hello from the English side of the board. I can follow most of the Japanese threads, only slowly."},
+		{role: roleReplier, body: ">>1 Welcome. Threads in either language belong here, so write in whichever one you think in."},
+		{role: roleStarter, body: ">>2 Good to know. I will keep opening threads in English then."},
+		{role: roleReplier, body: "英語のスレッドに日本語で返信しても構いません。読みに来る人はどちらの言語も見ています。"},
+	},
+}
+
+// otherLanguageScript is the thread written in a language the application has no
+// locale for, which is the thread model.ThreadLanguageOther exists for. French
+// is that language here, and nothing about the thread rests on which language it
+// is: what it is looked at for is a thread resolving to no display language, so
+// that the badge falls back to a translated word and the title declares nothing.
+//
+// It is written into the mature community alone. The lounge states that it takes
+// Japanese and English, so a thread in neither is something that turns up as
+// people gather rather than something the first day is certain to hold
+// (ADR 0010).
+//
+// [Ja] otherLanguageScript は、アプリがロケールを持たない言語で書かれたスレッドで、
+// model.ThreadLanguageOther はこうしたスレッドのためにあります。ここではフランス語が
+// その言語ですが、どの言語であるかにスレッドの何も依存しません。眺める対象は、どの表示言語
+// にも解決しないスレッドであることのほうで、そのためバッジは訳語に退き、題名は何も宣言
+// しません。
+//
+// 成熟したコミュニティにだけ置きます。ラウンジが受け付けると表明しているのは日本語と英語で
+// あり、そのどちらでもないスレッドは、人が集まるにつれて現れるものであって、初日に必ず
+// あるものではありません (ADR 0010)。
+var otherLanguageScript = scriptedThread{
+	language: model.ThreadLanguageOther,
+	title:    "Est-ce que quelqu'un lit le français ici ?",
+	posts: []scriptedPost{
+		{role: roleStarter, body: "Bonjour à tous. J'écris en français, une langue que ce forum ne traduit pas."},
+		{role: roleReplier, body: ">>1 Bienvenue. Le sujet restera marqué « autre », faute de traduction française."},
+		{role: roleStarter, body: ">>2 Cela me convient très bien. Je repasserai écrire de temps en temps."},
 	},
 }
 
@@ -249,6 +332,18 @@ var replyBodies = []string{
 	"自分の場合はうまくいかなかったので、条件が違うのかもしれません。",
 }
 
+// generatedThreadLanguage is the language the ordinary threads and the one
+// filled to the limit are written in, which is the language the corpus above is
+// written in. It sits with the corpus so that the words and the language they
+// are declared to be in are changed together: a corpus rewritten while this
+// stayed behind would tag every generated row with the wrong language.
+//
+// [Ja] generatedThreadLanguage は、通常のスレッドと上限まで埋まったスレッドが書かれて
+// いる言語で、上のコーパスが書かれている言語です。コーパスの隣に置くのは、文面と、それが
+// 何語だと宣言されるかを一緒に変えられるようにするためです。コーパスだけを書き直して
+// ここが取り残されれば、生成したどの行にも誤った言語のタグが付きます。
+var generatedThreadLanguage = model.LocaleJa.ThreadLanguage()
+
 // plannedThread is a thread with its posts as they will be written, and
 // plannedPost is one of those posts. A thread is composed in full before any of
 // it is written so that the two steps stay separable: composing is where the
@@ -258,9 +353,10 @@ var replyBodies = []string{
 // 投稿 1 件です。スレッドを 1 つも書き込む前に丸ごと組み立てるのは、2 つの工程を分けて
 // おくためです。文面と乱数は組み立てにあり、id と時刻は書き込みにあります。
 type plannedThread struct {
-	board *model.Board
-	title string
-	posts []plannedPost
+	board    *model.Board
+	language model.ThreadLanguage
+	title    string
+	posts    []plannedPost
 }
 
 type plannedPost struct {
@@ -378,24 +474,25 @@ func (g *contentGenerator) composeThreads(boards []seededBoard) ([]plannedThread
 		}
 	}
 
-	// Everything written out goes in the busy board, so the board is only looked
-	// for once there is something to post in it. A community that has just opened
-	// has neither.
+	// The board is looked for only once there is something to post in it, so a
+	// profile that writes nothing out is not held to offering a board that could
+	// hold it.
 	//
-	// [Ja] 書き下したものはすべて賑わう掲示板に立つため、そこへ投稿するものがあるとき
-	// にだけ掲示板を探します。開いたばかりのコミュニティは、そのどちらも持ちません。
+	// [Ja] 掲示板を探すのは、そこへ投稿するものがあるときだけです。何も書き下さない
+	// プロファイルが、それを置ける掲示板を備えていることを求められないようにするため
+	// です。
 	hasFullThread := g.plan.fullThreadPosts > 0
 	if len(g.scripts) == 0 && !hasFullThread {
 		return threads, nil
 	}
 
-	busy, err := busyBoard(boards)
+	board, err := scriptedBoard(boards)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, script := range g.scripts {
-		thread, err := g.composeScriptedThread(busy, script)
+		thread, err := g.composeScriptedThread(board, script)
 		if err != nil {
 			return nil, err
 		}
@@ -403,7 +500,7 @@ func (g *contentGenerator) composeThreads(boards []seededBoard) ([]plannedThread
 	}
 
 	if hasFullThread {
-		threads = append(threads, g.composeFullThread(busy, speakers))
+		threads = append(threads, g.composeFullThread(board, speakers))
 	}
 
 	return threads, nil
@@ -431,7 +528,7 @@ func (g *contentGenerator) composeOrdinaryThread(board *model.Board, index int, 
 		})
 	}
 
-	return plannedThread{board: board, title: title, posts: posts}
+	return plannedThread{board: board, language: generatedThreadLanguage, title: title, posts: posts}
 }
 
 // composeFullThread writes the thread that has reached the post limit. Its
@@ -452,7 +549,7 @@ func (g *contentGenerator) composeFullThread(board *model.Board, speakers [2]*mo
 		posts = append(posts, plannedPost{author: speakers[i%len(speakers)], body: body})
 	}
 
-	return plannedThread{board: board, title: fullThreadTitle, posts: posts}
+	return plannedThread{board: board, language: generatedThreadLanguage, title: fullThreadTitle, posts: posts}
 }
 
 // composeScriptedThread turns a script into a thread, resolving the account each
@@ -471,7 +568,7 @@ func (g *contentGenerator) composeScriptedThread(board *model.Board, script scri
 		posts = append(posts, plannedPost{author: author, body: scripted.body})
 	}
 
-	return plannedThread{board: board, title: script.title, posts: posts}, nil
+	return plannedThread{board: board, language: script.language, title: script.title, posts: posts}, nil
 }
 
 // composeBody writes the body of the post that will carry the given reply
@@ -511,17 +608,36 @@ func (g *contentGenerator) account(role seedRole) (*model.User, error) {
 	return user, nil
 }
 
-// busyBoard returns the board the threads written to be opened are posted in.
+// scriptedBoard returns the board the threads written to be opened are posted
+// in: the busy one, or the only board there is where the community has no busy
+// one. A community that has just opened offers a single board and still holds
+// threads written out, so the busy board alone cannot be the rule.
 //
-// [Ja] busyBoard は、開いて眺めるために書き下したスレッドが立つ掲示板を返します。
-func busyBoard(boards []seededBoard) (*model.Board, error) {
+// Several boards with no busy one is an error rather than a choice made here.
+// Which of them the written-out threads belong in cannot be decided from the
+// boards themselves, and a developer looking for one of those threads would
+// have to open every board to find where it went.
+//
+// [Ja] scriptedBoard は、開いて眺めるために書き下したスレッドが立つ掲示板を返します。
+// 賑わう掲示板であり、賑わう掲示板を持たないコミュニティでは、ただ 1 つある掲示板です。
+// 立ち上げ直後のコミュニティは掲示板を 1 つだけ提供し、それでも書き下したスレッドを
+// 持つため、賑わう掲示板だけを規則にはできません。
+//
+// 掲示板が複数あって賑わうものが無い状態は、ここでの選択ではなくエラーにします。
+// そのどれに書き下したスレッドが属するのかは掲示板からは決められず、そのスレッドを
+// 探す開発者は、どこへ入ったのかを見つけるためにすべての掲示板を開くことになります。
+func scriptedBoard(boards []seededBoard) (*model.Board, error) {
 	for _, board := range boards {
 		if board.activity == boardBusy {
 			return board.board, nil
 		}
 	}
 
-	return nil, fmt.Errorf("no board was created to hold the threads that are written out")
+	if len(boards) == 1 {
+		return boards[0].board, nil
+	}
+
+	return nil, fmt.Errorf("no board was created to hold the threads that are written out: none of the %d boards is the busy one", len(boards))
 }
 
 // writeThread writes a composed thread: the thread, its posts in reply-number
@@ -533,9 +649,10 @@ func busyBoard(boards []seededBoard) (*model.Board, error) {
 // 非正規化された姿です。
 func (g *contentGenerator) writeThread(ctx context.Context, tx *sql.Tx, planned plannedThread, lastPostedAt time.Time) error {
 	thread, err := g.threadRepo.Create(ctx, repository.CreateThreadInput{
-		BoardID: planned.board.ID,
-		UserID:  &planned.posts[0].author.ID,
-		Title:   planned.title,
+		BoardID:  planned.board.ID,
+		UserID:   &planned.posts[0].author.ID,
+		Title:    planned.title,
+		Language: planned.language,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create the thread %q: %w", planned.title, err)

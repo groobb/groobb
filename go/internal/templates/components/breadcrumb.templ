@@ -66,9 +66,20 @@ templ Breadcrumb(data BreadcrumbData) {
 					}
 					<li>
 						if item.IsCurrent() {
-							<span aria-current="page">{ item.Name }</span>
+							<span
+								aria-current="page"
+								if item.Lang != "" {
+									lang={ item.Lang }
+								}
+							>{ item.Name }</span>
 						} else {
-							<a href={ item.Path.SafeURL() } class="inline-flex min-h-6 min-w-6 items-center hover:underline">
+							<a
+								href={ item.Path.SafeURL() }
+								class="inline-flex min-h-6 min-w-6 items-center hover:underline"
+								if item.Lang != "" {
+									lang={ item.Lang }
+								}
+							>
 								{ item.Name }
 							</a>
 						}

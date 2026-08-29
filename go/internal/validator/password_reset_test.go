@@ -57,7 +57,7 @@ func TestPasswordResetCreateValidator_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 			err := v.Validate(ctx, validator.PasswordResetCreateValidatorInput{Email: tt.email})
 
 			if !tt.wantErr {

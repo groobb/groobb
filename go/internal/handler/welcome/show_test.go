@@ -31,14 +31,14 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		locale         string
+		locale         model.Locale
 		wantHeading    string
 		wantSignUpLink string
 		wantSignInLink string
 		noHeaderNav    string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン", noHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in", noHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン", noHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in", noHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -66,7 +66,7 @@ func TestShow(t *testing.T) {
 				tt.wantSignInLink,
 				`href="/sign_up"`,
 				`href="/sign_in"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 				"<footer",
 				"Groobb",
 				"/static/css/style.css?v=",
@@ -101,7 +101,7 @@ func TestShow_SignedInRedirectsToHome(t *testing.T) {
 	handler := welcome.NewHandler(&config.Config{Env: "dev"})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	ctx := i18n.SetLocale(req.Context(), i18n.LangJa)
+	ctx := i18n.SetLocale(req.Context(), model.LocaleJa)
 	ctx = middleware.SetUserToContext(ctx, &model.User{Atname: "alice"})
 	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()

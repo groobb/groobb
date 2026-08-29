@@ -4,16 +4,19 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestPasswordResetSender_Send checks that Send picks the right localized subject
-// and body templates and forwards them to the base Sender, including the fallback
-// to English for an unknown locale, and that the reset link is present in both
-// the HTML and text bodies.
+// and body templates and forwards them to the base Sender, including the English
+// ones its default branch selects for a locale that is not Japanese, and that the
+// reset link is present in both the HTML and text bodies.
 //
 // [Ja] TestPasswordResetSender_Send は、Send が正しいローカライズ済みの件名と本文
-// テンプレートを選び基盤 Sender に渡すこと (未知ロケールの英語フォールバックを含む)、
-// そしてリセットリンクが HTML とテキスト両方の本文に含まれることを確認する。
+// テンプレートを選び基盤 Sender に渡すこと (日本語以外のロケールに対して default 節が
+// 選ぶ英語のものを含む)、そしてリセットリンクが HTML とテキスト両方の本文に含まれることを
+// 確認する。
 func TestPasswordResetSender_Send(t *testing.T) {
 	t.Parallel()
 
@@ -24,7 +27,7 @@ func TestPasswordResetSender_Send(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantSubject     string
 		wantHTMLSnippet string
 		wantTextSnippet string
@@ -46,8 +49,16 @@ func TestPasswordResetSender_Send(t *testing.T) {
 			wantTextSnippet: "reset the password",
 			wantValidity:    "1 hour",
 		},
+		// A locale outside the display languages reaches Send only through a bare
+		// conversion, which model.ParseLocale exists to prevent, so no caller produces
+		// one. The case is kept as the safety net: the mail stays coherent English
+		// rather than splitting its subject and bodies across languages.
+		//
+		// [Ja] 表示言語の外のロケールは素の型変換でしか Send に届かず、それを防ぐために
+		// model.ParseLocale がある以上、呼び出し元がこの値を作ることはない。安全網として
+		// 残しているケースで、件名と本文が別の言語に割れることなく英語で一貫する。
 		{
-			name:            "unknown locale falls back to English",
+			name:            "a locale outside the display languages still yields an English mail",
 			locale:          "fr",
 			wantSubject:     "[Groobb] Reset your password",
 			wantHTMLSnippet: "reset the password",

@@ -71,7 +71,7 @@ func seedWithdrawalUser(t *testing.T, db *database.DB) (*model.User, string) {
 	user, err := userRepo.Create(ctx, repository.CreateUserInput{
 		Email:    "wd-h@example.com",
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -114,7 +114,7 @@ func seedWithdrawalUser(t *testing.T, db *database.DB) (*model.User, string) {
 // これは本番のメソッドオーバーライドミドルウェアの挙動を再現したものです。Go の ParseForm は
 // POST/PUT/PATCH のときだけボディを読むため、最初から DELETE として組み立てたリクエストでは
 // ハンドラーの FormValue が空になってしまいます。
-func deleteWithdrawal(user *model.User, currentPassword, token, locale string) *http.Request {
+func deleteWithdrawal(user *model.User, currentPassword, token string, locale model.Locale) *http.Request {
 	form := url.Values{"current_password": {currentPassword}}
 	req := httptest.NewRequest(http.MethodPost, "/settings/withdrawal", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -183,7 +183,7 @@ func TestDelete_Success(t *testing.T) {
 	user, token := seedWithdrawalUser(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Delete(rec, deleteWithdrawal(user, "password123", token, i18n.LangJa))
+	handler.Delete(rec, deleteWithdrawal(user, "password123", token, model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -206,7 +206,7 @@ func TestDelete_Success(t *testing.T) {
 	if flash.Type != session.FlashSuccess {
 		t.Errorf("flash type = %q, want %q", flash.Type, session.FlashSuccess)
 	}
-	if want := i18n.T(i18n.SetLocale(context.Background(), i18n.LangJa), "flash_account_withdrawn"); flash.Message != want {
+	if want := i18n.T(i18n.SetLocale(context.Background(), model.LocaleJa), "flash_account_withdrawn"); flash.Message != want {
 		t.Errorf("flash message = %q, want %q", flash.Message, want)
 	}
 
@@ -249,7 +249,7 @@ func TestDelete_ValidationError(t *testing.T) {
 	user, _ := seedWithdrawalUser(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Delete(rec, deleteWithdrawal(user, "wrongpassword", "wd-h-token-unused", i18n.LangJa))
+	handler.Delete(rec, deleteWithdrawal(user, "wrongpassword", "wd-h-token-unused", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)

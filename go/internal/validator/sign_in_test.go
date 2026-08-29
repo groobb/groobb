@@ -29,7 +29,7 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	v := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	// Seed an account with a password to sign in against.
 	//

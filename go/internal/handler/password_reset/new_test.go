@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
@@ -17,7 +18,7 @@ import (
 //
 // [Ja] getPasswordResetNew は GET /password_reset/new リクエストを組み立て、context に
 // ロケールを設定する。
-func getPasswordResetNew(locale string) *http.Request {
+func getPasswordResetNew(locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/password_reset/new", nil)
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
@@ -35,7 +36,7 @@ func TestNew(t *testing.T) {
 	handler, _, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.New(rec, getPasswordResetNew(i18n.LangJa))
+	handler.New(rec, getPasswordResetNew(model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -69,7 +70,7 @@ func TestNew_English(t *testing.T) {
 	handler, _, _ := newPasswordResetHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.New(rec, getPasswordResetNew(i18n.LangEn))
+	handler.New(rec, getPasswordResetNew(model.LocaleEn))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -102,7 +103,7 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 	handler := password_reset.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil)
 
 	rec := httptest.NewRecorder()
-	handler.New(rec, getPasswordResetNew(i18n.LangJa))
+	handler.New(rec, getPasswordResetNew(model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)

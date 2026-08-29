@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 func TestT(t *testing.T) {
@@ -15,31 +16,31 @@ func TestT(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		locale    string
+		locale    model.Locale
 		messageID string
 		want      string
 	}{
 		{
 			name:      "default title in Japanese",
-			locale:    i18n.LangJa,
+			locale:    model.LocaleJa,
 			messageID: "default_title",
 			want:      "Groobb",
 		},
 		{
 			name:      "default title in English",
-			locale:    i18n.LangEn,
+			locale:    model.LocaleEn,
 			messageID: "default_title",
 			want:      "Groobb",
 		},
 		{
 			name:      "default description in Japanese",
-			locale:    i18n.LangJa,
+			locale:    model.LocaleJa,
 			messageID: "default_description",
 			want:      "Groobb は掲示板サービスです。",
 		},
 		{
 			name:      "default description in English",
-			locale:    i18n.LangEn,
+			locale:    model.LocaleEn,
 			messageID: "default_description",
 			want:      "Groobb is a bulletin board service.",
 		},
@@ -66,7 +67,7 @@ func TestT(t *testing.T) {
 func TestTMissingMessage(t *testing.T) {
 	t.Parallel()
 
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	const messageID = "nonexistent_message_id"
 	if got := i18n.T(ctx, messageID); got != messageID {
@@ -89,16 +90,16 @@ func TestTWithTemplateData(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		locale string
+		locale model.Locale
 		count  any
 		want   string
 	}{
-		{name: "English singular", locale: i18n.LangEn, count: 1, want: "1 post"},
-		{name: "English plural", locale: i18n.LangEn, count: 5, want: "5 posts"},
-		{name: "English plural with int32 count", locale: i18n.LangEn, count: int32(3), want: "3 posts"},
-		{name: "English singular with int64 count", locale: i18n.LangEn, count: int64(1), want: "1 post"},
-		{name: "English plural with uint count", locale: i18n.LangEn, count: uint(2), want: "2 posts"},
-		{name: "English plural with uint64 count", locale: i18n.LangEn, count: uint64(7), want: "7 posts"},
+		{name: "English singular", locale: model.LocaleEn, count: 1, want: "1 post"},
+		{name: "English plural", locale: model.LocaleEn, count: 5, want: "5 posts"},
+		{name: "English plural with int32 count", locale: model.LocaleEn, count: int32(3), want: "3 posts"},
+		{name: "English singular with int64 count", locale: model.LocaleEn, count: int64(1), want: "1 post"},
+		{name: "English plural with uint count", locale: model.LocaleEn, count: uint(2), want: "2 posts"},
+		{name: "English plural with uint64 count", locale: model.LocaleEn, count: uint64(7), want: "7 posts"},
 		// A uint64 above math.MaxInt is clamped to math.MaxInt by clampUint64ToInt,
 		// so plural selection still resolves to "other" while the rendered Count
 		// keeps the original value.
@@ -106,8 +107,8 @@ func TestTWithTemplateData(t *testing.T) {
 		// [Ja] math.MaxInt を超える uint64 は clampUint64ToInt によって math.MaxInt
 		// にクランプされるため、複数形選択は "other" 形に解決され、描画される Count は
 		// 元の値のまま残る。
-		{name: "English clamps oversized uint64 count to the plural form", locale: i18n.LangEn, count: uint64(math.MaxUint64), want: "18446744073709551615 posts"},
-		{name: "Japanese has no plural", locale: i18n.LangJa, count: 5, want: "5 件の投稿"},
+		{name: "English clamps oversized uint64 count to the plural form", locale: model.LocaleEn, count: uint64(math.MaxUint64), want: "18446744073709551615 posts"},
+		{name: "Japanese has no plural", locale: model.LocaleJa, count: 5, want: "5 件の投稿"},
 	}
 
 	for _, tt := range tests {
@@ -130,22 +131,22 @@ func TestGetLocale(t *testing.T) {
 	tests := []struct {
 		name  string
 		setup func(ctx context.Context) context.Context
-		want  string
+		want  model.Locale
 	}{
 		{
 			name:  "Japanese is set",
-			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, i18n.LangJa) },
-			want:  i18n.LangJa,
+			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleJa) },
+			want:  model.LocaleJa,
 		},
 		{
 			name:  "English is set",
-			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, i18n.LangEn) },
-			want:  i18n.LangEn,
+			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleEn) },
+			want:  model.LocaleEn,
 		},
 		{
 			name:  "nothing is set falls back to the default",
 			setup: func(ctx context.Context) context.Context { return ctx },
-			want:  i18n.DefaultLang,
+			want:  model.DefaultLocale,
 		},
 	}
 
@@ -167,16 +168,16 @@ func TestDetectLanguage(t *testing.T) {
 	tests := []struct {
 		name           string
 		acceptLanguage string
-		want           string
+		want           model.Locale
 	}{
-		{name: "Japanese only", acceptLanguage: "ja", want: i18n.LangJa},
-		{name: "Japanese preferred", acceptLanguage: "ja,en;q=0.9", want: i18n.LangJa},
-		{name: "English preferred by quality value", acceptLanguage: "en,ja;q=0.5", want: i18n.LangEn},
-		{name: "English only", acceptLanguage: "en", want: i18n.LangEn},
-		{name: "English with region", acceptLanguage: "en-US,en;q=0.9", want: i18n.LangEn},
-		{name: "Japanese with region", acceptLanguage: "ja-JP", want: i18n.LangJa},
-		{name: "unsupported language", acceptLanguage: "fr,de", want: i18n.DefaultLang},
-		{name: "empty header", acceptLanguage: "", want: i18n.DefaultLang},
+		{name: "Japanese only", acceptLanguage: "ja", want: model.LocaleJa},
+		{name: "Japanese preferred", acceptLanguage: "ja,en;q=0.9", want: model.LocaleJa},
+		{name: "English preferred by quality value", acceptLanguage: "en,ja;q=0.5", want: model.LocaleEn},
+		{name: "English only", acceptLanguage: "en", want: model.LocaleEn},
+		{name: "English with region", acceptLanguage: "en-US,en;q=0.9", want: model.LocaleEn},
+		{name: "Japanese with region", acceptLanguage: "ja-JP", want: model.LocaleJa},
+		{name: "unsupported language", acceptLanguage: "fr,de", want: model.DefaultLocale},
+		{name: "empty header", acceptLanguage: "", want: model.DefaultLocale},
 	}
 
 	for _, tt := range tests {
@@ -206,25 +207,25 @@ func TestMiddleware(t *testing.T) {
 	tests := []struct {
 		name           string
 		acceptLanguage string
-		wantLocale     string
+		wantLocale     model.Locale
 		wantDesc       string
 	}{
 		{
 			name:           "Japanese header",
 			acceptLanguage: "ja",
-			wantLocale:     i18n.LangJa,
+			wantLocale:     model.LocaleJa,
 			wantDesc:       "Groobb は掲示板サービスです。",
 		},
 		{
 			name:           "English header",
 			acceptLanguage: "en",
-			wantLocale:     i18n.LangEn,
+			wantLocale:     model.LocaleEn,
 			wantDesc:       "Groobb is a bulletin board service.",
 		},
 		{
 			name:           "no header falls back to the default",
 			acceptLanguage: "",
-			wantLocale:     i18n.DefaultLang,
+			wantLocale:     model.DefaultLocale,
 			wantDesc:       "Groobb は掲示板サービスです。",
 		},
 	}
@@ -233,7 +234,8 @@ func TestMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotLocale, gotDesc string
+			var gotLocale model.Locale
+			var gotDesc string
 			next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				gotLocale = i18n.GetLocale(r.Context())
 				gotDesc = i18n.T(r.Context(), "default_description")

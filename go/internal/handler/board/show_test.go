@@ -41,17 +41,27 @@ const appURL = "https://groobb.example.com"
 const communityName = "ジャズ喫茶"
 
 // newHandler builds the board Handler over a database holding one community
-// whose "music" category lists two boards: "jazz", which holds two threads
-// posted in the reverse of the order the listing puts them in, and "quiet",
+// whose "music" category lists two boards: "jazz", which holds four threads
+// created in the reverse of the order the listing puts them in, and "quiet",
 // which holds none. Between them the two cover what the page renders — a listing
 // ordered by when each thread was last posted in, and the state where nobody has
 // started one.
 //
+// Three languages are represented, because a board is not divided by language: a
+// listing holding only threads in the page's own language would not show whether
+// a row says which language it is in. The one written in a language the
+// application has no locale for is what the row that declares no language at all
+// is checked on.
+//
 // [Ja] newHandler は、1 つのコミュニティを持つデータベース上に board Handler を構築
 // します。その "music" カテゴリーは 2 つの掲示板を並べます。"jazz" は一覧が並べるのとは
-// 逆の順序で投稿された 2 つのスレッドを持ち、"quiet" は 1 つも持ちません。この 2 つで、
+// 逆の順序で作られた 4 つのスレッドを持ち、"quiet" は 1 つも持ちません。この 2 つで、
 // このページが描画するもの — 各スレッドが最後に投稿された時刻による並び順と、誰もまだ
 // スレッドを立てていない状態 — を覆えます。
+//
+// 言語は 3 つ現れます。掲示板は言語で分けないためで、ページ自身の言語のスレッドしか
+// 持たない一覧では、行が自身の言語を述べているかどうかを確かめられません。アプリが
+// ロケールを持たない言語で書かれた 1 本は、どの言語も宣言しない行を確かめる先です。
 func newHandler(t *testing.T) *board.Handler {
 	t.Helper()
 
@@ -91,9 +101,9 @@ func newHandler(t *testing.T) *board.Handler {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	createThread := func(title string, postsCount int, lastPostedAt time.Time) {
+	createThread := func(title string, language model.ThreadLanguage, postsCount int, lastPostedAt time.Time) {
 		t.Helper()
-		thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: title})
+		thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: title, Language: language})
 		if err != nil {
 			t.Fatalf("Create() error = %v", err)
 		}
@@ -109,8 +119,10 @@ func newHandler(t *testing.T) *board.Handler {
 			t.Fatalf("UpdateLastPost() error = %v", err)
 		}
 	}
-	createThread("枯葉の名演", 3, time.Now().Add(-48*time.Hour))
-	createThread("最近買ったレコード", 42, time.Now().Add(-30*time.Minute))
+	createThread("枯葉の名演", model.LocaleJa.ThreadLanguage(), 3, time.Now().Add(-48*time.Hour))
+	createThread("Mes derniers disques", model.ThreadLanguageOther, 2, time.Now().Add(-12*time.Hour))
+	createThread("Records I picked up", model.LocaleEn.ThreadLanguage(), 5, time.Now().Add(-6*time.Hour))
+	createThread("最近買ったレコード", model.LocaleJa.ThreadLanguage(), 42, time.Now().Add(-30*time.Minute))
 
 	return newHandlerForDB(db)
 }
@@ -155,7 +167,7 @@ func newHandlerForDatabases(boardDB, navigationDB, threadDB *database.DB) *board
 // リクエストを組み立てます。slug は chi のルート context に、ロケール・現在のパス・
 // 閲覧者はリクエスト context に、i18n・templates・認証の各ミドルウェアがするのと同じ
 // ように直接置きます。user が nil のときは匿名の訪問者です。
-func newRequest(t *testing.T, slug, locale string, user *model.User) *http.Request {
+func newRequest(t *testing.T, slug string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
 	path := templates.BoardPath(slug).String()
@@ -197,7 +209,7 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantPostsCount  string
 		wantLastPosted  string
 		wantRegionLabel string
@@ -205,7 +217,7 @@ func TestShow(t *testing.T) {
 	}{
 		{
 			name:            "Japanese",
-			locale:          i18n.LangJa,
+			locale:          model.LocaleJa,
 			wantPostsCount:  "42 件の投稿",
 			wantLastPosted:  "30 分前",
 			wantRegionLabel: "スレッドの閲覧",
@@ -213,7 +225,7 @@ func TestShow(t *testing.T) {
 		},
 		{
 			name:            "English",
-			locale:          i18n.LangEn,
+			locale:          model.LocaleEn,
 			wantPostsCount:  "42 posts",
 			wantLastPosted:  "30 minutes ago",
 			wantRegionLabel: "Reading a thread",
@@ -247,7 +259,15 @@ func TestShow(t *testing.T) {
 				"ジャズ喫茶",
 				`href="/settings"`,
 				`action="/user_session"`,
-				`lang="` + tt.locale + `"`,
+				// The page's own language is asserted on the <html> element
+				// itself. The rows below carry lang attributes of their own, so a
+				// page-wide search for the tag is satisfied by a thread's title or
+				// its badge whatever the document declares.
+				//
+				// [Ja] ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
+				// lang 属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
+				// いてもスレッドのタイトルかそのバッジで満たされてしまう。
+				`<html lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -334,7 +354,7 @@ func TestShow_Breadcrumb(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	body := rec.Body.String()
 
@@ -374,6 +394,77 @@ func TestShow_Breadcrumb(t *testing.T) {
 	}
 }
 
+// TestShow_ThreadLanguage verifies that each row says which language its thread
+// is written in: a badge carrying the language's own name, and the title
+// declared as that language. A board holds threads in several languages, so
+// without this a visitor scanning the listing cannot tell which of them they can
+// read, and a screen reader pronounces every title by the page's own language.
+//
+// The row for a thread whose language resolves to no display language is checked
+// for the opposite: the badge falls back to the translated word, and the title
+// declares nothing rather than an empty or invented tag.
+//
+// [Ja] TestShow_ThreadLanguage は、各行が自身のスレッドの言語を述べることを検証します。
+// その言語自身の名前を載せたバッジと、その言語として宣言されたタイトルです。掲示板は
+// 複数の言語のスレッドを持つため、これが無いと一覧を見渡す訪問者は自分が読めるものを
+// 見分けられず、スクリーンリーダーはどのタイトルもページ自身の言語で発音します。
+//
+// どの表示言語にも解決しない言語のスレッドの行では、その逆を確かめます。バッジは訳語へ
+// 退き、タイトルは空のタグやでっち上げたタグではなく、何も宣言しません。
+func TestShow_ThreadLanguage(t *testing.T) {
+	t.Parallel()
+
+	handler := newHandler(t)
+	rec := httptest.NewRecorder()
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
+
+	body := rec.Body.String()
+
+	// The title's own element carries the declaration, so the tag covers the
+	// title and nothing else on the row.
+	//
+	// [Ja] 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
+	// ものではない。
+	link := testutil.OpeningTag(t, body, ">Records I picked up<")
+	if !strings.Contains(link, `lang="en"`) {
+		t.Errorf("英語のスレッドのタイトル = %s, want lang=\"en\"", link)
+	}
+
+	row := testutil.Element(t, body, ">Records I picked up<", "</p>")
+	for _, want := range []string{`<span class="sr-only">主言語:</span>`, `<span lang="en">English</span>`} {
+		if !strings.Contains(row, want) {
+			t.Errorf("英語のスレッドの行 = %s, want %q", row, want)
+		}
+	}
+
+	// Every row is badged, not only the ones in another language, so that a
+	// missing badge never has to be read as "this one is in my language".
+	//
+	// [Ja] バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
+	// 「これは自分の言語だ」と読む必要が生じないようにするため。
+	if !strings.Contains(body, `<span lang="ja">日本語</span>`) {
+		t.Error("日本語のスレッドにバッジが無い")
+	}
+
+	// The thread written in a language the application has no locale for is the
+	// one row that declares none. There is no tag to declare, and an invented one
+	// would have a screen reader pronounce the title by the rules of a language
+	// it is not written in, so the badge carries the translated word instead.
+	//
+	// [Ja] アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
+	// 唯一の行である。宣言するタグが無く、でっち上げたタグは、そのタイトルが書かれて
+	// いない言語の規則でスクリーンリーダーに発音させることになるため、バッジは代わりに
+	// 訳語を載せる。
+	otherTitle := testutil.OpeningTag(t, body, ">Mes derniers disques<")
+	if strings.Contains(otherTitle, "lang=") {
+		t.Errorf("other のスレッドのタイトル = %s, want lang 属性なし", otherTitle)
+	}
+	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</p>")
+	if !strings.Contains(otherRow, "その他") {
+		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
+	}
+}
+
 // TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail verifies that the page
 // declares its own address as the one it is to be known by, and publishes the
 // trail it draws as BreadcrumbList structured data naming each linked step
@@ -399,7 +490,7 @@ func TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, nil))
 
 	body := rec.Body.String()
 
@@ -436,7 +527,7 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDB(db).Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	newHandlerForDB(db).Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -476,7 +567,7 @@ func TestShow_RedirectsCaseVariantToCanonicalSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	req := newRequest(t, "JAZZ", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "JAZZ", model.LocaleJa, &model.User{Atname: "alice"})
 	req.URL.RawQuery = "utm_source=newsletter"
 
 	handler.Show(rec, req)
@@ -509,7 +600,7 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, nil))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -547,7 +638,7 @@ func TestShow_EmptyBoard(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "quiet", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "quiet", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -583,7 +674,7 @@ func TestShow_UnknownSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "no-such-board", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "no-such-board", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
@@ -606,7 +697,7 @@ func TestShow_LookupFailure(t *testing.T) {
 	t.Parallel()
 
 	handler := newHandler(t)
-	req := newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"})
 	ctx, cancel := context.WithCancel(req.Context())
 	cancel()
 	rec := httptest.NewRecorder()
@@ -642,7 +733,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(boardDB, navigationDB, boardDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
@@ -675,7 +766,7 @@ func TestShow_ThreadListingFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(boardDB, boardDB, threadDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "jazz", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

@@ -61,18 +61,20 @@ func (r *contentRepos) createBoardWithCategory(t *testing.T, ctx context.Context
 }
 
 // createThread inserts a thread with no author, failing the test on error. The
-// author is left unset because no assertion that uses this helper depends on it,
-// which keeps a test's fixtures down to what it is actually about.
+// author is left unset and the language fixed to Japanese because no assertion
+// that uses this helper depends on either, which keeps a test's fixtures down to
+// what it is actually about.
 //
 // [Ja] createThread は作者を持たないスレッドを挿入し、エラー時はテストを失敗させる。
-// 作者を設定しないのは、このヘルパーを使う検証がどれもそれに依存しないためで、テストの
-// フィクスチャをそのテストが実際に問うているものだけに保つ。
+// 作者を設定せず言語を日本語に固定するのは、このヘルパーを使う検証がどれもそれらに
+// 依存しないためで、テストのフィクスチャをそのテストが実際に問うているものだけに保つ。
 func (r *contentRepos) createThread(t *testing.T, ctx context.Context, boardID model.BoardID, title string) *model.Thread {
 	t.Helper()
 
 	thread, err := r.thread.Create(ctx, repository.CreateThreadInput{
-		BoardID: boardID,
-		Title:   title,
+		BoardID:  boardID,
+		Title:    title,
+		Language: model.LocaleJa.ThreadLanguage(),
 	})
 	if err != nil {
 		t.Fatalf("テスト用スレッドの作成に失敗: %v", err)
@@ -114,9 +116,10 @@ func TestThreadRepository_Create(t *testing.T) {
 	userID := testutil.NewUserBuilder(t, repos.db).Build()
 
 	thread, err := repos.thread.Create(ctx, repository.CreateThreadInput{
-		BoardID: board.ID,
-		UserID:  &userID,
-		Title:   "SQLite の話",
+		BoardID:  board.ID,
+		UserID:   &userID,
+		Title:    "SQLite の話",
+		Language: model.LocaleJa.ThreadLanguage(),
 	})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
@@ -136,6 +139,9 @@ func TestThreadRepository_Create(t *testing.T) {
 	}
 	if thread.Title != "SQLite の話" {
 		t.Errorf("thread.Title = %q, want %q", thread.Title, "SQLite の話")
+	}
+	if thread.Language != model.LocaleJa.ThreadLanguage() {
+		t.Errorf("thread.Language = %q, want %q", thread.Language, model.LocaleJa.ThreadLanguage())
 	}
 	if thread.PostsCount != 0 {
 		t.Errorf("thread.PostsCount = %d, want %d", thread.PostsCount, 0)
@@ -164,6 +170,105 @@ func TestThreadRepository_Create_LeavesAuthorUnsetForAWithdrawnUser(t *testing.T
 
 	if thread.UserID != nil {
 		t.Errorf("thread.UserID = %v, want nil", *thread.UserID)
+	}
+}
+
+// TestThreadRepository_Create_StoresEveryThreadLanguage verifies that each
+// language a thread may be written in survives the round trip through the
+// column, the one that resolves to no display language included. The value is
+// read back through FindByID rather than taken from the inserted row alone, so
+// the conversion every listing shares is covered as well.
+//
+// [Ja] TestThreadRepository_Create_StoresEveryThreadLanguage は、スレッドを書ける言語が
+// どれも列を往復して保たれること — どの表示言語にも解決しない値を含む — を検証します。
+// 値は挿入した行からだけでなく FindByID からも読み戻すため、各一覧が共有する変換も
+// 併せて覆います。
+func TestThreadRepository_Create_StoresEveryThreadLanguage(t *testing.T) {
+	t.Parallel()
+
+	repos, ctx := newContentRepos(t)
+	board := repos.createBoardWithCategory(t, ctx, "tech")
+
+	for _, language := range model.ThreadLanguages() {
+		t.Run(string(language), func(t *testing.T) {
+			created, err := repos.thread.Create(ctx, repository.CreateThreadInput{
+				BoardID:  board.ID,
+				Title:    "言語が " + string(language) + " のスレッド",
+				Language: language,
+			})
+			if err != nil {
+				t.Fatalf("Create() error = %v", err)
+			}
+			if created.Language != language {
+				t.Errorf("Create() thread.Language = %q, want %q", created.Language, language)
+			}
+
+			found, err := repos.thread.FindByID(ctx, created.ID)
+			if err != nil {
+				t.Fatalf("FindByID() error = %v", err)
+			}
+			if found == nil {
+				t.Fatal("FindByID() = nil, want thread")
+			}
+			if found.Language != language {
+				t.Errorf("FindByID() thread.Language = %q, want %q", found.Language, language)
+			}
+		})
+	}
+}
+
+// TestThreadRepository_Create_RejectsALanguageOutsideTheSet verifies that the
+// check standing in for the CHECK the column does not carry refuses a value no
+// thread may be written in, and that the refusal happens before the insert.
+//
+// The unset case is the one that would arise by accident: a caller that forgets
+// the field passes the zero value, and without this check the board would hold a
+// thread whose language names nothing.
+//
+// [Ja] TestThreadRepository_Create_RejectsALanguageOutsideTheSet は、列が持たない CHECK の
+// 代わりを務める検査が、スレッドを書けない値を拒否すること、そしてその拒否が挿入より前に
+// 起きることを検証します。
+//
+// 未設定の場合が、事故として起こりうるものです。フィールドを書き忘れた呼び出し側は
+// ゼロ値を渡すことになり、この検査が無ければ掲示板は、言語が何も名指さないスレッドを
+// 抱えることになります。
+func TestThreadRepository_Create_RejectsALanguageOutsideTheSet(t *testing.T) {
+	t.Parallel()
+
+	repos, ctx := newContentRepos(t)
+	board := repos.createBoardWithCategory(t, ctx, "tech")
+
+	tests := []struct {
+		name     string
+		language model.ThreadLanguage
+	}{
+		{name: "アプリがロケールを持たない言語", language: "fr"},
+		{name: "未設定", language: ""},
+		{name: "地域のサブタグが付いたタグ", language: "ja-JP"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			thread, err := repos.thread.Create(ctx, repository.CreateThreadInput{
+				BoardID:  board.ID,
+				Title:    "受け付けられないスレッド",
+				Language: tt.language,
+			})
+			if err == nil {
+				t.Fatalf("Create() error = nil, want an error (language=%q)", tt.language)
+			}
+			if thread != nil {
+				t.Errorf("Create() = %v, want nil", thread)
+			}
+		})
+	}
+
+	threads, err := repos.thread.ListByBoardID(ctx, board.ID)
+	if err != nil {
+		t.Fatalf("ListByBoardID() error = %v", err)
+	}
+	if len(threads) != 0 {
+		t.Errorf("len(ListByBoardID()) = %d, want 0", len(threads))
 	}
 }
 

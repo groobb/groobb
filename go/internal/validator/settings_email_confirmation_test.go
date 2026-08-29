@@ -29,7 +29,7 @@ func TestSettingsEmailConfirmationCreateValidator_Validate(t *testing.T) {
 	db := testutil.SetupDB(t)
 	emailConfirmationRepo := repository.NewEmailConfirmationRepository(db)
 	v := validator.NewSettingsEmailConfirmationCreateValidator(emailConfirmationRepo)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
 

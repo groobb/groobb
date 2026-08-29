@@ -17,6 +17,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
+
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // Embed the locale files so the binary is self-contained and needs no external
@@ -27,15 +29,6 @@ import (
 //
 //go:embed locales/*.toml
 var localesFS embed.FS
-
-// Supported languages. Japanese is the default.
-//
-// [Ja] サポートする言語。日本語をデフォルトとする。
-const (
-	LangJa      = "ja"
-	LangEn      = "en"
-	DefaultLang = LangJa
-)
 
 // contextKey is an unexported type for context keys to avoid collisions with
 // keys defined in other packages.
@@ -63,21 +56,22 @@ func init() {
 	bundle = i18n.NewBundle(language.Japanese)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
-	for _, code := range []string{LangJa, LangEn} {
-		data, err := localesFS.ReadFile(fmt.Sprintf("locales/%s.toml", code))
+	for _, locale := range model.Locales() {
+		data, err := localesFS.ReadFile(fmt.Sprintf("locales/%s.toml", locale))
 		if err != nil {
 			// The locale files are embedded at build time, so a read failure
-			// means the file name and the hard-coded code are out of sync
-			// (e.g. a renamed file). Fail fast instead of silently starting
-			// with that locale missing.
+			// means the file name and the locale in model.Locales() are out of
+			// sync (e.g. a renamed file, or a language added without its file).
+			// Fail fast instead of silently starting with that locale missing.
 			//
 			// [Ja] ロケールファイルはビルド時に埋め込まれるため、読み込み失敗は
-			// ファイル名とハードコードしたコードの不整合 (リネーム漏れ等) を意味する。
-			// 該当ロケールが欠けたまま黙って起動せず、fail-fast する。
-			panic(fmt.Sprintf("i18n: failed to read embedded locale file locales/%s.toml: %v", code, err))
+			// ファイル名と model.Locales() のロケールの不整合 (リネーム漏れや、ファイルを
+			// 伴わない言語の追加など) を意味する。該当ロケールが欠けたまま黙って起動せず、
+			// fail-fast する。
+			panic(fmt.Sprintf("i18n: failed to read embedded locale file locales/%s.toml: %v", locale, err))
 		}
 
-		bundle.MustParseMessageFileBytes(data, fmt.Sprintf("%s.toml", code))
+		bundle.MustParseMessageFileBytes(data, fmt.Sprintf("%s.toml", locale))
 	}
 }
 
@@ -170,22 +164,22 @@ func clampUint64ToInt(v uint64) int {
 	return int(v)
 }
 
-// GetLocale returns the locale stored in ctx, or the default language when none
+// GetLocale returns the locale stored in ctx, or model.DefaultLocale when none
 // is set.
 //
-// [Ja] GetLocale は ctx に格納されたロケールを返す。未設定の場合はデフォルト言語を
-// 返す。
-func GetLocale(ctx context.Context) string {
-	if locale, ok := ctx.Value(localeContextKey).(string); ok {
+// [Ja] GetLocale は ctx に格納されたロケールを返す。未設定の場合は
+// model.DefaultLocale を返す。
+func GetLocale(ctx context.Context) model.Locale {
+	if locale, ok := ctx.Value(localeContextKey).(model.Locale); ok {
 		return locale
 	}
-	return DefaultLang
+	return model.DefaultLocale
 }
 
 // SetLocale returns a copy of ctx with the given locale stored in it.
 //
 // [Ja] SetLocale は指定したロケールを格納した ctx のコピーを返す。
-func SetLocale(ctx context.Context, locale string) context.Context {
+func SetLocale(ctx context.Context, locale model.Locale) context.Context {
 	return context.WithValue(ctx, localeContextKey, locale)
 }
 
@@ -200,7 +194,7 @@ func GetLocalizer(ctx context.Context) *i18n.Localizer {
 	if localizer, ok := ctx.Value(localizerContextKey).(*i18n.Localizer); ok {
 		return localizer
 	}
-	return i18n.NewLocalizer(bundle, GetLocale(ctx))
+	return i18n.NewLocalizer(bundle, string(GetLocale(ctx)))
 }
 
 // SetLocalizer returns a copy of ctx with the given Localizer stored in it.
@@ -210,38 +204,35 @@ func SetLocalizer(ctx context.Context, localizer *i18n.Localizer) context.Contex
 	return context.WithValue(ctx, localizerContextKey, localizer)
 }
 
-// DetectLanguage picks a supported language from the request's Accept-Language
+// DetectLanguage picks a display language from the request's Accept-Language
 // header. ParseAcceptLanguage returns the requested languages sorted by quality
-// value (most preferred first), so returning the first one we support honors the
-// client's preference order. Anything unrecognized falls back to the default
-// language.
+// value (most preferred first), so returning the first one model.ParseLocale
+// accepts honors the client's preference order. Anything unrecognized falls back
+// to model.DefaultLocale.
 //
-// We deliberately avoid language.Matcher here: with only two supported languages
+// We deliberately avoid language.Matcher here: with only two display languages
 // its language-distance heuristics surprise us (e.g. it maps an unsupported "de"
 // onto English), whereas an explicit scan over the parsed tags is predictable.
 //
-// [Ja] DetectLanguage はリクエストの Accept-Language ヘッダーからサポート対象の
-// 言語を選ぶ。ParseAcceptLanguage は要求言語を品質値順 (優先度の高い順) で返すため、
-// 最初にサポートしている言語を返すことでクライアントの優先順を尊重できる。認識
-// できないものはデフォルト言語にフォールバックする。
+// [Ja] DetectLanguage はリクエストの Accept-Language ヘッダーから表示言語を選ぶ。
+// ParseAcceptLanguage は要求言語を品質値順 (優先度の高い順) で返すため、
+// model.ParseLocale が受け付ける最初のものを返すことでクライアントの優先順を尊重
+// できる。認識できないものは model.DefaultLocale にフォールバックする。
 //
-// ここでは language.Matcher を意図的に使わない。サポート言語が 2 つだけだと、その
+// ここでは language.Matcher を意図的に使わない。表示言語が 2 つだけだと、その
 // 言語距離ヒューリスティックが想定外の挙動をする (例: 未対応の "de" を英語に
 // マップする) ためで、パース済みタグを明示的に走査する方が予測可能。
-func DetectLanguage(r *http.Request) string {
+func DetectLanguage(r *http.Request) model.Locale {
 	tags, _, _ := language.ParseAcceptLanguage(r.Header.Get("Accept-Language"))
 
 	for _, tag := range tags {
 		base, _ := tag.Base()
-		switch base.String() {
-		case LangJa:
-			return LangJa
-		case LangEn:
-			return LangEn
+		if locale, ok := model.ParseLocale(base.String()); ok {
+			return locale
 		}
 	}
 
-	return DefaultLang
+	return model.DefaultLocale
 }
 
 // Middleware resolves the request locale from the Accept-Language header and
@@ -254,7 +245,7 @@ func DetectLanguage(r *http.Request) string {
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		locale := DetectLanguage(r)
-		localizer := i18n.NewLocalizer(bundle, locale)
+		localizer := i18n.NewLocalizer(bundle, string(locale))
 
 		ctx := SetLocale(r.Context(), locale)
 		ctx = SetLocalizer(ctx, localizer)

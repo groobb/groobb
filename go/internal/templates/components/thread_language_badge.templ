@@ -1,0 +1,56 @@
+package components
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// ThreadLanguageBadge renders a thread's primary language beside the thread it
+// belongs to. A board is not split by language, so one listing holds threads in
+// several of them and the badge is what a visitor finds their own conversations
+// with. It is drawn for every thread rather than only for the ones that differ
+// from the language the page is in: a badge that appears conditionally would
+// have to be read as "no badge means my language", and what is shown would then
+// depend on who is looking.
+//
+// The wording is the language's own name, so a speaker recognises it whatever
+// language the UI is drawn in. That name alone does not say what it is a name
+// of, so a visually hidden label precedes it and the badge is read aloud as
+// "primary language: English".
+//
+// The lang attribute goes on the inner element holding the name alone. On the
+// badge as a whole it would cover the hidden label too, which is written in the
+// language of the UI, and a screen reader would announce that label in the
+// thread's language.
+//
+// The thread whose language resolves to no display language is the exception the
+// name cannot be written for. It carries the translated word for "other" and
+// declares no language, since it has no tag to declare and an invented one would
+// be pronounced by the rules of a language the thread is not written in.
+//
+// [Ja] ThreadLanguageBadge はスレッドの主言語を、それが属するスレッドの傍らに描画します。
+// 掲示板は言語で分けないため 1 つの一覧が複数の言語のスレッドを持ち、訪問者が自分の読める
+// 会話を見つける手立てがこのバッジです。ページの言語と異なるものにだけではなく、どの
+// スレッドにも描きます。条件付きで現れるバッジは「バッジが無い = 自分の言語」と読む必要が
+// あり、何が表示されるかが誰が見ているかに依存することになるためです。
+//
+// 文言はその言語自身の名前とし、UI がどの言語で描かれていても話者がそれと分かるように
+// します。その名前だけでは何の名前なのかを述べないため、視覚的に隠したラベルを前に置き、
+// バッジが「主言語: English」と読み上げられるようにします。
+//
+// lang 属性は名前だけを持つ内側の要素に付けます。バッジ全体に付けると、UI の言語で書かれた
+// 隠しラベルまで覆い、スクリーンリーダーはそのラベルをスレッドの言語で読み上げます。
+//
+// どの表示言語にも解決しない言語のスレッドが、自称表記を書けない唯一の例外です。そちらは
+// 「その他」の訳語を載せ、どの言語も宣言しません。宣言するタグが無く、でっち上げたタグは、
+// そのスレッドが書かれていない言語の規則で発音されることになるためです。
+templ ThreadLanguageBadge(language viewmodel.ThreadLanguage) {
+	<span class="badge" data-variant="outline">
+		<span class="sr-only">{ templates.T(ctx, "thread_language_label") }</span>
+		if language.Declared() {
+			<span lang={ language.Tag }>{ language.Name }</span>
+		} else {
+			{ templates.T(ctx, "thread_language_other") }
+		}
+	</span>
+}

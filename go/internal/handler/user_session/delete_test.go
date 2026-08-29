@@ -12,6 +12,7 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -49,7 +50,7 @@ func seedSession(t *testing.T, db *database.DB, userSessionRepo *repository.User
 	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    "signout-h@example.com",
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -119,7 +120,7 @@ func TestDelete_Success(t *testing.T) {
 	token := seedSession(t, db, userSessionRepo)
 
 	req := httptest.NewRequest(http.MethodDelete, "/user_session", nil)
-	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: token})
 	rec := httptest.NewRecorder()
 

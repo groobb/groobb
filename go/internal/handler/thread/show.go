@@ -95,10 +95,12 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 
 	returnTo := middleware.SanitizeReturnTo(r.URL.RequestURI())
 	sidebar := viewmodel.NewSidebar(nav, middleware.UserFromContext(ctx), middleware.CSRFTokenFromContext(ctx), returnTo)
+	language := viewmodel.NewThreadLanguage(resolved.Thread.Language)
 
 	pageData := threadpage.ShowPageData{
 		Title:      resolved.Thread.Title,
-		Breadcrumb: breadcrumb(resolved, h.cfg.AppURL),
+		Language:   language,
+		Breadcrumb: breadcrumb(resolved, language, h.cfg.AppURL),
 		PostsCount: resolved.Thread.PostsCount,
 		Posts:      showPosts(resolved.Posts),
 		Board:      showBoard(resolved.Board, listing.Threads),
@@ -152,6 +154,9 @@ func parseThreadID(raw string) (model.ThreadID, bool) {
 // this page is not, so a signed-out visitor would be handed a first step that
 // turns them away to the sign-in form.
 //
+// The current step carries the thread's language because its title repeats
+// there outside the heading that otherwise declares it.
+//
 // [Ja] breadcrumb はスレッドの在り処を示す経路を組み立てます。掲示板を並べるカテゴリー、
 // スレッドが立った掲示板、続いて訪問者が今いる段としてのスレッド自身です。/t/{id} は
 // そのどちらについても何も述べないため、コミュニティのどの部分にいるのかをこのページが
@@ -162,9 +167,12 @@ func parseThreadID(raw string) (model.ThreadID, bool) {
 // サインアウト状態の訪問者は、辿るとサインインフォームへ追い返される最初の段を渡される
 // ことになります。
 //
+// 現在地の段にはスレッドの言語を持たせます。他では言語を宣言する見出しの外側で、タイトルが
+// ここにも繰り返されるためです。
+//
 // 掲示板がどのカテゴリーにも属さないときは掲示板から始めます (ADR 0011)。そのときも経路は
 // 訪問者が今いる場所とその上位の 2 段を持ち、掲示板のページのように空にはなりません。
-func breadcrumb(resolved *usecase.GetThreadOutput, baseURL string) components.BreadcrumbData {
+func breadcrumb(resolved *usecase.GetThreadOutput, language viewmodel.ThreadLanguage, baseURL string) components.BreadcrumbData {
 	items := make([]components.BreadcrumbItem, 0, 3)
 	if resolved.Category != nil {
 		items = append(items, components.BreadcrumbItem{
@@ -174,7 +182,7 @@ func breadcrumb(resolved *usecase.GetThreadOutput, baseURL string) components.Br
 	}
 	items = append(items,
 		components.BreadcrumbItem{Name: resolved.Board.Name, Path: templates.BoardPath(resolved.Board.Slug)},
-		components.BreadcrumbItem{Name: resolved.Thread.Title},
+		components.BreadcrumbItem{Name: resolved.Thread.Title, Lang: language.Tag},
 	)
 
 	return components.BreadcrumbData{Items: items, BaseURL: baseURL}
@@ -236,6 +244,7 @@ func showBoard(board *model.Board, threads []*model.Thread) threadpage.ShowBoard
 		showThreads[i] = threadpage.ShowBoardThread{
 			ID:           viewmodel.ThreadID(thread.ID),
 			Title:        thread.Title,
+			Language:     viewmodel.NewThreadLanguage(thread.Language),
 			PostsCount:   thread.PostsCount,
 			LastPostedAt: thread.LastPostedAt,
 		}

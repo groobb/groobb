@@ -13,6 +13,7 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/sign_in"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/session"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -60,7 +61,7 @@ func seedUserWithPassword(t *testing.T, db *database.DB, password string) string
 	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    email,
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -96,7 +97,7 @@ func seedUserWithTwoFactor(t *testing.T, db *database.DB, password string) strin
 	user, err := repository.NewUserRepository(db).Create(ctx, repository.CreateUserInput{
 		Email:    email,
 		Atname:   testutil.UniqueAtname(db),
-		Locale:   i18n.LangJa,
+		Locale:   model.LocaleJa,
 		TimeZone: "Asia/Tokyo",
 	})
 	if err != nil {
@@ -136,7 +137,7 @@ func seedUserWithTwoFactor(t *testing.T, db *database.DB, password string) strin
 //
 // [Ja] postSignIn は email と password をフォームデータとして運ぶ POST /sign_in
 // リクエストを組み立て、context にロケールを設定する。
-func postSignIn(email, password, locale string) *http.Request {
+func postSignIn(email, password string, locale model.Locale) *http.Request {
 	form := url.Values{"email": {email}, "password": {password}}
 	req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -169,7 +170,7 @@ func TestCreate_Success(t *testing.T) {
 	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignIn(email, "password123", i18n.LangJa))
+	handler.Create(rec, postSignIn(email, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -206,7 +207,7 @@ func TestCreate_TwoFactorEnabled(t *testing.T) {
 	email := seedUserWithTwoFactor(t, db, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignIn(email, "password123", i18n.LangJa))
+	handler.Create(rec, postSignIn(email, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -242,7 +243,7 @@ func TestCreate_WrongPassword(t *testing.T) {
 	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignIn(email, "wrongpassword", i18n.LangJa))
+	handler.Create(rec, postSignIn(email, "wrongpassword", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -276,7 +277,7 @@ func TestCreate_MissingEmail(t *testing.T) {
 	handler, _ := newSignInHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignIn("", "password123", i18n.LangJa))
+	handler.Create(rec, postSignIn("", "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -339,7 +340,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 			}
 			req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+			req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 
 			rec := httptest.NewRecorder()
 			handler.Create(rec, req)
@@ -401,7 +402,7 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 //
 // [Ja] postSignInWithReturnTo は return_to の遷移先も併せて運ぶ POST /sign_in リクエストを
 // 組み立てる。訪問者が追い返されたルートから来たときにフォームが送る形と同じである。
-func postSignInWithReturnTo(email, password, returnTo, locale string) *http.Request {
+func postSignInWithReturnTo(email, password, returnTo string, locale model.Locale) *http.Request {
 	form := url.Values{"email": {email}, "password": {password}, "return_to": {returnTo}}
 	req := httptest.NewRequest(http.MethodPost, "/sign_in", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -437,7 +438,7 @@ func TestCreate_ReturnTo(t *testing.T) {
 			email := seedUserWithPassword(t, db, "password123")
 
 			rec := httptest.NewRecorder()
-			handler.Create(rec, postSignInWithReturnTo(email, "password123", tt.returnTo, i18n.LangJa))
+			handler.Create(rec, postSignInWithReturnTo(email, "password123", tt.returnTo, model.LocaleJa))
 
 			if rec.Code != http.StatusSeeOther {
 				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -469,7 +470,7 @@ func TestCreate_TwoFactorEnabledForwardsReturnTo(t *testing.T) {
 	email := seedUserWithTwoFactor(t, db, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/settings", i18n.LangJa))
+	handler.Create(rec, postSignInWithReturnTo(email, "password123", "/settings", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -495,7 +496,7 @@ func TestCreate_ReturnToSurvivesValidationError(t *testing.T) {
 	email := seedUserWithPassword(t, db, "password123")
 
 	rec := httptest.NewRecorder()
-	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/settings", i18n.LangJa))
+	handler.Create(rec, postSignInWithReturnTo(email, "wrongpassword", "/settings", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)

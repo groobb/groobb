@@ -17,8 +17,8 @@ JOIN threads ON threads.id IN (
 ORDER BY boards.position, boards.id, threads.last_posted_at DESC, threads.id DESC;
 
 -- name: CreateThread :one
-INSERT INTO threads (board_id, user_id, title)
-VALUES (?, ?, ?)
+INSERT INTO threads (board_id, user_id, title, language)
+VALUES (?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateThreadLastPost :exec

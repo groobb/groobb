@@ -27,7 +27,7 @@ import (
 // リクエストを組み立て、context にロケールを設定する。ハンドラーは FormValue で読むため、
 // Update を直接呼ぶときメソッドは無関係 (実サーバーでは _method オーバーライドがフォームの
 // POST を PATCH にする)。
-func patchPassword(token, password, passwordConfirmation, locale string) *http.Request {
+func patchPassword(token, password, passwordConfirmation string, locale model.Locale) *http.Request {
 	form := url.Values{
 		"token":                 {token},
 		"password":              {password},
@@ -89,7 +89,7 @@ func TestUpdate_Success(t *testing.T) {
 	rawToken := seedResetTokenForUser(t, db, "oldpassword123")
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchPassword(rawToken, "newpassword123", "newpassword123", i18n.LangJa))
+	handler.Update(rec, patchPassword(rawToken, "newpassword123", "newpassword123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -116,7 +116,7 @@ func TestUpdate_InvalidPasswordRetainsToken(t *testing.T) {
 	rawToken := seedResetTokenForUser(t, db, "oldpassword123")
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchPassword(rawToken, "newpassword123", "different456", i18n.LangJa))
+	handler.Update(rec, patchPassword(rawToken, "newpassword123", "different456", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -151,7 +151,7 @@ func TestUpdate_InvalidTokenClearsToken(t *testing.T) {
 	handler := newPasswordHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.Update(rec, patchPassword("no-such-token", "newpassword123", "newpassword123", i18n.LangJa))
+	handler.Update(rec, patchPassword("no-such-token", "newpassword123", "newpassword123", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)

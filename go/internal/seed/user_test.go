@@ -11,7 +11,6 @@ import (
 
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/database"
-	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -108,8 +107,8 @@ func TestRunner_GenerateUsers(t *testing.T) {
 		if user.Email != account.email {
 			t.Errorf("user.Email = %q, want %q", user.Email, account.email)
 		}
-		if user.Locale != i18n.DefaultLang {
-			t.Errorf("user.Locale = %q, want %q", user.Locale, i18n.DefaultLang)
+		if user.Locale != model.DefaultLocale {
+			t.Errorf("user.Locale = %q, want %q", user.Locale, model.DefaultLocale)
 		}
 		if user.TimeZone != seedUserTimeZone {
 			t.Errorf("user.TimeZone = %q, want %q", user.TimeZone, seedUserTimeZone)

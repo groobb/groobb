@@ -10,6 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/httperror"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestNotFound verifies that the not-found response carries HTTP 404 with an
@@ -30,21 +31,21 @@ func TestNotFound(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 		wantMessage string
 		wantLink    string
 	}{
 		{
 			name:        "Japanese",
-			locale:      i18n.LangJa,
+			locale:      model.LocaleJa,
 			wantHeading: "ページが見つかりません",
 			wantMessage: "お探しのページは見つかりませんでした。",
 			wantLink:    "トップページへ",
 		},
 		{
 			name:        "English",
-			locale:      i18n.LangEn,
+			locale:      model.LocaleEn,
 			wantHeading: "Page not found",
 			wantMessage: "The page you were looking for was not found.",
 			wantLink:    "Go to the home page",
@@ -78,7 +79,7 @@ func TestNotFound(t *testing.T) {
 				tt.wantMessage,
 				tt.wantLink,
 				`href="/"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -138,7 +139,7 @@ func TestNotFoundHasNoSignedInHeader(t *testing.T) {
 	renderer := httperror.NewRenderer(&config.Config{Env: "dev"})
 
 	req := httptest.NewRequest(http.MethodGet, "/no-such-page", nil)
-	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 	rec := httptest.NewRecorder()
 
 	renderer.NotFound(rec, req)

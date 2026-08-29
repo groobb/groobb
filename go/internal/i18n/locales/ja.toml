@@ -126,6 +126,14 @@ other = "新規登録"
 description = "コミュニティのシェルで、サイドバーを飛ばして本文へ移動するスキップリンクのテキスト (全ページ共通の UI 部品)"
 other = "本文へスキップ"
 
+[thread_language_label]
+description = "スレッドの主言語のバッジに添える、視覚的に隠したラベル。バッジの文言が何の値であるかを読み上げに伝える"
+other = "主言語:"
+
+[thread_language_other]
+description = "スレッドの主言語のバッジで、アプリがロケールを持たない言語で書かれたスレッドに表示する文言"
+other = "その他"
+
 [welcome_show_title]
 description = "トップページのページタイトル (title タグ)"
 other = "Groobb"

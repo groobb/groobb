@@ -73,7 +73,7 @@ func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "pw-update-success@example.com"
 	userID := seedUserWithPassword(t, ctx, db, userRepo, userPasswordRepo, email, "oldpassword123")
@@ -197,7 +197,7 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 			t.Parallel()
 
 			uc, userRepo, userPasswordRepo, tokenRepo := newUpdatePasswordResetUsecase(t, db)
-			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 			email := testutil.UniqueEmail(db, "pw-update-bad")
 			userID := seedUserWithPassword(t, ctx, db, userRepo, userPasswordRepo, email, "oldpassword123")

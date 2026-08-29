@@ -235,8 +235,8 @@ func insertCommunityContent(t *testing.T, db *database.DB) communityContentIDs {
 		ids.categoryID, "chat", "雑談",
 	)
 	ids.threadID = insertRow(t, db,
-		"INSERT INTO threads (board_id, user_id, title) VALUES (?, ?, ?)",
-		ids.boardID, ids.userID, "はじめてのスレッド",
+		"INSERT INTO threads (board_id, user_id, title, language) VALUES (?, ?, ?, ?)",
+		ids.boardID, ids.userID, "はじめてのスレッド", "ja",
 	)
 	ids.postID = insertRow(t, db,
 		"INSERT INTO posts (thread_id, user_id, number, body) VALUES (?, ?, ?, ?)",
@@ -346,8 +346,8 @@ func TestMigrate_KeepsPostNumbersUniqueWithinAThread(t *testing.T) {
 	}
 
 	otherThreadID := insertRow(t, db,
-		"INSERT INTO threads (board_id, user_id, title) VALUES (?, ?, ?)",
-		ids.boardID, ids.userID, "別のスレッド",
+		"INSERT INTO threads (board_id, user_id, title, language) VALUES (?, ?, ?, ?)",
+		ids.boardID, ids.userID, "別のスレッド", "ja",
 	)
 
 	if _, err := db.Writer.ExecContext(

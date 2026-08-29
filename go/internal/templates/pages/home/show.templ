@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
@@ -50,8 +51,18 @@ type ShowBoard struct {
 // 運ぶのは、タイトルがそのスレッドへのリンクであり、スレッドを指すのが /t/{id} である
 // ためです。
 type ShowThread struct {
-	ID           viewmodel.ThreadID
-	Title        string
+	ID    viewmodel.ThreadID
+	Title string
+
+	// Language is the language the thread is written in, shown as a badge on the
+	// row and declared on the title. A board is not divided by language, so this
+	// is what tells the threads of one section apart.
+	//
+	// [Ja] Language はスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
+	// 宣言します。掲示板は言語で分けないため、1 つの区画に並ぶスレッドを見分けさせる
+	// ものがこれです。
+	Language viewmodel.ThreadLanguage
+
 	PostsCount   int
 	LastPostedAt time.Time
 }
@@ -75,6 +86,11 @@ const ShowHeadingID = "home-show-heading"
 // while the name alone already says where it leads when the link text is read on
 // its own.
 //
+// A thread's row carries its primary language, because a board is not divided by
+// language and one section holds threads in several. The badge says which, and
+// the title declares it, so a screen reader reads a title by the rules of the
+// language it is written in rather than by the page's.
+//
 // A board nobody has posted in yet says so in its own section rather than being
 // left out of the listing. The sidebar lists that board, and a home page holding
 // fewer boards than the sidebar would read as something failing to load rather
@@ -88,6 +104,11 @@ const ShowHeadingID = "home-show-heading"
 // 掲示板の名前がそのページへのリンクであり、区画に必要なのはそれだけです。傍らに置く
 // 「すべて見る」は同じアドレスへの 2 つ目のリンクにしかならず、名前だけで既に、リンクの
 // テキストが単独で読まれてもどこへ導くかを述べているためです。
+//
+// スレッドの行はその主言語を運びます。掲示板を言語で分けないため、1 つの区画が複数の
+// 言語のスレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。
+// これによりスクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている
+// 言語の規則で読み上げます。
 //
 // まだ誰も書き込んでいない掲示板は、一覧から落とすのではなく自身の区画でその旨を伝え
 // ます。サイドバーはその掲示板を並べており、サイドバーより少ない掲示板しか持たない
@@ -118,11 +139,18 @@ templ ShowCenter(data ShowPageData) {
 										for _, thread := range board.Threads {
 											<li class="flex flex-col gap-0.5">
 												<h3 class="font-medium">
-													<a href={ templates.ThreadPath(thread.ID).SafeURL() } class="inline-flex min-h-6 min-w-6 items-center hover:underline">
+													<a
+														href={ templates.ThreadPath(thread.ID).SafeURL() }
+														class="inline-flex min-h-6 min-w-6 items-center hover:underline"
+														if thread.Language.Declared() {
+															lang={ thread.Language.Tag }
+														}
+													>
 														{ thread.Title }
 													</a>
 												</h3>
 												<p class="flex flex-wrap items-center gap-x-3 text-muted-foreground">
+													@components.ThreadLanguageBadge(thread.Language)
 													<span>{ templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}) }</span>
 													<span>
 														{ templates.T(ctx, "home_show_last_posted_label") }

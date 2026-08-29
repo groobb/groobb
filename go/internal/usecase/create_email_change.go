@@ -63,7 +63,7 @@ type CreateEmailChangeInput struct {
 	UserID          model.UserID
 	NewEmail        string
 	CurrentPassword string
-	Locale          string
+	Locale          model.Locale
 }
 
 // CreateEmailChangeOutput carries the created confirmation. The confirm step

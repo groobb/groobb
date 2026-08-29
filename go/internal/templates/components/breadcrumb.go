@@ -56,6 +56,13 @@ type BreadcrumbData struct {
 type BreadcrumbItem struct {
 	Name string
 	Path templates.Path
+
+	// Lang is the BCP 47 language tag for the wording of this step. An empty
+	// value leaves the language inherited from the page.
+	//
+	// [Ja] Lang はこの段の文言を表す BCP 47 言語タグです。空の値ではページから言語を
+	// 継承します。
+	Lang string
 }
 
 // IsCurrent reports whether this step stands for the page being rendered.

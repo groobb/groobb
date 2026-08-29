@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
@@ -101,7 +102,7 @@ func TestHead_Title(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 			var buf bytes.Buffer
 			if err := components.Head(tt.meta).Render(ctx, &buf); err != nil {

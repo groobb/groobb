@@ -53,7 +53,7 @@ func NewCreateSignUpUsecase(
 // メールをユーザーが閲覧中の言語で描画するために運びます。
 type CreateSignUpInput struct {
 	Email  string
-	Locale string
+	Locale model.Locale
 }
 
 // CreateSignUpOutput carries the created confirmation so the handler can store

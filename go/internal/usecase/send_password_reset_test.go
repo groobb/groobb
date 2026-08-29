@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
@@ -18,12 +19,12 @@ type fakePasswordResetSender struct {
 	called     bool
 	to         string
 	resetURL   string
-	locale     string
+	locale     model.Locale
 	returnErr  error
 	callsCount int
 }
 
-func (f *fakePasswordResetSender) Send(_ context.Context, to, resetURL, locale string) error {
+func (f *fakePasswordResetSender) Send(_ context.Context, to, resetURL string, locale model.Locale) error {
 	f.called = true
 	f.callsCount++
 	f.to = to

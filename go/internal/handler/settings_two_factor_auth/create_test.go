@@ -26,7 +26,7 @@ import (
 // [Ja] postCreate は TOTP コードをフォームデータとして運ぶ POST /settings/two_factor_auth
 // リクエストを組み立て、(RequireAuth が置くように) context のユーザーとロケールを載せる。
 // 素の POST (メソッドオーバーライドなし) のため、FormValue がボディを直接読む。
-func postCreate(user *model.User, code, locale string) *http.Request {
+func postCreate(user *model.User, code string, locale model.Locale) *http.Request {
 	form := url.Values{"code": {code}}
 	req := httptest.NewRequest(http.MethodPost, "/settings/two_factor_auth", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -56,7 +56,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.Create(rec, postCreate(user, code, i18n.LangJa))
+	h.Create(rec, postCreate(user, code, model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -127,7 +127,7 @@ func TestCreate_ValidationError(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.Create(rec, postCreate(user, wrongCode, i18n.LangJa))
+	h.Create(rec, postCreate(user, wrongCode, model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
@@ -186,7 +186,7 @@ func TestCreate_AlreadyEnabled(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.Create(rec, postCreate(user, code, i18n.LangJa))
+	h.Create(rec, postCreate(user, code, model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)

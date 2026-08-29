@@ -67,7 +67,7 @@ func NewCreatePasswordResetTokenUsecase(
 // ロケールで、リセットメールをユーザーが閲覧中の言語で描画するために運びます。
 type CreatePasswordResetTokenInput struct {
 	Email  string
-	Locale string
+	Locale model.Locale
 }
 
 // CreatePasswordResetTokenOutput carries the created reset token, or is nil when

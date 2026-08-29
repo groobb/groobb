@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/settings_withdrawal"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestNew verifies that GET /settings/withdrawal/new returns HTTP 200 with an HTML
@@ -32,13 +33,13 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		locale        string
+		locale        model.Locale
 		wantHeading   string
 		wantSubmit    string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "退会", wantSubmit: "退会する", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Delete account", wantSubmit: "Delete account", wantHeaderNav: "Global navigation"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "退会", wantSubmit: "退会する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Delete account", wantSubmit: "Delete account", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -72,7 +73,7 @@ func TestNew(t *testing.T) {
 				`aria-label="` + tt.wantHeaderNav + `"`,
 				`href="/home"`,
 				`<meta name="robots" content="noindex"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {

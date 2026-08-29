@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/database"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 )
@@ -194,7 +195,7 @@ func populateForCleanup(t *testing.T, db *database.DB) {
 
 	threadRepo := repository.NewThreadRepository(db)
 	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{
-		BoardID: board.ID, UserID: &authorID, Title: "はじめまして",
+		BoardID: board.ID, UserID: &authorID, Title: "はじめまして", Language: model.LocaleJa.ThreadLanguage(),
 	})
 	if err != nil {
 		t.Fatalf("failed to create the thread: %v", err)

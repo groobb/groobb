@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // TestNew verifies that GET /sign_up returns HTTP 200 with an HTML form carrying
@@ -26,11 +27,11 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "Groobb に登録"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Sign up for Groobb"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "Groobb に登録"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Sign up for Groobb"},
 	}
 
 	for _, tt := range tests {
@@ -92,7 +93,7 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 	handler := sign_up.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/sign_up", nil)
-	req = req.WithContext(i18n.SetLocale(req.Context(), i18n.LangJa))
+	req = req.WithContext(i18n.SetLocale(req.Context(), model.LocaleJa))
 	rec := httptest.NewRecorder()
 
 	handler.New(rec, req)

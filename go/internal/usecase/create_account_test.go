@@ -74,7 +74,7 @@ func TestCreateAccountUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, ecRepo, userRepo, userPasswordRepo := newCreateAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "acct-success@example.com"
 	atname := testutil.UniqueAtname(db)
@@ -143,7 +143,7 @@ func TestCreateAccountUsecase_Execute_NoSucceededConfirmation(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "acct-unverified@example.com"
 	// Create the confirmation but do not stamp it succeeded.
@@ -197,7 +197,7 @@ func TestCreateAccountUsecase_Execute_InvalidPassword(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "acct-badpw@example.com"
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)
@@ -238,7 +238,7 @@ func TestCreateAccountUsecase_Execute_EmptyAtname(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, ecRepo, userRepo, _ := newCreateAccountUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	email := "acct-noatname@example.com"
 	confirmation := seedSucceededConfirmation(t, ctx, ecRepo, email)

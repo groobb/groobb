@@ -34,7 +34,7 @@ type User struct {
 	ID       UserID
 	Email    string
 	Atname   string
-	Locale   string
+	Locale   Locale
 	TimeZone string
 
 	// DeletedAt marks a withdrawn account: nil means the account is active, and a

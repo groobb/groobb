@@ -89,7 +89,7 @@ func seedActiveConfirmation(t *testing.T, db *database.DB, code string) model.Em
 //
 // [Ja] getNew は GET /email_confirmation/new リクエストを組み立て、confirmationID が
 // 空でなければ受け渡し Cookie を付け、context にロケールを設定する。
-func getNew(confirmationID, locale string) *http.Request {
+func getNew(confirmationID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/email_confirmation/new", nil)
 	if confirmationID != "" {
 		req.AddCookie(&http.Cookie{Name: session.EmailConfirmationCookieName, Value: confirmationID})
@@ -113,11 +113,11 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "確認コードを入力"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Enter your confirmation code"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "確認コードを入力"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Enter your confirmation code"},
 	}
 
 	for _, tt := range tests {
@@ -167,7 +167,7 @@ func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler := newEmailConfirmationHandler(t, db)
 
 	rec := httptest.NewRecorder()
-	handler.New(rec, getNew("", i18n.LangJa))
+	handler.New(rec, getNew("", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)

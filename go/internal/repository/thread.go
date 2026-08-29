@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/groobb/groobb/go/internal/database"
@@ -142,21 +143,41 @@ func (r *ThreadRepository) ListRecentPerBoard(ctx context.Context, perBoard int)
 // スレッドにまだ投稿が無いため、最初の投稿ができた時点で UpdateLastPost がそれらを
 // 埋めます。
 type CreateThreadInput struct {
-	BoardID model.BoardID
-	UserID  *model.UserID
-	Title   string
+	BoardID  model.BoardID
+	UserID   *model.UserID
+	Title    string
+	Language model.ThreadLanguage
 }
 
 // Create inserts a thread and returns it with the database-assigned id and
 // timestamps populated.
 //
+// The language is checked against the set a thread may be written in before the
+// insert, for the reason model.ThreadLanguage.IsValid documents: the column
+// enumerates no values of its own, so this is the write that refuses one outside
+// the set. A value outside it resolves to no display language just as
+// ThreadLanguageOther does, so presentation could not distinguish the two and
+// would label the value as other instead of giving it a truthful badge and lang
+// attribute.
+//
 // [Ja] Create はスレッドを挿入し、DB が採番した id とタイムスタンプを設定した状態で
 // 返します。
+//
+// 挿入の前に、言語がスレッドを書ける言語の集合に含まれることを検査します。理由は
+// model.ThreadLanguage.IsValid が記すとおりで、この列自身は値を列挙しないため、集合の外の
+// 値を拒否するのがこの書き込みになります。集合外の値は ThreadLanguageOther と同じく
+// 表示言語に解決しないため、Presentation 層では両者を区別できず、実際の値に合うバッジと
+// lang 属性ではなく「その他」を与えることになります。
 func (r *ThreadRepository) Create(ctx context.Context, input CreateThreadInput) (*model.Thread, error) {
+	if !input.Language.IsValid() {
+		return nil, fmt.Errorf("スレッドの主言語が不正: language=%q", input.Language)
+	}
+
 	row, err := r.writer.CreateThread(ctx, query.CreateThreadParams{
-		BoardID: int64(input.BoardID),
-		UserID:  rawAuthorID(input.UserID),
-		Title:   input.Title,
+		BoardID:  int64(input.BoardID),
+		UserID:   rawAuthorID(input.UserID),
+		Title:    input.Title,
+		Language: string(input.Language),
 	})
 	if err != nil {
 		return nil, err
@@ -219,6 +240,7 @@ func (r *ThreadRepository) toModel(row query.Thread) *model.Thread {
 		BoardID:      model.BoardID(row.BoardID),
 		UserID:       typedAuthorID(row.UserID),
 		Title:        row.Title,
+		Language:     model.ThreadLanguage(row.Language),
 		PostsCount:   int(row.PostsCount),
 		LastPostID:   lastPostID,
 		LastPostedAt: time.Time(row.LastPostedAt),

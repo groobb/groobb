@@ -10,6 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/repository"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
@@ -44,7 +45,7 @@ func newPasswordHandler(t *testing.T, db *database.DB) *password.Handler {
 //
 // [Ja] getPasswordEdit はリセットトークンを ?token= クエリで運ぶ GET /password/edit
 // リクエストを組み立て、context にロケールを設定する。
-func getPasswordEdit(token, locale string) *http.Request {
+func getPasswordEdit(token string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/password/edit?token="+token, nil)
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
@@ -67,11 +68,11 @@ func TestEdit(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		locale      string
+		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, wantHeading: "新しいパスワードを設定"},
-		{name: "English", locale: i18n.LangEn, wantHeading: "Set a new password"},
+		{name: "Japanese", locale: model.LocaleJa, wantHeading: "新しいパスワードを設定"},
+		{name: "English", locale: model.LocaleEn, wantHeading: "Set a new password"},
 	}
 
 	for _, tt := range tests {

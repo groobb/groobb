@@ -21,7 +21,7 @@ func TestCreateSignInUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc@example.com").Build()
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
@@ -59,7 +59,7 @@ func TestCreateSignInUsecase_Execute_TwoFactorEnabled(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc-2fa@example.com").Build()
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
@@ -95,7 +95,7 @@ func TestCreateSignInUsecase_Execute_InvalidCredentials(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("signin-uc-bad@example.com").Build()
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()

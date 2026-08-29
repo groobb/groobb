@@ -40,6 +40,6 @@ func (w *SendEmailConfirmationWorker) Work(ctx context.Context, job *river.Job[d
 	return w.uc.Execute(ctx, usecase.SendEmailConfirmationInput{
 		Email:  job.Args.Email,
 		Code:   job.Args.Code,
-		Locale: job.Args.Locale,
+		Locale: parseLocale(ctx, job.Args.Locale),
 	})
 }

@@ -36,7 +36,7 @@ func TestSignInTwoFactorCreateValidator_Validate_Success(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v@example.com").Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
@@ -63,7 +63,7 @@ func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v-bad@example.com").Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
@@ -117,7 +117,7 @@ func TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor(t *testing.T
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	// A user whose 2FA is only enrolling (not enabled) counts as no enabled 2FA, so
 	// the still-well-formed code cannot be accepted.

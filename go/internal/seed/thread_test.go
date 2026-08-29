@@ -46,12 +46,24 @@ func testProfile() Profile {
 	return profile
 }
 
-// scriptedThreadCount is how many threads a run writes on top of the ordinary
-// ones a board's activity asks for.
+// writtenThreadCount is how many threads a profile writes on top of the ordinary
+// ones a board's activity asks for: the ones written out post by post, and the
+// one filled to the limit where the plan asks for it. It is counted off the
+// profile rather than written down, so that a script added to a profile does not
+// have to be added here as well.
 //
-// [Ja] scriptedThreadCount は、掲示板の賑わいが求める通常のスレッドに加えて実行が
-// 書き込むスレッドの数です。
-const scriptedThreadCount = 3
+// [Ja] writtenThreadCount は、掲示板の賑わいが求める通常のスレッドに加えてプロファイルが
+// 書き込むスレッドの数です。投稿ごとに書き下したものと、plan がそれを求める場合の上限まで
+// 埋まったものを合わせた数になります。書き下さずにプロファイルから数えるのは、プロファイル
+// へ台本を足したときに、ここへも足す必要が生じないようにするためです。
+func writtenThreadCount(profile Profile) int {
+	count := len(profile.scripts)
+	if profile.plan.fullThreadPosts > 0 {
+		count++
+	}
+
+	return count
+}
 
 // generateContent runs the generators the content depends on, in the order a run
 // runs them, and returns the state they filled.
@@ -133,6 +145,80 @@ func findThread(t *testing.T, threads []*model.Thread, title string) *model.Thre
 	return nil
 }
 
+// TestScriptedBoard verifies that a busy board is chosen where one exists, the
+// only board is chosen where none is busy, and several non-busy boards are
+// rejected rather than resolved arbitrarily.
+//
+// [Ja] TestScriptedBoard は、賑わう掲示板があればそれを選び、無ければ唯一の掲示板を
+// 選ぶこと、そして賑わっていない掲示板が複数あれば、恣意的に 1 つへ決めず拒否することを
+// 検証します。
+func TestScriptedBoard(t *testing.T) {
+	t.Parallel()
+
+	busy := &model.Board{Slug: "busy"}
+	quiet := &model.Board{Slug: "quiet"}
+	sole := &model.Board{Slug: "sole"}
+	first := &model.Board{Slug: "first"}
+	second := &model.Board{Slug: "second"}
+
+	tests := []struct {
+		name    string
+		boards  []seededBoard
+		want    *model.Board
+		wantErr bool
+	}{
+		{
+			name: "the busy board among several boards",
+			boards: []seededBoard{
+				{board: quiet, activity: boardQuiet},
+				{board: busy, activity: boardBusy},
+			},
+			want: busy,
+		},
+		{
+			name:   "the only board where none is busy",
+			boards: []seededBoard{{board: sole, activity: boardQuiet}},
+			want:   sole,
+		},
+		{
+			name: "several boards where none is busy",
+			boards: []seededBoard{
+				{board: first, activity: boardQuiet},
+				{board: second, activity: boardEmpty},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := scriptedBoard(tt.boards)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("scriptedBoard() should fail, but it succeeded")
+				}
+				if got != nil {
+					t.Errorf("scriptedBoard() = %q, want no board", got.Slug)
+				}
+				if !strings.Contains(err.Error(), "2 boards") {
+					t.Errorf("scriptedBoard() error = %q, want it to name the 2 boards", err)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("scriptedBoard() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("scriptedBoard() = %q, want %q", got.Slug, tt.want.Slug)
+			}
+		})
+	}
+}
+
 // TestRunner_GenerateThreads verifies that each board is filled to the amount
 // its activity asks for, that a thread's denormalized view of its posts matches
 // the posts it holds, and that the threads are placed in the past so that a
@@ -144,15 +230,21 @@ func findThread(t *testing.T, threads []*model.Thread, title string) *model.Thre
 func TestRunner_GenerateThreads(t *testing.T) {
 	t.Parallel()
 
+	profile := testProfile()
 	db := testutil.SetupDB(t)
-	st, ctx := generateContent(t, db, testProfile())
+	st, ctx := generateContent(t, db, profile)
+
+	written, err := scriptedBoard(st.boards)
+	if err != nil {
+		t.Fatalf("scriptedBoard() error = %v", err)
+	}
 
 	for _, seeded := range st.boards {
 		threads := threadsOf(t, db, ctx, seeded.board.ID)
 
 		want := testContentPlan.threadCount(seeded.activity)
-		if seeded.activity == boardBusy {
-			want += scriptedThreadCount
+		if seeded.board.ID == written.ID {
+			want += writtenThreadCount(profile)
 		}
 		if len(threads) != want {
 			t.Errorf("the board %q holds %d threads, want %d", seeded.board.Slug, len(threads), want)
@@ -224,9 +316,9 @@ func TestRunner_GenerateThreads_WritesTheReferencesTheBodiesMake(t *testing.T) {
 	db := testutil.SetupDB(t)
 	st, ctx := generateContent(t, db, testProfile())
 
-	busy, err := busyBoard(st.boards)
+	busy, err := scriptedBoard(st.boards)
 	if err != nil {
-		t.Fatalf("busyBoard() error = %v", err)
+		t.Fatalf("scriptedBoard() error = %v", err)
 	}
 
 	thread := findThread(t, threadsOf(t, db, ctx, busy.ID), referenceScript.title)
@@ -311,12 +403,15 @@ func TestRunner_GenerateThreads_FillsAThreadToTheLimit(t *testing.T) {
 	db := testutil.SetupDB(t)
 	st, ctx := generateContent(t, db, testProfile())
 
-	busy, err := busyBoard(st.boards)
+	busy, err := scriptedBoard(st.boards)
 	if err != nil {
-		t.Fatalf("busyBoard() error = %v", err)
+		t.Fatalf("scriptedBoard() error = %v", err)
 	}
 
 	thread := findThread(t, threadsOf(t, db, ctx, busy.ID), fullThreadTitle)
+	if want := model.LocaleJa.ThreadLanguage(); thread.Language != want {
+		t.Errorf("the full thread is written in %q, want %q", thread.Language, want)
+	}
 	if thread.PostsCount != testContentPlan.fullThreadPosts {
 		t.Errorf("the full thread counts %d posts, want %d", thread.PostsCount, testContentPlan.fullThreadPosts)
 	}
@@ -343,9 +438,9 @@ func TestRunner_GenerateThreads_AttributesTheWithdrawnThread(t *testing.T) {
 	db := testutil.SetupDB(t)
 	st, ctx := generateContent(t, db, testProfile())
 
-	busy, err := busyBoard(st.boards)
+	busy, err := scriptedBoard(st.boards)
 	if err != nil {
-		t.Fatalf("busyBoard() error = %v", err)
+		t.Fatalf("scriptedBoard() error = %v", err)
 	}
 
 	withdrawing := st.users.user(roleWithdrawn)
@@ -366,6 +461,65 @@ func TestRunner_GenerateThreads_AttributesTheWithdrawnThread(t *testing.T) {
 	}
 	if written < 2 {
 		t.Errorf("the withdrawing account wrote %d posts in %q, want at least 2", written, thread.Title)
+	}
+}
+
+// TestRunner_GenerateThreads_MixesTheLanguages verifies that the board holding
+// the written-out threads carries every language a thread can be written in, and
+// that a board holding only ordinary threads carries the language they are
+// written in. A generated board whose every row read the same way would show
+// nothing of what a list of mixed languages does, which is the state a lounge
+// board is in.
+//
+// [Ja] TestRunner_GenerateThreads_MixesTheLanguages は、書き下したスレッドが立つ掲示板が
+// スレッドを書ける言語をすべて備えること、そして通常のスレッドだけを持つ掲示板が、それらが
+// 書かれている言語を持つことを検証します。どの行も同じに読める掲示板は、複数の言語が並ぶ
+// 一覧の見え方を何も見せません。ラウンジの掲示板が置かれているのはその状態です。
+func TestRunner_GenerateThreads_MixesTheLanguages(t *testing.T) {
+	t.Parallel()
+
+	profile := testProfile()
+	db := testutil.SetupDB(t)
+	st, ctx := generateContent(t, db, profile)
+
+	written, err := scriptedBoard(st.boards)
+	if err != nil {
+		t.Fatalf("scriptedBoard() error = %v", err)
+	}
+
+	threads := threadsOf(t, db, ctx, written.ID)
+
+	languages := make(map[model.ThreadLanguage]int, len(threads))
+	for _, thread := range threads {
+		languages[thread.Language]++
+	}
+	for _, language := range model.ThreadLanguages() {
+		if languages[language] == 0 {
+			t.Errorf("the board %q holds no thread written in %q", written.Slug, language)
+		}
+	}
+
+	// The script states what language its thread is written in, so what was
+	// stored is read back against it rather than written down a second time.
+	//
+	// [Ja] 台本はそのスレッドが何語で書かれているのかを述べるものであるため、保存された
+	// 内容はここへ二度書かず台本に照らして読み直します。
+	for _, script := range profile.scripts {
+		thread := findThread(t, threads, script.title)
+		if thread.Language != script.language {
+			t.Errorf("the thread %q is written in %q, want %q", thread.Title, thread.Language, script.language)
+		}
+	}
+
+	for _, seeded := range st.boards {
+		if seeded.board.ID == written.ID {
+			continue
+		}
+		for _, thread := range threadsOf(t, db, ctx, seeded.board.ID) {
+			if want := model.LocaleJa.ThreadLanguage(); thread.Language != want {
+				t.Errorf("the ordinary thread %q is written in %q, want %q", thread.Title, thread.Language, want)
+			}
+		}
 	}
 }
 

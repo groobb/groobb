@@ -14,15 +14,28 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
+
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // SendEmailConfirmationArgs are the arguments for the job that sends an email
 // confirmation code. They are the primitive values the worker needs to render
 // and send the mail, kept JSON-encodable for River to persist on the queue.
 //
+// Locale is one of those primitives rather than a model.Locale, here and in the
+// other Args: the arguments are persisted as JSON, so the queue carries the
+// language as text either way. The Enqueue* methods take a model.Locale and the
+// workers convert what they read back, which keeps the type on both sides of the
+// queue without asking River to encode it.
+//
 // [Ja] SendEmailConfirmationArgs はメール確認コードを送信するジョブの引数です。
 // ワーカーがメールを描画・送信するのに必要なプリミティブ値で、River がキューに永続化
 // できるよう JSON エンコード可能に保ちます。
+//
+// Locale が他の Args と同じく model.Locale ではなくプリミティブ値なのは、引数が JSON
+// として永続化される以上、キューはいずれにせよ言語をテキストとして運ぶためです。
+// Enqueue* メソッドが model.Locale を受け取り、ワーカーが読み出したものを変換すること
+// で、River に型のエンコードを求めずにキューの両側で型を保てます。
 type SendEmailConfirmationArgs struct {
 	Email  string `json:"email"`
 	Code   string `json:"code"`
@@ -189,8 +202,8 @@ func NewDispatcher(client JobInserter) *Dispatcher {
 // 投入します。呼び出し側 (UseCase) はプリミティブ値を渡し、Args 構造体とそのオプションは
 // ここで組み立てるため、呼び出し側は River を import せずに済みます。オプションは Args
 // 自身の InsertOpts から取り、MaxAttempts の既定値を適用します (nil を渡すと失われます)。
-func (d *Dispatcher) EnqueueEmailConfirmation(ctx context.Context, email, code, locale string) error {
-	args := SendEmailConfirmationArgs{Email: email, Code: code, Locale: locale}
+func (d *Dispatcher) EnqueueEmailConfirmation(ctx context.Context, email, code string, locale model.Locale) error {
+	args := SendEmailConfirmationArgs{Email: email, Code: code, Locale: string(locale)}
 	opts := args.InsertOpts()
 	_, err := d.client.Insert(ctx, args, &opts)
 	return err
@@ -206,8 +219,8 @@ func (d *Dispatcher) EnqueueEmailConfirmation(ctx context.Context, email, code, 
 // locale で送信するジョブを投入します。EnqueueEmailConfirmation と同様にプリミティブ値を
 // 取り、Args とオプションをここで (MaxAttempts の既定値が適用されるよう Args 自身の
 // InsertOpts から) 組み立てるため、呼び出し側 (UseCase) は River を import せずに済みます。
-func (d *Dispatcher) EnqueuePasswordReset(ctx context.Context, email, resetURL, locale string) error {
-	args := SendPasswordResetArgs{Email: email, ResetURL: resetURL, Locale: locale}
+func (d *Dispatcher) EnqueuePasswordReset(ctx context.Context, email, resetURL string, locale model.Locale) error {
+	args := SendPasswordResetArgs{Email: email, ResetURL: resetURL, Locale: string(locale)}
 	opts := args.InsertOpts()
 	_, err := d.client.Insert(ctx, args, &opts)
 	return err
@@ -224,8 +237,8 @@ func (d *Dispatcher) EnqueuePasswordReset(ctx context.Context, email, resetURL, 
 // 他の Enqueue* メソッドと同様にプリミティブ値を取り、Args とオプションをここで
 // (MaxAttempts の既定値が適用されるよう Args 自身の InsertOpts から) 組み立てるため、
 // 呼び出し側 (UseCase) は River を import せずに済みます。
-func (d *Dispatcher) EnqueueEmailChangeNotification(ctx context.Context, email, newEmail, locale string) error {
-	args := SendEmailChangeNotificationArgs{Email: email, NewEmail: newEmail, Locale: locale}
+func (d *Dispatcher) EnqueueEmailChangeNotification(ctx context.Context, email, newEmail string, locale model.Locale) error {
+	args := SendEmailChangeNotificationArgs{Email: email, NewEmail: newEmail, Locale: string(locale)}
 	opts := args.InsertOpts()
 	_, err := d.client.Insert(ctx, args, &opts)
 	return err

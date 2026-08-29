@@ -24,7 +24,7 @@ func TestPasswordUpdateValidator_Validate_Success(t *testing.T) {
 
 	db := testutil.SetupDB(t)
 	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	userID := testutil.NewUserBuilder(t, db).Build()
 	rawToken := "valid-raw-token"
@@ -66,7 +66,7 @@ func TestPasswordUpdateValidator_Validate_FormatErrors(t *testing.T) {
 
 	db := testutil.SetupDB(t)
 	v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	tests := []struct {
 		name       string
@@ -132,7 +132,7 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 		t.Parallel()
 		db := testutil.SetupDB(t)
 		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 		out, err := v.Validate(ctx, validator.PasswordUpdateValidatorInput{
 			Token:                "no-such-token",
@@ -146,7 +146,7 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 		t.Parallel()
 		db := testutil.SetupDB(t)
 		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 		userID := testutil.NewUserBuilder(t, db).Build()
 		rawToken := "used-raw-token"
@@ -168,7 +168,7 @@ func TestPasswordUpdateValidator_Validate_TokenStates(t *testing.T) {
 		t.Parallel()
 		db := testutil.SetupDB(t)
 		v := validator.NewPasswordUpdateValidator(repository.NewPasswordResetTokenRepository(db))
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 		userID := testutil.NewUserBuilder(t, db).Build()
 		rawToken := "expired-raw-token"

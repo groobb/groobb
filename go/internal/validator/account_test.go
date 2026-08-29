@@ -39,7 +39,7 @@ func TestAccountCreateValidator_Validate(t *testing.T) {
 
 	db := testutil.SetupDB(t)
 	v := newAccountValidator(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	tests := []struct {
 		name          string
@@ -158,7 +158,7 @@ func TestAccountCreateValidator_Validate_AtnameAlreadyTaken(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	v := newAccountValidator(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	testutil.NewUserBuilder(t, db).WithAtname("takenname").Build()
 
@@ -205,14 +205,14 @@ func TestAccountCreateValidator_Validate_AtnameMessages(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		locale  string
+		locale  model.Locale
 		atname  string
 		wantMsg string
 	}{
-		{name: "ja: 長すぎる", locale: i18n.LangJa, atname: strings.Repeat("a", 21), wantMsg: "アットネームは 20 文字以内で入力してください"},
-		{name: "en: 長すぎる", locale: i18n.LangEn, atname: strings.Repeat("a", 21), wantMsg: "must be at most 20 characters"},
-		{name: "ja: 不正な文字", locale: i18n.LangJa, atname: "bad-name!", wantMsg: "アットネームは半角英数字とアンダースコアのみ使用できます"},
-		{name: "en: 不正な文字", locale: i18n.LangEn, atname: "bad-name!", wantMsg: "may only contain letters, numbers, and underscores"},
+		{name: "ja: 長すぎる", locale: model.LocaleJa, atname: strings.Repeat("a", 21), wantMsg: "アットネームは 20 文字以内で入力してください"},
+		{name: "en: 長すぎる", locale: model.LocaleEn, atname: strings.Repeat("a", 21), wantMsg: "must be at most 20 characters"},
+		{name: "ja: 不正な文字", locale: model.LocaleJa, atname: "bad-name!", wantMsg: "アットネームは半角英数字とアンダースコアのみ使用できます"},
+		{name: "en: 不正な文字", locale: model.LocaleEn, atname: "bad-name!", wantMsg: "may only contain letters, numbers, and underscores"},
 	}
 
 	for _, tt := range tests {

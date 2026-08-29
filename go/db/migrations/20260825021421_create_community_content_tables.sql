@@ -97,6 +97,15 @@ CREATE INDEX index_boards_on_category_id_and_position ON boards (category_id, po
 -- when the table is declared, so the order the statements appear in does not
 -- matter.
 --
+-- language is the language the thread is written in, and the values it may hold
+-- are not enumerated in a CHECK. SQLite cannot alter one, so every language
+-- added would take a migration that rebuilds the table and copies its rows. The
+-- set lives in the application (model.ThreadLanguages) and the repository
+-- applies it before the insert. The column has no default either: which language
+-- a community writes in is the community's, not the schema's, and a default here
+-- would make every self-hosted instance start from the one Groobb's own
+-- community happens to use.
+--
 -- board_id is ON DELETE CASCADE: once a board is deleted its contents carry no
 -- meaning of their own. user_id is ON DELETE SET NULL because a withdrawn
 -- account's row is eventually removed by the purge job, and a cascade would
@@ -121,6 +130,13 @@ CREATE INDEX index_boards_on_category_id_and_position ON boards (category_id, po
 -- 外部キーの参照先をテーブルの宣言時ではなく行の書き込み時に解決するため、文の並ぶ順序は
 -- 問題にならない。
 --
+-- language はスレッドが書かれている言語で、取りうる値を CHECK で列挙しない。SQLite は
+-- CHECK を変更できず、言語を 1 つ足すたびにテーブルを作り直して行を移すマイグレーションが
+-- 必要になるためである。値域はアプリケーション側 (model.ThreadLanguages) に置き、
+-- リポジトリが挿入の前にそれを適用する。既定値も持たせない。コミュニティがどの言語で書くかは
+-- そのコミュニティのものでスキーマのものではなく、ここに既定値を置けば、セルフホストされる
+-- どのインスタンスも Groobb 自身のコミュニティがたまたま使う言語から始まることになる。
+--
 -- board_id は ON DELETE CASCADE とする。掲示板を消すと決めた時点で、その中身は独立した
 -- 意味を持たない。user_id を ON DELETE SET NULL とするのは、退会したアカウントの行を
 -- いずれパージジョブが物理削除するためで、CASCADE では作者と一緒に他人の返信ごと
@@ -131,6 +147,7 @@ CREATE TABLE threads (
     board_id INTEGER NOT NULL REFERENCES boards (id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
     title TEXT NOT NULL,
+    language TEXT NOT NULL,
     posts_count INTEGER NOT NULL DEFAULT 0,
     last_post_id INTEGER REFERENCES posts (id) ON DELETE SET NULL,
     last_posted_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),

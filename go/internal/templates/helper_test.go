@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
@@ -18,12 +19,12 @@ func TestT(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		locale    string
+		locale    model.Locale
 		messageID string
 		want      string
 	}{
-		{name: "Japanese", locale: i18n.LangJa, messageID: "default_description", want: "Groobb は掲示板サービスです。"},
-		{name: "English", locale: i18n.LangEn, messageID: "default_description", want: "Groobb is a bulletin board service."},
+		{name: "Japanese", locale: model.LocaleJa, messageID: "default_description", want: "Groobb は掲示板サービスです。"},
+		{name: "English", locale: model.LocaleEn, messageID: "default_description", want: "Groobb is a bulletin board service."},
 	}
 
 	for _, tt := range tests {
@@ -47,8 +48,8 @@ func TestLocale(t *testing.T) {
 		setup func(ctx context.Context) context.Context
 		want  string
 	}{
-		{name: "English is set", setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, i18n.LangEn) }, want: i18n.LangEn},
-		{name: "nothing is set falls back to the default", setup: func(ctx context.Context) context.Context { return ctx }, want: i18n.DefaultLang},
+		{name: "English is set", setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleEn) }, want: string(model.LocaleEn)},
+		{name: "nothing is set falls back to the default", setup: func(ctx context.Context) context.Context { return ctx }, want: string(model.DefaultLocale)},
 	}
 
 	for _, tt := range tests {

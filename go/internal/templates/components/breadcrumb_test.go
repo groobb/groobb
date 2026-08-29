@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/templates/components"
 	"github.com/groobb/groobb/go/internal/testutil"
@@ -26,7 +27,7 @@ const breadcrumbBaseURL = "https://groobb.example.com"
 func renderBreadcrumb(t *testing.T, data components.BreadcrumbData) string {
 	t.Helper()
 
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	var buf bytes.Buffer
 	if err := components.Breadcrumb(data).Render(ctx, &buf); err != nil {
@@ -127,6 +128,37 @@ func TestBreadcrumb_StructuredData(t *testing.T) {
 		if got := element["item"]; got != want.item {
 			t.Errorf("itemListElement[%d].item = %v, want %v", i, got, want.item)
 		}
+	}
+}
+
+// TestBreadcrumb_ItemLanguages verifies that each step can declare the
+// language of its own wording, whether it is linked or current, while an empty
+// language continues to inherit from the page.
+//
+// [Ja] TestBreadcrumb_ItemLanguages は、リンクの段と現在地の段のどちらでも、それぞれの
+// 文言の言語を宣言でき、言語が空なら引き続きページから継承することを検証します。
+func TestBreadcrumb_ItemLanguages(t *testing.T) {
+	t.Parallel()
+
+	markup := renderBreadcrumb(t, components.BreadcrumbData{
+		Items: []components.BreadcrumbItem{
+			{Name: "音楽", Path: templates.CategoryPath("music")},
+			{Name: "English board", Path: templates.BoardPath("english"), Lang: "en"},
+			{Name: "Records I picked up", Lang: "en"},
+		},
+	})
+
+	inherited := testutil.OpeningTag(t, markup, ">音楽<")
+	if strings.Contains(inherited, "lang=") {
+		t.Errorf("言語を持たない段 = %s, want lang 属性なし", inherited)
+	}
+	linked := testutil.OpeningTag(t, markup, ">English board<")
+	if !strings.Contains(linked, `lang="en"`) {
+		t.Errorf("言語を持つリンクの段 = %s, want lang=\"en\"", linked)
+	}
+	current := testutil.OpeningTag(t, markup, `aria-current="page"`)
+	if !strings.Contains(current, `lang="en"`) {
+		t.Errorf("言語を持つ現在地の段 = %s, want lang=\"en\"", current)
 	}
 }
 

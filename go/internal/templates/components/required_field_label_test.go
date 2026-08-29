@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
@@ -26,12 +27,12 @@ func TestRequiredFieldLabel(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		locale       string
+		locale       model.Locale
 		wantContains []string
 	}{
 		{
 			name:   "Japanese",
-			locale: i18n.LangJa,
+			locale: model.LocaleJa,
 			wantContains: []string{
 				`<label for="email"`,
 				"メールアドレス",
@@ -40,7 +41,7 @@ func TestRequiredFieldLabel(t *testing.T) {
 		},
 		{
 			name:   "English",
-			locale: i18n.LangEn,
+			locale: model.LocaleEn,
 			wantContains: []string{
 				`<label for="email"`,
 				"メールアドレス",

@@ -130,7 +130,7 @@ func newHandlerForDatabases(categoryDB, navigationDB, boardDB *database.DB) *cat
 // リクエストを組み立てます。slug は chi のルート context に、ロケール・現在のパス・
 // 閲覧者はリクエスト context に、i18n・templates・認証の各ミドルウェアがするのと同じ
 // ように直接置きます。user が nil のときは匿名の訪問者です。
-func newRequest(t *testing.T, slug, locale string, user *model.User) *http.Request {
+func newRequest(t *testing.T, slug string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
 	path := templates.CategoryPath(slug).String()
@@ -171,21 +171,21 @@ func TestShow(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantDescription string
 		wantRegionLabel string
 		wantPrompt      string
 	}{
 		{
 			name:            "Japanese",
-			locale:          i18n.LangJa,
+			locale:          model.LocaleJa,
 			wantDescription: "音楽 カテゴリーの掲示板の一覧です。",
 			wantRegionLabel: "スレッドの閲覧",
 			wantPrompt:      "掲示板を選ぶと、その中のスレッドが表示されます。",
 		},
 		{
 			name:            "English",
-			locale:          i18n.LangEn,
+			locale:          model.LocaleEn,
 			wantDescription: "The boards in the 音楽 category.",
 			wantRegionLabel: "Reading a thread",
 			wantPrompt:      "Choose a board to see the threads in it.",
@@ -220,7 +220,7 @@ func TestShow(t *testing.T) {
 				"ジャズ喫茶",
 				`href="/settings"`,
 				`action="/user_session"`,
-				`lang="` + tt.locale + `"`,
+				`lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
@@ -287,7 +287,7 @@ func TestShow_LeavesTheSidebarUnmarked(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "music", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "music", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	body := rec.Body.String()
 
@@ -321,7 +321,7 @@ func TestShow_RedirectsCaseVariantToCanonicalSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "MUSIC", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "MUSIC", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusPermanentRedirect {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusPermanentRedirect)
@@ -348,7 +348,7 @@ func TestShow_RedirectToCanonicalSlugKeepsQuery(t *testing.T) {
 	t.Parallel()
 
 	handler := newHandler(t)
-	req := newRequest(t, "MUSIC", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "MUSIC", model.LocaleJa, &model.User{Atname: "alice"})
 	req.URL.RawQuery = "utm_source=newsletter&page=2"
 	rec := httptest.NewRecorder()
 
@@ -381,7 +381,7 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "music", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "music", model.LocaleJa, nil))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -417,7 +417,7 @@ func TestShow_EmptyCategory(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "empty", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "empty", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
@@ -455,7 +455,7 @@ func TestShow_DeclaresItsCanonicalURL(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "music", i18n.LangJa, nil))
+	handler.Show(rec, newRequest(t, "music", model.LocaleJa, nil))
 
 	canonical := testutil.OpeningTag(t, rec.Body.String(), `rel="canonical"`)
 	if want := `href="` + appURL + "/c/music" + `"`; !strings.Contains(canonical, want) {
@@ -478,7 +478,7 @@ func TestShow_UnknownSlug(t *testing.T) {
 
 	handler := newHandler(t)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "no-such-category", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "no-such-category", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
@@ -501,7 +501,7 @@ func TestShow_LookupFailure(t *testing.T) {
 	t.Parallel()
 
 	handler := newHandler(t)
-	req := newRequest(t, "music", i18n.LangJa, &model.User{Atname: "alice"})
+	req := newRequest(t, "music", model.LocaleJa, &model.User{Atname: "alice"})
 	ctx, cancel := context.WithCancel(req.Context())
 	cancel()
 	rec := httptest.NewRecorder()
@@ -541,7 +541,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(categoryDB, navigationDB, categoryDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "music", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "music", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
@@ -578,7 +578,7 @@ func TestShow_BoardListingFailure(t *testing.T) {
 
 	handler := newHandlerForDatabases(categoryDB, categoryDB, boardDB)
 	rec := httptest.NewRecorder()
-	handler.Show(rec, newRequest(t, "music", i18n.LangJa, &model.User{Atname: "alice"}))
+	handler.Show(rec, newRequest(t, "music", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

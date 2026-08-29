@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/groobb/groobb/go/internal/i18n"
+	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
@@ -48,10 +49,10 @@ func TestRelativeTime(t *testing.T) {
 
 			at := time.Now().Add(-tt.ago)
 
-			if got := templates.RelativeTime(i18n.SetLocale(context.Background(), i18n.LangJa), at); got != tt.wantJa {
+			if got := templates.RelativeTime(i18n.SetLocale(context.Background(), model.LocaleJa), at); got != tt.wantJa {
 				t.Errorf("RelativeTime(ja, -%v) = %q, want %q", tt.ago, got, tt.wantJa)
 			}
-			if got := templates.RelativeTime(i18n.SetLocale(context.Background(), i18n.LangEn), at); got != tt.wantEn {
+			if got := templates.RelativeTime(i18n.SetLocale(context.Background(), model.LocaleEn), at); got != tt.wantEn {
 				t.Errorf("RelativeTime(en, -%v) = %q, want %q", tt.ago, got, tt.wantEn)
 			}
 		})

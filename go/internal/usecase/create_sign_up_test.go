@@ -50,7 +50,7 @@ func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 	db := testutil.SetupDB(t)
 
 	uc, inserter, _ := newCreateSignUpUsecase(t, db)
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	output, err := uc.Execute(ctx, usecase.CreateSignUpInput{
 		Email:  "new@example.com",
@@ -115,7 +115,7 @@ func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 
 	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
 
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 	output, err := uc.Execute(ctx, usecase.CreateSignUpInput{
 		Email:  "taken@example.com",
 		Locale: "ja",
@@ -148,7 +148,7 @@ func TestCreateSignUpUsecase_Execute_EnqueueFailure(t *testing.T) {
 
 	uc, inserter, _ := newCreateSignUpUsecase(t, db)
 	inserter.Err = errors.New("queue unavailable")
-	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
 	output, err := uc.Execute(ctx, usecase.CreateSignUpInput{
 		Email:  "new@example.com",

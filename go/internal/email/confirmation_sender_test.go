@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/a-h/templ"
+
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // render renders a templ component to a string for body assertions.
@@ -21,12 +23,12 @@ func render(t *testing.T, c templ.Component) string {
 }
 
 // TestConfirmationSender_Send checks that Send picks the right localized subject
-// and body templates and forwards them to the base Sender, including the
-// fallback to English for an unknown locale.
+// and body templates and forwards them to the base Sender, including the English
+// ones its default branch selects for a locale that is not Japanese.
 //
 // [Ja] TestConfirmationSender_Send は、Send が正しいローカライズ済みの件名と本文
-// テンプレートを選び基盤 Sender に渡すこと (未知ロケールの英語フォールバックを含む) を
-// 確認する。
+// テンプレートを選び基盤 Sender に渡すこと (日本語以外のロケールに対して default 節が
+// 選ぶ英語のものを含む) を確認する。
 func TestConfirmationSender_Send(t *testing.T) {
 	t.Parallel()
 
@@ -37,7 +39,7 @@ func TestConfirmationSender_Send(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		locale          string
+		locale          model.Locale
 		wantSubject     string
 		wantHTMLSnippet string
 		wantTextSnippet string
@@ -56,8 +58,16 @@ func TestConfirmationSender_Send(t *testing.T) {
 			wantHTMLSnippet: "confirmation code",
 			wantTextSnippet: "confirmation code",
 		},
+		// A locale outside the display languages reaches Send only through a bare
+		// conversion, which model.ParseLocale exists to prevent, so no caller produces
+		// one. The case is kept as the safety net: the mail stays coherent English
+		// rather than splitting its subject and bodies across languages.
+		//
+		// [Ja] 表示言語の外のロケールは素の型変換でしか Send に届かず、それを防ぐために
+		// model.ParseLocale がある以上、呼び出し元がこの値を作ることはない。安全網として
+		// 残しているケースで、件名と本文が別の言語に割れることなく英語で一貫する。
 		{
-			name:            "unknown locale falls back to English",
+			name:            "a locale outside the display languages still yields an English mail",
 			locale:          "fr",
 			wantSubject:     "[Groobb] Confirmation code",
 			wantHTMLSnippet: "confirmation code",

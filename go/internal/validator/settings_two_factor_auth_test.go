@@ -67,7 +67,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{
 			UserID: userID,
 			Code:   validTOTPCode(t),
@@ -82,7 +82,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: ""})
 
 		ve := model.AsValidationError(err)
@@ -99,7 +99,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: "12ab5"})
 
 		ve := model.AsValidationError(err)
@@ -116,7 +116,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 		db := testutil.SetupDB(t)
 		v, userID := newTwoFactorAuthValidator(t, db)
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: "123456"})
 
 		ve := model.AsValidationError(err)
@@ -133,7 +133,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: validTOTPCode(t)})
 
 		ve := model.AsValidationError(err)
@@ -160,7 +160,7 @@ func TestSettingsTwoFactorAuthCreateValidator_Validate(t *testing.T) {
 			wrongCode = "111111"
 		}
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthCreateValidatorInput{UserID: userID, Code: wrongCode})
 
 		ve := model.AsValidationError(err)
@@ -209,7 +209,7 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 		testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
 			UserID:          userID,
 			CurrentPassword: testutil.DefaultBuilderPassword,
@@ -224,7 +224,7 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthDeleteValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
 			UserID: userID,
 			Code:   validTOTPCode(t),
@@ -239,7 +239,7 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 		v, userID := newTwoFactorAuthDeleteValidator(t, db)
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{UserID: userID})
 
 		ve := model.AsValidationError(err)
@@ -257,7 +257,7 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).WithEnabled(true).Build()
 		testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).Build()
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{
 			UserID:          userID,
 			CurrentPassword: "wrongpassword",
@@ -286,7 +286,7 @@ func TestSettingsTwoFactorAuthDeleteValidator_Validate(t *testing.T) {
 			wrongCode = "111111"
 		}
 
-		ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+		ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 		err := v.Validate(ctx, validator.SettingsTwoFactorAuthDeleteValidatorInput{UserID: userID, Code: wrongCode})
 
 		ve := model.AsValidationError(err)

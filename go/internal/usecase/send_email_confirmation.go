@@ -7,7 +7,11 @@
 // アクセス・認可・バリデーション・ビジネスロジック・永続化を統括します。
 package usecase
 
-import "context"
+import (
+	"context"
+
+	"github.com/groobb/groobb/go/internal/model"
+)
 
 // EmailConfirmationSender renders and sends a confirmation code mail. The
 // interface is declared here, on the consumer side, so this package does not
@@ -19,7 +23,7 @@ import "context"
 // します。main.go が具体的な email.ConfirmationSender を注入し、テストではフェイクを
 // 注入します。
 type EmailConfirmationSender interface {
-	Send(ctx context.Context, to, code, locale string) error
+	Send(ctx context.Context, to, code string, locale model.Locale) error
 }
 
 // SendEmailConfirmationUsecase sends a confirmation code mail. It is the
@@ -48,7 +52,7 @@ func NewSendEmailConfirmationUsecase(sender EmailConfirmationSender) *SendEmailC
 type SendEmailConfirmationInput struct {
 	Email  string
 	Code   string
-	Locale string
+	Locale model.Locale
 }
 
 // Execute sends the confirmation mail. Any send failure is returned as-is so the
