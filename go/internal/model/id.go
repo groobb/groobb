@@ -148,6 +148,36 @@ type ThreadID int64
 // [Ja] String は ThreadID を 10 進表記で返します。
 func (id ThreadID) String() string { return strconv.FormatInt(int64(id), 10) }
 
+// ParseThreadID reads a ThreadID out of the decimal form String writes,
+// reporting whether raw spells one at all. The two sit together so that what
+// counts as a thread's address is settled once, and every route addressing the
+// same thread agrees on it.
+//
+// Anything that is not a positive whole number is rejected rather than looked
+// up: no thread carries such an id, so a lookup would answer that it is missing
+// after a query. The spellings strconv accepts around a number it does read — a
+// leading zero or a plus sign — are accepted here as well, so a caller that
+// answers under a single address compares raw with the parsed id's String and
+// redirects when the two differ.
+//
+// [Ja] ParseThreadID は、String が書く 10 進表記から ThreadID を読み取り、そもそも raw が
+// それを表しているかどうかを併せて返します。2 つを並べて置くのは、何がスレッドのアドレスで
+// あるかを 1 度で決め、同じスレッドを指すどのルートもそれに従うようにするためです。
+//
+// 正の整数でないものはルックアップせずに拒否します。そのような id を持つスレッドは無く、
+// ルックアップしてもクエリを 1 回発行した末に不在と答えるだけだからです。strconv が読み取る
+// 数の周りに認める綴り (先頭のゼロやプラス記号) はここでも受け付けるため、1 つのアドレスで
+// 応答する呼び出し側は、raw と解析した id の String を突き合わせ、異なるときにリダイレクト
+// します。
+func ParseThreadID(raw string) (ThreadID, bool) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+
+	return ThreadID(id), true
+}
+
 // PostID is the typed identifier for a post. Like UserID it wraps int64 so post
 // IDs cannot be mixed up with other entities' IDs.
 //
