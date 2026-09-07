@@ -220,6 +220,14 @@ other = "The threads in the {{.Name}} board."
 description = "Text shown on the board page when the board holds no threads"
 other = "This board has no threads yet."
 
+[board_show_new_thread_link]
+description = "Link to the thread creation form, placed above the thread list on the board page"
+other = "Start a thread"
+
+[board_show_first_thread_link]
+description = "Link to the thread creation form, placed in the empty state of the board page when the board holds no threads"
+other = "Start the first thread"
+
 [board_show_last_posted_label]
 description = "Label placed before the last-post time in the board page's thread list"
 other = "Last post"
@@ -248,6 +256,10 @@ other = "The posts in the {{.Title}} thread, in the {{.Board}} board."
 description = "Accessible label for the thread page's list column, the region holding the threads of the board this thread was posted in"
 other = "Threads in this board"
 
+[thread_show_new_thread_link]
+description = "Text of the link to the thread creation page of the board, in the list column of the thread page"
+other = "Start a thread"
+
 [thread_show_post_link_label]
 description = "Accessible name for the link a post carries to itself (its reply number) on the thread page, with the reply number interpolated"
 other = "Post {{.Number}}"
@@ -260,9 +272,25 @@ other = "A withdrawn member"
 description = "Label placed before the reply numbers of the posts that replied to a post on the thread page"
 other = "Replies"
 
-[thread_show_full_notice]
-description = "Text shown on the thread page when the thread has reached the number of posts it can hold, with the cap interpolated"
+[thread_lock_post_limit_reached]
+description = "Sentence in the notice about a locked thread saying it holds every post it can hold, with the cap interpolated"
 other = "This thread has reached its limit of {{.Limit}} posts. Nothing more can be written here."
+
+[thread_lock_next_thread_link]
+description = "Text of the link to the thread creation page of the same board, added to the notice of a thread locked for the post cap alone"
+other = "Start a new thread in this board"
+
+[thread_show_reply_heading]
+description = "Heading of the reply form at the end of the thread page"
+other = "Post a reply"
+
+[thread_show_reply_sign_in_prompt]
+description = "Text at the end of the thread page telling a signed-out visitor that replying takes an account"
+other = "Sign in to reply to this thread."
+
+[thread_show_reply_sign_in_link]
+description = "Text of the link to sign in for replying, at the end of the thread page"
+other = "Sign in"
 
 [email_confirmation_subject]
 description = "Subject line for the email confirmation code email"
@@ -851,3 +879,125 @@ other = "This password reset link has expired. Please request a new one."
 [validation_turnstile_failed]
 description = "Form-wide error when the Turnstile bot check fails (prompts a retry)"
 other = "We couldn't verify that you're not a robot. Please try again."
+
+[validation_text_invalid_characters]
+description = "Validation error when the input breaks the text input rules (invalid UTF-8 or NUL)"
+other = "contains characters that cannot be used"
+
+[validation_thread_title_single_line]
+description = "Validation error when a thread title holds a line break"
+other = "must be a single line, with no line breaks"
+
+[validation_thread_title_too_long]
+description = "Validation error when a thread title is too long"
+other = "must be at most 100 characters"
+
+[validation_thread_language_invalid]
+description = "Validation error when the thread's primary language is not one of the languages a thread may be written in"
+other = "must be chosen from the list"
+
+[validation_post_body_too_long]
+description = "Validation error when a post body is too long"
+other = "must be at most 10,000 characters"
+
+[validation_post_interval_too_short]
+description = "Form-wide error when a post arrives before the interval since the previous one has passed (tells the wait)"
+one = "Your posts are too close together. Please try again in {{.Count}} second."
+other = "Your posts are too close together. Please try again in {{.Count}} seconds."
+
+[validation_post_save_failed]
+description = "Form-wide error shown when saving a post fails unexpectedly, inviting a retry"
+other = "The post could not be saved. Please try again in a moment."
+
+[validation_post_account_unavailable]
+description = "Form-wide error when the account can no longer post (it has withdrawn)"
+other = "This account can no longer post."
+
+[validation_post_thread_locked]
+description = "Form-wide error when a post is written to a thread that takes no further post"
+other = "This thread is no longer accepting posts."
+
+[thread_new_title]
+description = "Thread creation page title (title tag)"
+other = "Start a thread"
+
+[thread_new_heading]
+description = "Thread creation page heading, also used as the current step of the breadcrumb"
+other = "Start a thread"
+
+[thread_new_lead]
+description = "Thread creation page lead, naming the board the thread is started in, with the board name interpolated"
+other = "Starting a new thread in {{.Board}}."
+
+[thread_new_title_label]
+description = "Thread creation page title label"
+other = "Title"
+
+[thread_new_title_hint]
+description = "Thread creation page title hint (length limit)"
+other = "Up to 100 characters"
+
+[thread_new_language_label]
+description = "Thread creation page primary-language label"
+other = "Primary language"
+
+[thread_new_language_hint]
+description = "Thread creation page primary-language hint (what the field is choosing)"
+other = "Choose the language this thread is mainly written in"
+
+[thread_new_body_label]
+description = "Thread creation page body label, saying it becomes the thread's first post"
+other = "First post"
+
+[thread_new_errors_heading]
+description = "Heading for the field error summary in the thread creation form"
+other = "Check your entries"
+
+[thread_new_submit]
+description = "Thread creation page submit button"
+other = "Start thread"
+
+[post_body_label]
+description = "Post form body label"
+other = "Message"
+
+[post_body_hint]
+description = "Post form body hint (length limit)"
+other = "Up to 10,000 characters"
+
+[post_reference_hint]
+description = "Reply form body hint, stating how a post in the same thread is quoted"
+other = "Quote a post in this thread by its reply number, as in >>1"
+
+[post_interval_hint]
+description = "Post form notice stating the interval between one person's posts, with the seconds interpolated"
+one = "Posting again takes an interval of {{.Count}} second."
+other = "Posting again takes an interval of {{.Count}} seconds."
+
+[post_errors_heading]
+description = "Heading for the field error summary in the post form"
+other = "Check your entries"
+
+[post_reply_submit]
+description = "Reply form submit button"
+other = "Post a reply"
+
+[post_create_title]
+description = "Title (title tag) of the page shown when a reply was not saved"
+other = "Your reply was not posted"
+
+[post_create_heading]
+description = "Heading of the page shown when a reply was not saved"
+other = "Your reply was not posted"
+
+[post_create_lead]
+description = "Lead of the page shown when a reply was not saved, followed by the link to the thread it was written in"
+other = "This reply was written in the thread below."
+
+[post_create_kept_body_label]
+description = "Label of the read-only field holding what was written, shown when a reply to a thread that takes no post was refused"
+other = "What you wrote"
+
+[post_create_kept_body_hint]
+description = "Hint saying the text can be kept, shown when a reply to a thread that takes no post was refused"
+other = "You can copy this text and keep it."

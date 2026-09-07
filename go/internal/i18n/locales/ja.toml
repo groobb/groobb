@@ -214,6 +214,14 @@ other = "{{.Name}} のスレッドの一覧です。"
 description = "掲示板ページで、その掲示板がスレッドを 1 つも持たないときに表示する文言"
 other = "この掲示板にはまだスレッドがありません。"
 
+[board_show_new_thread_link]
+description = "掲示板ページで、スレッド一覧の上に置くスレッド作成フォームへのリンク"
+other = "スレッドを立てる"
+
+[board_show_first_thread_link]
+description = "掲示板ページで、その掲示板がスレッドを 1 つも持たないときに空状態に置くスレッド作成フォームへのリンク"
+other = "最初のスレッドを立てる"
+
 [board_show_last_posted_label]
 description = "掲示板ページのスレッド一覧で、最終投稿の時刻に添えるラベル"
 other = "最終投稿"
@@ -242,6 +250,10 @@ other = "{{.Board}} に立っているスレッド「{{.Title}}」の投稿の�
 description = "スレッドページの一覧カラムのアクセシブルラベル。そのスレッドが属する掲示板のスレッド一覧であることを表す"
 other = "この板のスレッド"
 
+[thread_show_new_thread_link]
+description = "スレッドページの一覧カラムで、その掲示板にスレッドを立てるページへ向かうリンクの文言"
+other = "スレッドを立てる"
+
 [thread_show_post_link_label]
 description = "スレッドページで、投稿自身へのリンク (レス番号) に与えるアクセシブルネーム。レス番号を差し込む"
 other = "レス {{.Number}}"
@@ -254,9 +266,25 @@ other = "退会した利用者"
 description = "スレッドページで、その投稿に返信した投稿のレス番号の並びに添えるラベル"
 other = "返信"
 
-[thread_show_full_notice]
-description = "スレッドページで、投稿数が上限に達したスレッドに表示する文言。上限の件数を差し込む"
+[thread_lock_post_limit_reached]
+description = "ロック中のスレッドの案内のうち、投稿数が上限に達したことを述べる文言。上限の件数を差し込む"
 other = "このスレッドは投稿数の上限 ({{.Limit}} 件) に達しました。これ以上は書き込めません。"
+
+[thread_lock_next_thread_link]
+description = "投稿数の上限だけを理由にロックされたスレッドの案内に添える、同じ掲示板でスレッドを立てるページへのリンクの文言"
+other = "この掲示板で新しいスレッドを立てる"
+
+[thread_show_reply_heading]
+description = "スレッドページの末尾に置く返信フォームの見出し"
+other = "返信する"
+
+[thread_show_reply_sign_in_prompt]
+description = "スレッドページの末尾で、サインアウト状態の訪問者に、返信にはアカウントが要ることを伝える文言"
+other = "このスレッドに返信するにはサインインしてください。"
+
+[thread_show_reply_sign_in_link]
+description = "スレッドページの末尾で、返信のためにサインインへ向かうリンクの文言"
+other = "サインイン"
 
 [email_confirmation_subject]
 description = "メール確認コードのメールの件名"
@@ -845,3 +873,123 @@ other = "このパスワード再設定用リンクは有効期限が切れて�
 [validation_turnstile_failed]
 description = "Turnstile の Bot 検証に失敗したときのフォーム全体のエラー (再試行を促す)"
 other = "ロボットでないことの確認に失敗しました。もう一度お試しください。"
+
+[validation_text_invalid_characters]
+description = "入力がテキストの入力規則 (妥当なUTF-8でNULを含まないこと) に反するときのバリデーションエラー"
+other = "使用できない文字が含まれています"
+
+[validation_thread_title_single_line]
+description = "スレッドのタイトルに改行が含まれるときのバリデーションエラー"
+other = "タイトルは改行を含まない1行で入力してください"
+
+[validation_thread_title_too_long]
+description = "スレッドのタイトルが長すぎるときのバリデーションエラー"
+other = "タイトルは100文字以内で入力してください"
+
+[validation_thread_language_invalid]
+description = "スレッドの主言語が、選べる言語のいずれでもないときのバリデーションエラー"
+other = "主言語は一覧から選んでください"
+
+[validation_post_body_too_long]
+description = "投稿の本文が長すぎるときのバリデーションエラー"
+other = "本文は10,000文字以内で入力してください"
+
+[validation_post_interval_too_short]
+description = "前の投稿から間隔を空けずに投稿したときのフォーム全体のエラー (待ち時間を伝える)"
+other = "投稿の間隔が短すぎます。{{.Count}}秒後にもう一度お試しください。"
+
+[validation_post_save_failed]
+description = "投稿の保存が予期せず失敗したときのフォーム全体のエラー (再試行を促す)"
+other = "投稿を保存できませんでした。時間をおいてもう一度お試しください。"
+
+[validation_post_account_unavailable]
+description = "退会などにより投稿できなくなったアカウントから投稿したときのフォーム全体のエラー"
+other = "このアカウントでは投稿できません。"
+
+[validation_post_thread_locked]
+description = "投稿を受け付けなくなったスレッドへ投稿したときのフォーム全体のエラー"
+other = "このスレッドは投稿を受け付けていません。"
+
+[thread_new_title]
+description = "スレッド作成ページのタイトル (title タグ)"
+other = "スレッドを立てる"
+
+[thread_new_heading]
+description = "スレッド作成ページの見出し。パンくずの現在地の段にも使う"
+other = "スレッドを立てる"
+
+[thread_new_lead]
+description = "スレッド作成ページの説明文。どの掲示板に立てるのかを伝える。掲示板名を差し込む"
+other = "{{.Board}} に新しいスレッドを立てます。"
+
+[thread_new_title_label]
+description = "スレッド作成ページのタイトルのラベル"
+other = "タイトル"
+
+[thread_new_title_hint]
+description = "スレッド作成ページのタイトルのヒント (文字数の上限)"
+other = "100文字以内で入力してください"
+
+[thread_new_language_label]
+description = "スレッド作成ページの主言語のラベル"
+other = "主言語"
+
+[thread_new_language_hint]
+description = "スレッド作成ページの主言語のヒント (何を選ぶ欄なのかを伝える)"
+other = "このスレッドで主に使う言語を選んでください"
+
+[thread_new_body_label]
+description = "スレッド作成ページの本文のラベル。スレッドの最初の投稿になることを示す"
+other = "最初の投稿"
+
+[thread_new_errors_heading]
+description = "スレッド作成フォームの入力エラー要約の見出し"
+other = "入力内容を確認してください"
+
+[thread_new_submit]
+description = "スレッド作成ページの送信ボタン"
+other = "スレッドを立てる"
+
+[post_body_label]
+description = "投稿フォームの本文のラベル"
+other = "本文"
+
+[post_body_hint]
+description = "投稿フォームの本文のヒント (文字数の上限)"
+other = "10,000文字以内で入力してください"
+
+[post_reference_hint]
+description = "返信フォームの本文のヒント。同じスレッドの投稿を引用する書き方を伝える"
+other = "同じスレッドの投稿は >>1 のようにレス番号で引用できます"
+
+[post_interval_hint]
+description = "投稿フォームで、投稿と投稿の間に空ける間隔を伝える案内。秒数を差し込む"
+other = "続けて投稿するときは{{.Count}}秒の間隔が必要です。"
+
+[post_errors_heading]
+description = "投稿フォームの入力エラー要約の見出し"
+other = "入力内容を確認してください"
+
+[post_reply_submit]
+description = "返信フォームの送信ボタン"
+other = "返信する"
+
+[post_create_title]
+description = "返信が保存されなかったときに表示するページのタイトル (title タグ)"
+other = "返信を投稿できませんでした"
+
+[post_create_heading]
+description = "返信が保存されなかったときに表示するページの見出し"
+other = "返信を投稿できませんでした"
+
+[post_create_lead]
+description = "返信が保存されなかったときに表示するページの説明文。投稿先のスレッドへのリンクがこの直後に続く"
+other = "この返信の投稿先は次のスレッドです。"
+
+[post_create_kept_body_label]
+description = "投稿を受け付けないスレッドへの返信が拒否されたときに、入力された本文を読み取り専用で示す欄のラベル"
+other = "入力した本文"
+
+[post_create_kept_body_hint]
+description = "投稿を受け付けないスレッドへの返信が拒否されたときに、本文を控えられることを伝えるヒント"
+other = "この本文はコピーできます。必要であれば手元に控えてください。"
