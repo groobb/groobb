@@ -118,6 +118,69 @@ func (r *PostReferenceRepository) Create(ctx context.Context, input CreatePostRe
 	return r.toModel(row), nil
 }
 
+// CreatePostReferencesInput holds the post whose body was read and the reply
+// numbers that body refers to. The post's own thread and number are carried
+// alongside its id because they are what the numbers are resolved against: a
+// reply number means something only within one thread, and only the numbers
+// below the post's own can be replied to.
+//
+// [Ja] CreatePostReferencesInput は、本文を読み取った投稿と、その本文が参照するレス番号を
+// 保持します。投稿自身のスレッドと番号を id と一緒に運ぶのは、それらが番号を解決する
+// 相手であるためです。レス番号は 1 つのスレッドの中でしか意味を持たず、返信できるのは
+// その投稿自身の番号より下の番号だけです。
+type CreatePostReferencesInput struct {
+	PostID            model.PostID
+	ThreadID          model.ThreadID
+	Number            int
+	ReferencedNumbers []int
+}
+
+// CreateAllByReferencedNumbers records what a post's body refers to, resolving
+// the reply numbers into posts inside the insert itself. The resolution is one
+// statement rather than a lookup per number because a body may name as many
+// numbers as the thread holds, and each lookup would sit inside the transaction
+// that writes the post, which the next writer is waiting on.
+//
+// A row is written for each number a post of the same thread carries below the
+// referring post's own, so a number nothing carries, the post's own number and a
+// number ahead of it write nothing. A reply number identifies one post within
+// its thread, so a body writing >>5 twice still records the one relationship
+// UNIQUE (post_id, referenced_post_id) admits.
+//
+// No number writes nothing, without querying: a body referring to no post has no
+// reference to record.
+//
+// [Ja] CreateAllByReferencedNumbers は投稿の本文が参照するものを記録します。レス番号から
+// 投稿への解決は INSERT 自身の中で行います。1 番号につき 1 回引き当てるのではなく 1 つの文に
+// するのは、本文がスレッドの持つ数だけ番号を名指しうるうえ、その引き当てのどれもが投稿を
+// 書き込むトランザクション、すなわち次の書き手が待っているトランザクションの中に入るため
+// です。
+//
+// 行を書くのは、同じスレッドの投稿が持つ番号のうち、参照した投稿自身の番号より下のものに
+// 対してだけです。どの投稿も持たない番号・その投稿自身の番号・それより先の番号は、いずれも
+// 行を作りません。レス番号はスレッド内の 1 つの投稿を指すため、>>5 を 2 度書いた本文も、
+// UNIQUE (post_id, referenced_post_id) が認める 1 つの関係だけを記録します。
+//
+// 番号が 1 つも無ければ、クエリを発行せず何も書きません。どの投稿も参照しない本文には、
+// 記録する参照がないためです。
+func (r *PostReferenceRepository) CreateAllByReferencedNumbers(ctx context.Context, input CreatePostReferencesInput) error {
+	if len(input.ReferencedNumbers) == 0 {
+		return nil
+	}
+
+	numbers := make([]int64, len(input.ReferencedNumbers))
+	for i, number := range input.ReferencedNumbers {
+		numbers[i] = int64(number)
+	}
+
+	return r.writer.CreatePostReferencesByNumbers(ctx, query.CreatePostReferencesByNumbersParams{
+		PostID:   int64(input.PostID),
+		ThreadID: int64(input.ThreadID),
+		Number:   int64(input.Number),
+		Numbers:  numbers,
+	})
+}
+
 // toModel converts a query.PostReference row into a model.PostReference,
 // casting the raw ids into their typed forms and the stored timestamps back
 // into time.Time at the repository boundary.

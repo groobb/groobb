@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/groobb/groobb/go/internal/database"
@@ -66,6 +67,35 @@ func (r *PostRepository) ListByThreadID(ctx context.Context, threadID model.Thre
 		posts[i] = r.toModel(row)
 	}
 	return posts, nil
+}
+
+// FindLatestByUserID returns the most recent post the user wrote anywhere in
+// the instance, or (nil, nil) when they have written none. It is the row the
+// interval between one person's posts is measured from, so the search is
+// narrowed to neither a board, a thread nor a session: the interval belongs to
+// the person, and writing in another thread does not start a fresh one.
+//
+// Posts sharing a timestamp are ordered by id, the same tie-break the index
+// carries, so the row that comes back is the same one on every call.
+//
+// [Ja] FindLatestByUserID は、そのユーザーがインスタンスのどこかに書いた最新の投稿を
+// 返し、1 件も書いていない場合は (nil, nil) を返します。これは 1 人の投稿の間隔を測る
+// 起点となる行であるため、掲示板でもスレッドでもセッションでも絞り込みません。間隔は
+// その人に属するものであり、別のスレッドへ書いても新しく始まることはありません。
+//
+// 時刻が同じ投稿は id で順序を決めます。索引が持つのと同じ同着の解き方であり、返る行は
+// どの呼び出しでも同じものになります。
+func (r *PostRepository) FindLatestByUserID(ctx context.Context, userID model.UserID) (*model.Post, error) {
+	raw := int64(userID)
+
+	row, err := r.reader.GetLatestPostByUserID(ctx, &raw)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
 }
 
 // CreatePostInput holds the attributes needed to create a post. id and the

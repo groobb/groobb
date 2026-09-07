@@ -7,3 +7,9 @@ ORDER BY number;
 INSERT INTO posts (thread_id, user_id, number, body)
 VALUES (?, ?, ?, ?)
 RETURNING *;
+
+-- name: GetLatestPostByUserID :one
+SELECT * FROM posts
+WHERE user_id = ?
+ORDER BY created_at DESC, id DESC
+LIMIT 1;

@@ -11,21 +11,33 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 )
 
-// latestMigratedTableNames are the tables the most recent migration creates,
-// for the content of the community. The rollback test reads this as what the
-// last migration owns, so adding a migration after this one means moving its
-// tables here and leaving these ones in earlierMigratedTableNames.
+// migratedTableNames are the application's own tables. The most recent
+// migration creates none of them: it replaces an index on posts, so what
+// rolling it back undoes is checked through the index names below rather than
+// through a table disappearing. A later migration that creates tables gives them
+// a list of their own, which the rollback test reads as what the last migration
+// owns, leaving these here.
 //
-// [Ja] latestMigratedTableNames は、最新のマイグレーションがコミュニティの中身のために
-// 作るテーブルです。ロールバックのテストはこれを「最後のマイグレーションが所有するもの」
-// として読むため、このあとにマイグレーションを追加するときは、そのテーブルをここへ移し、
-// これらを earlierMigratedTableNames へ残します。
-var latestMigratedTableNames = []string{
+// [Ja] migratedTableNames はアプリケーション自身のテーブルです。最新のマイグレーションは
+// このどれも作りません。posts の索引を差し替えるものであるため、それをロールバックすると
+// 何が戻るのかは、テーブルが消えることではなく後述の索引名で確かめます。この後にテーブルを
+// 作るマイグレーションを足すときは、そのテーブルに専用の一覧を与えます。ロールバックの
+// テストはそれを「最後のマイグレーションが所有するもの」として読み、これらはここに残ります。
+var migratedTableNames = []string{
 	"boards",
 	"categories",
+	"communities",
+	"email_confirmations",
+	"password_reset_tokens",
 	"post_references",
 	"posts",
+	"roles",
 	"threads",
+	"user_passwords",
+	"user_roles",
+	"user_sessions",
+	"user_two_factor_auths",
+	"users",
 }
 
 // riverMigratedTableNames are the tables migrated for River (the background job
@@ -43,16 +55,37 @@ var riverMigratedTableNames = []string{
 	"river_queue",
 }
 
-var earlierMigratedTableNames = []string{
-	"communities",
-	"email_confirmations",
-	"password_reset_tokens",
-	"roles",
-	"user_passwords",
-	"user_roles",
-	"user_sessions",
-	"user_two_factor_auths",
-	"users",
+// latestMigratedIndexName is the index the most recent migration creates and
+// replacedIndexName the one it drops in the same breath, which together are the
+// whole of what that migration owns.
+//
+// [Ja] latestMigratedIndexName は最新のマイグレーションが作る索引、replacedIndexName は
+// それが同時に落とす索引で、この 2 つがそのマイグレーションの所有するもののすべてです。
+const (
+	latestMigratedIndexName = "index_posts_on_user_id_and_created_at_and_id"
+	replacedIndexName       = "index_posts_on_user_id"
+)
+
+// hasIndex reports whether the schema currently carries the named index.
+//
+// [Ja] hasIndex は、スキーマが現在その名前の索引を持っているかを返します。
+func hasIndex(t *testing.T, db *database.DB, name string) bool {
+	t.Helper()
+
+	var found string
+	err := db.Reader.QueryRowContext(
+		context.Background(),
+		"SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+		name,
+	).Scan(&found)
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("checking index %q failed: %v", name, err)
+	}
+
+	return false
 }
 
 // migratedTestDB opens a throwaway database and brings it up to the latest
@@ -82,7 +115,7 @@ func TestMigrate_CreatesTheSchema(t *testing.T) {
 
 	db := migratedTestDB(t)
 
-	for _, table := range slices.Concat(earlierMigratedTableNames, latestMigratedTableNames) {
+	for _, table := range migratedTableNames {
 		var name string
 		err := db.Reader.QueryRowContext(
 			context.Background(),
@@ -92,6 +125,28 @@ func TestMigrate_CreatesTheSchema(t *testing.T) {
 		if err != nil {
 			t.Errorf("table %q is missing after migrating: %v", table, err)
 		}
+	}
+}
+
+// TestMigrate_ReplacesTheIndexOnThePostAuthor verifies that a migrated database
+// carries the index an author's latest post is read through and no longer the
+// one it replaced, so that the leading column is not indexed twice and every
+// post written pays for one index rather than two.
+//
+// [Ja] TestMigrate_ReplacesTheIndexOnThePostAuthor は、マイグレート済みのデータベースが、
+// 作者の最新の投稿を読むための索引を持ち、それが差し替えた索引はもう持たないことを検証
+// します。これにより先頭のカラムが二重に索引付けされることはなく、書き込まれる投稿が
+// 支払うのは 2 つではなく 1 つの索引の更新になります。
+func TestMigrate_ReplacesTheIndexOnThePostAuthor(t *testing.T) {
+	t.Parallel()
+
+	db := migratedTestDB(t)
+
+	if !hasIndex(t, db, latestMigratedIndexName) {
+		t.Errorf("index %q is missing after migrating", latestMigratedIndexName)
+	}
+	if hasIndex(t, db, replacedIndexName) {
+		t.Errorf("index %q should be gone after migrating, but it is still there", replacedIndexName)
 	}
 }
 
@@ -203,12 +258,14 @@ func TestMigrate_UserUniquenessIgnoresLetterCase(t *testing.T) {
 }
 
 // TestRollback_RevertsTheLastMigration verifies that rolling back undoes what
-// the most recent migration created, and only that: the migrations applied
-// before it are left in place.
+// the most recent migration did, and only that: the index it replaced comes
+// back, its own goes away, and every table the migrations before it created
+// stays where it is.
 //
 // [Ja] TestRollback_RevertsTheLastMigration は、ロールバックが最新のマイグレーションの
-// 作ったものを取り消すこと、そしてそれだけを取り消すこと (それより前に適用された
-// マイグレーションはそのまま残ること) を検証します。
+// 行ったことを取り消すこと、そしてそれだけを取り消すことを検証します。差し替えられた索引が
+// 戻り、自身が作った索引が消え、それより前のマイグレーションが作ったテーブルはどれもその
+// ままです。
 func TestRollback_RevertsTheLastMigration(t *testing.T) {
 	t.Parallel()
 
@@ -219,23 +276,14 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		t.Fatalf("failed to roll back the migration: %v", err)
 	}
 
-	for _, table := range latestMigratedTableNames {
-		var name string
-		err := db.Reader.QueryRowContext(
-			ctx,
-			"SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
-			table,
-		).Scan(&name)
-		if err == nil {
-			t.Errorf("table %q should be gone after rolling back, but it is still there", table)
-			continue
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			t.Errorf("checking table %q after rolling back returned an unexpected error: %v", table, err)
-		}
+	if hasIndex(t, db, latestMigratedIndexName) {
+		t.Errorf("index %q should be gone after rolling back, but it is still there", latestMigratedIndexName)
+	}
+	if !hasIndex(t, db, replacedIndexName) {
+		t.Errorf("index %q should be back after rolling back, but it is missing", replacedIndexName)
 	}
 
-	for _, table := range slices.Concat(earlierMigratedTableNames, riverMigratedTableNames) {
+	for _, table := range slices.Concat(migratedTableNames, riverMigratedTableNames) {
 		var name string
 		if err := db.Reader.QueryRowContext(
 			ctx,
@@ -244,6 +292,51 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		).Scan(&name); err != nil {
 			t.Errorf("table %q should survive rolling back the last migration, but checking it failed: %v", table, err)
 		}
+	}
+}
+
+// TestMigrate_KeepsThePostsAcrossTheIndexReplacement verifies that a database
+// holding posts crosses the index migration in both directions with its rows
+// where they were. Replacing an index rewrites no row, and an instance that has
+// to step back to the previous version and forward again loses no writing on
+// the way.
+//
+// [Ja] TestMigrate_KeepsThePostsAcrossTheIndexReplacement は、投稿を持つデータベースが
+// 索引のマイグレーションを両方向に越えても、行がそのままであることを検証します。索引の
+// 差し替えは行を書き換えず、前のバージョンへ戻してからまた進めることになったインスタンスも、
+// その途中で書かれたものを失いません。
+func TestMigrate_KeepsThePostsAcrossTheIndexReplacement(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := migratedTestDB(t)
+	ids := insertCommunityContent(t, db)
+
+	if err := database.Rollback(ctx, db.Writer); err != nil {
+		t.Fatalf("failed to roll back the migration: %v", err)
+	}
+
+	// A post written while the previous index is back in place is the state an
+	// instance migrates forward from.
+	//
+	// [Ja] 前の索引が戻っている間に書かれた投稿は、インスタンスがそこから先へ
+	// マイグレートする状態そのものである。
+	rolledBackPostID := insertRow(t, db,
+		"INSERT INTO posts (thread_id, user_id, number, body) VALUES (?, ?, ?, ?)",
+		ids.threadID, ids.userID, 2, "索引を戻している間に書いた投稿",
+	)
+
+	if err := database.Migrate(ctx, db.Writer); err != nil {
+		t.Fatalf("failed to apply the migration again: %v", err)
+	}
+
+	for _, postID := range []int64{ids.postID, rolledBackPostID} {
+		if count := countRows(t, db, "SELECT COUNT(*) FROM posts WHERE id = ?", postID); count != 1 {
+			t.Errorf("rows left for the post %d after migrating back and forth = %d, want 1", postID, count)
+		}
+	}
+	if !hasIndex(t, db, latestMigratedIndexName) {
+		t.Errorf("index %q is missing after applying the migration again", latestMigratedIndexName)
 	}
 }
 
