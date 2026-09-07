@@ -25,6 +25,7 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/home"
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
+	"github.com/groobb/groobb/go/internal/handler/post"
 	"github.com/groobb/groobb/go/internal/handler/settings"
 	"github.com/groobb/groobb/go/internal/handler/settings_email"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
@@ -219,6 +220,13 @@ func runServe() {
 	getBoardUC := usecase.NewGetBoardUsecase(boardRepo, categoryRepo)
 	getBoardThreadsUC := usecase.NewGetBoardThreadsUsecase(threadRepo)
 	getThreadUC := usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo, postRepo, postReferenceRepo, userRepo)
+	getThreadSummaryUC := usecase.NewGetThreadSummaryUsecase(threadRepo)
+
+	threadCreateValidator := validator.NewThreadCreateValidator()
+	createThreadUC := usecase.NewCreateThreadUsecase(db.Writer, threadCreateValidator, boardRepo, threadRepo, postRepo, userRepo)
+
+	postCreateValidator := validator.NewPostCreateValidator()
+	createPostUC := usecase.NewCreatePostUsecase(db.Writer, postCreateValidator, threadRepo, postRepo, postReferenceRepo, userRepo)
 
 	errorRenderer := httperror.NewRenderer(cfg)
 
@@ -227,7 +235,8 @@ func runServe() {
 	homeHandler := home.NewHandler(cfg, getCommunityNavigationUC, getCommunityHomeUC)
 	categoryHandler := category.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getCategoryUC, getCategoryBoardsUC)
 	boardHandler := board.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getBoardUC, getBoardThreadsUC)
-	threadHandler := thread.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getThreadUC, getBoardThreadsUC)
+	threadHandler := thread.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getBoardUC, getThreadUC, getBoardThreadsUC, createThreadUC)
+	postHandler := post.NewHandler(cfg, errorRenderer, getCommunityNavigationUC, getThreadSummaryUC, createPostUC)
 	signUpHandler := sign_up.NewHandler(cfg, sessionMgr, createSignUpUC, turnstileVerifier)
 	emailConfirmationHandler := email_confirmation.NewHandler(cfg, sessionMgr, verifyEmailConfirmationUC)
 	accountHandler := account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
@@ -304,6 +313,30 @@ func runServe() {
 	// 到達しないためである。ロケールの解決も CSRF トークンの発行も無駄になり、フラッシュの
 	// ミドルウェアは訪問者がこれから読む一度きりのメッセージを消費してしまう。
 	r.Use(chimiddleware.RedirectSlashes)
+
+	// Bound and parse the body of the two POST routes that submit a post before
+	// anything else reads it. The CSRF check below reads the submitted token out
+	// of the form, and that read is where the body is parsed: reaching it first, a
+	// body that is too large or cannot be decoded is indistinguishable from a
+	// missing token, and the empty form the failed read leaves cached would be
+	// taken by the handler for a submission with nothing in it. Ahead of it, such
+	// a request is answered for what it is.
+	//
+	// It is registered here, above the middlewares below, for the reason the slash
+	// redirect above is: a request it turns away never reaches a handler, so the
+	// locale they resolve and the community they read to name the site would both
+	// be work done for a response that carries neither.
+	//
+	// [Ja] 投稿を送信する2つのPOSTルートのボディを、他の何かがそれを読む前に制限して
+	// 解析する。下のCSRF検証は送信されたトークンをフォームから読み、その読み取りがボディを
+	// 解析する箇所である。そこに先に到達すると、大きすぎる・デコードできないボディはトークンが
+	// 無い状態と見分けられず、失敗した読み取りが残す空のフォームは、ハンドラーに中身の無い
+	// 送信として受け取られてしまう。その手前でなら、そうしたリクエストをそれとして応答できる。
+	//
+	// 下のミドルウェアより上のここに登録するのは、上の末尾スラッシュのリダイレクトと同じ理由に
+	// よる。ここで追い返したリクエストはハンドラーに到達しないため、それらが解決するロケールも、
+	// サイトを名指すために読むコミュニティも、どちらも運ばない応答のための仕事になる。
+	r.Use(middleware.PostFormLimit)
 
 	// Resolve the request locale from Accept-Language and store it in the
 	// context so handlers and templates can render localized text.
@@ -434,12 +467,47 @@ func runServe() {
 	// 状態でも読め、同じように登録する。
 	r.With(authMiddleware.SetUser).Get("/b/{slug}", boardHandler.Show)
 
+	// Starting a thread: the form the board's new thread is written in. It is
+	// behind RequireAuth because only a signed-in visitor can write, and an
+	// anonymous one is sent to sign-in carrying this address so they come back to
+	// the form. The board is part of the address rather than a field, so the form
+	// posts to the board it was opened from.
+	//
+	// [Ja] スレッドを立てる: その掲示板の新しいスレッドを書くフォーム。書き込めるのは
+	// サインイン済みの訪問者だけであるため RequireAuth の背後に置き、匿名の訪問者は
+	// このアドレスを載せてサインインへ送られ、フォームへ戻ってくる。掲示板はフィールドでは
+	// なくアドレスの一部であるため、フォームはそれが開かれた掲示板へ送信する。
+	r.With(authMiddleware.RequireAuth).Get("/b/{slug}/threads/new", threadHandler.New)
+
+	// The board's threads: the collection the form above posts a new thread to. It
+	// is behind RequireAuth for the reason the form is, and it is only ever
+	// written to — the threads of a board are read at /b/{slug}, and each thread
+	// at the address of its own id, so that moving one leaves the links to it
+	// intact.
+	//
+	// [Ja] 掲示板のスレッド: 上のフォームが新しいスレッドを送信する先のコレクション。
+	// フォームと同じ理由で RequireAuth の背後に置く。ここへは書き込むだけである。掲示板の
+	// スレッドは /b/{slug} で読み、各スレッドは自身の id のアドレスで読むため、スレッドを
+	// 移してもそこへのリンクは保たれる。
+	r.With(authMiddleware.RequireAuth).Post("/b/{slug}/threads", threadHandler.Create)
+
 	// Thread: the posts written in a thread. It is readable while signed out for
 	// the same reason a board is, and is registered the same way.
 	//
 	// [Ja] スレッド: そのスレッドに書かれた投稿。掲示板と同じ理由でサインアウト状態でも
 	// 読め、同じように登録する。
 	r.With(authMiddleware.SetUser).Get("/t/{id}", threadHandler.Show)
+
+	// The thread's posts: the collection the reply form at the end of a thread
+	// posts to. It is behind RequireAuth because only a signed-in visitor can
+	// write, and it is only ever written to — the posts of a thread are read at
+	// /t/{id}, where each of them is addressed by its reply number (ADR 0009).
+	//
+	// [Ja] スレッドの投稿: スレッドの末尾の返信フォームが送信する先のコレクション。
+	// 書き込めるのはサインイン済みの訪問者だけであるため RequireAuth の背後に置く。
+	// ここへは書き込むだけである。スレッドの投稿は /t/{id} で読み、そこでは各投稿が
+	// レス番号で名指される (ADR 0009)。
+	r.With(authMiddleware.RequireAuth).Post("/t/{id}/posts", postHandler.Create)
 
 	// Sign-up: show the form and accept an email to issue a confirmation code.
 	//

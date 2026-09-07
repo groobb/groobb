@@ -214,6 +214,7 @@ func TestShow(t *testing.T) {
 		wantLastPosted  string
 		wantRegionLabel string
 		wantPrompt      string
+		wantNewThread   string
 	}{
 		{
 			name:            "Japanese",
@@ -222,6 +223,7 @@ func TestShow(t *testing.T) {
 			wantLastPosted:  "30 分前",
 			wantRegionLabel: "スレッドの閲覧",
 			wantPrompt:      "スレッドを選ぶと、その投稿が表示されます。",
+			wantNewThread:   "スレッドを立てる",
 		},
 		{
 			name:            "English",
@@ -230,6 +232,7 @@ func TestShow(t *testing.T) {
 			wantLastPosted:  "30 minutes ago",
 			wantRegionLabel: "Reading a thread",
 			wantPrompt:      "Choose a thread to see the posts in it.",
+			wantNewThread:   "Start a thread",
 		},
 	}
 
@@ -252,6 +255,7 @@ func TestShow(t *testing.T) {
 				"<title>ジャズ・ファンク - " + communityName + "</title>",
 				`content="ジャズの話をする板"`,
 				tt.wantPrompt,
+				tt.wantNewThread,
 				tt.wantPostsCount,
 				tt.wantLastPosted,
 				"最近買ったレコード",
@@ -296,6 +300,11 @@ func TestShow(t *testing.T) {
 				if !strings.Contains(threadLink, want) {
 					t.Errorf("スレッドのタイトルリンクに %q が無い: %s", want, threadLink)
 				}
+			}
+
+			newThreadLink := testutil.OpeningTag(t, body, `href="`+templates.BoardThreadsNewPath("jazz").String()+`"`)
+			if !strings.HasPrefix(newThreadLink, "<a ") {
+				t.Errorf("スレッド作成フォームへの導線 = %s, want a link", newThreadLink)
 			}
 
 			if strings.Contains(body, "noindex") {
@@ -616,7 +625,11 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 		}
 	}
 	signInHref := templates.SignInPath().WithReturnTo(templates.BoardPath("jazz").String()).String()
-	for _, want := range []string{`href="` + signInHref + `"`, `href="` + templates.SignUpPath().String() + `"`} {
+	for _, want := range []string{
+		`href="` + signInHref + `"`,
+		`href="` + templates.SignUpPath().String() + `"`,
+		`href="` + templates.BoardThreadsNewPath("jazz").String() + `"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("匿名の訪問者のレスポンスに %q が含まれていない", want)
 		}
@@ -656,6 +669,20 @@ func TestShow_EmptyBoard(t *testing.T) {
 	}
 	if !strings.Contains(body, `content="準備中の板 のスレッドの一覧です。"`) {
 		t.Error("説明を持たない掲示板のレスポンスに、掲示板を名指す meta description が含まれていない")
+	}
+
+	// The empty state carries the way in to starting a thread, so the visitor who
+	// finds nothing here is offered the thing to do about it. It is the only one
+	// on the page: the link above the list has no list to sit above.
+	//
+	// [Ja] 空状態はスレッドを立てる導線を持ち、ここに何も見つけなかった訪問者に、それに
+	// ついてできることを差し出す。ページ上でこれが唯一の導線である。一覧の上のリンクには、
+	// その上に立つべき一覧が無い。
+	if !strings.Contains(body, "最初のスレッドを立てる") {
+		t.Error("スレッドを持たない掲示板の空状態に、スレッドを立てる導線が含まれていない")
+	}
+	if got, want := strings.Count(body, templates.BoardThreadsNewPath("quiet").String()), 1; got != want {
+		t.Errorf("スレッド作成フォームへの導線の数 = %d, want %d", got, want)
 	}
 }
 

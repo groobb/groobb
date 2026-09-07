@@ -103,6 +103,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData := boardpage.ShowPageData{
+		Slug:        board.Slug,
 		Name:        board.Name,
 		Description: board.Description,
 		Breadcrumb:  breadcrumb(resolved.Category, board, h.cfg.AppURL),

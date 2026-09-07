@@ -42,19 +42,95 @@ type ShowPageData struct {
 	Posts      []ShowPost
 	Board      ShowBoard
 
-	// Full says the thread has reached the number of posts it can hold, so the
-	// page tells the visitor that nothing more can be written here (ADR 0009).
+	// Lock holds the reasons this thread takes no further post, and is empty
+	// while it still takes one. It is what stands at the end of the thread in
+	// place of the reply form: a lock holds for everyone, so the notice is what
+	// a signed-in and a signed-out visitor alike are shown there.
 	//
-	// [Ja] Full はスレッドが持てる投稿数に達したことを表し、ページはここへはもう何も
-	// 書けないことを訪問者に伝えます (ADR 0009)。
-	Full bool
+	// [Ja] Lock はこのスレッドがこれ以上の投稿を受け付けない理由を持ち、まだ受け付ける
+	// 間は空です。スレッドの末尾で返信フォームの代わりに立つものがこれです。ロックは
+	// 全員に対して成立するため、そこでサインイン済みの訪問者にもサインアウト状態の
+	// 訪問者にも示されるのはこの案内です。
+	Lock viewmodel.ThreadLock
 
-	// PostLimit is the cap Full was reached at, shown in the notice so the number
-	// the visitor reads is the one the application enforces.
+	// PostLimit is the number of posts a thread can hold, interpolated into the
+	// lock notice that names that cap, so the number the visitor reads is the one
+	// the application enforces.
 	//
-	// [Ja] PostLimit は Full に達した上限で、訪問者が読む数値がアプリケーションの
-	// 適用する数値と同じであるよう、その旨の文言に差し込みます。
+	// [Ja] PostLimit はスレッドが持てる投稿の数で、その上限を名指すロックの案内に
+	// 差し込みます。訪問者が読む数値をアプリケーションが適用する数値と同じにするため
+	// です。
 	PostLimit int
+
+	// Reply is what the thread ends with while it is still open: the form for a
+	// visitor who can write, and the way into an account for one who cannot yet.
+	//
+	// [Ja] Reply は、スレッドがまだ開いている間にその末尾に来るものです。書ける訪問者
+	// にはフォームを、まだ書けない訪問者にはアカウントへの導線を持ちます。
+	Reply ShowReply
+}
+
+// LockNotice returns what the notice about the locked thread is drawn from. It
+// is not marked as answering a submission: this page is read, and the thread
+// having filled up is part of what is being read rather than a response to
+// something the visitor just did.
+//
+// The board this thread was posted in is named as where a thread is started
+// next, since this page is where a visitor meets the end of the conversation
+// and is the one place they can be handed its continuation.
+//
+// [Ja] LockNotice は、ロック中のスレッドについての案内を描くためのデータを返します。
+// 送信への答えである旨は立てません。このページは読まれるものであり、スレッドが埋まって
+// いることは、訪問者がたった今行ったことへの応答ではなく、読まれている内容の一部だから
+// です。
+//
+// このスレッドが立った掲示板を、次にスレッドを立てる場所として名指します。訪問者が会話の
+// 終わりに出会うのはこのページであり、その続きを手渡せる場所もここだからです。
+func (d ShowPageData) LockNotice() components.ThreadLockNoticeData {
+	return components.ThreadLockNoticeData{
+		Lock:                d.Lock,
+		PostLimit:           d.PostLimit,
+		BoardThreadsNewPath: templates.BoardThreadsNewPath(d.Board.Slug),
+	}
+}
+
+// ShowReply is what an open thread ends with. A signed-in visitor is given the
+// form, and a signed-out one the way into an account carrying this thread back
+// to them, so that reading a conversation and joining it are one step apart.
+//
+// Both are left undrawn while the thread is locked. What the thread will not
+// take from anyone is worth neither a form to write it in nor an account to
+// write it with.
+//
+// [Ja] ShowReply は、開いているスレッドの末尾に来るものです。サインイン済みの訪問者には
+// フォームを、サインアウト状態の訪問者にはこのスレッドへ連れ戻すアカウントへの導線を
+// 差し出し、会話を読むことと会話に加わることを 1 歩の距離に置きます。
+//
+// スレッドがロック中のあいだは、どちらも描きません。誰からも受け付けないものは、それを
+// 書くフォームにも、それを書くためのアカウントにも値しません。
+type ShowReply struct {
+	// SignedIn says the visitor has an account session, which is what decides
+	// between the form and the invitation to sign in. Writing needs an account,
+	// while reading does not.
+	//
+	// [Ja] SignedIn は訪問者がアカウントのセッションを持っているかどうかで、フォームと
+	// サインインへの誘いのどちらを出すかを決めるものです。書くことにはアカウントが要り、
+	// 読むことには要りません。
+	SignedIn bool
+
+	// Form is the reply form, filled in only when the visitor is signed in.
+	//
+	// [Ja] Form は返信フォームで、訪問者がサインインしているときにだけ埋められます。
+	Form components.PostFormData
+
+	// ReturnTo is where sign-in sends the visitor back to, which is this thread:
+	// somebody signing in from the end of a conversation is signing in to answer
+	// it, and the top page would leave them to find it again.
+	//
+	// [Ja] ReturnTo はサインインが訪問者を戻す先で、それはこのスレッドです。会話の末尾
+	// からサインインする人はそれに答えるためにサインインするのであり、トップページでは
+	// そこをもう一度探させることになります。
+	ReturnTo string
 }
 
 // ShowPost is one post as the page renders it: its reply number, who wrote it,
@@ -131,6 +207,15 @@ type ShowBoardThread struct {
 // 目で見る訪問者が読む見出しが同じ文字列になります。
 const ShowHeadingID = "thread-show-heading"
 
+// ShowReplyHeadingID is the id of the heading naming the reply form at the end
+// of the thread. The form's section points at it with aria-labelledby, so the
+// region is announced by the same words the heading shows.
+//
+// [Ja] ShowReplyHeadingID は、スレッドの末尾の返信フォームを名付ける見出しの id です。
+// フォームのセクションが aria-labelledby でこれを指すため、その領域は見出しが見せるのと
+// 同じ言葉で読み上げられます。
+const ShowReplyHeadingID = "thread-show-reply-heading"
+
 // postLabelID returns the id of the element naming the post with the given reply
 // number. It is derived from the same rule the anchor target is, so the name and
 // the post it names cannot drift apart.
@@ -162,6 +247,11 @@ func replyReference(number int) string {
 // is a link rather than a title: it is both what this listing is and the way
 // back to the whole of it.
 //
+// Starting a thread stands above the listing, as it does on the board's own
+// page. A visitor reading one thread is as likely to have something else to say
+// as one browsing the board, and without it they would go back to /b/{slug}
+// first to say it.
+//
 // A row carries the thread's primary language, because a board is not divided by
 // language and one listing holds threads in several. The badge says which, and
 // the title declares it, so a screen reader reads a title by the rules of the
@@ -177,6 +267,10 @@ func replyReference(number int) string {
 // なくラベルで名付けるのと同じ理由です。掲示板の名前はタイトルではなくリンクです。それが
 // この一覧が何であるかを述べると同時に、その全体へ戻る道でもあるためです。
 //
+// スレッドを立てる導線は、掲示板自身のページと同じく一覧の上に立ちます。1 つのスレッドを
+// 読んでいる訪問者も、掲示板を眺めている訪問者と同じくらい別に述べたいことを持ちえます。
+// これが無ければ、それを述べるにはまず /b/{slug} へ戻ることになります。
+//
 // 各行はスレッドの主言語を運びます。掲示板を言語で分けないため、1 つの一覧が複数の言語の
 // スレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。これにより
 // スクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている言語の規則で
@@ -188,6 +282,13 @@ templ ShowCenter(data ShowPageData) {
 			class="inline-flex min-h-6 min-w-6 items-center px-2 text-sm font-semibold hover:underline"
 		>
 			{ data.Board.Name }
+		</a>
+		<a
+			href={ templates.BoardThreadsNewPath(data.Board.Slug).SafeURL() }
+			class="btn w-full"
+			data-variant="outline"
+		>
+			{ templates.T(ctx, "thread_show_new_thread_link") }
 		</a>
 		<ul class="flex flex-col">
 			for _, thread := range data.Board.Threads {
@@ -240,8 +341,10 @@ templ ShowCenter(data ShowPageData) {
 //
 // The posts that answered a post are listed under it, in the same >>N notation
 // their bodies wrote to get there, so a conversation can be followed in both
-// directions. A thread that has reached its cap says so after the last post,
-// where the next one would have gone.
+// directions. What stands where the next post would have gone depends on the
+// thread and on who is reading it: the form for writing that post, the way into
+// an account for a visitor who has none, and on a thread that takes no more
+// posts, the reason it does not.
 //
 // The heading carries the thread's primary language: a badge beside it says
 // which, and the heading itself declares it. The posts do not, because a reply
@@ -264,8 +367,10 @@ templ ShowCenter(data ShowPageData) {
 // 画面のビューポート外にあった投稿もすべて印刷文書へ渡します。
 //
 // ある投稿に答えた投稿は、その下に、それらの本文がそこへ辿り着くために書いたのと同じ
-// >>N の記法で並べます。会話を両方向に辿れるようにするためです。上限に達したスレッドは、
-// 次の投稿が入るはずだった場所、すなわち最後の投稿の後ろでその旨を述べます。
+// >>N の記法で並べます。会話を両方向に辿れるようにするためです。次の投稿が入るはずだった
+// 場所に立つものは、スレッドと、それを読んでいる人によって変わります。その投稿を書く
+// フォーム、アカウントを持たない訪問者にはそこへの導線、そしてこれ以上の投稿を受け付けない
+// スレッドではその理由です。
 //
 // 見出しはスレッドの主言語を運びます。どの言語かは傍らのバッジが述べ、見出し自身が
 // それを宣言します。投稿は宣言しません。別の言語での返信も受け付けるため、本文に
@@ -340,10 +445,22 @@ templ ShowRight(data ShowPageData) {
 				</li>
 			}
 		</ol>
-		if data.Full {
-			<p class="rounded-md border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
-				{ templates.T(ctx, "thread_show_full_notice", map[string]any{"Limit": data.PostLimit}) }
-			</p>
+		if data.Lock.Locked() {
+			@components.ThreadLockNotice(data.LockNotice())
+		} else if data.Reply.SignedIn {
+			<section aria-labelledby={ ShowReplyHeadingID } class="flex flex-col gap-3">
+				<h2 id={ ShowReplyHeadingID } class="text-lg font-semibold">
+					{ templates.T(ctx, "thread_show_reply_heading") }
+				</h2>
+				@components.PostForm(data.Reply.Form)
+			</section>
+		} else {
+			<div class="flex flex-col items-start gap-3">
+				<p class="text-muted-foreground">{ templates.T(ctx, "thread_show_reply_sign_in_prompt") }</p>
+				<a href={ templates.SignInPath().WithReturnTo(data.Reply.ReturnTo).SafeURL() } class="btn">
+					{ templates.T(ctx, "thread_show_reply_sign_in_link") }
+				</a>
+			</div>
 		}
 	</div>
 }

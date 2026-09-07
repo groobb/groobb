@@ -27,6 +27,17 @@ type ShowPageData struct {
 	Description string
 	Breadcrumb  components.BreadcrumbData
 	Threads     []ShowThread
+
+	// Slug is the board's address, which the page carries because the link to the
+	// form a thread is started from is built from it. The name above the list
+	// cannot stand in for it: two boards may be named the same, and only the slug
+	// says which one a new thread is posted to.
+	//
+	// [Ja] Slug は掲示板のアドレスです。スレッドを立てるフォームへのリンクがこれから
+	// 組み立てられるため、ページがこれを運びます。一覧の上の名前では代わりになりません。
+	// 同じ名前の掲示板は 2 つありえ、新しいスレッドがどちらに立つかを述べるのは slug
+	// だけだからです。
+	Slug string
 }
 
 // ShowThread is one thread of the listing, carrying the two denormalized facts a
@@ -87,6 +98,17 @@ const ShowHeadingID = "board-show-heading"
 // started one yet, and a bare list would leave the visitor unsure whether the
 // page failed to load.
 //
+// Either way the board offers the way in to starting a thread: above the threads
+// and before the list begins when there are some, and beside the line saying
+// there are none when there are not. A visitor to an empty board needs to start
+// one rather than choose one, and the way to do it is where the reading would
+// have been.
+//
+// The link is drawn for every visitor. The form behind it is behind sign-in, and
+// an anonymous visitor who follows it is sent there carrying this address and
+// comes back to the form; what a board offers is not something only those who
+// can write get to see.
+//
 // [Ja] ShowCenter は掲示板ページの一覧カラムを描画します。掲示板の在り処を示す経路、
 // ページ見出しとしての掲示板名、そしてそこに立っているスレッドです。掲示板とはその
 // スレッドの一覧にほかならないため、これがページの主カラムです。
@@ -107,6 +129,15 @@ const ShowHeadingID = "board-show-heading"
 // スレッドを 1 つも持たない掲示板は、空の一覧ではなくその旨を伝えます。まだ誰も立てて
 // いない状態であり、素の空一覧では訪問者がページの読み込みに失敗したのかどうか判断
 // できないためです。
+//
+// 掲示板はどちらの状態でも、そこにスレッドを立てる道を差し出します。スレッドが並ぶときは、
+// それらの上、一覧が始まる前にあり、1 つも無いときは、そこに何も無いと述べる文言の傍らに
+// あります。空の掲示板の訪問者に必要なのは、選ぶことではなく始めることであり、その道は
+// 読むもののあった場所にあります。
+//
+// リンクは訪問者を選ばずに描きます。フォームはサインインの背後にありますが、それを開こうと
+// した匿名の訪問者はこのアドレスを載せてサインインへ送られ、フォームへ戻ってきます。掲示板が
+// 何を差し出すのかを、書ける人にしか見えない形にはしません。
 templ ShowCenter(data ShowPageData) {
 	<div class="flex flex-col gap-6">
 		<div class="flex flex-col gap-2">
@@ -117,8 +148,16 @@ templ ShowCenter(data ShowPageData) {
 			}
 		</div>
 		if len(data.Threads) == 0 {
-			<p class="text-muted-foreground">{ templates.T(ctx, "board_show_no_threads") }</p>
+			<div class="flex flex-col items-start gap-3">
+				<p class="text-muted-foreground">{ templates.T(ctx, "board_show_no_threads") }</p>
+				<a href={ templates.BoardThreadsNewPath(data.Slug).SafeURL() } class="btn">
+					{ templates.T(ctx, "board_show_first_thread_link") }
+				</a>
+			</div>
 		} else {
+			<a href={ templates.BoardThreadsNewPath(data.Slug).SafeURL() } class="btn self-start">
+				{ templates.T(ctx, "board_show_new_thread_link") }
+			</a>
 			<ul class="flex flex-col gap-3">
 				for _, thread := range data.Threads {
 					<li>
