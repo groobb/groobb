@@ -9,6 +9,7 @@ import (
 	"github.com/a-h/templ"
 	templruntime "github.com/a-h/templ/runtime"
 	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
 )
 
 // FormErrors renders the form-wide (global) validation messages as Basecoat
@@ -50,7 +51,7 @@ func FormErrors(formErrors *model.ValidationError) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 18, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 21, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -109,7 +110,7 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldErrorID(field, i))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 40, Col: 46}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 43, Col: 46}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -122,7 +123,7 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 40, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 43, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -132,6 +133,113 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+			}
+		}
+		return nil
+	})
+}
+
+// FormErrorSummary renders what has to be corrected as a list of links, one per
+// message, each leading to the control it belongs to. It renders nothing when
+// none of the listed fields has an error, so callers can place it
+// unconditionally above a form.
+//
+// The summary is drawn because the messages beside the controls are only found
+// by walking the form. A submission that came back refused is read from the top,
+// and this says at once what is wrong and takes the visitor to each control in
+// one activation.
+//
+// The heading is an h2 inside the alert, as FormErrors draws its messages, so a
+// form's summary and its form-wide messages read as one band above the fields
+// rather than two shapes with different weights.
+//
+// [Ja] FormErrorSummary は、直すべきものをメッセージ 1 つにつき 1 つのリンクとして並べ、
+// それぞれをそれが属する入力欄へ導きます。並べる対象のフィールドがいずれもエラーを持たない
+// ときは何も描画しないため、呼び出し側はフォームの上に無条件で置けます。
+//
+// 要約を描くのは、入力欄の傍らのメッセージがフォームを辿らなければ見つからないためです。
+// 拒否されて戻ってきた送信は上から読まれます。これは何が問題なのかを一度に述べ、1 回の
+// 操作で訪問者を各入力欄へ連れて行きます。
+//
+// 見出しは FormErrors がメッセージを描くのと同じく、アラートの中の h2 とします。フォームの
+// 要約とフォーム全体のメッセージが、重みの異なる 2 つの形ではなく、フィールドの上の 1 つの
+// 帯として読まれるようにするためです。
+func FormErrorSummary(data FormErrorSummaryData) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var6 == nil {
+			templ_7745c5c3_Var6 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if data.HasEntries() {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"alert\" data-variant=\"destructive\"><h2>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, data.HeadingKey))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 76, Col: 42}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</h2><section><ul class=\"list-outside list-disc ps-5\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, field := range data.Fields {
+				for _, message := range data.Errors.GetFieldErrors(field.Name) {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<li><a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var8 templ.SafeURL
+					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs("#" + field.Name)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 82, Col: 34}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"block min-h-6 underline\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var9 string
+					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, field.LabelKey) + ": " + message)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 83, Col: 60}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</a></li>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</ul></section></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
 			}
 		}
 		return nil

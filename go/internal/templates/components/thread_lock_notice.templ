@@ -1,0 +1,79 @@
+package components
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/viewmodel"
+)
+
+// ThreadLockNotice renders why a thread takes no further post, one sentence per
+// reason. It renders nothing for a thread that is not locked, so callers can
+// place it unconditionally where the reply form would otherwise go.
+//
+// A sentence is written per reason rather than one covering them all, because
+// the reasons are not variations of a single message: what each says is
+// different, and one of them may point somewhere to go next while another does
+// not.
+//
+// Under the sentences stands the way on to the next thread, when the caller
+// named one and the notice has one to offer. A thread that filled up ended a
+// conversation that may not be over, and without it the visitor is told only
+// that they cannot write here.
+//
+// A reason with no sentence of its own draws nothing. Every reason the
+// application holds is added together with the wording for it, so this is the
+// state of a reason introduced without one rather than a case the page expects
+// to meet.
+//
+// [Ja] ThreadLockNotice は、スレッドがこれ以上の投稿を受け付けない理由を、1 つの理由に
+// つき 1 文で描画します。ロックされていないスレッドには何も描画しないため、呼び出し側は
+// 返信フォームが置かれるはずの場所に無条件で置けます。
+//
+// すべての理由をまとめた 1 文ではなく理由ごとに文を書くのは、理由が 1 つのメッセージの
+// 変種ではないためです。それぞれが述べることは異なり、次に向かう先を差し出す理由もあれば
+// そうでない理由もあります。
+//
+// 文の下には、呼び出し側が次のスレッドを名指し、案内がそれを差し出せるときに、そこへ向かう
+// 道が立ちます。満杯になったスレッドは、まだ終わっていないかもしれない会話を終わらせて
+// おり、これが無ければ訪問者は、ここには書けないということだけを告げられます。
+//
+// 自身の文を持たない理由は何も描きません。アプリケーションが持つ理由はいずれもその文言と
+// 共に追加されるため、これはページが出会うことを想定した場合ではなく、文言を伴わずに
+// 導入された理由が置かれる状態です。
+templ ThreadLockNotice(data ThreadLockNoticeData) {
+	if data.Lock.Locked() {
+		<div class="flex flex-col gap-3">
+			for _, reason := range data.Lock.Reasons {
+				switch reason {
+					case viewmodel.ThreadLockReasonPostLimitReached:
+						@threadLockSentence(data.Refusal) {
+							{ templates.T(ctx, "thread_lock_post_limit_reached", map[string]any{"Limit": data.PostLimit}) }
+						}
+				}
+			}
+			if path := data.NextThreadPath(); path != "" {
+				<a href={ path.SafeURL() } class="btn self-start" data-variant="outline">
+					{ templates.T(ctx, "thread_lock_next_thread_link") }
+				</a>
+			}
+		</div>
+	}
+}
+
+// threadLockSentence wraps one reason's sentence in the shape the moment calls
+// for: a destructive alert announced on arrival when it answers a submission,
+// and a quiet notice when it is part of the thread being read.
+//
+// [Ja] threadLockSentence は、1 つの理由の文を、その場面に応じた形で包みます。送信への
+// 答えであるときは到着時に読み上げられる destructive のアラートとし、読まれている
+// スレッドの一部であるときは控えめな注記とします。
+templ threadLockSentence(refusal bool) {
+	if refusal {
+		<div class="alert" data-variant="destructive" role="alert">
+			<h2>{ children... }</h2>
+		</div>
+	} else {
+		<p class="rounded-md border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+			{ children... }
+		</p>
+	}
+}

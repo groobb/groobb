@@ -1,0 +1,172 @@
+package thread
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// New renders the form a thread is started from: the title naming the
+// conversation, the language it is to be written in, and the post it opens with.
+//
+// The board is not among the fields. It is named by the address the form posts
+// to, so the form can only start a thread in the board it was opened from, and
+// the page states which one that is instead of offering a choice that is already
+// made.
+//
+// Neither length limit is written as a maxlength. That attribute counts UTF-16
+// code units where the server counts code points, so it would stop text the
+// server accepts; the limits are stated in the hints beside the fields, which is
+// the count the submission is actually judged by.
+//
+// The interval between one person's posts is stated above the submit button,
+// where it is read before submitting rather than after a submission comes back
+// refused for arriving too soon.
+//
+// A leading newline inside the textarea is consumed by the HTML parser. Adding
+// one before the body preserves any blank lines the visitor actually entered.
+//
+// A submission that comes back refused opens with the caret where the visitor
+// has to act: on the first field with something to fix, or on the summary above
+// the form when what was refused is the submission as a whole. Without it the
+// caret would sit at the top of the document, and the reason the page came back
+// would be somewhere below it.
+//
+// [Ja] New はスレッドを立てるフォームを描画します。会話を名指すタイトル、それが書かれる
+// 言語、そしてそれが始まる投稿です。
+//
+// 掲示板はフィールドに含めません。フォームの送信先のアドレスが名指すため、フォームは
+// それが開かれた掲示板にしかスレッドを立てられず、ページは既に決まっている選択を差し出す
+// のではなく、どの掲示板であるかを述べます。
+//
+// どちらの長さの上限も maxlength には書きません。この属性が数えるのは UTF-16 のコード
+// 単位で、サーバーが数えるのはコードポイントであるため、サーバーが受け付けるテキストを
+// 止めてしまいます。上限は各フィールドの傍らのヒントで述べます。そちらが、送信が実際に
+// 判定される数です。
+//
+// 1 人の投稿と投稿の間隔は送信ボタンの上に述べます。送信が「早すぎる」として拒否されて
+// 返ってきた後ではなく、送信する前に読まれる位置です。
+//
+// textarea の先頭の改行は HTML パーサーが消費します。本文の前に改行を1つ足すことで、
+// 訪問者が入力した先頭の空行を保ちます。
+//
+// 拒否されて戻ってきた送信は、訪問者が手を入れる場所にキャレットを置いて開きます。直す
+// ところのある最初のフィールド、そして拒否されたのが送信そのものであるときはフォームの上の
+// 要約です。これが無ければキャレットは文書の先頭に留まり、ページが戻ってきた理由はその下の
+// どこかにあることになります。
+templ New(data NewPageData) {
+	<div class="flex flex-col gap-6">
+		<div class="flex flex-col gap-2">
+			@components.Breadcrumb(data.Breadcrumb)
+			<h1 id={ NewHeadingID } class="text-2xl font-bold tracking-tight">
+				{ templates.T(ctx, "thread_new_heading") }
+			</h1>
+			<p class="text-muted-foreground">
+				{ templates.T(ctx, "thread_new_lead", map[string]any{"Board": data.BoardName}) }
+			</p>
+		</div>
+		if data.FormErrors.HasErrors() {
+			<div id="thread-new-errors" tabindex="-1" autofocus?={ data.AutofocusSummary() } class="flex flex-col gap-3">
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(data.ErrorSummary())
+			</div>
+		}
+		<form action={ templates.BoardThreadsPath(data.BoardSlug).SafeURL() } method="POST" class="flex flex-col gap-4">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("title") {
+					data-invalid="true"
+				}
+			>
+				@components.RequiredFieldLabel("title", templates.T(ctx, "thread_new_title_label"))
+				<input
+					id="title"
+					name="title"
+					type="text"
+					value={ data.Title }
+					enterkeyhint="next"
+					required
+					autofocus?={ data.AutofocusField("title") }
+					if data.FormErrors.HasFieldError("title") {
+						aria-invalid="true"
+						aria-describedby={ "title-hint " + components.FieldErrorsDescribedBy("title", data.FormErrors) }
+					} else {
+						aria-describedby="title-hint"
+					}
+				/>
+				<p id="title-hint">{ templates.T(ctx, "thread_new_title_hint") }</p>
+				@components.FieldErrors("title", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("language") {
+					data-invalid="true"
+				}
+			>
+				@components.RequiredFieldLabel("language", templates.T(ctx, "thread_new_language_label"))
+				<select
+					id="language"
+					name="language"
+					required
+					autofocus?={ data.AutofocusField("language") }
+					if data.FormErrors.HasFieldError("language") {
+						aria-invalid="true"
+						aria-describedby={ "language-hint " + components.FieldErrorsDescribedBy("language", data.FormErrors) }
+					} else {
+						aria-describedby="language-hint"
+					}
+				>
+					for _, language := range data.Languages {
+						<option
+							value={ language.Value }
+							selected?={ language.Selected }
+							if language.Language.Declared() {
+								lang={ language.Language.Tag }
+							}
+						>
+							if language.Language.Declared() {
+								{ language.Language.Name }
+							} else {
+								{ templates.T(ctx, "thread_language_other") }
+							}
+						</option>
+					}
+				</select>
+				<p id="language-hint">{ templates.T(ctx, "thread_new_language_hint") }</p>
+				@components.FieldErrors("language", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("body") {
+					data-invalid="true"
+				}
+			>
+				@components.RequiredFieldLabel("body", templates.T(ctx, "thread_new_body_label"))
+				<textarea
+					id="body"
+					name="body"
+					rows="10"
+					required
+					autofocus?={ data.AutofocusField("body") }
+					if data.FormErrors.HasFieldError("body") {
+						aria-invalid="true"
+						aria-describedby={ "body-hint " + components.FieldErrorsDescribedBy("body", data.FormErrors) }
+					} else {
+						aria-describedby="body-hint"
+					}
+				>{ "\n" + data.Body }</textarea>
+				<p id="body-hint">{ templates.T(ctx, "post_body_hint") }</p>
+				@components.FieldErrors("body", data.FormErrors)
+			</div>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "post_interval_hint", map[string]any{"Count": data.PostIntervalSeconds}) }
+			</p>
+			<button type="submit" class="btn">
+				{ templates.T(ctx, "thread_new_submit") }
+			</button>
+		</form>
+	</div>
+}

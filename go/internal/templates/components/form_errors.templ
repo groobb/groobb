@@ -1,6 +1,9 @@
 package components
 
-import "github.com/groobb/groobb/go/internal/model"
+import (
+	"github.com/groobb/groobb/go/internal/model"
+	"github.com/groobb/groobb/go/internal/templates"
+)
 
 // FormErrors renders the form-wide (global) validation messages as Basecoat
 // destructive alerts, each with role="alert" so screen readers announce it. It
@@ -39,5 +42,51 @@ templ FieldErrors(field string, formErrors *model.ValidationError) {
 		for i, message := range formErrors.GetFieldErrors(field) {
 			<p role="alert" id={ fieldErrorID(field, i) }>{ message }</p>
 		}
+	}
+}
+
+// FormErrorSummary renders what has to be corrected as a list of links, one per
+// message, each leading to the control it belongs to. It renders nothing when
+// none of the listed fields has an error, so callers can place it
+// unconditionally above a form.
+//
+// The summary is drawn because the messages beside the controls are only found
+// by walking the form. A submission that came back refused is read from the top,
+// and this says at once what is wrong and takes the visitor to each control in
+// one activation.
+//
+// The heading is an h2 inside the alert, as FormErrors draws its messages, so a
+// form's summary and its form-wide messages read as one band above the fields
+// rather than two shapes with different weights.
+//
+// [Ja] FormErrorSummary は、直すべきものをメッセージ 1 つにつき 1 つのリンクとして並べ、
+// それぞれをそれが属する入力欄へ導きます。並べる対象のフィールドがいずれもエラーを持たない
+// ときは何も描画しないため、呼び出し側はフォームの上に無条件で置けます。
+//
+// 要約を描くのは、入力欄の傍らのメッセージがフォームを辿らなければ見つからないためです。
+// 拒否されて戻ってきた送信は上から読まれます。これは何が問題なのかを一度に述べ、1 回の
+// 操作で訪問者を各入力欄へ連れて行きます。
+//
+// 見出しは FormErrors がメッセージを描くのと同じく、アラートの中の h2 とします。フォームの
+// 要約とフォーム全体のメッセージが、重みの異なる 2 つの形ではなく、フィールドの上の 1 つの
+// 帯として読まれるようにするためです。
+templ FormErrorSummary(data FormErrorSummaryData) {
+	if data.HasEntries() {
+		<div class="alert" data-variant="destructive">
+			<h2>{ templates.T(ctx, data.HeadingKey) }</h2>
+			<section>
+				<ul class="list-outside list-disc ps-5">
+					for _, field := range data.Fields {
+						for _, message := range data.Errors.GetFieldErrors(field.Name) {
+							<li>
+								<a href={ "#" + field.Name } class="block min-h-6 underline">
+									{ templates.T(ctx, field.LabelKey) + ": " + message }
+								</a>
+							</li>
+						}
+					}
+				</ul>
+			</section>
+		</div>
 	}
 }
