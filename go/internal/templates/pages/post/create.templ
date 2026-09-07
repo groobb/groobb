@@ -1,0 +1,65 @@
+package post
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// Create renders the page a reply that was not saved comes back on: the thread
+// it was written in, why it was refused, and the reply itself.
+//
+// The thread's title is a link because the visitor arrived here from a
+// submission whose outcome they could not see. Opening the thread is how they
+// tell a reply that was refused from one that was saved before the answer went
+// missing, and it is the way back to the conversation either way.
+//
+// A locked thread is answered differently from every other refusal. Waiting and
+// correcting do not open it, so the page keeps the text where it can be read
+// and copied and offers no way to send it again — a button that would be
+// refused a second time is not a way out, and the text is what the visitor
+// still has to save.
+//
+// [Ja] Create は、保存されなかった返信が戻ってくるページを描画します。それが書かれた
+// スレッド、拒否された理由、そして返信そのものです。
+//
+// スレッドのタイトルをリンクにするのは、訪問者が、結果を見られなかった送信からここへ
+// 辿り着いているためです。スレッドを開くことは、拒否された返信と、保存された後に答えだけが
+// 届かなかった返信とを見分ける手立てであり、どちらであっても会話へ戻る道です。
+//
+// ロック中のスレッドには、他のどの拒否とも違う応答をします。待つことでも直すことでも
+// 開かないため、ページはテキストを読んで写し取れる場所に残し、もう一度送る手立てを
+// 差し出しません。2 度目も拒否されるボタンは出口ではなく、訪問者になお残されているのは
+// そのテキストだからです。
+templ Create(data CreatePageData) {
+	<div class="flex flex-col gap-6">
+		<div class="flex flex-col gap-2">
+			<h1 id={ CreateHeadingID } class="text-2xl font-bold tracking-tight">
+				{ templates.T(ctx, "post_create_heading") }
+			</h1>
+			<p class="text-muted-foreground">{ templates.T(ctx, "post_create_lead") }</p>
+			<a
+				href={ templates.ThreadPath(data.ThreadID).SafeURL() }
+				class="inline-flex min-h-6 items-center self-start font-semibold underline underline-offset-2"
+				if data.ThreadLanguage.Declared() {
+					lang={ data.ThreadLanguage.Tag }
+				}
+			>
+				{ data.ThreadTitle }
+			</a>
+		</div>
+		if data.Lock.Locked() {
+			<div class="flex flex-col gap-4">
+				<div id="post-create-lock" tabindex="-1" autofocus class="flex flex-col gap-3">
+					@components.ThreadLockNotice(data.LockNotice())
+				</div>
+				<div role="group" class="field">
+					<label for="body">{ templates.T(ctx, "post_create_kept_body_label") }</label>
+					<textarea id="body" rows="6" readonly aria-describedby="body-kept-hint">{ "\n" + data.Reply.Body }</textarea>
+					<p id="body-kept-hint">{ templates.T(ctx, "post_create_kept_body_hint") }</p>
+				</div>
+			</div>
+		} else {
+			@components.PostForm(data.Reply)
+		}
+	</div>
+}

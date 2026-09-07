@@ -42,6 +42,28 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const getLatestPostByUserID = `-- name: GetLatestPostByUserID :one
+SELECT id, thread_id, user_id, number, body, created_at, updated_at FROM posts
+WHERE user_id = ?
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestPostByUserID(ctx context.Context, userID *int64) (Post, error) {
+	row := q.db.QueryRowContext(ctx, getLatestPostByUserID, userID)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.ThreadID,
+		&i.UserID,
+		&i.Number,
+		&i.Body,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listPostsByThreadID = `-- name: ListPostsByThreadID :many
 SELECT id, thread_id, user_id, number, body, created_at, updated_at FROM posts
 WHERE thread_id = ?

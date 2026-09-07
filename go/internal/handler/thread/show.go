@@ -1,10 +1,10 @@
 package thread
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -49,7 +49,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	raw := chi.URLParam(r, "id")
 
-	id, ok := parseThreadID(raw)
+	id, ok := model.ParseThreadID(raw)
 	if !ok {
 		h.errorRenderer.NotFound(w, r)
 		return
@@ -104,8 +104,9 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		PostsCount: resolved.Thread.PostsCount,
 		Posts:      showPosts(resolved.Posts),
 		Board:      showBoard(resolved.Board, listing.Threads),
-		Full:       resolved.Thread.PostsCount >= model.ThreadPostLimit,
+		Lock:       viewmodel.NewThreadLock(resolved.Thread.LockReasons()),
 		PostLimit:  model.ThreadPostLimit,
+		Reply:      showReply(ctx, viewmodel.ThreadID(id), returnTo),
 	}
 	columns := layouts.CommunityColumns{
 		Center:             threadpage.ShowCenter(pageData),
@@ -121,23 +122,6 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "スレッドページのレンダリングに失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
-}
-
-// parseThreadID reads the id out of the path, reporting whether the path can
-// name a thread at all. Anything that is not a positive whole number is rejected
-// here rather than looked up, since no thread carries such an id and the lookup
-// would answer 404 after a query.
-//
-// [Ja] parseThreadID はパスから id を読み取り、そのパスがそもそもスレッドを名指しうるか
-// どうかを併せて返します。正の整数でないものはルックアップせずここで弾きます。そのような
-// id を持つスレッドは無く、ルックアップしてもクエリを 1 回発行した末に 404 になるだけ
-// だからです。
-func parseThreadID(raw string) (model.ThreadID, bool) {
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || id <= 0 {
-		return 0, false
-	}
-	return model.ThreadID(id), true
 }
 
 // breadcrumb builds the trail naming where the thread sits: the category that
@@ -232,6 +216,42 @@ func showPosts(posts []usecase.ThreadPost) []threadpage.ShowPost {
 		}
 	}
 	return converted
+}
+
+// showReply builds what the thread ends with for this visitor: the reply form
+// when they are signed in, and where to send them back to after signing in when
+// they are not.
+//
+// The lock is not consulted here. The reasons a thread takes no post hold for
+// everyone, so the page decides between the notice and this from the same data
+// rather than having the two decided in different places and left to agree.
+//
+// The form's own address is derived from the thread rather than from the
+// request, so it names the canonical /t/{id} even when the visitor reached the
+// page by another spelling of the same id.
+//
+// [Ja] showReply は、この訪問者にとってスレッドの末尾に来るものを組み立てます。サイン
+// インしていれば返信フォームを、していなければサインイン後に戻す先を持ちます。
+//
+// ここではロックを参照しません。スレッドが投稿を受け付けない理由は全員に対して成立する
+// ため、案内とこれのどちらを出すかはページが同じデータから決めます。2 箇所で別々に決めた
+// ものが一致するのを当てにはしません。
+//
+// フォームの送信先はリクエストではなくスレッドから導くため、訪問者が同じ id の別の綴りで
+// ページへ辿り着いた場合でも、正規の /t/{id} を名指します。
+func showReply(ctx context.Context, id viewmodel.ThreadID, returnTo string) threadpage.ShowReply {
+	if middleware.UserFromContext(ctx) == nil {
+		return threadpage.ShowReply{ReturnTo: returnTo}
+	}
+
+	return threadpage.ShowReply{
+		SignedIn: true,
+		Form: components.PostFormData{
+			CSRFToken:           middleware.CSRFTokenFromContext(ctx),
+			Action:              templates.ThreadPostsPath(id),
+			PostIntervalSeconds: int(model.PostInterval.Seconds()),
+		},
+	}
 }
 
 // showBoard converts the board and its threads into the listing the page's list

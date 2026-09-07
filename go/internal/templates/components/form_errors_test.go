@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/groobb/groobb/go/internal/i18n"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
@@ -215,6 +216,105 @@ func TestFieldErrorsDescribedBy(t *testing.T) {
 
 			if got := components.FieldErrorsDescribedBy(tt.field, tt.formErrors); got != tt.want {
 				t.Errorf("FieldErrorsDescribedBy(%q) = %q, want %q", tt.field, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestFormErrorSummary verifies that the summary lists one link per message, in
+// the order the fields are given rather than the order the messages are stored
+// in, and that each link carries the field's label and leads to the control. The
+// order matters because the list is how a visitor walks a refused form, and a
+// map's iteration order would have them jump around it.
+//
+// [Ja] TestFormErrorSummary は、要約がメッセージ 1 つにつき 1 つのリンクを、メッセージの
+// 保持順ではなく与えられたフィールドの順に並べること、そして各リンクがそのフィールドの
+// ラベルを載せて入力欄へ導くことを検証します。順序が問題になるのは、この一覧が拒否された
+// フォームを訪問者が辿る道であり、map の反復順ではその上を飛び回ることになるためです。
+func TestFormErrorSummary(t *testing.T) {
+	t.Parallel()
+
+	errors := model.NewValidationError()
+	errors.AddField("body", "本文を入力してください")
+	errors.AddField("title", "タイトルを入力してください")
+
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+
+	var buf strings.Builder
+	if err := components.FormErrorSummary(components.FormErrorSummaryData{
+		HeadingKey: "thread_new_errors_heading",
+		Fields: []components.FormErrorSummaryField{
+			{Name: "title", LabelKey: "thread_new_title_label"},
+			{Name: "body", LabelKey: "thread_new_body_label"},
+		},
+		Errors: errors,
+	}).Render(ctx, &buf); err != nil {
+		t.Fatalf("render failed: %v", err)
+	}
+
+	got := buf.String()
+	for _, want := range []string{
+		"<h2>入力内容を確認してください</h2>",
+		`<a href="#title" class="block min-h-6 underline">`,
+		"タイトル: タイトルを入力してください",
+		`<a href="#body" class="block min-h-6 underline">`,
+		"最初の投稿: 本文を入力してください",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("要約に %q が含まれていない\noutput: %s", want, got)
+		}
+	}
+
+	if strings.Index(got, `href="#title"`) > strings.Index(got, `href="#body"`) {
+		t.Errorf("要約が与えられたフィールドの順に並んでいない\noutput: %s", got)
+	}
+}
+
+// TestFormErrorSummary_NothingToList verifies that the summary draws nothing when
+// none of the listed fields has a message: a submission refused as a whole, a
+// message about a field the form does not list, and a form that was never
+// submitted. A heading over an empty list would say there is something to correct
+// where there is not.
+//
+// [Ja] TestFormErrorSummary_NothingToList は、並べる対象のフィールドがいずれもメッセージを
+// 持たないとき、要約が何も描かないことを検証します。全体として拒否された送信、フォームが
+// 並べないフィールドについてのメッセージ、そして送信されていないフォームです。空の一覧に
+// 載った見出しは、直すものが無いところに直すものがあると述べてしまいます。
+func TestFormErrorSummary_NothingToList(t *testing.T) {
+	t.Parallel()
+
+	globalOnly := model.NewValidationError()
+	globalOnly.AddGlobal("投稿を保存できませんでした")
+
+	otherField := model.NewValidationError()
+	otherField.AddField("language", "主言語を選んでください")
+
+	tests := []struct {
+		name   string
+		errors *model.ValidationError
+	}{
+		{name: "form-wide message only", errors: globalOnly},
+		{name: "message about an unlisted field", errors: otherField},
+		{name: "not submitted", errors: nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+
+			var buf strings.Builder
+			if err := components.FormErrorSummary(components.FormErrorSummaryData{
+				HeadingKey: "thread_new_errors_heading",
+				Fields:     []components.FormErrorSummaryField{{Name: "title", LabelKey: "thread_new_title_label"}},
+				Errors:     tt.errors,
+			}).Render(ctx, &buf); err != nil {
+				t.Fatalf("render failed: %v", err)
+			}
+
+			if got := buf.String(); strings.TrimSpace(got) != "" {
+				t.Errorf("要約が描かれている: %q", got)
 			}
 		})
 	}

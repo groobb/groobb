@@ -9,7 +9,7 @@
 /.env.op
 /.playwright-cli
 /.pnpm-store
-/AGENTS.local.md
+/AGENTS.override.md
 /CLAUDE.local.md
 /compose-up.sh
 /docker-compose.override.yml

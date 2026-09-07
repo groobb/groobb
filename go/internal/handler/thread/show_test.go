@@ -21,6 +21,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 	"github.com/groobb/groobb/go/internal/testutil"
 	"github.com/groobb/groobb/go/internal/usecase"
+	"github.com/groobb/groobb/go/internal/validator"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
@@ -223,23 +224,37 @@ func newFixture(t *testing.T) fixture {
 // [Ja] newHandlerForDB は、渡されたアプリケーションデータベース上に thread Handler を
 // 構築します。
 func newHandlerForDB(db *database.DB) *thread.Handler {
-	return newHandlerForDatabases(db, db, db)
+	return newHandlerForDatabases(db, db, db, db)
 }
 
 // newHandlerForDatabases builds the thread Handler with a separate database
-// behind each of its three reads: the thread, the community navigation, and the
-// board's thread listing. Production passes the same database for all three;
-// tests can break one read path without preventing the others from reaching the
-// branch under test.
+// behind each of its four reads: the thread, the board the creation form is
+// opened from, the community navigation, and the board's thread listing.
+// Production passes the same database for all four; tests can break one read
+// path without preventing the others from reaching the branch under test.
 //
-// [Ja] newHandlerForDatabases は、3 つの読み取り (スレッド・コミュニティのナビゲーション・
-// 掲示板のスレッド一覧) それぞれの背後に別々のデータベースを置いて thread Handler を
-// 構築します。本番は 3 つとも同じデータベースを渡しますが、テストでは 1 つの読み取りだけを
-// 壊し、残りが対象分岐へ到達できます。
-func newHandlerForDatabases(threadDB, navigationDB, listingDB *database.DB) *thread.Handler {
+// Starting a thread writes to threadDB, the database the thread it creates is
+// then read from. A test that breaks the write closes that database's writer
+// rather than passing a database of its own, so the re-rendered form still
+// reaches the board through the reader beside it.
+//
+// [Ja] newHandlerForDatabases は、4 つの読み取り (スレッド・作成フォームが開かれる掲示板・
+// コミュニティのナビゲーション・掲示板のスレッド一覧) それぞれの背後に別々のデータベースを
+// 置いて thread Handler を構築します。本番は 4 つとも同じデータベースを渡しますが、テストでは
+// 1 つの読み取りだけを壊し、残りが対象分岐へ到達できます。
+//
+// スレッドを立てる書き込みの先は threadDB であり、作られたスレッドがその後読まれる
+// データベースでもあります。書き込みを壊すテストは、専用のデータベースを渡すのではなく
+// そのデータベースの Writer を閉じます。再描画されたフォームが、その傍らの Reader を通じて
+// 掲示板へ到達できるようにするためです。
+func newHandlerForDatabases(threadDB, boardDB, navigationDB, listingDB *database.DB) *thread.Handler {
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
 		repository.NewCommunityRepository(navigationDB),
 		repository.NewBoardRepository(navigationDB),
+	)
+	getBoardUC := usecase.NewGetBoardUsecase(
+		repository.NewBoardRepository(boardDB),
+		repository.NewCategoryRepository(boardDB),
 	)
 	getThreadUC := usecase.NewGetThreadUsecase(
 		repository.NewThreadRepository(threadDB),
@@ -250,9 +265,17 @@ func newHandlerForDatabases(threadDB, navigationDB, listingDB *database.DB) *thr
 		repository.NewUserRepository(threadDB),
 	)
 	getBoardThreadsUC := usecase.NewGetBoardThreadsUsecase(repository.NewThreadRepository(listingDB))
+	createThreadUC := usecase.NewCreateThreadUsecase(
+		threadDB.Writer,
+		validator.NewThreadCreateValidator(),
+		repository.NewBoardRepository(threadDB),
+		repository.NewThreadRepository(threadDB),
+		repository.NewPostRepository(threadDB),
+		repository.NewUserRepository(threadDB),
+	)
 
 	cfg := &config.Config{Env: "dev", AppURL: appURL}
-	return thread.NewHandler(cfg, httperror.NewRenderer(cfg), getCommunityNavigationUC, getThreadUC, getBoardThreadsUC)
+	return thread.NewHandler(cfg, httperror.NewRenderer(cfg), getCommunityNavigationUC, getBoardUC, getThreadUC, getBoardThreadsUC, createThreadUC)
 }
 
 // newRequest builds a GET /t/{id} request as the router would hand it to the
@@ -705,16 +728,16 @@ func TestShow_PostReferences(t *testing.T) {
 	}
 }
 
-// TestShow_FullThread verifies that a thread that has reached the number of
+// TestShow_LockedThread verifies that a thread that has reached the number of
 // posts it can hold says so, and that a thread that has not stays free of the
 // notice. The cap is what keeps a reply number a permanent address (ADR 0009),
 // so the page has to say when it has been reached.
 //
-// [Ja] TestShow_FullThread は、持てる投稿数に達したスレッドがその旨を述べること、そして
-// 達していないスレッドにはその文言が現れないことを検証します。レス番号を永久アドレスに
-// 保っているのがこの上限である (ADR 0009) ため、それに達したことをページが述べる必要が
-// あります。
-func TestShow_FullThread(t *testing.T) {
+// [Ja] TestShow_LockedThread は、持てる投稿数に達したスレッドがその旨を述べること、
+// そして達していないスレッドにはその文言が現れないことを検証します。レス番号を永久
+// アドレスに保っているのがこの上限である (ADR 0009) ため、それに達したことをページが
+// 述べる必要があります。
+func TestShow_LockedThread(t *testing.T) {
 	t.Parallel()
 
 	fixture := newFixture(t)
@@ -732,6 +755,179 @@ func TestShow_FullThread(t *testing.T) {
 	fixture.handler.Show(open, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
 	if strings.Contains(open.Body.String(), "これ以上は書き込めません。") {
 		t.Error("上限に達していないスレッドのレスポンスに、書き込めない旨の文言が含まれている")
+	}
+}
+
+// TestShow_LockedThreadOffersTheNextThread verifies that a thread holding every
+// post it can hold hands the visitor the way on: the notice about the cap is
+// followed by the link to starting a thread in the same board, which is where
+// the conversation carries on. A thread still taking posts offers nothing of the
+// sort at its end, since there is nowhere else it has to be carried to.
+//
+// [Ja] TestShow_LockedThreadOffersTheNextThread は、持てる投稿をすべて持っているスレッドが
+// 訪問者に次の道を手渡すことを検証します。上限についての案内には、同じ掲示板でスレッドを
+// 立てるページへのリンクが続きます。会話が続くのはそこだからです。まだ投稿を受け付ける
+// スレッドは、その末尾でそうしたものを差し出しません。会話を運ぶべき別の場所が無いため
+// です。
+func TestShow_LockedThreadOffersTheNextThread(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.full.String(), model.LocaleJa, nil))
+	if !strings.Contains(rec.Body.String(), "この掲示板で新しいスレッドを立てる") {
+		t.Error("上限に達したスレッドの案内に、次のスレッドを立てる導線が含まれていない")
+	}
+
+	open := httptest.NewRecorder()
+	fixture.handler.Show(open, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+	if strings.Contains(open.Body.String(), "この掲示板で新しいスレッドを立てる") {
+		t.Error("上限に達していないスレッドに、ロックの案内の導線が含まれている")
+	}
+}
+
+// TestShow_BoardListingOffersANewThread verifies that the listing column carries
+// the way to start a thread in the board, so a visitor who read one thread and
+// has something else to say does not go back to the board's own page first.
+//
+// [Ja] TestShow_BoardListingOffersANewThread は、一覧カラムがその掲示板にスレッドを立てる
+// 道を持つことを検証します。1 つのスレッドを読んで別に述べたいことのある訪問者が、まず
+// 掲示板自身のページへ戻らずに済むようにするためです。
+func TestShow_BoardListingOffersANewThread(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+
+	for _, tt := range []struct {
+		name   string
+		locale model.Locale
+		want   string
+	}{
+		{name: "Japanese", locale: model.LocaleJa, want: "スレッドを立てる"},
+		{name: "English", locale: model.LocaleEn, want: "Start a thread"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := httptest.NewRecorder()
+			fixture.handler.Show(rec, newRequest(t, fixture.open.String(), tt.locale, nil))
+
+			body := rec.Body.String()
+			if !strings.Contains(body, `href="`+templates.BoardThreadsNewPath("jazz").String()+`"`) {
+				t.Error("一覧カラムに、スレッドを立てるページへのリンクが含まれていない")
+			}
+			if !strings.Contains(body, tt.want) {
+				t.Errorf("一覧カラムのリンクの文言 %q が含まれていない", tt.want)
+			}
+		})
+	}
+}
+
+// TestShow_LockedThreadOffersNoReply verifies that a locked thread ends with the
+// reason alone, for a signed-in visitor and a signed-out one alike. A lock holds
+// for everyone: a form that could not be submitted, or an invitation to sign in
+// so as to write what would be refused, would each promise something the thread
+// no longer takes.
+//
+// [Ja] TestShow_LockedThreadOffersNoReply は、ロック中のスレッドが、サインイン済みの
+// 訪問者にもサインアウト状態の訪問者にも同じく理由だけで終わることを検証します。ロックは
+// 全員に対して成立します。送信できないフォームも、拒否されるものを書くためのサインインへの
+// 誘いも、スレッドがもう受け付けないものを約束することになります。
+func TestShow_LockedThreadOffersNoReply(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+	postsPath := templates.ThreadPostsPath(viewmodel.ThreadID(fixture.full)).String()
+
+	for _, visitor := range []struct {
+		name string
+		user *model.User
+	}{
+		{name: "signed in", user: &model.User{Atname: "alice"}},
+		{name: "signed out", user: nil},
+	} {
+		t.Run(visitor.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := httptest.NewRecorder()
+			fixture.handler.Show(rec, newRequest(t, fixture.full.String(), model.LocaleJa, visitor.user))
+
+			body := rec.Body.String()
+			for _, unwanted := range []string{
+				`action="` + postsPath + `"`,
+				"このスレッドに返信するにはサインインしてください。",
+			} {
+				if strings.Contains(body, unwanted) {
+					t.Errorf("ロック中のスレッドのレスポンスに %q が含まれている", unwanted)
+				}
+			}
+		})
+	}
+}
+
+// TestShow_ReplyForm verifies that a signed-in visitor reaches the end of an
+// open thread at the form for answering it, submitting to that thread's own
+// posts. A reply is written where the conversation was read, so the form stands
+// after the last post rather than behind a link to somewhere else.
+//
+// [Ja] TestShow_ReplyForm は、サインイン済みの訪問者が、開いているスレッドの末尾で、
+// それに答えるためのフォームに辿り着くこと、そしてそのフォームがそのスレッド自身の投稿へ
+// 送信することを検証します。返信は会話が読まれた場所で書かれるため、フォームは別のどこかへの
+// リンクの背後ではなく最後の投稿の後ろに立ちます。
+func TestShow_ReplyForm(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, &model.User{Atname: "alice"}))
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`id="thread-show-reply-heading"`,
+		"返信する",
+		`action="` + templates.ThreadPostsPath(viewmodel.ThreadID(fixture.open)).String() + `"`,
+		`name="body"`,
+		"10,000文字以内で入力してください",
+		"続けて投稿するときは10秒の間隔が必要です。",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("サインイン済みの訪問者のレスポンスに %q が含まれていない", want)
+		}
+	}
+}
+
+// TestShow_ReplySignInPrompt verifies that a signed-out visitor is offered the
+// way into an account at the end of an open thread, carrying the thread back to
+// them, and is not shown a form they could not submit. A thread is where a
+// visitor most often decides to join, and the decision is made at the point they
+// have something to say.
+//
+// [Ja] TestShow_ReplySignInPrompt は、サインアウト状態の訪問者が、開いているスレッドの
+// 末尾でアカウントへの導線を差し出され、それがこのスレッドへ連れ戻すこと、そして送信でき
+// ないフォームは見せられないことを検証します。訪問者が参加を決めることの最も多い場所が
+// スレッドであり、その判断は言いたいことができた時点で下されます。
+func TestShow_ReplySignInPrompt(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+
+	body := rec.Body.String()
+	threadPath := templates.ThreadPath(viewmodel.ThreadID(fixture.open)).String()
+	for _, want := range []string{
+		"このスレッドに返信するにはサインインしてください。",
+		`href="` + templates.SignInPath().WithReturnTo(threadPath).String() + `"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("匿名の訪問者のレスポンスに %q が含まれていない", want)
+		}
+	}
+
+	postsPath := templates.ThreadPostsPath(viewmodel.ThreadID(fixture.open)).String()
+	if strings.Contains(body, `action="`+postsPath+`"`) {
+		t.Error("匿名の訪問者のレスポンスに返信フォームが含まれている")
 	}
 }
 
@@ -935,7 +1131,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDatabases(threadDB, navigationDB, threadDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
+	newHandlerForDatabases(threadDB, threadDB, navigationDB, threadDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
@@ -965,7 +1161,7 @@ func TestShow_BoardThreadListingFailure(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	newHandlerForDatabases(threadDB, threadDB, listingDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
+	newHandlerForDatabases(threadDB, threadDB, threadDB, listingDB).Show(rec, newRequest(t, id.String(), model.LocaleJa, nil))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)

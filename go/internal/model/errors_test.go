@@ -21,12 +21,18 @@ func TestValidationError(t *testing.T) {
 	if ve.HasErrors() {
 		t.Fatal("a freshly created ValidationError should have no errors")
 	}
+	if ve.HasFieldErrors() {
+		t.Error("HasFieldErrors() = true, want false before any field error is added")
+	}
 
 	ve.AddField("email", "is required")
 	ve.AddGlobal("the form has errors")
 
 	if !ve.HasErrors() {
 		t.Error("HasErrors() = false, want true after adding errors")
+	}
+	if !ve.HasFieldErrors() {
+		t.Error("HasFieldErrors() = false, want true after adding a field error")
 	}
 	if !ve.HasFieldError("email") {
 		t.Error("HasFieldError(email) = false, want true")
@@ -39,6 +45,47 @@ func TestValidationError(t *testing.T) {
 	}
 	if ve.Error() != "validation failed" {
 		t.Errorf("Error() = %q, want %q", ve.Error(), "validation failed")
+	}
+}
+
+// TestValidationError_NilReceiver verifies that the accessors answer for a nil
+// *ValidationError as they do for an empty one.
+//
+// A page carries no errors until a submission is refused, so a template reaches
+// these on nil on every first render. They have to hold on their own rather than
+// through the order the caller happens to ask them in.
+//
+// [Ja] TestValidationError_NilReceiver は、各アクセサが nil の *ValidationError に対して
+// 空のものと同じ答えを返すことを検証します。
+//
+// ページは送信が拒否されるまでエラーを持たないため、テンプレートは初回描画のたびにこれらを
+// nil に対して呼びます。呼び出し側がたまたま尋ねる順序ではなく、それ自体で成り立つ必要が
+// あります。
+func TestValidationError_NilReceiver(t *testing.T) {
+	t.Parallel()
+
+	var ve *model.ValidationError
+
+	if ve.HasErrors() {
+		t.Error("HasErrors() = true, want false for a nil ValidationError")
+	}
+	if ve.HasGlobalError() {
+		t.Error("HasGlobalError() = true, want false for a nil ValidationError")
+	}
+	if ve.HasFieldErrors() {
+		t.Error("HasFieldErrors() = true, want false for a nil ValidationError")
+	}
+	if ve.HasFieldError("email") {
+		t.Error("HasFieldError(email) = true, want false for a nil ValidationError")
+	}
+	if got := ve.GetGlobalErrors(); got != nil {
+		t.Errorf("GetGlobalErrors() = %v, want nil for a nil ValidationError", got)
+	}
+	if got := ve.GetFieldErrors("email"); got != nil {
+		t.Errorf("GetFieldErrors(email) = %v, want nil for a nil ValidationError", got)
+	}
+	if got := ve.FieldErrors(); got != nil {
+		t.Errorf("FieldErrors() = %v, want nil for a nil ValidationError", got)
 	}
 }
 

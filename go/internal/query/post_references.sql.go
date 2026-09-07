@@ -34,6 +34,40 @@ func (q *Queries) CreatePostReference(ctx context.Context, arg CreatePostReferen
 	return i, err
 }
 
+const createPostReferencesByNumbers = `-- name: CreatePostReferencesByNumbers :exec
+INSERT INTO post_references (post_id, referenced_post_id)
+SELECT ?1, referenced.id
+FROM posts AS referenced
+WHERE referenced.thread_id = ?2
+  AND referenced.number < ?3
+  AND referenced.number IN (/*SLICE:numbers*/?)
+`
+
+type CreatePostReferencesByNumbersParams struct {
+	PostID   int64   `json:"post_id"`
+	ThreadID int64   `json:"thread_id"`
+	Number   int64   `json:"number"`
+	Numbers  []int64 `json:"numbers"`
+}
+
+func (q *Queries) CreatePostReferencesByNumbers(ctx context.Context, arg CreatePostReferencesByNumbersParams) error {
+	query := createPostReferencesByNumbers
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PostID)
+	queryParams = append(queryParams, arg.ThreadID)
+	queryParams = append(queryParams, arg.Number)
+	if len(arg.Numbers) > 0 {
+		for _, v := range arg.Numbers {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:numbers*/?", strings.Repeat(",?", len(arg.Numbers))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:numbers*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
+}
+
 const listPostReferencesByReferencedPostIDs = `-- name: ListPostReferencesByReferencedPostIDs :many
 SELECT id, post_id, referenced_post_id, created_at, updated_at FROM post_references
 WHERE referenced_post_id IN (/*SLICE:referenced_post_ids*/?)

@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 // ValidationError represents a set of input validation failures. A handler that
@@ -78,6 +79,21 @@ func (e *ValidationError) GetGlobalErrors() []string {
 		return nil
 	}
 	return e.Global
+}
+
+// HasFieldErrors reports whether any field has an error, whichever field it is.
+// A form draws the summary listing what has to be corrected only when there is
+// something in a field to correct, which is a different question from whether
+// the submission was refused as a whole.
+//
+// [Ja] HasFieldErrors は、どのフィールドであれエラーを持つフィールドがあるかを返します。
+// フォームが直すべきものを並べる要約を描くのは、フィールドの中に直すものがあるときだけ
+// であり、それは送信が全体として拒否されたかどうかとは別の問いです。
+func (e *ValidationError) HasFieldErrors() bool {
+	if e == nil {
+		return false
+	}
+	return len(e.Fields) > 0
 }
 
 // HasFieldError reports whether the given field has any error.
@@ -160,6 +176,23 @@ const (
 	//
 	// [Ja] AppErrCodeConflict は状態の競合 (409 相当) です。
 	AppErrCodeConflict
+	// AppErrCodeThreadLocked is a post refused because the thread it was written
+	// to takes no further post (409-equivalent). It stands apart from
+	// AppErrCodeConflict, which the same status also answers, because a handler
+	// has something more to say here: the reasons the thread is locked travel
+	// with the error and become the guidance shown in place of the form.
+	//
+	// [Ja] AppErrCodeThreadLocked は、書き込み先のスレッドがそれ以上の投稿を受け付けない
+	// ために拒否した投稿 (409 相当) です。同じステータスで応答する AppErrCodeConflict と
+	// 分けているのは、ここではハンドラーに述べることがもう 1 つあるためです。スレッドが
+	// ロックされている理由がエラーとともに運ばれ、フォームの代わりに示す案内になります。
+	AppErrCodeThreadLocked
+	// AppErrCodeRateLimited is a request refused for arriving too soon after the
+	// one before it (429-equivalent).
+	//
+	// [Ja] AppErrCodeRateLimited は、前の要求から間を置かずに届いたために拒否した
+	// 要求 (429 相当) です。
+	AppErrCodeRateLimited
 	// AppErrCodeInternal is a known internal failure (500-equivalent).
 	//
 	// [Ja] AppErrCodeInternal は想定済みの内部エラー (500 相当) です。
@@ -190,6 +223,42 @@ type AppError struct {
 	//
 	// [Ja] Metadata は user_id や resource_id などの構造化ログ用コンテキストです。
 	Metadata map[string]string
+	// RetryAfter is how long the caller has to wait before the refused request is
+	// worth making again. It accompanies AppErrCodeRateLimited and is zero
+	// otherwise.
+	//
+	// It is a field rather than a Metadata entry because a handler acts on it:
+	// the wait becomes the Retry-After header and the seconds the user is told to
+	// wait for. Metadata is written for logs, and a duration recovered from there
+	// would have to be parsed back out of a string before it could be used.
+	//
+	// [Ja] RetryAfter は、拒否された要求をもう一度試す価値が出るまでに呼び出し元が待つ
+	// 時間です。AppErrCodeRateLimited に伴うもので、それ以外では 0 です。
+	//
+	// Metadata の項目ではなくフィールドなのは、ハンドラーがこの値に基づいて動くため
+	// です。待ち時間は Retry-After ヘッダーになり、利用者に伝える秒数になります。
+	// Metadata はログのために書くものであり、そこから取り戻した時間は、使う前に文字列
+	// から解析し直すことになります。
+	RetryAfter time.Duration
+	// LockReasons is why the thread refused the post. It accompanies
+	// AppErrCodeThreadLocked and is empty otherwise.
+	//
+	// The reasons are carried as the typed values Thread.LockReasons produced,
+	// rather than being read back out of UserMsg or Metadata: a handler chooses
+	// the guidance it shows from them, and one of them (the post cap) also
+	// decides whether that guidance offers the next thread. Text written for a
+	// person to read and metadata written for a log would each have to be parsed
+	// before either question could be answered.
+	//
+	// [Ja] LockReasons は、スレッドが投稿を拒否した理由です。AppErrCodeThreadLocked に
+	// 伴うもので、それ以外では空です。
+	//
+	// 理由は UserMsg や Metadata から読み取り直すのではなく、Thread.LockReasons が生んだ
+	// 型付きの値のまま運びます。ハンドラーは示す案内をこれらから選び、そのうちの 1 つ
+	// (投稿数の上限) は、その案内が次のスレッドを差し出すかどうかも決めます。人が読むために
+	// 書かれた文章も、ログのために書かれたメタデータも、どちらの問いに答えるにも解析を
+	// 挟むことになります。
+	LockReasons []ThreadLockReason
 }
 
 // Error returns only the user-safe message.

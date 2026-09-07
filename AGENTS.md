@@ -1,4 +1,4 @@
-<!-- last_synced: 2026-08-22 -->
+<!-- last_synced: 2026-09-07 -->
 
 # Groobb Development Guide
 
@@ -164,5 +164,5 @@ For the format and the types see [internal/sqlitetime](./go/internal/sqlitetime/
 
 ## Local Notes
 
-If `AGENTS.local.md` exists at the repository root, read it as well.
+If `AGENTS.override.md` exists at the repository root, read it as well.
 It is not tracked in this repository, and it points to the detailed guidelines available in the local development environment.

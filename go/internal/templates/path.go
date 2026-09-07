@@ -378,3 +378,39 @@ func PostAnchor(number int) Path {
 func ThreadPath(id viewmodel.ThreadID) Path {
 	return Path("/t/" + id.String())
 }
+
+// BoardThreadsPath returns the path to the threads of the board with the given
+// slug: the collection a new thread is added to. A thread is only ever written
+// to this address — once created it is read at the ThreadPath of its own id, so
+// that moving it to another board leaves the links to it intact.
+//
+// [Ja] BoardThreadsPath は指定 slug の掲示板のスレッドのパス、すなわち新しいスレッドが
+// 加えられるコレクションを返します。このアドレスへは書き込むだけです。作られたスレッドは
+// 自身の id の ThreadPath で読まれ、別の掲示板へ移してもそこへのリンクが保たれます。
+func BoardThreadsPath(slug string) Path {
+	return BoardPath(slug) + "/threads"
+}
+
+// BoardThreadsNewPath returns the path to the form for starting a thread in the
+// board with the given slug. The board is named by the address rather than
+// chosen in the form, so the form is opened from the board it posts to and
+// cannot start a thread anywhere else.
+//
+// [Ja] BoardThreadsNewPath は指定 slug の掲示板でスレッドを立てるフォームのパスを
+// 返します。掲示板はフォームで選ぶのではなくアドレスが名指すため、フォームは投稿先の
+// 掲示板から開かれ、それ以外の場所にスレッドを立てることはできません。
+func BoardThreadsNewPath(slug string) Path {
+	return BoardThreadsPath(slug) + "/new"
+}
+
+// ThreadPostsPath returns the path to the posts of the thread with the given
+// id: the collection a reply is added to. A post is only ever written to this
+// address — once saved it is read at the thread's own page, where it is
+// addressed by the reply number it was given (ADR 0009).
+//
+// [Ja] ThreadPostsPath は指定 id のスレッドの投稿のパス、すなわち返信が加えられる
+// コレクションを返します。このアドレスへは書き込むだけです。保存された投稿はスレッド
+// 自身のページで読まれ、そこでは与えられたレス番号で名指されます (ADR 0009)。
+func ThreadPostsPath(id viewmodel.ThreadID) Path {
+	return ThreadPath(id) + "/posts"
+}

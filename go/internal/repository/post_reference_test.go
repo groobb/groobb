@@ -159,3 +159,125 @@ func TestPostReferenceRepository_ListByReferencedPostIDs(t *testing.T) {
 		}
 	})
 }
+
+// listReferencesTo returns the references pointing at any of the posts, for a
+// test that asserts on everything a write recorded rather than on the rows it
+// expected to find.
+//
+// [Ja] listReferencesTo は、いずれかの投稿を指す参照を返す。書き込みが記録したものすべてに
+// ついて検証し、見つかると期待した行だけを見るのではないテストのためのものである。
+func (r *contentRepos) listReferencesTo(t *testing.T, ctx context.Context, postIDs ...model.PostID) []*model.PostReference {
+	t.Helper()
+
+	references, err := r.postReference.ListByReferencedPostIDs(ctx, postIDs)
+	if err != nil {
+		t.Fatalf("テスト用のレス参照の取得に失敗: %v", err)
+	}
+
+	return references
+}
+
+func TestPostReferenceRepository_CreateAllByReferencedNumbers(t *testing.T) {
+	t.Parallel()
+
+	t.Run("同じスレッドの自分より小さい番号だけを記録する", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		other := repos.createThread(t, ctx, board.ID, "別のスレッド")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目")
+		second := repos.createPost(t, ctx, thread.ID, 2, "2 つ目")
+		third := repos.createPost(t, ctx, thread.ID, 3, "3 つ目")
+		otherFirst := repos.createPost(t, ctx, other.ID, 1, "別のスレッドの 1 つ目")
+		otherSecond := repos.createPost(t, ctx, other.ID, 2, "別のスレッドの 2 つ目")
+
+		// The body names its own number, one no post carries and one ahead of it
+		// besides the two it can reach, and the other thread carries 1 and 2 as
+		// well.
+		//
+		// [Ja] 本文は、届く 2 つの番号のほかに、自身の番号・どの投稿も持たない番号・
+		// 自身より先の番号を名指しており、別のスレッドも 1 と 2 を持っている。
+		fourth := repos.createPost(t, ctx, thread.ID, 4, ">>1 >>2 >>4 >>5 >>99")
+
+		err := repos.postReference.CreateAllByReferencedNumbers(ctx, repository.CreatePostReferencesInput{
+			PostID:            fourth.ID,
+			ThreadID:          thread.ID,
+			Number:            fourth.Number,
+			ReferencedNumbers: []int{1, 2, 4, 5, 99},
+		})
+		if err != nil {
+			t.Fatalf("CreateAllByReferencedNumbers() error = %v", err)
+		}
+
+		references := repos.listReferencesTo(t, ctx, first.ID, second.ID, third.ID, fourth.ID, otherFirst.ID, otherSecond.ID)
+		want := []model.PostReference{
+			{ReferencedPostID: first.ID, PostID: fourth.ID},
+			{ReferencedPostID: second.ID, PostID: fourth.ID},
+		}
+		if len(references) != len(want) {
+			t.Fatalf("記録された参照の数 = %d, want %d", len(references), len(want))
+		}
+		for i, w := range want {
+			if references[i].ReferencedPostID != w.ReferencedPostID || references[i].PostID != w.PostID {
+				t.Errorf("記録された参照[%d] = (post %v -> %v), want (post %v -> %v)",
+					i, references[i].PostID, references[i].ReferencedPostID, w.PostID, w.ReferencedPostID)
+			}
+		}
+	})
+
+	t.Run("同じ番号を 2 度渡しても関係を 1 つだけ記録する", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目")
+		second := repos.createPost(t, ctx, thread.ID, 2, ">>1 と >>1")
+
+		err := repos.postReference.CreateAllByReferencedNumbers(ctx, repository.CreatePostReferencesInput{
+			PostID:            second.ID,
+			ThreadID:          thread.ID,
+			Number:            second.Number,
+			ReferencedNumbers: []int{1, 1},
+		})
+		if err != nil {
+			t.Fatalf("CreateAllByReferencedNumbers() error = %v", err)
+		}
+
+		references := repos.listReferencesTo(t, ctx, first.ID, second.ID)
+		if len(references) != 1 {
+			t.Fatalf("記録された参照の数 = %d, want 1", len(references))
+		}
+		if references[0].PostID != second.ID || references[0].ReferencedPostID != first.ID {
+			t.Errorf("記録された参照 = (post %v -> %v), want (post %v -> %v)",
+				references[0].PostID, references[0].ReferencedPostID, second.ID, first.ID)
+		}
+	})
+
+	t.Run("番号を 1 つも渡さなければ何も記録しない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目")
+		second := repos.createPost(t, ctx, thread.ID, 2, "参照を書いていない本文")
+
+		err := repos.postReference.CreateAllByReferencedNumbers(ctx, repository.CreatePostReferencesInput{
+			PostID:            second.ID,
+			ThreadID:          thread.ID,
+			Number:            second.Number,
+			ReferencedNumbers: nil,
+		})
+		if err != nil {
+			t.Fatalf("CreateAllByReferencedNumbers() error = %v", err)
+		}
+
+		references := repos.listReferencesTo(t, ctx, first.ID, second.ID)
+		if len(references) != 0 {
+			t.Errorf("記録された参照の数 = %d, want 0", len(references))
+		}
+	})
+}
