@@ -414,3 +414,129 @@ func BoardThreadsNewPath(slug string) Path {
 func ThreadPostsPath(id viewmodel.ThreadID) Path {
 	return ThreadPath(id) + "/posts"
 }
+
+// AdminPath returns the path to the admin hub: the page the community's
+// administration screens are listed on. The admin screens sit under one prefix
+// of their own rather than beside the community's pages, so that what is
+// reserved to an administrator is told from what anyone may open by the address
+// alone.
+//
+// [Ja] AdminPath は管理ハブ、すなわちコミュニティの管理画面を並べるページのパスを
+// 返します。管理画面をコミュニティのページの隣ではなく専用の接頭辞の下に置くのは、
+// 管理者にだけ許されるものと誰でも開けるものを、アドレスだけで見分けられるようにする
+// ためです。
+func AdminPath() Path {
+	return Path("/admin")
+}
+
+// AdminUsersPath returns the path to the user list in the admin screens, where
+// the community's people are read and their roles are handed out.
+//
+// [Ja] AdminUsersPath は管理画面の利用者一覧、すなわちコミュニティの利用者を読み、
+// その人たちにロールを渡す場所のパスを返します。
+func AdminUsersPath() Path {
+	return AdminPath() + "/users"
+}
+
+// AdminUsersQueryParam is the query parameter the user list is narrowed by: the
+// beginning of an atname. It sits beside the path helpers because the search
+// form names it as a field and the handler reads it back from the address, and
+// the two have to spell it the same way.
+//
+// [Ja] AdminUsersQueryParam は利用者一覧を絞り込むクエリパラメータで、atname の先頭
+// 部分を運びます。パスヘルパーの傍らに置くのは、検索フォームがこれをフィールドとして
+// 名指し、ハンドラーがアドレスから読み戻すためで、両者は同じ綴りである必要があります。
+const AdminUsersQueryParam = "q"
+
+// PageParam is the query parameter naming which page of a listing is being
+// read, counted from 1. It is not scoped to one listing, because a later listing
+// paged the same way carries its page number under the same name.
+//
+// [Ja] PageParam は一覧のどのページを読んでいるかを名指すクエリパラメータで、1 から
+// 数えます。1 つの一覧に閉じないのは、同じ形でページを送る後続の一覧も、同じ名前で
+// ページ番号を運ぶためです。
+const PageParam = "page"
+
+// AdminUserRoleNameParam is the form field naming the role a grant hands out.
+// It sits beside the path helpers for the reason AdminUsersQueryParam does: the
+// row's grant form names it as a field and the handler reads it back from the
+// submission, and the two have to spell it the same way.
+//
+// A revoke carries no such field, since the assignment it removes is named by
+// the address rather than by the submission.
+//
+// [Ja] AdminUserRoleNameParam は、付与が渡すロールを名指すフォームのフィールドです。
+// パスヘルパーの傍らに置く理由は AdminUsersQueryParam と同じで、行の付与フォームが
+// これをフィールドとして名指し、ハンドラーが送信から読み戻すためです。両者は同じ綴りで
+// ある必要があります。
+//
+// 剥奪はこのフィールドを持ちません。取り除かれる割当を名指すのは、送信ではなくアドレスで
+// あるためです。
+const AdminUserRoleNameParam = "role_name"
+
+// AdminUsersPagePath returns the path to one page of the admin user listing,
+// narrowed to the accounts whose atname begins with atnamePrefix. The paging
+// links are built with it, so moving to the next page keeps what the listing is
+// narrowed to rather than starting over from every account.
+//
+// The first page is spelled without a page number, since that is the address the
+// listing is opened at and the one the search form submits to. An empty prefix
+// likewise leaves the parameter out: it does not narrow the listing at all, and
+// carrying an empty value would give the same listing two addresses.
+//
+// [Ja] AdminUsersPagePath は管理画面の利用者一覧の 1 ページ、すなわち atname が
+// atnamePrefix で始まるアカウントに絞り込んだ一覧のパスを返します。ページ送りのリンクが
+// これで組み立てられるため、次のページへ移っても、全アカウントから始め直すのではなく
+// 一覧の絞り込みが保たれます。
+//
+// 最初のページはページ番号を綴らずに表します。それが一覧を開くアドレスであり、検索
+// フォームの送信先でもあるためです。空の prefix も同様にパラメータを落とします。それは
+// 一覧を何も絞り込んでおらず、空の値を運べば同じ一覧が 2 つのアドレスを持つことになる
+// ためです。
+func AdminUsersPagePath(atnamePrefix string, page int) Path {
+	query := url.Values{}
+	if atnamePrefix != "" {
+		query.Set(AdminUsersQueryParam, atnamePrefix)
+	}
+	if page > 1 {
+		query.Set(PageParam, strconv.Itoa(page))
+	}
+	if len(query) == 0 {
+		return AdminUsersPath()
+	}
+
+	return AdminUsersPath() + Path("?"+query.Encode())
+}
+
+// AdminUserRolesPath returns the path to the roles of the user with the given
+// id: the collection a role is added to. A role is only ever granted to this
+// address, and the role being granted is named by the submission rather than by
+// the address, since the collection is the same one whichever role is added.
+//
+// [Ja] AdminUserRolesPath は指定 id の利用者のロール、すなわちロールが加えられる
+// コレクションのパスを返します。ロールの付与はこのアドレスへ書き込むだけで、付与される
+// ロールはアドレスではなく送信が名指します。どのロールを加えてもコレクションは同じで
+// あるためです。
+func AdminUserRolesPath(id viewmodel.UserID) Path {
+	return AdminUsersPath() + Path("/"+id.String()) + "/roles"
+}
+
+// AdminUserRolePath returns the path to one role held by the user with the
+// given id: the assignment a revocation removes. The role is named in the
+// address because what is removed is that one assignment, and the address is
+// about it rather than about the account's roles as a whole.
+//
+// The name is written into the path as it is, as the board and category paths
+// write their slugs. A role is named by a migration this instance shipped, so
+// the names an address carries here are the ones the code already spells.
+//
+// [Ja] AdminUserRolePath は指定 id の利用者が持つ 1 つのロール、すなわち剥奪が取り除く
+// 割当のパスを返します。ロールをアドレスで名指すのは、取り除かれるのがその 1 つの割当で
+// あり、アドレスが表すのがアカウントのロール全体ではなくそれであるためです。
+//
+// 名前は、掲示板やカテゴリのパスがスラッグをそうするのと同じく、そのままパスへ書きます。
+// ロールに名前を与えるのはこのインスタンスが同梱したマイグレーションであり、ここでアドレスが
+// 運ぶ名前は、コードが既に綴っているものであるためです。
+func AdminUserRolePath(id viewmodel.UserID, roleName string) Path {
+	return AdminUserRolesPath(id) + Path("/"+roleName)
+}

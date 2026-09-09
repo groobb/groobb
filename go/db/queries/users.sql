@@ -39,3 +39,24 @@ WHERE id = ?;
 -- name: PurgeUsersDeletedBefore :execrows
 DELETE FROM users
 WHERE deleted_at IS NOT NULL AND deleted_at < ?;
+
+-- name: ListUsersPage :many
+SELECT * FROM users
+WHERE deleted_at IS NULL
+ORDER BY id DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- name: ListUsersPageByAtnamePrefix :many
+SELECT * FROM users
+WHERE atname >= sqlc.arg(atname_from) AND atname < sqlc.arg(atname_to)
+  AND deleted_at IS NULL
+ORDER BY id DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;
+
+-- name: CountUsersByAtnamePrefix :one
+SELECT COUNT(*) FROM users
+WHERE atname >= sqlc.arg(atname_from) AND atname < sqlc.arg(atname_to)
+  AND deleted_at IS NULL;

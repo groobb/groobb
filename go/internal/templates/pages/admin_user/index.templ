@@ -1,0 +1,247 @@
+package admin_user
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// indexTableCaptionID names the table's caption, which the scrolling region
+// around the table borrows as its own name. A region without a name is
+// announced as a region and nothing more, and the words describing the table are
+// already written once in the caption.
+//
+// [Ja] indexTableCaptionID は表のキャプションを名指します。表を囲むスクロール領域が
+// これを自身の名前として借ります。名前の無い領域は「領域」とだけ読み上げられ、表を説明
+// する言葉はキャプションに既に 1 度書かれているためです。
+const indexTableCaptionID = "admin-user-index-table-caption"
+
+// Index renders the user listing: the search that narrows it, the accounts of
+// the page being read, and the links to the pages around it.
+//
+// The accounts are a table rather than a list of cards, because a row states the
+// same four things about every account and the reason to open this page is to
+// compare them down a column. The caption says what the table holds, the header
+// cells are scoped to their column and the atname to its row, so a cell read on
+// its own is read together with what it is.
+//
+// The table sits in a region that scrolls sideways, so that a screen too narrow
+// for four columns does not cut them off. The region takes focus, since a
+// visitor who scrolls it with the keyboard has to be able to reach it.
+//
+// Each row's role button is a form of its own, since a row acts on one account
+// and a form nested in another form is not submitted. Taking the role away is
+// confirmed first: it is the button that can leave someone without the screens
+// they were using, and unlike granting it, pressing it back does not always
+// undo it. The visitor's own row asks a different question, because what it
+// takes away is the listing they are standing on: pressing it back is not
+// something they can do at all once the role is gone.
+//
+// Each button is named after the account of its row, so the accessible name says
+// what it does and to whom. The words of the button alone repeat on every row,
+// and the listing is read one row at a time.
+//
+// An empty page says which of three empty things it is: a community with no
+// accounts to show, a search that matched none of the accounts it has, or a page
+// past the end of a listing that did match accounts. They look the same but ask
+// for different next steps: waiting, searching for something else, or going
+// back a page.
+//
+// [Ja] Index は利用者一覧を描画します。それを絞り込む検索、読まれているページの
+// アカウント、そしてその前後のページへのリンクです。
+//
+// アカウントをカードの一覧ではなく表にするのは、どの行もアカウントについて同じ 4 つの
+// ことを述べ、このページを開く理由が列に沿ってそれらを見比べることであるためです。
+// キャプションが表の中身を述べ、見出しセルは列に、atname は行にスコープするため、単独で
+// 読まれたセルも、それが何であるかと共に読まれます。
+//
+// 表は横にスクロールする領域の中に置きます。4 つの列に足りない幅の画面がそれらを切り
+// 落とさないようにするためです。領域はフォーカスを受け取ります。キーボードでそれを
+// スクロールする訪問者が、そこへ到達できる必要があるためです。
+//
+// 各行のロールのボタンはそれぞれが 1 つのフォームです。行が作用するのは 1 つのアカウント
+// であり、フォームの中に入れ子にしたフォームは送信されないためです。ロールを外す操作には
+// 確認を挟みます。使っていた画面を誰かから失わせうるのはこちらのボタンであり、付与と違って、
+// 押し戻せば必ず元に戻るとは限らないためです。訪問者自身の行は別の問いを立てます。そこで
+// 外れるのは、訪問者がいま立っている一覧そのものであり、ロールが外れた後では押し戻すこと
+// 自体ができないためです。
+//
+// 各ボタンは自身の行のアカウントによって名付けられ、アクセシブルネームが何を誰に対して
+// するのかを述べます。ボタンの言葉だけではどの行でも同じものが繰り返され、一覧は 1 行ずつ
+// 読まれるためです。
+//
+// 空のページは、3 種類の空のどれであるかを述べます。見せるアカウントを持たない
+// コミュニティなのか、持っているアカウントのどれにも一致しなかった検索なのか、それとも
+// 一致するアカウントを持つ一覧の終端を越えたページなのかです。同じ見た目でも、待つこと、
+// 別の語で探すこと、前のページへ戻ることという異なる次の手立てを求めるためです。
+templ Index(data IndexPageData) {
+	<div class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
+		<h1 class="text-2xl font-bold tracking-tight">
+			{ templates.T(ctx, "admin_user_index_heading") }
+		</h1>
+		<form action={ templates.AdminUsersPath().SafeURL() } method="GET" class="flex flex-wrap items-end gap-3">
+			<div role="group" class="field">
+				<label for={ templates.AdminUsersQueryParam }>
+					{ templates.T(ctx, "admin_user_index_search_label") }
+				</label>
+				<input
+					id={ templates.AdminUsersQueryParam }
+					name={ templates.AdminUsersQueryParam }
+					type="search"
+					value={ data.AtnamePrefix }
+					autocomplete="off"
+				/>
+			</div>
+			<button type="submit" class="btn" data-variant="outline">
+				{ templates.T(ctx, "admin_user_index_search_submit_button") }
+			</button>
+		</form>
+		if len(data.Users) == 0 {
+			if data.TotalCount > 0 {
+				<p class="text-muted-foreground">{ templates.T(ctx, "admin_user_index_past_last_page") }</p>
+			} else if data.AtnamePrefix == "" {
+				<p class="text-muted-foreground">{ templates.T(ctx, "admin_user_index_empty") }</p>
+			} else {
+				<p class="text-muted-foreground">
+					{ templates.T(ctx, "admin_user_index_no_results", map[string]any{"Query": data.AtnamePrefix}) }
+				</p>
+			}
+		} else {
+			<div class="table-container" role="region" tabindex="0" aria-labelledby={ indexTableCaptionID }>
+				<table class="table">
+					<caption id={ indexTableCaptionID } class="text-left text-muted-foreground">
+						{ templates.T(ctx, "admin_user_index_table_caption") }
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">{ templates.T(ctx, "admin_user_index_atname_column") }</th>
+							<th scope="col">{ templates.T(ctx, "admin_user_index_joined_at_column") }</th>
+							<th scope="col">{ templates.T(ctx, "admin_user_index_roles_column") }</th>
+							<th scope="col">{ templates.T(ctx, "admin_user_index_actions_column") }</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, user := range data.Users {
+							<tr>
+								<th scope="row" id={ atnameCellID(user.ID) } class="font-medium">
+									{ "@" + user.Atname }
+								</th>
+								<td>
+									<time datetime={ templates.MachineDateTime(user.CreatedAt) }>
+										{ templates.RelativeTime(ctx, user.CreatedAt) }
+									</time>
+								</td>
+								<td>
+									if len(user.RoleNames) == 0 {
+										<span class="text-muted-foreground">
+											{ templates.T(ctx, "admin_user_index_no_roles") }
+										</span>
+									} else {
+										<ul class="flex flex-wrap gap-1">
+											for _, roleName := range user.RoleNames {
+												<li>{ roleName }</li>
+											}
+										</ul>
+									}
+								</td>
+								<td>
+									if user.HoldsAdmin {
+										<form
+											action={ templates.AdminUserRolePath(user.ID, data.AdminRoleName).SafeURL() }
+											method="POST"
+											if user.IsSelf {
+												data-confirm={ templates.T(ctx, "admin_user_index_revoke_admin_self_confirm") }
+											} else {
+												data-confirm={ templates.T(ctx, "admin_user_index_revoke_admin_confirm", map[string]any{"Atname": user.Atname}) }
+											}
+											onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"
+										>
+											<input type="hidden" name="_method" value="DELETE"/>
+											<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+											@indexReturnTo(data)
+											<button
+												type="submit"
+												id={ roleButtonID(user.ID) }
+												aria-labelledby={ roleButtonID(user.ID) + " " + atnameCellID(user.ID) }
+												class="btn"
+												data-variant="outline"
+												data-size="sm"
+											>
+												{ templates.T(ctx, "admin_user_index_revoke_admin_button") }
+											</button>
+										</form>
+									} else {
+										<form action={ templates.AdminUserRolesPath(user.ID).SafeURL() } method="POST">
+											<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+											<input type="hidden" name={ templates.AdminUserRoleNameParam } value={ data.AdminRoleName }/>
+											@indexReturnTo(data)
+											<button
+												type="submit"
+												id={ roleButtonID(user.ID) }
+												aria-labelledby={ roleButtonID(user.ID) + " " + atnameCellID(user.ID) }
+												class="btn"
+												data-variant="outline"
+												data-size="sm"
+											>
+												{ templates.T(ctx, "admin_user_index_grant_admin_button") }
+											</button>
+										</form>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+		if data.Pagination.HasPrevious() || data.Pagination.HasNext() {
+			<nav
+				aria-label={ templates.T(ctx, "admin_user_index_pagination_label") }
+				class="flex flex-wrap items-center justify-center gap-4"
+			>
+				if data.Pagination.HasPrevious() {
+					<a
+						href={ templates.AdminUsersPagePath(data.AtnamePrefix, data.Pagination.PreviousPage()).SafeURL() }
+						class="btn"
+						data-variant="outline"
+					>
+						{ templates.T(ctx, "admin_user_index_previous_page_link") }
+					</a>
+				}
+				if data.Pagination.IsNumbered() {
+					<p class="text-sm text-muted-foreground">
+						{ templates.T(ctx, "admin_user_index_page_position", map[string]any{"Page": data.Pagination.Page, "TotalPages": data.Pagination.TotalPages}) }
+					</p>
+				}
+				if data.Pagination.HasNext() {
+					<a
+						href={ templates.AdminUsersPagePath(data.AtnamePrefix, data.Pagination.NextPage()).SafeURL() }
+						class="btn"
+						data-variant="outline"
+					>
+						{ templates.T(ctx, "admin_user_index_next_page_link") }
+					</a>
+				}
+			</nav>
+		}
+	</div>
+}
+
+// indexReturnTo writes the address of the listing being read into the row's
+// form, so that the page a grant or a revoke returns to is the page it was
+// pressed on: the same search and the same page number, rather than the first
+// page of everyone.
+//
+// The two values are the ones the listing's own address carries, and the handler
+// builds the address to return to out of them. A form field is used rather than
+// a whole address, so that what a submission can influence is the listing's two
+// parameters and never where the redirect goes.
+//
+// [Ja] indexReturnTo は、読まれている一覧のアドレスを行のフォームへ書き込みます。付与や
+// 剥奪が戻るページが、それが押されたページ、すなわち同じ絞り込みと同じページ番号になる
+// ようにするためです。全員の最初のページではありません。
+//
+// 2 つの値は一覧自身のアドレスが運ぶものであり、ハンドラーはそれらから戻り先のアドレスを
+// 組み立てます。アドレスそのものではなくフォームのフィールドにするのは、送信が左右できる
+// ものを一覧の 2 つのパラメータに留め、リダイレクトの行き先そのものには決して及ばない
+// ようにするためです。
+templ indexReturnTo(data IndexPageData) {
+	<input type="hidden" name={ templates.AdminUsersQueryParam } value={ data.AtnamePrefix }/>
+	<input type="hidden" name={ templates.PageParam } value={ data.Pagination.PageValue() }/>
+}

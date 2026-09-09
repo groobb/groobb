@@ -154,6 +154,120 @@ func (r *UserRepository) ListByIDs(ctx context.Context, ids []model.UserID) ([]*
 	return users, nil
 }
 
+// ListPageByAtnamePrefix returns one page of the community's accounts, the most
+// recently registered first, leaving out the withdrawn ones. An empty prefix
+// asks for everyone; a non-empty one narrows the page to the accounts whose
+// atname starts with it, ignoring letter case.
+//
+// The two cases are separate statements rather than one taking a prefix that
+// matches everything. Filtered, the range is answered through the atname index;
+// unfiltered, there is no range to answer, and asking for one would make the
+// listing sort every account by id to hand back fifty of them, where walking the
+// primary key backwards stops as soon as the page is full.
+//
+// [Ja] ListPageByAtnamePrefix は、コミュニティのアカウントを 1 ページ分、登録の新しい
+// 順に返し、退会したアカウントを除きます。空の prefix は全員を求め、空でない prefix は
+// atname がそれで始まるアカウントへページを絞ります (大文字小文字は無視します)。
+//
+// 2 つの場合を、すべてに一致する prefix を取る 1 つの文ではなく別々の文にしています。
+// 絞り込みがあるときは範囲が atname の索引で答えられます。絞り込みが無いときは答えるべき
+// 範囲が無く、それでも範囲を求めれば、一覧は 50 件を返すためにすべてのアカウントを id で
+// 並べ替えることになります。主キーを逆にたどれば、ページが埋まった時点で読み終わります。
+func (r *UserRepository) ListPageByAtnamePrefix(ctx context.Context, atnamePrefix string, limit, offset int) ([]*model.User, error) {
+	var rows []query.User
+	var err error
+	if atnamePrefix == "" {
+		rows, err = r.reader.ListUsersPage(ctx, query.ListUsersPageParams{
+			PageSize:   int64(limit),
+			PageOffset: int64(offset),
+		})
+	} else {
+		from, to := atnamePrefixBounds(atnamePrefix)
+		rows, err = r.reader.ListUsersPageByAtnamePrefix(ctx, query.ListUsersPageByAtnamePrefixParams{
+			AtnameFrom: from,
+			AtnameTo:   to,
+			PageSize:   int64(limit),
+			PageOffset: int64(offset),
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*model.User, len(rows))
+	for i, row := range rows {
+		users[i] = r.toModel(row)
+	}
+	return users, nil
+}
+
+// CountByAtnamePrefix returns how many accounts a listing of the same prefix
+// covers, so the pages can be numbered. It counts what
+// ListPageByAtnamePrefix would return across every page: the withdrawn accounts
+// are left out here too, or the last page would be numbered for rows nobody is
+// shown.
+//
+// [Ja] CountByAtnamePrefix は、同じ prefix の一覧が何件を対象とするかを返し、ページに
+// 番号を振れるようにします。数えるのは ListPageByAtnamePrefix が全ページで返すものです。
+// 退会したアカウントはここでも除きます。除かなければ、最後のページが、誰にも表示されない
+// 行の分まで番号を振られるためです。
+func (r *UserRepository) CountByAtnamePrefix(ctx context.Context, atnamePrefix string) (int, error) {
+	if atnamePrefix == "" {
+		count, err := r.reader.CountUsers(ctx)
+		if err != nil {
+			return 0, err
+		}
+		return int(count), nil
+	}
+
+	from, to := atnamePrefixBounds(atnamePrefix)
+	count, err := r.reader.CountUsersByAtnamePrefix(ctx, query.CountUsersByAtnamePrefixParams{
+		AtnameFrom: from,
+		AtnameTo:   to,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// atnamePrefixCeiling is appended to a prefix to close the range above it. It is
+// the highest code point there is, so every character an atname may carry sorts
+// before it and no atname can carry it.
+//
+// [Ja] atnamePrefixCeiling は、範囲の上端を閉じるために prefix の末尾へ足す文字です。
+// 存在する最大のコードポイントであるため、atname が持ちうるどの文字もこれより前に並び、
+// atname がこれ自体を持つことはありません。
+const atnamePrefixCeiling = "\U0010FFFF"
+
+// atnamePrefixBounds turns a prefix into the half-open range [from, to) holding
+// exactly the atnames that start with it: an atname is at or after the prefix
+// and before the prefix followed by the ceiling precisely when the prefix is
+// where it begins.
+//
+// A prefix match is written as this range instead of as LIKE because LIKE would
+// read the underscore the atname character set allows as its single-character
+// wildcard, so a search for "a_b" would also return "axb". Turning that back
+// into a character takes an ESCAPE clause, and an ESCAPE clause is one of the
+// things that stops SQLite from answering a prefix LIKE through an index,
+// leaving the listing to read every account. The comparison uses the atname
+// column's own NOCASE collation, so the range both ignores letter case and is
+// answered through the index that enforces the atname UNIQUE constraint.
+//
+// [Ja] atnamePrefixBounds は prefix を、それで始まる atname だけを持つ半開区間
+// [from, to) に変換します。ある atname が prefix 以上であり、かつ prefix に上端の文字を
+// 足したものより前にあるのは、その atname が prefix で始まるとき、そのときに限ります。
+//
+// 前方一致を LIKE ではなくこの範囲で書くのは、LIKE が、atname の文字集合の許す
+// アンダースコアを 1 文字ワイルドカードとして読むためです。それでは "a_b" の検索が "axb"
+// も返します。これを文字に戻すには ESCAPE 句が要りますが、ESCAPE 句は、SQLite が前方一致の
+// LIKE を索引で答えるのをやめる条件の 1 つであり、一覧はすべてのアカウントを読むことに
+// なります。比較は atname 列自身の NOCASE 照合で行われるため、範囲は大文字小文字を無視し、
+// しかも atname の UNIQUE 制約を支える索引で答えられます。
+func atnamePrefixBounds(prefix string) (from, to string) {
+	return prefix, prefix + atnamePrefixCeiling
+}
+
 // FindBySessionToken returns the user that owns the session with the given
 // token, or (nil, nil) when no session matches the token (an unknown, stale, or
 // forged cookie). It resolves the session and its user in a single JOIN so the

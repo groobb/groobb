@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -609,4 +610,269 @@ func TestUserRepository_UpdateEmail(t *testing.T) {
 			t.Error("重複アドレスへの UpdateEmail() はエラーになるはず")
 		}
 	})
+}
+
+// listAtnames returns the atnames of the users in the order they were listed,
+// so a test states the page it expects as the handles it would read on it.
+//
+// [Ja] listAtnames は、一覧に並んだユーザーの atname をその順序のまま返す。テストが
+// 期待するページを、その画面で読むことになるハンドルの並びとして書けるようにするため
+// である。
+func listAtnames(users []*model.User) []string {
+	atnames := make([]string, len(users))
+	for i, user := range users {
+		atnames[i] = user.Atname
+	}
+	return atnames
+}
+
+// assertAtnames fails the test unless the listing holds exactly the given
+// atnames in the given order.
+//
+// [Ja] assertAtnames は、一覧が指定した atname を指定した順序でちょうど持たない限り
+// テストを失敗させる。
+func assertAtnames(t *testing.T, users []*model.User, want []string) {
+	t.Helper()
+
+	got := listAtnames(users)
+	if len(got) != len(want) {
+		t.Fatalf("一覧の atname = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("一覧の atname = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestUserRepository_ListPageByAtnamePrefix(t *testing.T) {
+	t.Parallel()
+
+	t.Run("空の prefix は退会していない利用者を登録の新しい順に返す", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("first").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("second").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("third").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, []string{"third", "second", "first"})
+	})
+
+	t.Run("退会した利用者を含めない", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("staying").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("leaving").WithDeletedAt(time.Now()).Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, []string{"staying"})
+	})
+
+	t.Run("limit と offset が 1 ページ分ずつを切り出す", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("older").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("middle").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("newer").Build()
+
+		first, err := repo.ListPageByAtnamePrefix(ctx, "", 2, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+		assertAtnames(t, first, []string{"newer", "middle"})
+
+		second, err := repo.ListPageByAtnamePrefix(ctx, "", 2, 2)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+		assertAtnames(t, second, []string{"older"})
+	})
+
+	t.Run("最後のページを越えた offset は空を返す", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("only").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "", 10, 50)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, nil)
+	})
+
+	t.Run("prefix は前方一致で、大文字小文字を区別しない", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("Alice").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("alberta").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("bob").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("carolal").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "AL", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, []string{"alberta", "Alice"})
+	})
+
+	t.Run("prefix そのものと一致する atname も含める", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("ada").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "ada", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, []string{"ada"})
+	})
+
+	// The underscore is part of the atname character set, so a search carrying
+	// one addresses that character. Were the match written as LIKE, it would be
+	// LIKE's single-character wildcard instead and the search would also reach
+	// the accounts spelling any other character there.
+	//
+	// [Ja] アンダースコアは atname の文字集合の一部であるため、それを含む検索はその文字を
+	// 名指している。一致を LIKE で書けばこれは LIKE の 1 文字ワイルドカードになり、検索は
+	// その位置に別の文字を綴るアカウントにも届いてしまう。
+	t.Run("アンダースコアはワイルドカードではなく文字として一致する", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("a_b").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("axb").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "a_", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, []string{"a_b"})
+	})
+
+	t.Run("prefix に一致する利用者がいなければ空を返す", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("ada").Build()
+
+		users, err := repo.ListPageByAtnamePrefix(ctx, "zoe", 10, 0)
+		if err != nil {
+			t.Fatalf("ListPageByAtnamePrefix() error = %v", err)
+		}
+
+		assertAtnames(t, users, nil)
+	})
+}
+
+func TestUserRepository_CountByAtnamePrefix(t *testing.T) {
+	t.Parallel()
+
+	t.Run("空の prefix は退会していない利用者を数える", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("staying").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("alsostaying").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("leaving").WithDeletedAt(time.Now()).Build()
+
+		count, err := repo.CountByAtnamePrefix(ctx, "")
+		if err != nil {
+			t.Fatalf("CountByAtnamePrefix() error = %v", err)
+		}
+		if count != 2 {
+			t.Errorf("CountByAtnamePrefix(\"\") = %d, want 2", count)
+		}
+	})
+
+	t.Run("prefix で絞り込んだ件数を大文字小文字を区別せずに数える", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutil.SetupDB(t)
+		repo := repository.NewUserRepository(db)
+		ctx := context.Background()
+		testutil.NewUserBuilder(t, db).WithAtname("Alice").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("alberta").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("bob").Build()
+		testutil.NewUserBuilder(t, db).WithAtname("albert").WithDeletedAt(time.Now()).Build()
+
+		count, err := repo.CountByAtnamePrefix(ctx, "AL")
+		if err != nil {
+			t.Fatalf("CountByAtnamePrefix() error = %v", err)
+		}
+		if count != 2 {
+			t.Errorf("CountByAtnamePrefix(\"AL\") = %d, want 2", count)
+		}
+	})
+}
+
+// TestUserRepository_ListPageByAtnamePrefix_UsesTheAtnameIndex verifies that the
+// narrowed listing is answered through the index behind the atname UNIQUE
+// constraint. The search is what a page of the admin screens is filtered with,
+// and reading every account to answer it would make the screen slower the more
+// people the community has.
+//
+// [Ja] TestUserRepository_ListPageByAtnamePrefix_UsesTheAtnameIndex は、絞り込んだ一覧が
+// atname の UNIQUE 制約を支える索引で答えられることを検証します。この検索は管理画面の
+// ページを絞り込むものであり、答えるためにすべてのアカウントを読めば、その画面は
+// コミュニティの人数が増えるほど遅くなります。
+func TestUserRepository_ListPageByAtnamePrefix_UsesTheAtnameIndex(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+	ctx := context.Background()
+
+	statement := queryStatement(t, "users.sql", "ListUsersPageByAtnamePrefix")
+	plan := queryPlan(t, ctx, db, statement, "a", "a\U0010FFFF", int64(50), int64(0))
+
+	// SQLite names the index enforcing a UNIQUE constraint it was not given a
+	// name for after the table it stands on, users being the second such
+	// constraint's owner here (email is the first).
+	//
+	// [Ja] SQLite は、名前を与えられていない UNIQUE 制約を支える索引を、その制約が立つ
+	// テーブルの名前から名付ける。ここで users の 2 つ目の制約にあたるのが atname で
+	// ある (1 つ目は email)。
+	const index = "sqlite_autoindex_users_2"
+	if !strings.Contains(plan, index) {
+		t.Errorf("絞り込んだ一覧の実行計画 = %q, %q をたどるはず", plan, index)
+	}
+	if strings.Contains(plan, "SCAN users") {
+		t.Errorf("絞り込んだ一覧の実行計画 = %q, users の全走査を伴わないはず", plan)
+	}
 }

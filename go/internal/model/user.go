@@ -104,3 +104,20 @@ func AnonymizedEmail(userID UserID) string {
 func AnonymizedAtname(userID UserID) string {
 	return "deleted-" + userID.String()
 }
+
+// AdminUsersPerPage is how many accounts one page of the admin user listing
+// holds. It is a constant rather than a request parameter because the page size
+// is what bounds the work a request may ask for, and a size the caller chooses
+// is a size a caller can choose to be the whole community.
+//
+// It sits here so that the read that fills a page, the page numbers drawn under
+// it, and the check for whether there is a next one all count in the same unit.
+//
+// [Ja] AdminUsersPerPage は、管理画面の利用者一覧の 1 ページが持つアカウントの数です。
+// リクエストのパラメータではなく定数であるのは、ページの大きさがリクエストの求めうる
+// 仕事の量を抑えるものであり、呼び出し側が選べる大きさは、呼び出し側がコミュニティ全体を
+// 選べる大きさでもあるためです。
+//
+// ここに置くのは、ページを埋める読み取りと、その下に描かれるページ番号と、次のページが
+// あるかどうかの判断が、同じ単位で数えるようにするためです。
+const AdminUsersPerPage = 50
