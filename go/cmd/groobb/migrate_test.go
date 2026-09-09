@@ -13,12 +13,20 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 )
 
-// setMigrationEnv sets the environment the migrate subcommand needs and returns
-// the throwaway database path.
+// setDatabaseEnv sets the environment a subcommand that opens the configured
+// database needs and returns the path of a throwaway database file.
 //
-// [Ja] setMigrationEnv は migrate サブコマンドが必要とする環境変数を設定し、
-// 使い捨てのデータベースパスを返します。
-func setMigrationEnv(t *testing.T) string {
+// The path names a file that does not exist yet, which is what the migrate
+// subcommand starts from. A test that needs a database with the schema already
+// in it points the configuration at one of its own afterwards.
+//
+// [Ja] setDatabaseEnv は、設定されたデータベースを開くサブコマンドが必要とする環境変数を
+// 設定し、使い捨てのデータベースファイルのパスを返します。
+//
+// このパスが指すのはまだ存在しないファイルで、migrate サブコマンドはそこから始めます。
+// スキーマが入った状態のデータベースを必要とするテストは、その後で設定を自前のものへ
+// 向け直します。
+func setDatabaseEnv(t *testing.T) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "groobb.sqlite")
@@ -167,7 +175,7 @@ func TestRunMigrate_RejectsInvalidArguments(t *testing.T) {
 // [Ja] TestRunMigrate_ReturnsFailureExitCode は、依頼されたマイグレーション処理の失敗が
 // 使用方法の誤りとは区別され、終了コード 1 になることを検証します。
 func TestRunMigrate_ReturnsFailureExitCode(t *testing.T) {
-	setMigrationEnv(t)
+	setDatabaseEnv(t)
 	t.Setenv("GROOBB_DATABASE_PATH", filepath.Join(t.TempDir(), "missing", "groobb.sqlite"))
 
 	var stderr bytes.Buffer
@@ -185,7 +193,7 @@ func TestRunMigrate_ReturnsFailureExitCode(t *testing.T) {
 // [Ja] TestMigrateDatabase_ReturnsConfigurationErrors は、設定の失敗が隠されず
 // 返されることを検証します。
 func TestMigrateDatabase_ReturnsConfigurationErrors(t *testing.T) {
-	setMigrationEnv(t)
+	setDatabaseEnv(t)
 	t.Setenv("GROOBB_PORT", "")
 
 	err := migrateDatabase(context.Background(), database.Migrate)
@@ -203,7 +211,7 @@ func TestMigrateDatabase_ReturnsConfigurationErrors(t *testing.T) {
 // [Ja] TestMigrateDatabase_ReturnsDatabaseOpenErrors は、データベース接続の失敗が
 // 隠されず返されることを検証します。
 func TestMigrateDatabase_ReturnsDatabaseOpenErrors(t *testing.T) {
-	setMigrationEnv(t)
+	setDatabaseEnv(t)
 	t.Setenv("GROOBB_DATABASE_PATH", filepath.Join(t.TempDir(), "missing", "groobb.sqlite"))
 
 	err := migrateDatabase(context.Background(), database.Migrate)
@@ -234,7 +242,7 @@ func TestMigrateDatabase_ReturnsDatabaseOpenErrors(t *testing.T) {
 // 消えたことで確認すると、それを作るマイグレーションが最新であり続ける間しか同じことを
 // 意味しません。
 func TestRunMigrate_AppliesAndRollsBackMigrations(t *testing.T) {
-	path := setMigrationEnv(t)
+	path := setDatabaseEnv(t)
 
 	var stderr bytes.Buffer
 
