@@ -15,7 +15,7 @@ require (
 	github.com/riverqueue/river/riverdriver/riversqlite v0.45.0
 	github.com/riverqueue/river/rivertype v0.45.0
 	github.com/wneessen/go-mail v0.8.1
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/net v0.58.0
 	golang.org/x/text v0.41.0
 	modernc.org/sqlite v1.58.0
