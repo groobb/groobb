@@ -68,7 +68,9 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, err := h.getCommunityNavigationUC.Execute(ctx)
+	nav, err := h.getCommunityNavigationUC.Execute(ctx, usecase.GetCommunityNavigationInput{
+		UserID: middleware.UserIDFromContext(ctx),
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "コミュニティのナビゲーションの取得に失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

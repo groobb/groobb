@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -269,7 +270,7 @@ func TestPostRepository_FindLatestByUserID_ReadsOneRowThroughTheIndex(t *testing
 
 	repos, ctx := newContentRepos(t)
 
-	plan := queryPlan(t, ctx, repos.db, latestPostQuery(t), int64(1))
+	plan := queryPlan(t, ctx, repos.db, queryStatement(t, "posts.sql", "GetLatestPostByUserID"), int64(1))
 
 	const index = "index_posts_on_user_id_and_created_at_and_id"
 	if !strings.Contains(plan, index) {
@@ -285,20 +286,21 @@ func TestPostRepository_FindLatestByUserID_ReadsOneRowThroughTheIndex(t *testing
 	}
 }
 
-// latestPostQuery returns the statement FindLatestByUserID runs, read out of the
-// file sqlc compiles it from. It is read rather than written out again here so
-// that the plan checked above belongs to the query that actually runs; a copy
-// would go on passing after the original changed.
+// queryStatement returns the statement the named query runs, read out of the
+// file sqlc compiles it from. It is read rather than written out again in a test
+// so that the plan checked against it belongs to the query that actually runs; a
+// copy would go on passing after the original changed.
 //
-// [Ja] latestPostQuery は FindLatestByUserID が実行する文を、sqlc がそれをコンパイルする
-// 元のファイルから読み出します。ここに書き直さず読むのは、上で確かめる実行計画を実際に
-// 走るクエリのものにするためです。書き写したものは、元が変わった後も通り続けます。
-func latestPostQuery(t *testing.T) string {
+// [Ja] queryStatement は、名前で指したクエリが実行する文を、sqlc がそれをコンパイルする
+// 元のファイルから読み出します。テストの中に書き直さず読むのは、それに対して確かめる実行
+// 計画を実際に走るクエリのものにするためです。書き写したものは、元が変わった後も通り
+// 続けます。
+func queryStatement(t *testing.T, file, name string) string {
 	t.Helper()
 
-	const marker = "-- name: GetLatestPostByUserID :one"
+	marker := "-- name: " + name
 
-	raw, err := os.ReadFile(filepath.Join("..", "..", "db", "queries", "posts.sql"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "db", "queries", file))
 	if err != nil {
 		t.Fatalf("クエリファイルの読み込みに失敗: %v", err)
 	}
@@ -307,10 +309,26 @@ func latestPostQuery(t *testing.T) string {
 	if !found {
 		t.Fatalf("クエリファイルに %q が見つからない", marker)
 	}
-	statement, _, _ := strings.Cut(after, "-- name:")
+	// The name is followed by the result annotation (:one, :many, ...), which
+	// is not part of the statement.
+	//
+	// [Ja] 名前の後ろには結果の注釈 (:one・:many など) が続く。これは文の一部では
+	// ないため落とす。
+	_, statement, _ := strings.Cut(after, "\n")
+	statement, _, _ = strings.Cut(statement, "-- name:")
 
-	return strings.TrimSpace(statement)
+	return strings.TrimSpace(sqlcArg.ReplaceAllString(statement, "?"))
 }
+
+// sqlcArg matches the named-parameter form sqlc accepts, which the generator
+// turns into a placeholder the driver understands. A statement read from the
+// query file still carries the form as written, and SQLite cannot parse it, so
+// the same substitution is made here.
+//
+// [Ja] sqlcArg は sqlc が受け付ける名前付きパラメータの記法に一致する。生成器はこれを
+// ドライバの解する差し込み位置に変える。クエリファイルから読んだ文は書かれたままの記法を
+// 持ち、SQLite はそれを解釈できないため、ここで同じ置き換えを行う。
+var sqlcArg = regexp.MustCompile(`sqlc\.arg\([^)]*\)`)
 
 // queryPlan returns how SQLite says it will answer the statement, as the lines
 // of EXPLAIN QUERY PLAN joined into one.

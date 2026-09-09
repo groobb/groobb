@@ -24,6 +24,7 @@ func TestFindCredentials(t *testing.T) {
 	}{
 		{name: "starter", role: roleStarter, wantEmail: "seeduser1@example.com"},
 		{name: "replier", role: roleReplier, wantEmail: "seeduser2@example.com"},
+		{name: "admin", role: roleAdmin, wantEmail: "seeduser4@example.com"},
 	}
 
 	for _, tt := range tests {

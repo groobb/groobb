@@ -1,0 +1,41 @@
+package errors
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// Forbidden renders the body of the 403 page: that the visitor is not admitted
+// to what they asked for, and a link on to the top page so they are not left at
+// a dead end.
+//
+// It says that permission is missing rather than that the page does not exist,
+// because the addresses it answers for are not secret and the visitor may have
+// held the permission until a moment ago. Someone who has just been taken off a
+// role otherwise reads a 404 as the screen having been removed.
+//
+// The link points at the top page for the reason NotFound's does: the page is
+// rendered without resolving who is asking, and the top page hands a signed-in
+// visitor on to home by itself.
+//
+// [Ja] Forbidden は 403 ページの本文を描画します。訪問者が求めたものを許されていない
+// ことを示し、行き止まりに残さないようトップページへのリンクを置きます。
+//
+// ページが存在しないことではなく権限が無いことを述べるのは、ここが応じるアドレスが秘密では
+// なく、訪問者がついさっきまでその権限を持っていたかもしれないためです。ロールを外された
+// ばかりの人にとって、404 はその画面が無くなったという意味に読めてしまいます。
+//
+// リンク先をトップページにするのは NotFound と同じ理由です。このページは誰が尋ねているかを
+// 解決せずに描画され、トップページはサインイン済みの訪問者を自分でホームへ引き渡します。
+templ Forbidden() {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "error_forbidden_heading") }</h1>
+				<p>{ templates.T(ctx, "error_forbidden_message") }</p>
+			</header>
+			<footer>
+				<a href={ templates.RootPath().SafeURL() } class="btn w-full">
+					{ templates.T(ctx, "error_forbidden_back_to_home") }
+				</a>
+			</footer>
+		</div>
+	</div>
+}

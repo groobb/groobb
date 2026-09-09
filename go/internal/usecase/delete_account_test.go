@@ -29,12 +29,16 @@ func newDeleteAccountUsecase(t *testing.T, db *database.DB) *usecase.DeleteAccou
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	userSessionRepo := repository.NewUserSessionRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
+	userRoleRepo := repository.NewUserRoleRepository(db)
 
 	return usecase.NewDeleteAccountUsecase(
 		db.Writer,
 		validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo),
 		userRepo,
 		userSessionRepo,
+		roleRepo,
+		userRoleRepo,
 	)
 }
 
@@ -248,5 +252,105 @@ func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *tes
 	}
 	if atname == lookAlike {
 		t.Errorf("墓標 atname = %q で、フォームから登録できる値と同じになっている", atname)
+	}
+}
+
+// countUserRoles returns how many roles the given user still holds, for asserting
+// that withdrawal cleared them (or that a refused withdrawal left them).
+//
+// [Ja] countUserRoles は指定ユーザーがまだ持つロールの数を返す。退会がそれらを消したこと
+// (または拒否された退会がそれらを残したこと) を検証するために使う。
+func countUserRoles(t *testing.T, db *database.DB, userID model.UserID) int {
+	t.Helper()
+
+	var count int
+	if err := db.Reader.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM user_roles WHERE user_id = ?`, int64(userID),
+	).Scan(&count); err != nil {
+		t.Fatalf("ロール割当の件数の取得に失敗: %v", err)
+	}
+	return count
+}
+
+// TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin verifies that the only
+// administrator left cannot withdraw, and that the refusal is a form-wide
+// validation error that leaves the account and its role untouched.
+//
+// Letting this through would leave nobody able to open the admin screens, and the
+// screens are where an administrator is appointed.
+//
+// [Ja] TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin は、残る唯一の管理者が退会
+// できないこと、そしてその拒否がフォーム全体のバリデーションエラーであり、アカウントと
+// そのロールを手つかずのまま残すことを検証する。
+//
+// これを通せば管理画面を開ける人が誰もいなくなり、管理者を立てるのはその画面である。
+func TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	uc := newDeleteAccountUsecase(t, db)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+	userID := seedWithdrawalUser(t, db)
+	testutil.NewUserRoleBuilder(t, db).WithUserID(userID).Build()
+
+	err := uc.Execute(ctx, usecase.DeleteAccountInput{
+		UserID:          userID,
+		CurrentPassword: "password123",
+	})
+	ve := model.AsValidationError(err)
+	if ve == nil {
+		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+	}
+	if !ve.HasGlobalError() {
+		t.Errorf("拒否がフォーム全体のエラーを持っていない: %+v", ve)
+	}
+
+	var deletedAt *time.Time
+	if err := db.Reader.QueryRowContext(ctx,
+		`SELECT deleted_at FROM users WHERE id = ?`, int64(userID),
+	).Scan(&deletedAt); err != nil {
+		t.Fatalf("ユーザー行の取得に失敗: %v", err)
+	}
+	if deletedAt != nil {
+		t.Error("最後の管理者の退会が拒否されたのにユーザーが論理削除された")
+	}
+	if got := countUserRoles(t, db, userID); got != 1 {
+		t.Errorf("拒否後のロール割当数 = %d, want 1 (削除されるべきでない)", got)
+	}
+}
+
+// TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains
+// verifies that an administrator withdraws while another one remains, and that
+// the account stops being counted among the holders of what it held.
+//
+// [Ja] TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains は、
+// もう 1 人の管理者が残っている状態で管理者が退会できること、そしてそのアカウントが持って
+// いたものの保持者として数えられなくなることを検証する。
+func TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	uc := newDeleteAccountUsecase(t, db)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+	userID := seedWithdrawalUser(t, db)
+	testutil.NewUserRoleBuilder(t, db).WithUserID(userID).Build()
+
+	otherAdminID := testutil.NewUserBuilder(t, db).Build()
+	testutil.NewUserRoleBuilder(t, db).WithUserID(otherAdminID).Build()
+
+	if err := uc.Execute(ctx, usecase.DeleteAccountInput{
+		UserID:          userID,
+		CurrentPassword: "password123",
+	}); err != nil {
+		t.Fatalf("Execute() error = %v, want nil (もう 1 人の管理者が残っている)", err)
+	}
+
+	if got := countUserRoles(t, db, userID); got != 0 {
+		t.Errorf("退会後のロール割当数 = %d, want 0", got)
+	}
+	if got := countUserRoles(t, db, otherAdminID); got != 1 {
+		t.Errorf("残る管理者のロール割当数 = %d, want 1", got)
 	}
 }

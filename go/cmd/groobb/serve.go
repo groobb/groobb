@@ -18,6 +18,9 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/dispatcher"
 	"github.com/groobb/groobb/go/internal/handler/account"
+	"github.com/groobb/groobb/go/internal/handler/admin"
+	"github.com/groobb/groobb/go/internal/handler/admin_user"
+	"github.com/groobb/groobb/go/internal/handler/admin_user_role"
 	"github.com/groobb/groobb/go/internal/handler/board"
 	"github.com/groobb/groobb/go/internal/handler/category"
 	"github.com/groobb/groobb/go/internal/handler/email_confirmation"
@@ -51,6 +54,70 @@ import (
 	"github.com/groobb/groobb/go/internal/worker"
 	"github.com/groobb/groobb/go/static"
 )
+
+// registerAdminRoutes registers the community's administration screens and the
+// role writes they submit. Every one of them is behind RequireAuth, and holding
+// that registration in one function is what lets a test drive the routes the
+// server itself serves.
+//
+// [Ja] registerAdminRoutes は、コミュニティの管理画面と、そこから送信されるロールの
+// 書き込みを登録します。どれも RequireAuth の背後にあり、その登録を 1 つの関数に持つ
+// ことが、サーバー自身が配信するルートをテストから動かせるようにしています。
+func registerAdminRoutes(
+	r chi.Router,
+	auth *middleware.Auth,
+	hub *admin.Handler,
+	users *admin_user.Handler,
+	userRoles *admin_user_role.Handler,
+) {
+	// Admin hub: the landing page that links to the community's administration
+	// screens (the user list for now). It is behind RequireAuth, which turns an
+	// anonymous visitor away to sign-in; whether a signed-in visitor may open it is
+	// decided by the UseCase behind the handler, which answers a refusal with the
+	// 403 page.
+	//
+	// [Ja] 管理ハブ: コミュニティの管理画面 (今は利用者一覧) へリンクする着地ページ。
+	// RequireAuth の背後に置き、匿名の訪問者はサインインへ追い返される。サインイン済みの
+	// 訪問者がこれを開いてよいかどうかは、ハンドラーの背後の UseCase が決め、拒否には
+	// 403 ページで応答する。
+	r.With(auth.RequireAuth).Get("/admin", hub.Show)
+
+	// Admin — user list: one page of the community's accounts, narrowed by the
+	// beginning of an atname and paged through the query string. It is behind
+	// RequireAuth like the hub above it; the UseCase behind the handler decides
+	// whether a signed-in visitor may read it, and the handler answers a refusal
+	// with the 403 page. A value that is not a whole page number, or is below the
+	// first page, is answered with the 404 page, while a number past the last page
+	// draws an empty listing with a way back.
+	//
+	// [Ja] 管理 — 利用者一覧: コミュニティのアカウントの 1 ページを、atname の先頭部分で
+	// 絞り込み、クエリ文字列でページを送って読む。上のハブと同じく RequireAuth の背後に
+	// 置く。サインイン済みの訪問者がこれを読んでよいかどうかはハンドラーの背後の UseCase が
+	// 決め、ハンドラーは拒否には 403 ページで応答する。整数でないページ番号と最初のページ
+	// より前の番号には 404 ページで、最後のページより後ろの番号には戻る道を持つ空の一覧で
+	// 応答する。
+	r.With(auth.RequireAuth).Get("/admin/users", users.Index)
+
+	// Admin - user roles: give an account a role and take one back. Both are
+	// behind RequireAuth like the listing whose buttons submit to them; the
+	// UseCase behind each decides whether the signed-in visitor may hand roles
+	// out, and the handler answers a refusal with the 403 page and an account or
+	// role that is not there with the 404 page. The grant is a plain POST naming
+	// the role in the submission, while the revoke names the assignment in the
+	// address and is reached from the listing's form via the _method override.
+	// Leaving the community without an administrator is refused, and that refusal
+	// comes back on the listing as a flash.
+	//
+	// [Ja] 管理 - 利用者のロール: アカウントにロールを与え、また取り上げる。どちらも、
+	// ボタンがここへ送信する一覧と同じく RequireAuth の背後に置く。サインイン済みの訪問者が
+	// ロールを配ってよいかどうかはそれぞれの背後の UseCase が決め、ハンドラーは拒否には
+	// 403 ページで、存在しないアカウントやロールには 404 ページで応答する。付与は素の POST で
+	// ロールを送信が名指し、剥奪は割当をアドレスが名指して、一覧のフォームから _method
+	// オーバーライドで到達する。コミュニティを管理者のいない状態にすることは拒否し、その拒否は
+	// フラッシュとして一覧に戻ってくる。
+	r.With(auth.RequireAuth).Post("/admin/users/{id}/roles", userRoles.Create)
+	r.With(auth.RequireAuth).Delete("/admin/users/{id}/roles/{name}", userRoles.Delete)
+}
 
 // runServe starts the HTTP server and blocks until it has finished shutting
 // down.
@@ -148,6 +215,8 @@ func runServe() {
 	threadRepo := repository.NewThreadRepository(db)
 	postRepo := repository.NewPostRepository(db)
 	postReferenceRepo := repository.NewPostReferenceRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
+	userRoleRepo := repository.NewUserRoleRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -204,7 +273,7 @@ func runServe() {
 	verifyEmailChangeUC := usecase.NewVerifyEmailChangeUsecase(db.Writer, settingsEmailConfirmationValidator, emailConfirmationRepo, userRepo, jobDispatcher)
 
 	settingsWithdrawalDeleteValidator := validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo)
-	deleteAccountUC := usecase.NewDeleteAccountUsecase(db.Writer, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo)
+	deleteAccountUC := usecase.NewDeleteAccountUsecase(db.Writer, settingsWithdrawalDeleteValidator, userRepo, userSessionRepo, roleRepo, userRoleRepo)
 
 	settingsTwoFactorAuthCreateValidator := validator.NewSettingsTwoFactorAuthCreateValidator(userTwoFactorAuthRepo)
 	settingsTwoFactorAuthDeleteValidator := validator.NewSettingsTwoFactorAuthDeleteValidator(userPasswordRepo, userTwoFactorAuthRepo)
@@ -213,7 +282,7 @@ func runServe() {
 	disableTwoFactorAuthUC := usecase.NewDisableTwoFactorAuthUsecase(settingsTwoFactorAuthDeleteValidator, userTwoFactorAuthRepo)
 
 	getCommunityUC := usecase.NewGetCommunityUsecase(communityRepo)
-	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(communityRepo, boardRepo)
+	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(communityRepo, boardRepo, roleRepo)
 	getCommunityHomeUC := usecase.NewGetCommunityHomeUsecase(boardRepo, threadRepo)
 	getCategoryUC := usecase.NewGetCategoryUsecase(categoryRepo)
 	getCategoryBoardsUC := usecase.NewGetCategoryBoardsUsecase(boardRepo)
@@ -227,6 +296,11 @@ func runServe() {
 
 	postCreateValidator := validator.NewPostCreateValidator()
 	createPostUC := usecase.NewCreatePostUsecase(db.Writer, postCreateValidator, threadRepo, postRepo, postReferenceRepo, userRepo)
+
+	getAdminHomeUC := usecase.NewGetAdminHomeUsecase(roleRepo)
+	getAdminUsersUC := usecase.NewGetAdminUsersUsecase(roleRepo, userRepo)
+	grantUserRoleUC := usecase.NewGrantUserRoleUsecase(db.Writer, roleRepo, userRepo, userRoleRepo)
+	revokeUserRoleUC := usecase.NewRevokeUserRoleUsecase(db.Writer, roleRepo, userRepo, userRoleRepo)
 
 	errorRenderer := httperror.NewRenderer(cfg)
 
@@ -251,6 +325,9 @@ func runServe() {
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
 	settingsTwoFactorAuthHandler := settings_two_factor_auth.NewHandler(cfg, flashMgr, prepareTwoFactorAuthUC, enableTwoFactorAuthUC, disableTwoFactorAuthUC)
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
+	adminHandler := admin.NewHandler(cfg, errorRenderer, getAdminHomeUC)
+	adminUserHandler := admin_user.NewHandler(cfg, errorRenderer, getAdminUsersUC)
+	adminUserRoleHandler := admin_user_role.NewHandler(errorRenderer, flashMgr, grantUserRoleUC, revokeUserRoleUC)
 
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	siteName := middleware.NewSiteName(
@@ -647,6 +724,13 @@ func runServe() {
 	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
 	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
+
+	// Admin: the hub, the user list, and the role writes the listing submits. The
+	// routes and what each of them answers are described at registerAdminRoutes.
+	//
+	// [Ja] 管理: ハブ・利用者一覧・一覧が送信するロールの書き込み。ルートとそれぞれの
+	// 応答は registerAdminRoutes に記す。
+	registerAdminRoutes(r, authMiddleware, adminHandler, adminUserHandler, adminUserRoleHandler)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	slog.Info("starting the HTTP server", "addr", addr, "env", cfg.Env)

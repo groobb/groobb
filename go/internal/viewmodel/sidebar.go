@@ -58,6 +58,16 @@ type Sidebar struct {
 	// フィールドとして埋め込みます。
 	CSRFToken string
 
+	// CanAccessAdmin tells the sidebar whether to render the link into the
+	// administration screens. The link is drawn only for an account that may open
+	// them, so that the community's pages never offer a way in that answers with a
+	// refusal.
+	//
+	// [Ja] CanAccessAdmin はサイドバーに、管理画面への導線を描画するかどうかを伝えます。
+	// 導線を描くのはそれを開いてよいアカウントに対してだけです。コミュニティのページが、
+	// 拒否で応じる入口を差し出すことのないようにするためです。
+	CanAccessAdmin bool
+
 	// ReturnTo is the page the sidebar is being rendered on, carried by the
 	// sign-in link so that signing in from here returns the visitor to what they
 	// were reading. It is a value middleware.SanitizeReturnTo has already
@@ -86,17 +96,19 @@ type SidebarBoard struct {
 // account controls are replaced by the way into an account.
 //
 // Each viewer carries only what their own block renders: the sign-out form's
-// CSRF token for a signed-in visitor, and the page to come back to for an
-// anonymous one. returnTo is a value middleware.SanitizeReturnTo has already
-// accepted, and every caller passes the page it is rendering without having to
-// ask whether its own route can be reached while signed out.
+// CSRF token and whether the administration screens are open to them for a
+// signed-in visitor, and the page to come back to for an anonymous one. returnTo
+// is a value middleware.SanitizeReturnTo has already accepted, and every caller
+// passes the page it is rendering without having to ask whether its own route
+// can be reached while signed out.
 //
 // [Ja] NewSidebar はコミュニティのナビゲーションを、与えられた閲覧者にとってサイド
 // バーが描画する形へ変換します。user が nil のときは匿名の訪問者であり、アカウント
 // 操作はアカウントを持つための導線に置き換わります。
 //
 // 各閲覧者は自身のブロックが描画するものだけを運びます。サインイン済みの訪問者は
-// サインアウトフォームの CSRF トークンを、匿名の訪問者は戻ってくる先のページをです。
+// サインアウトフォームの CSRF トークンと管理画面が開かれているかどうかを、匿名の訪問者は
+// 戻ってくる先のページをです。
 // returnTo は middleware.SanitizeReturnTo が受け付け済みの値であり、どの呼び出し側も、
 // 自身のルートがサインアウト状態で到達できるかを問わずに描画中のページを渡します。
 func NewSidebar(nav *usecase.GetCommunityNavigationOutput, user *model.User, csrfToken, returnTo string) Sidebar {
@@ -114,6 +126,7 @@ func NewSidebar(nav *usecase.GetCommunityNavigationOutput, user *model.User, csr
 		sidebar.SignedIn = true
 		sidebar.Atname = user.Atname
 		sidebar.CSRFToken = csrfToken
+		sidebar.CanAccessAdmin = nav.CanAccessAdmin
 	} else {
 		sidebar.ReturnTo = returnTo
 	}

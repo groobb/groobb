@@ -87,3 +87,56 @@ func (rd *Renderer) NotFound(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "404 レスポンスの書き込みに失敗", "error", err)
 	}
 }
+
+// Forbidden responds with the 403 page. A page handler calls it when a UseCase
+// refuses the request for want of permission, so that every screen answers a
+// refusal with the same page instead of each writing its own.
+//
+// The page is built into a buffer before anything reaches w, for the reason
+// NotFound documents: a failed render can then still answer with a plain-text
+// 403 rather than a 200 carrying half a page.
+//
+// [Ja] Forbidden は 403 ページを応答します。UseCase が権限不足を理由に要求を拒んだとき
+// にページのハンドラーが呼び、どの画面でも拒否が同じページで応答されるようにします。
+// 各画面がそれぞれ自前のものを書かずに済みます。
+//
+// ページは w へ何かが届く前にバッファ上で組み立てます。理由は NotFound に記したとおりで、
+// 描画に失敗しても、途中までのページを載せた 200 ではなく平文の 403 で応答できるように
+// するためです。
+func (rd *Renderer) Forbidden(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// A refusal is about who is asking, so it is not an answer to be handed on to
+	// anyone else. no-store rather than a revalidation policy, because the same
+	// URL answers with the page itself once the visitor holds the role, and a
+	// stored refusal would stand in front of it.
+	//
+	// [Ja] 拒否は誰が尋ねているかについての応答であり、他の誰かへ渡してよい答えでは
+	// ありません。再検証の方針ではなく no-store とするのは、訪問者がロールを持てば同じ URL が
+	// ページ自身で応答するためです。保存された拒否はその手前に立ってしまいます。
+	w.Header().Set("Cache-Control", "private, no-store")
+
+	meta := viewmodel.DefaultPageMeta(ctx, rd.cfg)
+	meta.Title = i18n.T(ctx, "error_forbidden_title")
+	meta.Description = i18n.T(ctx, "error_forbidden_message")
+	// The refusal carries the address of a screen that exists, so it is a page a
+	// crawler could otherwise record. Nothing on it is worth finding, and it is
+	// the same page whoever is refused.
+	//
+	// [Ja] 拒否は実在する画面のアドレスを伴うため、そうしなければクローラーが記録しうる
+	// ページです。ここに見つける価値のあるものは無く、誰が拒まれても同じページです。
+	meta.NoIndex = true
+
+	var body bytes.Buffer
+	if err := layouts.Default(meta, errorpages.Forbidden()).Render(ctx, &body); err != nil {
+		slog.ErrorContext(ctx, "403 ページのレンダリングに失敗", "error", err)
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusForbidden)
+	if _, err := w.Write(body.Bytes()); err != nil {
+		slog.ErrorContext(ctx, "403 レスポンスの書き込みに失敗", "error", err)
+	}
+}

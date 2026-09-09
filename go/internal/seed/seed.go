@@ -159,6 +159,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	generators := []generator{
 		{name: "community", run: r.generateCommunity},
 		{name: "users", run: r.generateUsers},
+		{name: "user roles", run: r.generateUserRoles},
 		{name: "boards", run: r.generateBoards},
 		{name: "threads", run: r.generateThreads},
 		{name: "withdrawal", run: r.generateWithdrawal},

@@ -38,6 +38,7 @@ func testRoster() *userRoster {
 		users: []rosterUser{
 			{role: roleStarter, atname: "seeduser1", email: "seeduser1@example.com", note: "opens threads"},
 			{role: roleReplier, atname: "seeduser2", email: "seeduser2@example.com", note: "replies to them"},
+			{role: roleAdmin, atname: "seeduser4", email: "seeduser4@example.com", note: "administers the community"},
 			{role: roleWithdrawn, atname: "seeduser3", email: "seeduser3@example.com", note: "withdraws"},
 		},
 	}
@@ -258,7 +259,7 @@ func TestSignInRoles(t *testing.T) {
 
 	roles := SignInRoles()
 
-	if want := []string{string(roleStarter), string(roleReplier)}; !slices.Equal(roles, want) {
+	if want := []string{string(roleStarter), string(roleReplier), string(roleAdmin)}; !slices.Equal(roles, want) {
 		t.Errorf("SignInRoles() = %v, want %v", roles, want)
 	}
 

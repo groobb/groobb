@@ -140,6 +140,7 @@ func newHandlerForDB(db *database.DB) *post.Handler {
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
 		repository.NewCommunityRepository(db),
 		repository.NewBoardRepository(db),
+		repository.NewRoleRepository(db),
 	)
 	getThreadSummaryUC := usecase.NewGetThreadSummaryUsecase(repository.NewThreadRepository(db))
 	createPostUC := usecase.NewCreatePostUsecase(
@@ -887,7 +888,7 @@ func TestCreate_ThreadFillsAfterFormIsOpened(t *testing.T) {
 	categoryRepo := repository.NewCategoryRepository(f.db)
 	userRepo := repository.NewUserRepository(f.db)
 	threadHandler := thread.NewHandler(cfg, httperror.NewRenderer(cfg),
-		usecase.NewGetCommunityNavigationUsecase(repository.NewCommunityRepository(f.db), boardRepo),
+		usecase.NewGetCommunityNavigationUsecase(repository.NewCommunityRepository(f.db), boardRepo, repository.NewRoleRepository(f.db)),
 		usecase.NewGetBoardUsecase(boardRepo, categoryRepo),
 		usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo,
 			repository.NewPostRepository(f.db), repository.NewPostReferenceRepository(f.db), userRepo),

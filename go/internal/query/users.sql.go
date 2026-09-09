@@ -12,6 +12,35 @@ import (
 	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsersByAtnamePrefix = `-- name: CountUsersByAtnamePrefix :one
+SELECT COUNT(*) FROM users
+WHERE atname >= ?1 AND atname < ?2
+  AND deleted_at IS NULL
+`
+
+type CountUsersByAtnamePrefixParams struct {
+	AtnameFrom string `json:"atname_from"`
+	AtnameTo   string `json:"atname_to"`
+}
+
+func (q *Queries) CountUsersByAtnamePrefix(ctx context.Context, arg CountUsersByAtnamePrefixParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsersByAtnamePrefix, arg.AtnameFrom, arg.AtnameTo)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
 VALUES (?, ?, ?, ?)
@@ -147,6 +176,102 @@ func (q *Queries) ListUsersByIDs(ctx context.Context, ids []int64) ([]User, erro
 		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
 	}
 	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Atname,
+			&i.Locale,
+			&i.TimeZone,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersPage = `-- name: ListUsersPage :many
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users
+WHERE deleted_at IS NULL
+ORDER BY id DESC
+LIMIT ?2 OFFSET ?1
+`
+
+type ListUsersPageParams struct {
+	PageOffset int64 `json:"page_offset"`
+	PageSize   int64 `json:"page_size"`
+}
+
+func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersPage, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Atname,
+			&i.Locale,
+			&i.TimeZone,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersPageByAtnamePrefix = `-- name: ListUsersPageByAtnamePrefix :many
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users
+WHERE atname >= ?1 AND atname < ?2
+  AND deleted_at IS NULL
+ORDER BY id DESC
+LIMIT ?4 OFFSET ?3
+`
+
+type ListUsersPageByAtnamePrefixParams struct {
+	AtnameFrom string `json:"atname_from"`
+	AtnameTo   string `json:"atname_to"`
+	PageOffset int64  `json:"page_offset"`
+	PageSize   int64  `json:"page_size"`
+}
+
+func (q *Queries) ListUsersPageByAtnamePrefix(ctx context.Context, arg ListUsersPageByAtnamePrefixParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersPageByAtnamePrefix,
+		arg.AtnameFrom,
+		arg.AtnameTo,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}

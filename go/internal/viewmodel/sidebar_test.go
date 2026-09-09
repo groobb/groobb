@@ -49,6 +49,9 @@ func TestNewSidebar_AnonymousVisitor(t *testing.T) {
 	if sidebar.CSRFToken != "" {
 		t.Errorf("sidebar.CSRFToken = %q, want %q", sidebar.CSRFToken, "")
 	}
+	if sidebar.CanAccessAdmin {
+		t.Error("sidebar.CanAccessAdmin = true, want false")
+	}
 	if sidebar.ReturnTo != "/b/jazz" {
 		t.Errorf("sidebar.ReturnTo = %q, want %q", sidebar.ReturnTo, "/b/jazz")
 	}
@@ -64,21 +67,28 @@ func TestNewSidebar_AnonymousVisitor(t *testing.T) {
 }
 
 // TestNewSidebar_SignedInVisitor verifies that a signed-in user brings the
-// account controls with them, carrying the atname shown above them and the CSRF
-// token the sign-out form submits, and that the destination of a sign-in link
-// they are never shown is left behind.
+// account controls with them, carrying the atname shown above them, the CSRF
+// token the sign-out form submits, and whether the administration screens are
+// open to them, and that the destination of a sign-in link they are never shown
+// is left behind.
 //
 // [Ja] TestNewSidebar_SignedInVisitor は、サインイン済みユーザーがアカウント操作を
-// 伴うこと、すなわちその上に表示する atname と、サインアウトフォームが送信する CSRF
-// トークンが運ばれること、そして彼らには決して描画されないサインインのリンクの遷移先が
-// 置いていかれることを検証します。
+// 伴うこと、すなわちその上に表示する atname、サインアウトフォームが送信する CSRF
+// トークン、そして管理画面が開かれているかどうかが運ばれること、そして彼らには決して
+// 描画されないサインインのリンクの遷移先が置いていかれることを検証します。
 func TestNewSidebar_SignedInVisitor(t *testing.T) {
 	t.Parallel()
 
-	sidebar := viewmodel.NewSidebar(navigation(), &model.User{Atname: "alice"}, "csrf-token", "/b/jazz")
+	nav := navigation()
+	nav.CanAccessAdmin = true
+
+	sidebar := viewmodel.NewSidebar(nav, &model.User{Atname: "alice"}, "csrf-token", "/b/jazz")
 
 	if !sidebar.SignedIn {
 		t.Error("sidebar.SignedIn = false, want true")
+	}
+	if !sidebar.CanAccessAdmin {
+		t.Error("sidebar.CanAccessAdmin = false, want true")
 	}
 	if sidebar.Atname != "alice" {
 		t.Errorf("sidebar.Atname = %q, want %q", sidebar.Atname, "alice")

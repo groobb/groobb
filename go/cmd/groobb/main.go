@@ -1,21 +1,23 @@
 // Command groobb is Groobb's command-line entry point. The serve subcommand
 // starts the HTTP server, the migrate subcommand applies or rolls back the
-// migrations embedded in the binary, the seed subcommand rebuilds a development
-// database with the community state its screens are looked at in, and the
-// devcreds subcommand prints the credentials one of the accounts that seed
-// creates signs in with.
+// migrations embedded in the binary, the role subcommand gives a user a role or
+// takes one away, the seed subcommand rebuilds a development database with the
+// community state its screens are looked at in, and the devcreds subcommand
+// prints the credentials one of the accounts that seed creates signs in with.
 //
 // [Ja] groobb コマンドは Groobb のコマンドラインエントリポイントです。serve
 // サブコマンドが HTTP サーバーを起動し、migrate サブコマンドがバイナリに埋め込まれた
-// マイグレーションの適用とロールバックを行い、seed サブコマンドが開発用データベースを、
-// その画面を眺めるコミュニティの状態へ作り直し、devcreds サブコマンドが、その seed が
-// 作成するアカウント 1 件のサインイン用資格情報を出力します。
+// マイグレーションの適用とロールバックを行い、role サブコマンドが利用者へロールを与える / 取り上げ、
+// seed サブコマンドが開発用データベースを、その画面を眺めるコミュニティの状態へ作り直し、
+// devcreds サブコマンドが、その seed が作成するアカウント 1 件のサインイン用資格情報を
+// 出力します。
 package main
 
 import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/groobb/groobb/go/internal/seed"
@@ -71,6 +73,8 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		runServe()
 	case "migrate":
 		return runMigrate(context.Background(), args[1:], stderr)
+	case "role":
+		return runRole(context.Background(), args[1:], stderr, slog.Default())
 	case "seed":
 		return runSeed(context.Background(), args[1:], stderr)
 	case "devcreds":
@@ -111,6 +115,8 @@ commands:
   serve            start the HTTP server
   migrate up       apply the pending migrations
   migrate down     roll back the most recent migration
+  role grant       give a user a role
+  role revoke      take a role away from a user
   seed [profile]   rebuild the development database with seed data
   devcreds <role>  print the sign-in credentials of a seeded account
 `)

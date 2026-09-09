@@ -1,0 +1,28 @@
+package admin
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// Show renders the admin hub: a heading and a list of links to the community's
+// administration screens, of which the user list is the only one for now. It is
+// a link list for the reason the settings hub is one: a later plan adds a screen
+// as a sibling link without restructuring the page. There is no form, so no CSRF
+// token is needed.
+//
+// [Ja] Show は管理ハブを描画します。見出しと、コミュニティの管理画面へのリンクの一覧で、
+// 今のところ画面は利用者一覧だけです。リンクの一覧にする理由は設定ハブと同じで、後続の
+// 計画が画面を兄弟リンクとして足すときにページを組み直さずに済むためです。フォームが無い
+// ため CSRF トークンは不要です。
+templ Show() {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="flex flex-col gap-2 text-center">
+			<h1 id="admin-show-heading" class="text-3xl font-bold tracking-tight">
+				{ templates.T(ctx, "admin_show_heading") }
+			</h1>
+		</div>
+		<nav aria-labelledby="admin-show-heading" class="flex flex-col gap-2">
+			<a href={ templates.AdminUsersPath().SafeURL() } class="btn w-full" data-variant="outline">
+				{ templates.T(ctx, "admin_show_users_link") }
+			</a>
+		</nav>
+	</div>
+}

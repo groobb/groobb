@@ -39,6 +39,8 @@ func newSettingsWithdrawalHandler(t *testing.T, db *database.DB) *settings_withd
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	userSessionRepo := repository.NewUserSessionRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
+	userRoleRepo := repository.NewUserRoleRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 	flashMgr := session.NewFlashManager(cfg)
@@ -47,6 +49,8 @@ func newSettingsWithdrawalHandler(t *testing.T, db *database.DB) *settings_withd
 		validator.NewSettingsWithdrawalDeleteValidator(userPasswordRepo),
 		userRepo,
 		userSessionRepo,
+		roleRepo,
+		userRoleRepo,
 	)
 	return settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
 }

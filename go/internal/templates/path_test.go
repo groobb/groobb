@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
 // TestStaticPaths verifies that the no-argument path helpers return the exact
@@ -37,6 +38,8 @@ func TestStaticPaths(t *testing.T) {
 		{name: "SettingsTwoFactorAuthPath", got: templates.SettingsTwoFactorAuthPath(), want: "/settings/two_factor_auth"},
 		{name: "SettingsWithdrawalNewPath", got: templates.SettingsWithdrawalNewPath(), want: "/settings/withdrawal/new"},
 		{name: "SettingsWithdrawalPath", got: templates.SettingsWithdrawalPath(), want: "/settings/withdrawal"},
+		{name: "AdminPath", got: templates.AdminPath(), want: "/admin"},
+		{name: "AdminUsersPath", got: templates.AdminUsersPath(), want: "/admin/users"},
 	}
 
 	for _, tt := range tests {
@@ -213,5 +216,63 @@ func TestPostAnchor(t *testing.T) {
 
 	if got, want := templates.PostAnchor(12), templates.Path("#p12"); got != want {
 		t.Errorf("PostAnchor(%d) = %q, want %q", 12, got, want)
+	}
+}
+
+// TestAdminUsersPagePath verifies which of the listing's two parameters end up
+// in the address: the search when something is being searched for, and the page
+// number when the page is not the first one. Leaving both out where they say
+// nothing keeps the opened listing, the searched listing, and the pages under
+// each at one address apiece.
+//
+// [Ja] TestAdminUsersPagePath は、一覧の 2 つのパラメータのどちらがアドレスに現れるかを
+// 検証します。何かを検索しているときの検索と、最初のページでないときのページ番号です。
+// 何も述べない場面で双方を落とすことが、開いた一覧・検索した一覧・それぞれの下のページを、
+// 1 つずつのアドレスに保ちます。
+func TestAdminUsersPagePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		atnamePrefix string
+		page         int
+		want         templates.Path
+	}{
+		{name: "絞り込みもページ番号も無い", atnamePrefix: "", page: 1, want: "/admin/users"},
+		{name: "絞り込みのみ", atnamePrefix: "ali", page: 1, want: "/admin/users?q=ali"},
+		{name: "ページ番号のみ", atnamePrefix: "", page: 2, want: "/admin/users?page=2"},
+		{name: "絞り込みとページ番号", atnamePrefix: "ali", page: 3, want: "/admin/users?page=3&q=ali"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := templates.AdminUsersPagePath(tt.atnamePrefix, tt.page); got != tt.want {
+				t.Errorf("AdminUsersPagePath(%q, %d) = %q, want %q", tt.atnamePrefix, tt.page, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAdminUserRolePaths verifies the two addresses a row's forms submit to: the
+// account's roles, which a grant is written to, and one role it holds, which a
+// revoke removes. They are checked together because the second is built from the
+// first, and both have to match the routes registered in cmd/groobb/serve.go.
+//
+// [Ja] TestAdminUserRolePaths は、行のフォームが送信する 2 つのアドレスを検証します。
+// 付与が書き込まれる先であるアカウントのロールと、剥奪が取り除く、そのアカウントが持つ
+// 1 つのロールです。2 つ目が 1 つ目から組み立てられること、そしてどちらも
+// cmd/groobb/serve.go で登録されたルートと一致する必要があることから、まとめて検証します。
+func TestAdminUserRolePaths(t *testing.T) {
+	t.Parallel()
+
+	id := viewmodel.UserID(42)
+
+	if got, want := templates.AdminUserRolesPath(id), templates.Path("/admin/users/42/roles"); got != want {
+		t.Errorf("AdminUserRolesPath(%v) = %q, want %q", id, got, want)
+	}
+	if got, want := templates.AdminUserRolePath(id, "admin"), templates.Path("/admin/users/42/roles/admin"); got != want {
+		t.Errorf("AdminUserRolePath(%v, %q) = %q, want %q", id, "admin", got, want)
 	}
 }

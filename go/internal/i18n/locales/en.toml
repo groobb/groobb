@@ -43,6 +43,22 @@ other = "{{.Count}} years ago"
 description = "Format of the <title> element, with the name of the page itself (Page) and the name of the site it belongs to (Site, the name of the community this instance hosts) interpolated"
 other = "{{.Page}} - {{.Site}}"
 
+[error_forbidden_title]
+description = "403 page title (title tag)"
+other = "Access denied"
+
+[error_forbidden_heading]
+description = "403 page heading"
+other = "Access denied"
+
+[error_forbidden_message]
+description = "Message returned with a 403 when the actor is not admitted to the operation or screen"
+other = "You do not have permission to do this."
+
+[error_forbidden_back_to_home]
+description = "Link text on the 403 page that leads to the top page (/)"
+other = "Go to the home page"
+
 [error_not_found_title]
 description = "404 page title (title tag)"
 other = "Page not found"
@@ -83,6 +99,14 @@ other = "Your account has been deleted."
 description = "Flash message shown on the settings hub after two-factor authentication is disabled"
 other = "Two-factor authentication is now off."
 
+[flash_user_role_granted]
+description = "Flash message shown on the user list after a role has been given to a user, with the user's atname interpolated"
+other = "The administrator role has been granted to @{{.Atname}}."
+
+[flash_user_role_revoked]
+description = "Flash message shown after a role has been taken from a user, with the user's atname interpolated"
+other = "The administrator role has been taken from @{{.Atname}}."
+
 [header_home_link]
 description = "Link text in the shared signed-in header that leads to the home page"
 other = "Home"
@@ -95,6 +119,10 @@ other = "Global navigation"
 description = "Number of posts shown in the UI"
 one = "{{.Count}} post"
 other = "{{.Count}} posts"
+
+[sidebar_admin_link]
+description = "Link text in the sidebar's account section that leads to the admin hub, shown only to a user who may open the admin screens"
+other = "Admin"
 
 [sidebar_boards_label]
 description = "Accessible label for the board list's navigation landmark in the community shell's shared sidebar"
@@ -768,6 +796,118 @@ other = "Disable two-factor authentication?"
 description = "Two-factor authentication disable (confirmation) page submit button"
 other = "Disable"
 
+[admin_show_title]
+description = "Admin hub page title (title tag)"
+other = "Admin"
+
+[admin_show_heading]
+description = "Admin hub page heading"
+other = "Admin"
+
+[admin_show_users_link]
+description = "Link text on the admin hub page that leads to the user list page"
+other = "User list"
+
+[admin_user_index_title]
+description = "User list page title (title tag)"
+other = "User list"
+
+[admin_user_index_title_filtered]
+description = "User list page title when narrowed by an atname prefix, with the prefix interpolated (title tag)"
+other = "User list filtered by \"{{.Query}}\""
+
+[admin_user_index_title_paginated]
+description = "User list page title on the second or a later page, with the page number interpolated (title tag)"
+other = "User list (Page {{.Page}})"
+
+[admin_user_index_title_filtered_paginated]
+description = "User list page title when narrowed by an atname prefix and on the second or a later page, with both interpolated (title tag)"
+other = "User list filtered by \"{{.Query}}\" (Page {{.Page}})"
+
+[admin_user_index_heading]
+description = "User list page heading"
+other = "User list"
+
+[admin_user_index_search_label]
+description = "Label of the search field on the user list page, which narrows the listing by the beginning of an atname"
+other = "Filter by atname"
+
+[admin_user_index_search_submit_button]
+description = "Submit button of the search form on the user list page"
+other = "Filter"
+
+[admin_user_index_table_caption]
+description = "Caption of the table on the user list page, saying what the table lists"
+other = "The community's users and the roles they hold"
+
+[admin_user_index_atname_column]
+description = "Header of the atname column in the table on the user list page"
+other = "Atname"
+
+[admin_user_index_joined_at_column]
+description = "Header of the column in the table on the user list page that says when the account was created"
+other = "Joined"
+
+[admin_user_index_roles_column]
+description = "Header of the roles column in the table on the user list page"
+other = "Roles"
+
+[admin_user_index_actions_column]
+description = "Header of the per-row actions column in the table on the user list page"
+other = "Actions"
+
+[admin_user_index_no_roles]
+description = "Text shown in a row of the user list page for a user holding no role"
+other = "None"
+
+[admin_user_index_grant_admin_button]
+description = "Button in a row of the user list page that gives the administrator role to a user who does not hold it"
+other = "Make administrator"
+
+[admin_user_index_revoke_admin_button]
+description = "Button in a row of the user list page that takes the administrator role from a user who holds it"
+other = "Remove administrator"
+
+[admin_user_index_revoke_admin_confirm]
+description = "Confirmation asked before the administrator role is taken from another user on the user list page, with the user's atname interpolated"
+other = "Remove the administrator role from @{{.Atname}}?"
+
+[admin_user_index_revoke_admin_self_confirm]
+description = "Confirmation asked before visitors take the administrator role from themselves on the user list page"
+other = "Removing your own administrator role will close these admin screens to you. Remove it?"
+
+[admin_user_index_empty]
+description = "Text shown on the user list page when nothing is being searched for and there is no user to list"
+other = "There are no users."
+
+[admin_user_index_no_results]
+description = "Text shown on the user list page when no user matches the search, with the searched-for text interpolated"
+other = "No user has an atname beginning with \"{{.Query}}\"."
+
+[admin_user_index_past_last_page]
+description = "Text shown on a user list page past the last page when the listing has users on an earlier page"
+other = "There are no users on this page. Go to the previous page."
+
+[admin_user_index_pagination_label]
+description = "Accessible label for the paging navigation landmark on the user list page"
+other = "Pagination"
+
+[admin_user_index_previous_page_link]
+description = "Link text on the user list page that leads to the previous page"
+other = "Previous page"
+
+[admin_user_index_next_page_link]
+description = "Link text on the user list page that leads to the next page"
+other = "Next page"
+
+[admin_user_index_page_position]
+description = "Text on the user list page saying where the page being read sits, with the current page number and the number of pages interpolated"
+other = "Page {{.Page}} of {{.TotalPages}}"
+
+[role_name_admin]
+description = "Display name of the built-in admin role, used wherever a screen shows a role name"
+other = "Administrator"
+
 [validation_required]
 description = "Required field validation error"
 other = "is required"
@@ -916,6 +1056,14 @@ other = "This account can no longer post."
 [validation_post_thread_locked]
 description = "Form-wide error when a post is written to a thread that takes no further post"
 other = "This thread is no longer accepting posts."
+
+[validation_user_role_last_admin]
+description = "Message shown when revoking the administrator role was refused because it would leave no administrator"
+other = "The administrator role cannot be taken from the last administrator. Make someone else an administrator first."
+
+[validation_withdrawal_last_admin]
+description = "Form-wide message shown when withdrawal was refused because the account is the last administrator"
+other = "The last administrator cannot withdraw. Make someone else an administrator first."
 
 [thread_new_title]
 description = "Thread creation page title (title tag)"
