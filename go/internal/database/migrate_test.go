@@ -3,24 +3,26 @@ package database_test
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/groobb/groobb/go/internal/database"
+	"github.com/groobb/groobb/go/internal/model"
 )
 
 // migratedTableNames are the application's own tables. The most recent
-// migration creates none of them: it replaces an index on posts, so what
-// rolling it back undoes is checked through the index names below rather than
-// through a table disappearing. A later migration that creates tables gives them
-// a list of their own, which the rollback test reads as what the last migration
-// owns, leaving these here.
+// migration creates none of them: it inserts the built-in admin role, so what
+// rolling it back undoes is checked through that row rather than through a table
+// disappearing. A later migration that creates tables gives them a list of their
+// own, which the rollback test reads as what the last migration owns, leaving
+// these here.
 //
 // [Ja] migratedTableNames はアプリケーション自身のテーブルです。最新のマイグレーションは
-// このどれも作りません。posts の索引を差し替えるものであるため、それをロールバックすると
-// 何が戻るのかは、テーブルが消えることではなく後述の索引名で確かめます。この後にテーブルを
+// このどれも作りません。組み込みの admin ロールを挿入するものであるため、それをロールバック
+// すると何が戻るのかは、テーブルが消えることではなくその行で確かめます。この後にテーブルを
 // 作るマイグレーションを足すときは、そのテーブルに専用の一覧を与えます。ロールバックの
 // テストはそれを「最後のマイグレーションが所有するもの」として読み、これらはここに残ります。
 var migratedTableNames = []string{
@@ -55,15 +57,16 @@ var riverMigratedTableNames = []string{
 	"river_queue",
 }
 
-// latestMigratedIndexName is the index the most recent migration creates and
-// replacedIndexName the one it drops in the same breath, which together are the
-// whole of what that migration owns.
+// postAuthorIndexName is the index an author's latest post is read through and
+// replacedPostAuthorIndexName the one it took the place of, which together are
+// the whole of what the migration before the last one owns.
 //
-// [Ja] latestMigratedIndexName は最新のマイグレーションが作る索引、replacedIndexName は
-// それが同時に落とす索引で、この 2 つがそのマイグレーションの所有するもののすべてです。
+// [Ja] postAuthorIndexName は作者の最新の投稿を読むための索引、
+// replacedPostAuthorIndexName はそれが取って代わった索引で、この 2 つが最後から 1 つ前の
+// マイグレーションの所有するもののすべてです。
 const (
-	latestMigratedIndexName = "index_posts_on_user_id_and_created_at_and_id"
-	replacedIndexName       = "index_posts_on_user_id"
+	postAuthorIndexName         = "index_posts_on_user_id_and_created_at_and_id"
+	replacedPostAuthorIndexName = "index_posts_on_user_id"
 )
 
 // hasIndex reports whether the schema currently carries the named index.
@@ -142,11 +145,43 @@ func TestMigrate_ReplacesTheIndexOnThePostAuthor(t *testing.T) {
 
 	db := migratedTestDB(t)
 
-	if !hasIndex(t, db, latestMigratedIndexName) {
-		t.Errorf("index %q is missing after migrating", latestMigratedIndexName)
+	if !hasIndex(t, db, postAuthorIndexName) {
+		t.Errorf("index %q is missing after migrating", postAuthorIndexName)
 	}
-	if hasIndex(t, db, replacedIndexName) {
-		t.Errorf("index %q should be gone after migrating, but it is still there", replacedIndexName)
+	if hasIndex(t, db, replacedPostAuthorIndexName) {
+		t.Errorf("index %q should be gone after migrating, but it is still there", replacedPostAuthorIndexName)
+	}
+}
+
+// TestMigrate_InsertsTheAdminRole verifies that a migrated database already
+// holds the built-in admin role with the scope that implies every other, so that
+// an instance can be given its first administrator before anyone has signed in.
+//
+// [Ja] TestMigrate_InsertsTheAdminRole は、マイグレート済みのデータベースが、他のすべてを
+// 含意するスコープを持つ組み込みの admin ロールを既に保持していることを検証します。これに
+// より、誰もサインインしていないインスタンスにも最初の管理者を立てられます。
+func TestMigrate_InsertsTheAdminRole(t *testing.T) {
+	t.Parallel()
+
+	db := migratedTestDB(t)
+
+	var scopesJSON string
+	if err := db.Reader.QueryRowContext(
+		context.Background(),
+		"SELECT CAST(scopes AS TEXT) FROM roles WHERE name = ?",
+		string(model.RoleNameAdmin),
+	).Scan(&scopesJSON); err != nil {
+		t.Fatalf("the %q role is missing after migrating: %v", model.RoleNameAdmin, err)
+	}
+
+	var scopes []model.Scope
+	if err := json.Unmarshal([]byte(scopesJSON), &scopes); err != nil {
+		t.Fatalf("scopes of the %q role are not a JSON array: %v", model.RoleNameAdmin, err)
+	}
+
+	want := []model.Scope{model.ScopeCommunityAdmin}
+	if !slices.Equal(scopes, want) {
+		t.Errorf("scopes of the %q role = %v, want %v", model.RoleNameAdmin, scopes, want)
 	}
 }
 
@@ -258,14 +293,14 @@ func TestMigrate_UserUniquenessIgnoresLetterCase(t *testing.T) {
 }
 
 // TestRollback_RevertsTheLastMigration verifies that rolling back undoes what
-// the most recent migration did, and only that: the index it replaced comes
-// back, its own goes away, and every table the migrations before it created
-// stays where it is.
+// the most recent migration did, and only that: the built-in admin role goes
+// away, while the index the migration before it left in place and every table
+// the migrations before it created stay where they are.
 //
 // [Ja] TestRollback_RevertsTheLastMigration は、ロールバックが最新のマイグレーションの
-// 行ったことを取り消すこと、そしてそれだけを取り消すことを検証します。差し替えられた索引が
-// 戻り、自身が作った索引が消え、それより前のマイグレーションが作ったテーブルはどれもその
-// ままです。
+// 行ったことを取り消すこと、そしてそれだけを取り消すことを検証します。組み込みの admin
+// ロールが消え、その 1 つ前のマイグレーションが残した索引と、それより前のマイグレーションが
+// 作ったテーブルはどれもそのままです。
 func TestRollback_RevertsTheLastMigration(t *testing.T) {
 	t.Parallel()
 
@@ -276,11 +311,11 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		t.Fatalf("failed to roll back the migration: %v", err)
 	}
 
-	if hasIndex(t, db, latestMigratedIndexName) {
-		t.Errorf("index %q should be gone after rolling back, but it is still there", latestMigratedIndexName)
+	if count := countRows(t, db, "SELECT COUNT(*) FROM roles WHERE name = ?", string(model.RoleNameAdmin)); count != 0 {
+		t.Errorf("rows left for the %q role after rolling back = %d, want 0", model.RoleNameAdmin, count)
 	}
-	if !hasIndex(t, db, replacedIndexName) {
-		t.Errorf("index %q should be back after rolling back, but it is missing", replacedIndexName)
+	if !hasIndex(t, db, postAuthorIndexName) {
+		t.Errorf("index %q should survive rolling back the last migration, but it is missing", postAuthorIndexName)
 	}
 
 	for _, table := range slices.Concat(migratedTableNames, riverMigratedTableNames) {
@@ -312,8 +347,22 @@ func TestMigrate_KeepsThePostsAcrossTheIndexReplacement(t *testing.T) {
 	db := migratedTestDB(t)
 	ids := insertCommunityContent(t, db)
 
-	if err := database.Rollback(ctx, db.Writer); err != nil {
-		t.Fatalf("failed to roll back the migration: %v", err)
+	// How far back to step is decided by the index rather than by a number of
+	// migrations, because the index migration is no longer the last one and each
+	// migration added after it moves it one further back. A number would leave
+	// this test stepping short of the state it is written for while still
+	// passing, since a database that never crossed the index migration keeps its
+	// posts just as well.
+	//
+	// [Ja] どこまで戻すかは、マイグレーションの本数ではなく索引で決めます。索引の
+	// マイグレーションはもう最後のものではなく、この後に足されるマイグレーションの数だけ
+	// 奥へ下がっていくためです。本数で書けば、本テストは目的の状態に届かないまま通り
+	// 続けます。索引のマイグレーションを越えていないデータベースも、投稿は同じように
+	// 保つためです。
+	for hasIndex(t, db, postAuthorIndexName) {
+		if err := database.Rollback(ctx, db.Writer); err != nil {
+			t.Fatalf("failed to roll back the migration: %v", err)
+		}
 	}
 
 	// A post written while the previous index is back in place is the state an
@@ -335,8 +384,8 @@ func TestMigrate_KeepsThePostsAcrossTheIndexReplacement(t *testing.T) {
 			t.Errorf("rows left for the post %d after migrating back and forth = %d, want 1", postID, count)
 		}
 	}
-	if !hasIndex(t, db, latestMigratedIndexName) {
-		t.Errorf("index %q is missing after applying the migration again", latestMigratedIndexName)
+	if !hasIndex(t, db, postAuthorIndexName) {
+		t.Errorf("index %q is missing after applying the migration again", postAuthorIndexName)
 	}
 }
 

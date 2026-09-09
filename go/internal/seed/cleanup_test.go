@@ -123,18 +123,23 @@ func TestCleanup_EmptiesTheTablesItManages(t *testing.T) {
 	// one that shows the cleanup leaving a preserved table alone. The others hold
 	// bookkeeping this test has no way to write.
 	//
-	// It survives while the user_roles rows pointing at it are emptied, which is
-	// what says the cleanup takes the assignments without taking what they were
-	// assigning.
+	// Both rows survive while the user_roles rows pointing at one of them are
+	// emptied, which is what says the cleanup takes the assignments without
+	// taking what they were assigning. The two are the built-in admin role a
+	// migration inserts and the role this test writes: an instance that ran the
+	// seed and lost its administrator would have no way back into the admin
+	// screens.
 	//
 	// [Ja] roles は本テストが実際に行を入れられる保護対象テーブルであり、クリーンアップが
 	// 保護対象へ手を出さないことを示せるのはこれだけです。他は本テストが書き込む手立てを
 	// 持たない管理情報を保持します。
 	//
-	// roles が残る一方でそれを指す user_roles の行は空になります。これが、クリーンアップが
-	// 割り当てを消しても、割り当てていた対象までは消さないことを示します。
-	if count := countRows(t, db, "roles"); count != 1 {
-		t.Errorf("the roles table holds %d rows after the cleanup, want 1", count)
+	// 2 行とも残る一方で、その一方を指す user_roles の行は空になります。これが、クリーン
+	// アップが割り当てを消しても、割り当てていた対象までは消さないことを示します。2 行とは、
+	// マイグレーションが挿入する組み込みの admin ロールと、本テストが書き込むロールです。
+	// シードを実行して管理者を失ったインスタンスには、管理画面へ戻る手立てがありません。
+	if count := countRows(t, db, "roles"); count != 2 {
+		t.Errorf("the roles table holds %d rows after the cleanup, want 2", count)
 	}
 	if slices.Contains(cleanupTables, "goose_db_version") {
 		t.Error("goose_db_version is in cleanupTables; emptying it would make the database look unmigrated")

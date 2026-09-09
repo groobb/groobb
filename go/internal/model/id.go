@@ -27,6 +27,30 @@ type UserID int64
 // [Ja] String は UserID を 10 進表記で返します。
 func (id UserID) String() string { return strconv.FormatInt(int64(id), 10) }
 
+// ParseUserID reads a UserID out of the decimal form String writes, reporting
+// whether raw spells one at all. It sits beside String for the reason
+// ParseThreadID sits beside ThreadID's String: what counts as a user's address
+// is settled once, and every route naming the same account agrees on it.
+//
+// Anything that is not a positive whole number is rejected rather than looked
+// up, since no account carries such an id.
+//
+// [Ja] ParseUserID は、String が書く 10 進表記から UserID を読み取り、そもそも raw が
+// それを表しているかどうかを併せて返します。String の隣に置く理由は ParseThreadID が
+// ThreadID の String の隣にある理由と同じで、何が利用者のアドレスであるかを 1 度で決め、
+// 同じアカウントを名指すどのルートもそれに従うようにするためです。
+//
+// 正の整数でないものはルックアップせずに拒否します。そのような id を持つアカウントは
+// 無いためです。
+func ParseUserID(raw string) (UserID, bool) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+
+	return UserID(id), true
+}
+
 // UserSessionID is the typed identifier for a user session. Like UserID it wraps
 // int64 so session IDs cannot be mixed up with other entities' IDs.
 //
@@ -201,3 +225,27 @@ type PostReferenceID int64
 //
 // [Ja] String は PostReferenceID を 10 進表記で返します。
 func (id PostReferenceID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// RoleID is the typed identifier for a role. Like UserID it wraps int64 so role
+// IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] RoleID はロールの型付き識別子です。UserID と同様に int64 をラップし、ロール ID を
+// 他エンティティの ID と取り違えられないようにします。
+type RoleID int64
+
+// String returns the decimal form of the RoleID.
+//
+// [Ja] String は RoleID を 10 進表記で返します。
+func (id RoleID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// UserRoleID is the typed identifier for a role assignment. Like UserID it
+// wraps int64 so assignment IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] UserRoleID はロール割当の型付き識別子です。UserID と同様に int64 をラップし、
+// 割当 ID を他エンティティの ID と取り違えられないようにします。
+type UserRoleID int64
+
+// String returns the decimal form of the UserRoleID.
+//
+// [Ja] String は UserRoleID を 10 進表記で返します。
+func (id UserRoleID) String() string { return strconv.FormatInt(int64(id), 10) }
