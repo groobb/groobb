@@ -38,6 +38,22 @@ other = "{{.Count}} 年前"
 description = "<title> 要素の書式。ページ自身の名前 (Page) と、それが属するサイトの名前 (Site。このインスタンスが運営するコミュニティの名前) を差し込む"
 other = "{{.Page}} - {{.Site}}"
 
+[error_forbidden_title]
+description = "403 ページのタイトル (title タグ)"
+other = "権限がありません"
+
+[error_forbidden_heading]
+description = "403 ページの見出し"
+other = "権限がありません"
+
+[error_forbidden_message]
+description = "権限が無い操作や画面に対して 403 で返す説明文"
+other = "この操作を行う権限がありません。"
+
+[error_forbidden_back_to_home]
+description = "403 ページからトップページ (/) へ移動するリンクのテキスト"
+other = "トップページへ"
+
 [error_not_found_title]
 description = "404 ページのタイトル (title タグ)"
 other = "ページが見つかりません"
@@ -78,6 +94,14 @@ other = "退会しました"
 description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
 other = "2 段階認証を無効にしました"
 
+[flash_user_role_granted]
+description = "利用者にロールを付与した後に利用者一覧で表示するフラッシュメッセージ (対象のatnameを差し込む)"
+other = "@{{.Atname}}に管理者ロールを付与しました"
+
+[flash_user_role_revoked]
+description = "利用者からロールを剥奪した後に表示するフラッシュメッセージ (対象のatnameを差し込む)"
+other = "@{{.Atname}}から管理者ロールを剥奪しました"
+
 [header_home_link]
 description = "サインイン済みページ共通ヘッダーからホームへ誘導するリンクのテキスト"
 other = "ホーム"
@@ -89,6 +113,10 @@ other = "グローバルナビゲーション"
 [posts_count]
 description = "UI に表示する投稿数"
 other = "{{.Count}} 件の投稿"
+
+[sidebar_admin_link]
+description = "サイドバーのアカウント欄から管理ハブへ誘導するリンクのテキスト (管理画面を開ける利用者にだけ表示する)"
+other = "管理"
 
 [sidebar_boards_label]
 description = "コミュニティのシェル共通のサイドバーで、掲示板一覧のナビゲーションランドマークに付けるアクセシブルラベル"
@@ -762,6 +790,118 @@ other = "2 段階認証を無効にしますか？"
 description = "2 段階認証の無効化 (確認) ページの送信ボタン"
 other = "無効にする"
 
+[admin_show_title]
+description = "管理ハブページのタイトル (title タグ)"
+other = "管理"
+
+[admin_show_heading]
+description = "管理ハブページの見出し"
+other = "管理"
+
+[admin_show_users_link]
+description = "管理ハブページから利用者一覧ページへ誘導するリンクのテキスト"
+other = "利用者の一覧"
+
+[admin_user_index_title]
+description = "利用者一覧ページのタイトル (title タグ)"
+other = "利用者の一覧"
+
+[admin_user_index_title_filtered]
+description = "atname の先頭部分で絞り込んだ利用者一覧ページのタイトル (絞り込み文字列を差し込む title タグ)"
+other = "「{{.Query}}」で絞り込んだ利用者の一覧"
+
+[admin_user_index_title_paginated]
+description = "2 ページ目以降の利用者一覧ページのタイトル (ページ番号を差し込む title タグ)"
+other = "利用者の一覧 ({{.Page}}ページ目)"
+
+[admin_user_index_title_filtered_paginated]
+description = "atname の先頭部分で絞り込んだ 2 ページ目以降の利用者一覧ページのタイトル (絞り込み文字列とページ番号を差し込む title タグ)"
+other = "「{{.Query}}」で絞り込んだ利用者の一覧 ({{.Page}}ページ目)"
+
+[admin_user_index_heading]
+description = "利用者一覧ページの見出し"
+other = "利用者の一覧"
+
+[admin_user_index_search_label]
+description = "利用者一覧ページの絞り込み入力欄のラベル (atname の前方一致で絞り込む)"
+other = "atnameで絞り込む"
+
+[admin_user_index_search_submit_button]
+description = "利用者一覧ページの絞り込みフォームの送信ボタン"
+other = "絞り込む"
+
+[admin_user_index_table_caption]
+description = "利用者一覧ページの表のキャプション (表が何を並べているか)"
+other = "コミュニティの利用者と、その人が持つロール"
+
+[admin_user_index_atname_column]
+description = "利用者一覧ページの表で、利用者のatnameの列の見出し"
+other = "atname"
+
+[admin_user_index_joined_at_column]
+description = "利用者一覧ページの表で、アカウントの登録時期の列の見出し"
+other = "登録"
+
+[admin_user_index_roles_column]
+description = "利用者一覧ページの表で、利用者が持つロールの列の見出し"
+other = "ロール"
+
+[admin_user_index_actions_column]
+description = "利用者一覧ページの表で、行ごとの操作の列の見出し"
+other = "操作"
+
+[admin_user_index_no_roles]
+description = "利用者一覧ページの表で、ロールを 1 つも持たない利用者の行に表示する文言"
+other = "なし"
+
+[admin_user_index_grant_admin_button]
+description = "利用者一覧ページの表で、管理者ロールを持たない利用者にそれを付与するボタン"
+other = "管理者にする"
+
+[admin_user_index_revoke_admin_button]
+description = "利用者一覧ページの表で、管理者ロールを持つ利用者からそれを剥奪するボタン"
+other = "管理者から外す"
+
+[admin_user_index_revoke_admin_confirm]
+description = "利用者一覧ページで他の利用者から管理者ロールを剥奪する前に求める確認 (対象のatnameを差し込む)"
+other = "@{{.Atname}}から管理者ロールを外しますか？"
+
+[admin_user_index_revoke_admin_self_confirm]
+description = "利用者一覧ページで自分自身から管理者ロールを剥奪する前に求める確認"
+other = "自分から管理者ロールを外すと、この管理画面を開けなくなります。外しますか？"
+
+[admin_user_index_empty]
+description = "利用者一覧ページで、絞り込みが無く、表示する利用者が 1 人もいないときの文言"
+other = "利用者がいません。"
+
+[admin_user_index_no_results]
+description = "利用者一覧ページで、絞り込みに一致する利用者がいないときの文言 (絞り込みの文字列を差し込む)"
+other = "「{{.Query}}」で始まるatnameの利用者はいません。"
+
+[admin_user_index_past_last_page]
+description = "利用者一覧の最後を越えたページで、前のページには利用者がいるときの文言"
+other = "このページに表示する利用者はいません。前のページに戻ってください。"
+
+[admin_user_index_pagination_label]
+description = "利用者一覧ページのページ送りのナビゲーションランドマークに付けるアクセシブルラベル"
+other = "ページ送り"
+
+[admin_user_index_previous_page_link]
+description = "利用者一覧ページから 1 つ前のページへ移動するリンクのテキスト"
+other = "前のページ"
+
+[admin_user_index_next_page_link]
+description = "利用者一覧ページから 1 つ次のページへ移動するリンクのテキスト"
+other = "次のページ"
+
+[admin_user_index_page_position]
+description = "利用者一覧ページで、読んでいるページが全体のどこかを示す文言 (現在のページ数と総ページ数を差し込む)"
+other = "全{{.TotalPages}}ページ中{{.Page}}ページ目"
+
+[role_name_admin]
+description = "組み込みの admin ロールの表示名 (画面がロール名を表示するときに使う)"
+other = "管理者"
+
 [validation_required]
 description = "必須フィールドのバリデーションエラー"
 other = "入力してください"
@@ -909,6 +1049,14 @@ other = "このアカウントでは投稿できません。"
 [validation_post_thread_locked]
 description = "投稿を受け付けなくなったスレッドへ投稿したときのフォーム全体のエラー"
 other = "このスレッドは投稿を受け付けていません。"
+
+[validation_user_role_last_admin]
+description = "最後の管理者から管理者ロールを剥奪しようとして拒否したときのメッセージ"
+other = "最後の管理者から管理者ロールを外すことはできません。先に別の利用者を管理者にしてください。"
+
+[validation_withdrawal_last_admin]
+description = "最後の管理者が退会しようとして拒否したときの、退会フォーム全体のメッセージ"
+other = "最後の管理者は退会できません。先に別の利用者を管理者にしてください。"
 
 [thread_new_title]
 description = "スレッド作成ページのタイトル (title タグ)"
