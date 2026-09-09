@@ -141,6 +141,7 @@ func newHandlerForDatabases(navigationDB, homeDB *database.DB) *home.Handler {
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
 		repository.NewCommunityRepository(navigationDB),
 		repository.NewBoardRepository(navigationDB),
+		repository.NewRoleRepository(navigationDB),
 	)
 	getCommunityHomeUC := usecase.NewGetCommunityHomeUsecase(
 		repository.NewBoardRepository(homeDB),
@@ -578,5 +579,107 @@ func TestShow_ThreadLanguage(t *testing.T) {
 	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</p>")
 	if !strings.Contains(otherRow, "その他") {
 		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
+	}
+}
+
+// TestShow_AdminLink verifies that the sidebar's localized way into the
+// administration screens is drawn only for an account admitted to them, and
+// that it leads to the admin hub. The sidebar is on every page of the community,
+// so a link drawn for everyone would be an entrance that answers most of the
+// community with a refusal.
+//
+// It is asserted here rather than on the sidebar component because what the
+// component is handed comes from a UseCase reading the roles this account holds:
+// the assertion is about the whole path from an assignment in the database to the
+// markup, and the home page is the community page every signed-in visitor lands
+// on.
+//
+// [Ja] TestShow_AdminLink は、サイドバーのローカライズされた管理画面への導線が、それを
+// 許されたアカウントにだけ描かれること、そして行き先が管理ハブであることを検証します。
+// サイドバーはコミュニティのどのページにも出るため、全員に描くリンクは、コミュニティの
+// 大半に拒否で応じる入口になってしまいます。
+//
+// サイドバーのコンポーネントではなくここで検証するのは、コンポーネントが受け取るものが、
+// このアカウントの持つロールを読む UseCase から来るためです。検証したいのはデータベースの
+// 割当からマークアップまでの経路の全体であり、ホームはサインイン済みの訪問者が必ず着く
+// コミュニティのページです。
+func TestShow_AdminLink(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		locale            model.Locale
+		grantAdminRole    bool
+		wantAdminLinkText string
+	}{
+		{
+			name:              "admin ロールを持つ利用者には日本語の管理リンクが出る",
+			locale:            model.LocaleJa,
+			grantAdminRole:    true,
+			wantAdminLinkText: "管理",
+		},
+		{
+			name:              "admin ロールを持つ利用者には英語の管理リンクが出る",
+			locale:            model.LocaleEn,
+			grantAdminRole:    true,
+			wantAdminLinkText: "Admin",
+		},
+		{
+			name:   "ロールを持たない利用者には日本語でも管理リンクが出ない",
+			locale: model.LocaleJa,
+		},
+		{
+			name:   "ロールを持たない利用者には英語でも管理リンクが出ない",
+			locale: model.LocaleEn,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := testutil.SetupDB(t)
+			handler := newHandlerForDB(db)
+			userID := testutil.NewUserBuilder(t, db).Build()
+			if tt.grantAdminRole {
+				testutil.NewUserRoleBuilder(t, db).WithUserID(userID).Build()
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/home", nil)
+			ctx := i18n.SetLocale(req.Context(), tt.locale)
+			ctx = middleware.SetUserToContext(ctx, &model.User{ID: userID, Atname: "alice"})
+			ctx = templates.SetCurrentPath(ctx, templates.HomePath().String())
+			req = req.WithContext(ctx)
+			rec := httptest.NewRecorder()
+
+			handler.Show(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			body := rec.Body.String()
+			// The settings link is asserted alongside so that a body missing both
+			// (a sidebar that failed to render its account block at all) cannot pass
+			// as the case where the admin link is correctly absent.
+			//
+			// [Ja] 設定のリンクも併せて検証する。どちらも無いボディ (アカウントのブロックを
+			// そもそも描けなかったサイドバー) が、管理のリンクが正しく無い場合として通って
+			// しまわないようにするためである。
+			if !strings.Contains(body, `href="/settings"`) {
+				t.Error("サイドバーに設定へのリンクが無い")
+			}
+			hasAdminLink := strings.Contains(body, `href="/admin"`)
+			wantAdminLink := tt.wantAdminLinkText != ""
+			if hasAdminLink != wantAdminLink {
+				t.Errorf(`body contains href="/admin" = %t, want %t`, hasAdminLink, wantAdminLink)
+			}
+			if wantAdminLink {
+				adminLink := testutil.Element(t, body, `href="/admin"`, "</a>")
+				if !strings.HasSuffix(adminLink, ">"+tt.wantAdminLinkText) {
+					t.Errorf("admin link = %s, want text %q", adminLink, tt.wantAdminLinkText)
+				}
+			}
+		})
 	}
 }

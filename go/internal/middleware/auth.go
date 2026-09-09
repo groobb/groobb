@@ -153,6 +153,29 @@ func UserFromContext(ctx context.Context) *model.User {
 	return user
 }
 
+// UserIDFromContext returns the id of the current user, or nil when the request
+// carries no signed-in one. It is what a caller passes to something that only
+// needs to know who is looking, so that the nil check happens here rather than
+// once per route reached both signed in and signed out.
+//
+// [Ja] UserIDFromContext は現在のユーザーの id を返し、リクエストがサインイン済みの
+// ユーザーを運んでいないときは nil を返します。誰が見ているかだけを必要とするものへ
+// 渡す値であり、nil の判定を、サインイン状態でもサインアウト状態でも到達するルート
+// ごとに書かず、ここに 1 度だけ置くためのものです。
+func UserIDFromContext(ctx context.Context) *model.UserID {
+	user := UserFromContext(ctx)
+	if user == nil {
+		return nil
+	}
+	// The id is copied before its address is taken, so that what a caller holds
+	// is not a way into the user the request carries.
+	//
+	// [Ja] id はアドレスを取る前に写します。呼び出し側が持つものが、リクエストの運ぶ
+	// ユーザーへの入口にならないようにするためです。
+	userID := user.ID
+	return &userID
+}
+
 // SetUserToContext returns a copy of ctx carrying user as the current user. It
 // stores the user under the same unexported key SetUser and RequireAuth use, so
 // UserFromContext reads it back. This lets a caller (chiefly a handler test)

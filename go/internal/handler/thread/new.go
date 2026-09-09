@@ -141,7 +141,9 @@ func (h *Handler) renderNew(
 ) error {
 	ctx := r.Context()
 
-	nav, err := h.getCommunityNavigationUC.Execute(ctx)
+	nav, err := h.getCommunityNavigationUC.Execute(ctx, usecase.GetCommunityNavigationInput{
+		UserID: middleware.UserIDFromContext(ctx),
+	})
 	if err != nil {
 		return fmt.Errorf("コミュニティのナビゲーションの取得に失敗: %w", err)
 	}

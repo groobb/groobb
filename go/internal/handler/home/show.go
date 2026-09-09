@@ -8,6 +8,7 @@ import (
 	"github.com/groobb/groobb/go/internal/middleware"
 	"github.com/groobb/groobb/go/internal/templates/layouts"
 	homepage "github.com/groobb/groobb/go/internal/templates/pages/home"
+	"github.com/groobb/groobb/go/internal/usecase"
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
@@ -42,7 +43,9 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 
 	user := middleware.UserFromContext(ctx)
 
-	nav, err := h.getCommunityNavigationUC.Execute(ctx)
+	nav, err := h.getCommunityNavigationUC.Execute(ctx, usecase.GetCommunityNavigationInput{
+		UserID: middleware.UserIDFromContext(ctx),
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "コミュニティのナビゲーションの取得に失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

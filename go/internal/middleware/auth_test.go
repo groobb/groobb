@@ -277,6 +277,55 @@ func TestUserFromContext_NotSet(t *testing.T) {
 	}
 }
 
+// TestUserIDFromContext verifies that the optional id handed to a UseCase is nil
+// for an anonymous request and is the current user's id for a signed-in one.
+//
+// [Ja] TestUserIDFromContext は UseCase へ渡す任意の id が、匿名リクエストでは nil、
+// サインイン済みリクエストでは現在のユーザーの id になることを検証する。
+func TestUserIDFromContext(t *testing.T) {
+	t.Parallel()
+
+	userID := model.UserID(42)
+	tests := []struct {
+		name string
+		ctx  context.Context
+		want *model.UserID
+	}{
+		{
+			name: "ユーザーが格納されていないときは nil を返す",
+			ctx:  context.Background(),
+		},
+		{
+			name: "ユーザーが格納されているときはその id を返す",
+			ctx: middleware.SetUserToContext(
+				context.Background(),
+				&model.User{ID: userID},
+			),
+			want: &userID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := middleware.UserIDFromContext(tt.ctx)
+			if tt.want == nil {
+				if got != nil {
+					t.Errorf("UserIDFromContext() = %v, want nil", *got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatal("UserIDFromContext() = nil, want user id")
+			}
+			if *got != *tt.want {
+				t.Errorf("UserIDFromContext() = %v, want %v", *got, *tt.want)
+			}
+		})
+	}
+}
+
 // setupAuthTest builds an Auth middleware backed by the test's own database and
 // seeds one user with a "valid-token" session, returning the middleware and the
 // seeded user's id. SetUser and RequireAuth resolve the current user the same

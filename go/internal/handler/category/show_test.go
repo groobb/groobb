@@ -113,6 +113,7 @@ func newHandlerForDatabases(categoryDB, navigationDB, boardDB *database.DB) *cat
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
 		repository.NewCommunityRepository(navigationDB),
 		repository.NewBoardRepository(navigationDB),
+		repository.NewRoleRepository(navigationDB),
 	)
 	getCategoryUC := usecase.NewGetCategoryUsecase(repository.NewCategoryRepository(categoryDB))
 	getCategoryBoardsUC := usecase.NewGetCategoryBoardsUsecase(repository.NewBoardRepository(boardDB))
