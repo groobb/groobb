@@ -188,6 +188,7 @@ func TestRunner_Run(t *testing.T) {
 	}{
 		{atname: "seeduser1", email: "seeduser1@example.com"},
 		{atname: "seeduser2", email: "seeduser2@example.com"},
+		{atname: "seeduser4", email: "seeduser4@example.com"},
 	}
 	passwordRepo := repository.NewUserPasswordRepository(db)
 	for _, account := range accounts {
@@ -212,6 +213,47 @@ func TestRunner_Run(t *testing.T) {
 		if err := auth.CheckPassword(password.PasswordDigest, runnerTestPassword); err != nil {
 			t.Errorf("the password of %q does not match the roster password: %v", account.atname, err)
 		}
+	}
+
+	// The account the roster gives the admin role holds it once the run is over,
+	// which is what lets the admin screens be opened without a subcommand
+	// appointing anyone first. It is read back through the repository the
+	// application resolves an actor's permission with, so what is checked is the
+	// assignment as the application sees it.
+	//
+	// [Ja] 名簿が admin の役割を与えるアカウントは、実行が終わった時点でそのロールを持ちます。
+	// サブコマンドで先に誰かを任命しなくても管理画面を開けるのはこれによります。読み戻しは、
+	// アプリケーションが操作者の権限を解決するのに使うリポジトリを通します。検査の対象を、
+	// アプリケーションから見える割当そのものにするためです。
+	adminUser, err := userRepo.FindByAtname(ctx, "seeduser4")
+	if err != nil {
+		t.Fatalf("FindByAtname(%q) error = %v", "seeduser4", err)
+	}
+	if adminUser == nil {
+		t.Fatal("no user was created for the administering account")
+	}
+
+	adminRoles, err := repository.NewRoleRepository(db).ListByUserID(ctx, adminUser.ID)
+	if err != nil {
+		t.Fatalf("ListByUserID(%v) error = %v", adminUser.ID, err)
+	}
+	if len(adminRoles) != 1 || adminRoles[0].Name != model.RoleNameAdmin {
+		t.Errorf("the roles of the administering account = %v, want only %s", adminRoles, model.RoleNameAdmin)
+	}
+
+	// Nobody else holds a role: the accounts the other screens are looked at
+	// with are ordinary members, and a run that handed the role out more widely
+	// would leave every screen carrying the admin link.
+	//
+	// [Ja] 他の誰もロールを持ちません。他の画面を眺めるのに使うアカウントは一般の利用者で
+	// あり、ロールをより広く配る実行は、どの画面にも管理画面へのリンクを載せたまま残すことに
+	// なります。
+	var userRoleCount int
+	if err := db.Reader.QueryRowContext(ctx, "SELECT COUNT(*) FROM user_roles").Scan(&userRoleCount); err != nil {
+		t.Fatalf("failed to count the role assignments: %v", err)
+	}
+	if userRoleCount != 1 {
+		t.Errorf("role assignment count = %d, want 1", userRoleCount)
 	}
 
 	// The withdrawn account is still a row, so it is counted with the others and
@@ -276,8 +318,9 @@ func TestRunner_Run(t *testing.T) {
 
 	wantProgress := []string{
 		"\r  community 1/1\n",
-		"\r  users 0/3",
-		"\r  users 3/3\n",
+		"\r  users 0/4",
+		"\r  users 4/4\n",
+		"\r  user roles 1/1\n",
 		fmt.Sprintf("\r  boards 0/%d", len(matureBoards)),
 		"\r  threads 0/",
 		"\r  withdrawal 1/1\n",

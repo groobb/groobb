@@ -39,6 +39,20 @@ const (
 	// (>>N) と、その指し先の投稿に付く逆参照が見せるのはその会話です。
 	roleReplier seedRole = "replier"
 
+	// roleAdmin holds the built-in admin role, so that the admin screens can be
+	// opened without a subcommand having appointed someone first. It is an account
+	// of its own rather than the role given to roleStarter, because the screens the
+	// other accounts are used for are looked at as someone who is not an
+	// administrator: an account that both wrote the threads and administers the
+	// community would carry the admin link into every screen checked from it.
+	//
+	// [Ja] roleAdmin は組み込みの admin ロールを持つアカウントです。サブコマンドで先に
+	// 誰かを任命しなくても管理画面を開けるようにするためです。roleStarter にそのロールを
+	// 与えるのではなく専用のアカウントにしているのは、他のアカウントで見る画面が、管理者で
+	// ない人として眺められるものであるためです。スレッドを書いた本人がコミュニティの管理も
+	// するアカウントにすると、そこから確認するどの画面にも管理画面へのリンクが入ります。
+	roleAdmin seedRole = "admin"
+
 	// roleWithdrawn is the account a post is looked at without its author: a
 	// withdrawal leaves what was written in place and takes only the name off
 	// it, so a screen has to be checked with an author that is no longer there.
@@ -55,7 +69,7 @@ const (
 //
 // [Ja] allSeedRoles は生成器が名指しする役割の一覧です。名簿はこのそれぞれに 1 件ずつ
 // アカウントを持つ必要があり、それによって生成器は役割を求めてアカウントを受け取れます。
-var allSeedRoles = []seedRole{roleStarter, roleReplier, roleWithdrawn}
+var allSeedRoles = []seedRole{roleStarter, roleReplier, roleAdmin, roleWithdrawn}
 
 // signInSeedRoles lists the roles whose accounts remain active after a seeding
 // run finishes. The withdrawn role is required while content is generated, but
@@ -64,7 +78,7 @@ var allSeedRoles = []seedRole{roleStarter, roleReplier, roleWithdrawn}
 // [Ja] signInSeedRoles は、シード実行の完了後もアカウントが有効な役割の一覧です。
 // withdrawn はコンテンツ生成中には必要ですが、そのアカウントは実行が返る前に匿名化され、
 // サインインできない状態になります。
-var signInSeedRoles = []seedRole{roleStarter, roleReplier}
+var signInSeedRoles = []seedRole{roleStarter, roleReplier, roleAdmin}
 
 // SignInRoles lists the roles FindCredentials answers, as the names written in
 // the roster. The usage of groobb devcreds is built from this, so that the line

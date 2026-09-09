@@ -50,6 +50,18 @@ atname = "seeduser2"
 email = "seeduser2@example.com"
 note = "replies with >>N, so a post can be seen with its back references"
 
+# The account that administers the community. It holds the admin role from the
+# moment the seed finishes, so the admin screens can be opened without appointing
+# anyone first. The other accounts stay ordinary members.
+#
+# [Ja] コミュニティを管理するアカウント。シードの完了時点で admin ロールを持つため、
+# 先に誰かを任命しなくても管理画面を開ける。他のアカウントは一般の利用者のままになる。
+[[users]]
+role = "admin"
+atname = "seeduser4"
+email = "seeduser4@example.com"
+note = "holds the admin role, so the admin screens can be opened"
+
 # The account a post is looked at without its author. A withdrawal leaves what
 # was written in place and takes only the name off it.
 #

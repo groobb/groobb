@@ -34,7 +34,7 @@ func TestRun_DispatchesDevCredentialsUsage(t *testing.T) {
 	if code != exitUsage {
 		t.Errorf("run() exit code = %d, want %d", code, exitUsage)
 	}
-	if want := "usage: groobb devcreds starter|replier\n"; stderr.String() != want {
+	if want := "usage: groobb devcreds starter|replier|admin\n"; stderr.String() != want {
 		t.Errorf("run() stderr = %q, want %q", stderr.String(), want)
 	}
 }
@@ -72,6 +72,12 @@ role = "replier"
 atname = "seeduser2"
 email = "replier@example.com"
 note = "replies to threads"
+
+[[users]]
+role = "admin"
+atname = "seeduser4"
+email = "admin@example.com"
+note = "administers the community"
 
 [[users]]
 role = "withdrawn"
@@ -137,7 +143,7 @@ func TestRunDevCredentials_RejectsAWrongArgumentCount(t *testing.T) {
 			if stdout.Len() != 0 {
 				t.Errorf("runDevCredentials() stdout = %q, want it to be empty", stdout.String())
 			}
-			if want := "usage: groobb devcreds starter|replier"; !strings.Contains(stderr.String(), want) {
+			if want := "usage: groobb devcreds starter|replier|admin"; !strings.Contains(stderr.String(), want) {
 				t.Errorf("runDevCredentials() stderr = %q, want it to contain %q", stderr.String(), want)
 			}
 

@@ -42,6 +42,12 @@ role = "replier"
 atname = "seeduser2"
 email = "seeduser2@example.com"
 note = "replies to them"
+
+[[users]]
+role = "admin"
+atname = "seeduser4"
+email = "seeduser4@example.com"
+note = "administers the community"
 ` + withdrawnEntry
 
 // validRosterPassword is the password validRoster shares between its accounts.
@@ -120,6 +126,7 @@ func TestLoadUserRoster(t *testing.T) {
 	want := []rosterUser{
 		{role: roleStarter, atname: "seeduser1", email: "seeduser1@example.com", note: "opens the threads a board lists"},
 		{role: roleReplier, atname: "seeduser2", email: "seeduser2@example.com", note: "replies to them"},
+		{role: roleAdmin, atname: "seeduser4", email: "seeduser4@example.com", note: "administers the community"},
 		{role: roleWithdrawn, atname: "seeduser3", email: "seeduser3@example.com", note: "withdraws, leaving its posts behind"},
 	}
 	if len(roster.users) != len(want) {
