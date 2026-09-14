@@ -70,14 +70,16 @@ type RevokeUserRoleOutput struct {
 //
 // Permission, the role and the target are resolved before the transaction, so a
 // request that is refused or names nothing costs no write lock. What the
-// transaction reads is the assignment and, for the admin role, how many people
-// still hold it: both decide whether the removal happens.
+// transaction reads is the assignment and, for the admin role, the target's
+// current state and the active holder count: these decide whether removal would
+// leave the community without an active administrator.
 //
 // [Ja] Execute は対象の利用者からロールを取り上げます。
 //
 // 権限・ロール・対象はトランザクションの前で解決するため、拒否される要求も、何も名指して
 // いない要求も、書き込みロックを消費しません。トランザクションが読むのは割当と、admin
-// ロールについてはまだ何人がそれを持つかであり、どちらも削除が起こるかどうかを決めます。
+// ロールについては対象の現在の状態と有効な保持者数です。これらから、剥奪によって有効な
+// 管理者がいなくなるかどうかを判断します。
 func (uc *RevokeUserRoleUsecase) Execute(ctx context.Context, input RevokeUserRoleInput) (*RevokeUserRoleOutput, error) {
 	communityPolicy, err := resolveCommunityPolicy(ctx, uc.roleRepo, input.Actor)
 	if err != nil {
@@ -137,16 +139,29 @@ func (uc *RevokeUserRoleUsecase) revoke(ctx context.Context, userID model.UserID
 	}
 
 	if role.Name == model.RoleNameAdmin {
-		leavesNoAdmin, err := removingLeavesNoAdmin(ctx, userRoleRepo, role.ID)
+		// A suspended or withdrawn target is not in the active holder count.
+		// Read the target inside this transaction so a concurrent suspension or
+		// unsuspension cannot change whether revoking reduces that count.
+		//
+		// [Ja] 停止中・退会済みの対象は有効な保持者数に含まれません。停止・解除が同時に
+		// 届いても、剥奪が人数を減らすかどうかの判断が変わらないよう、対象はこの
+		// トランザクションの中で読みます。
+		target, err := uc.userRepo.WithTx(tx).FindByID(ctx, userID)
 		if err != nil {
-			return err
+			return fmt.Errorf("対象の利用者の取得に失敗: %w", err)
 		}
-		if leavesNoAdmin {
-			return &model.AppError{
-				Code:     model.AppErrCodeConflict,
-				UserMsg:  i18n.T(ctx, "validation_user_role_last_admin"),
-				Internal: fmt.Errorf("最後の管理者からの剥奪: target_user_id=%s", userID),
-				Metadata: map[string]string{"target_user_id": userID.String()},
+		if target != nil && target.SuspendedAt == nil {
+			leavesNoAdmin, err := removingLeavesNoAdmin(ctx, userRoleRepo, role.ID)
+			if err != nil {
+				return err
+			}
+			if leavesNoAdmin {
+				return &model.AppError{
+					Code:     model.AppErrCodeConflict,
+					UserMsg:  i18n.T(ctx, "validation_user_role_last_admin"),
+					Internal: fmt.Errorf("最後の管理者からの剥奪: target_user_id=%s", userID),
+					Metadata: map[string]string{"target_user_id": userID.String()},
+				}
 			}
 		}
 	}
