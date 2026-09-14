@@ -17,13 +17,14 @@ import (
 // [Ja] UserBuilder はテスト用の users 行を fluent API で組み立てます。妥当な既定値を
 // 適用するため、テストは関心のあるフィールドだけを設定すれば済みます。
 type UserBuilder struct {
-	t         *testing.T
-	db        *database.DB
-	email     string
-	atname    string
-	locale    model.Locale
-	timeZone  string
-	deletedAt *time.Time
+	t           *testing.T
+	db          *database.DB
+	email       string
+	atname      string
+	locale      model.Locale
+	timeZone    string
+	deletedAt   *time.Time
+	suspendedAt *time.Time
 }
 
 // NewUserBuilder creates a UserBuilder. The default email and atname each carry
@@ -120,20 +121,41 @@ func (b *UserBuilder) WithDeletedAt(deletedAt time.Time) *UserBuilder {
 	return b
 }
 
+// WithSuspendedAt suspends the user at the given time, so tests can exercise how
+// a suspended account is treated (that it does not resolve from a session, that
+// it is not counted among a role's holders). Left unset, Build creates an
+// account that may act (suspended_at NULL).
+//
+// The time is given rather than taken from the database clock, because what a
+// test arranges here is the account's state and not the moment it was reached.
+//
+// [Ja] WithSuspendedAtは指定時刻で利用者を停止し、停止されたアカウントの扱い (セッション
+// から解決されないこと、ロールの保持者として数えられないこと) をテストで再現できるように
+// します。未設定ならBuildは行動できるアカウント (suspended_atがNULL) を作ります。
+//
+// 時刻をデータベースの時計からではなく与えるのは、ここでテストが用意するのがアカウントの
+// 状態であって、そこへ至った瞬間ではないためです。
+func (b *UserBuilder) WithSuspendedAt(suspendedAt time.Time) *UserBuilder {
+	b.suspendedAt = &suspendedAt
+	return b
+}
+
 // Build inserts the user and returns its database-assigned ID, failing the test
-// on error. id and timestamps are left to the database defaults. deleted_at is
-// NULL unless WithDeletedAt set it (a nil timestamp binds as NULL).
+// on error. id and timestamps are left to the database defaults. deleted_at and
+// suspended_at are NULL unless WithDeletedAt and WithSuspendedAt set them (a nil
+// timestamp binds as NULL).
 //
 // [Ja] Build はユーザーを挿入し、DB が採番した ID を返します。エラー時はテストを
-// 失敗させます。id とタイムスタンプは DB の既定値に任せます。deleted_at は WithDeletedAt で
-// 設定しない限り NULL です (nil の時刻は NULL としてバインドされます)。
+// 失敗させます。id とタイムスタンプは DB の既定値に任せます。deleted_at と suspended_at は
+// WithDeletedAt・WithSuspendedAt で設定しない限り NULL です (nil の時刻は NULL として
+// バインドされます)。
 func (b *UserBuilder) Build() model.UserID {
 	b.t.Helper()
 
 	var id int64
 	err := b.db.Writer.QueryRowContext(context.Background(),
-		`INSERT INTO users (email, atname, locale, time_zone, deleted_at) VALUES (?, ?, ?, ?, ?) RETURNING id`,
-		b.email, b.atname, string(b.locale), b.timeZone, sqlitetime.Ptr(b.deletedAt),
+		`INSERT INTO users (email, atname, locale, time_zone, deleted_at, suspended_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+		b.email, b.atname, string(b.locale), b.timeZone, sqlitetime.Ptr(b.deletedAt), sqlitetime.Ptr(b.suspendedAt),
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーの作成に失敗: %v", err)

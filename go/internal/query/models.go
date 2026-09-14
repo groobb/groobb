@@ -50,6 +50,18 @@ type EmailConfirmation struct {
 	UpdatedAt           sqlitetime.Time  `json:"updated_at"`
 }
 
+type ModerationLog struct {
+	ID           int64           `json:"id"`
+	UserID       *int64          `json:"user_id"`
+	Action       string          `json:"action"`
+	ThreadID     *int64          `json:"thread_id"`
+	PostID       *int64          `json:"post_id"`
+	TargetUserID *int64          `json:"target_user_id"`
+	Reason       string          `json:"reason"`
+	CreatedAt    sqlitetime.Time `json:"created_at"`
+	UpdatedAt    sqlitetime.Time `json:"updated_at"`
+}
+
 type PasswordResetToken struct {
 	ID          int64            `json:"id"`
 	UserID      int64            `json:"user_id"`
@@ -61,13 +73,14 @@ type PasswordResetToken struct {
 }
 
 type Post struct {
-	ID        int64           `json:"id"`
-	ThreadID  int64           `json:"thread_id"`
-	UserID    *int64          `json:"user_id"`
-	Number    int64           `json:"number"`
-	Body      string          `json:"body"`
-	CreatedAt sqlitetime.Time `json:"created_at"`
-	UpdatedAt sqlitetime.Time `json:"updated_at"`
+	ID            int64            `json:"id"`
+	ThreadID      int64            `json:"thread_id"`
+	UserID        *int64           `json:"user_id"`
+	Number        int64            `json:"number"`
+	Body          string           `json:"body"`
+	CreatedAt     sqlitetime.Time  `json:"created_at"`
+	UpdatedAt     sqlitetime.Time  `json:"updated_at"`
+	UnpublishedAt *sqlitetime.Time `json:"unpublished_at"`
 }
 
 type PostReference struct {
@@ -136,27 +149,30 @@ type Role struct {
 }
 
 type Thread struct {
-	ID           int64           `json:"id"`
-	BoardID      int64           `json:"board_id"`
-	UserID       *int64          `json:"user_id"`
-	Title        string          `json:"title"`
-	Language     string          `json:"language"`
-	PostsCount   int64           `json:"posts_count"`
-	LastPostID   *int64          `json:"last_post_id"`
-	LastPostedAt sqlitetime.Time `json:"last_posted_at"`
-	CreatedAt    sqlitetime.Time `json:"created_at"`
-	UpdatedAt    sqlitetime.Time `json:"updated_at"`
+	ID            int64            `json:"id"`
+	BoardID       int64            `json:"board_id"`
+	UserID        *int64           `json:"user_id"`
+	Title         string           `json:"title"`
+	Language      string           `json:"language"`
+	PostsCount    int64            `json:"posts_count"`
+	LastPostID    *int64           `json:"last_post_id"`
+	LastPostedAt  sqlitetime.Time  `json:"last_posted_at"`
+	CreatedAt     sqlitetime.Time  `json:"created_at"`
+	UpdatedAt     sqlitetime.Time  `json:"updated_at"`
+	LockedAt      *sqlitetime.Time `json:"locked_at"`
+	UnpublishedAt *sqlitetime.Time `json:"unpublished_at"`
 }
 
 type User struct {
-	ID        int64            `json:"id"`
-	Email     string           `json:"email"`
-	Atname    string           `json:"atname"`
-	Locale    string           `json:"locale"`
-	TimeZone  string           `json:"time_zone"`
-	DeletedAt *sqlitetime.Time `json:"deleted_at"`
-	CreatedAt sqlitetime.Time  `json:"created_at"`
-	UpdatedAt sqlitetime.Time  `json:"updated_at"`
+	ID          int64            `json:"id"`
+	Email       string           `json:"email"`
+	Atname      string           `json:"atname"`
+	Locale      string           `json:"locale"`
+	TimeZone    string           `json:"time_zone"`
+	DeletedAt   *sqlitetime.Time `json:"deleted_at"`
+	CreatedAt   sqlitetime.Time  `json:"created_at"`
+	UpdatedAt   sqlitetime.Time  `json:"updated_at"`
+	SuspendedAt *sqlitetime.Time `json:"suspended_at"`
 }
 
 type UserPassword struct {

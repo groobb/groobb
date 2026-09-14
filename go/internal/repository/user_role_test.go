@@ -220,6 +220,32 @@ func TestUserRoleRepository_CountHoldersByRoleID(t *testing.T) {
 		}
 	})
 
+	// A suspension takes an administrator out of the count for as long as it
+	// stands, so the protection that keeps at least one administrator does not
+	// count someone who cannot sign in to act as one.
+	//
+	// [Ja] 停止は、それが続く間その管理者を数から外す。管理者を1人以上保つ保護が、
+	// 管理者として行動するためにサインインできない人を数えないようにするためである。
+	t.Run("停止中の保持者は数えない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newRoleRepos(t)
+		admin := repos.findRole(t, ctx, model.RoleNameAdmin)
+
+		active := testutil.NewUserBuilder(t, repos.db).Build()
+		suspended := testutil.NewUserBuilder(t, repos.db).WithSuspendedAt(time.Now()).Build()
+		repos.assignRole(t, ctx, active, admin.ID)
+		repos.assignRole(t, ctx, suspended, admin.ID)
+
+		count, err := repos.userRole.CountHoldersByRoleID(ctx, admin.ID)
+		if err != nil {
+			t.Fatalf("CountHoldersByRoleID() error = %v", err)
+		}
+		if count != 1 {
+			t.Errorf("CountHoldersByRoleID() = %d, want 1 (停止中の保持者は数えない)", count)
+		}
+	})
+
 	t.Run("誰も持たないロールは 0 を返す", func(t *testing.T) {
 		t.Parallel()
 

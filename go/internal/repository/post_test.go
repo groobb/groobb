@@ -130,6 +130,49 @@ func TestPostRepository_ListByThreadID(t *testing.T) {
 		}
 	})
 
+	t.Run("非公開の投稿もレス番号順で残り、本文と非公開の印を保持する", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "非公開の投稿があるスレッド")
+		second := repos.createPost(t, ctx, thread.ID, 2, "非公開にされる本文")
+		third := repos.createPost(t, ctx, thread.ID, 3, "3つ目の本文")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1つ目の本文")
+
+		if err := repos.post.Unpublish(ctx, second.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		posts, err := repos.post.ListByThreadID(ctx, thread.ID)
+		if err != nil {
+			t.Fatalf("ListByThreadID() error = %v", err)
+		}
+		wantPosts := []*model.Post{first, second, third}
+		if len(posts) != len(wantPosts) {
+			t.Fatalf("len(ListByThreadID()) = %d, want %d", len(posts), len(wantPosts))
+		}
+		for i, want := range wantPosts {
+			got := posts[i]
+			if got.ID != want.ID {
+				t.Errorf("ListByThreadID()[%d].ID = %v, want %v", i, got.ID, want.ID)
+			}
+			if got.Number != want.Number {
+				t.Errorf("ListByThreadID()[%d].Number = %d, want %d", i, got.Number, want.Number)
+			}
+			if got.Body != want.Body {
+				t.Errorf("ListByThreadID()[%d].Body = %q, want %q", i, got.Body, want.Body)
+			}
+			if want.ID == second.ID {
+				if got.UnpublishedAt == nil || got.UnpublishedAt.IsZero() {
+					t.Errorf("ListByThreadID()[%d].UnpublishedAt = %v, want the stamped time", i, got.UnpublishedAt)
+				}
+			} else if got.UnpublishedAt != nil {
+				t.Errorf("ListByThreadID()[%d].UnpublishedAt = %v, want nil", i, got.UnpublishedAt)
+			}
+		}
+	})
+
 	t.Run("投稿を持たないスレッドは空を返す", func(t *testing.T) {
 		t.Parallel()
 
@@ -358,4 +401,221 @@ func queryPlan(t *testing.T, ctx context.Context, db *database.DB, statement str
 	}
 
 	return strings.Join(details, "\n")
+}
+
+func TestPostRepository_FindByThreadIDAndNumber(t *testing.T) {
+	t.Parallel()
+
+	t.Run("スレッドとレス番号で投稿を取得できる", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目の投稿")
+
+		post, err := repos.post.FindByThreadIDAndNumber(ctx, thread.ID, 1)
+		if err != nil {
+			t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+		}
+		if post == nil {
+			t.Fatal("FindByThreadIDAndNumber() = nil, want post")
+		}
+		if post.ID != first.ID {
+			t.Errorf("post.ID = %v, want %v", post.ID, first.ID)
+		}
+		if post.Body != first.Body {
+			t.Errorf("post.Body = %q, want %q", post.Body, first.Body)
+		}
+	})
+
+	t.Run("同じ番号でも別のスレッドの投稿は返さない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		other := repos.createThread(t, ctx, board.ID, "別のスレッド")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目の投稿")
+		otherFirst := repos.createPost(t, ctx, other.ID, 1, "別のスレッドの 1 つ目")
+
+		post, err := repos.post.FindByThreadIDAndNumber(ctx, other.ID, 1)
+		if err != nil {
+			t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+		}
+		if post == nil {
+			t.Fatal("FindByThreadIDAndNumber() = nil, want post")
+		}
+		if post.ID != otherFirst.ID {
+			t.Errorf("post.ID = %v, want %v (not %v)", post.ID, otherFirst.ID, first.ID)
+		}
+	})
+
+	t.Run("そのスレッドに無い番号は (nil, nil) を返す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		repos.createPost(t, ctx, thread.ID, 1, "1 つ目の投稿")
+
+		post, err := repos.post.FindByThreadIDAndNumber(ctx, thread.ID, 3)
+		if err != nil {
+			t.Fatalf("FindByThreadIDAndNumber() error = %v, want nil", err)
+		}
+		if post != nil {
+			t.Errorf("FindByThreadIDAndNumber() = %v, want nil", post)
+		}
+	})
+
+	t.Run("非公開の投稿も返す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		repos.createPost(t, ctx, thread.ID, 1, "1 つ目の投稿")
+		second := repos.createPost(t, ctx, thread.ID, 2, "2 つ目の投稿")
+
+		if err := repos.post.Unpublish(ctx, second.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		post, err := repos.post.FindByThreadIDAndNumber(ctx, thread.ID, 2)
+		if err != nil {
+			t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+		}
+		if post == nil {
+			t.Fatal("FindByThreadIDAndNumber() = nil, want post")
+		}
+		if post.UnpublishedAt == nil {
+			t.Error("post.UnpublishedAt = nil, want the stamped time")
+		}
+		if post.Body != second.Body {
+			t.Errorf("post.Body = %q, want %q", post.Body, second.Body)
+		}
+	})
+}
+
+func TestPostRepository_ListByIDs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("id 順に返し、非公開の投稿も含む", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		first := repos.createPost(t, ctx, thread.ID, 1, "1 つ目の投稿")
+		second := repos.createPost(t, ctx, thread.ID, 2, "非公開にされる投稿")
+
+		if err := repos.post.Unpublish(ctx, second.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		posts, err := repos.post.ListByIDs(ctx, []model.PostID{second.ID, first.ID, second.ID})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(posts) != 2 {
+			t.Fatalf("len(ListByIDs()) = %d, want 2", len(posts))
+		}
+		if posts[0].ID != first.ID {
+			t.Errorf("ListByIDs()[0].ID = %v, want %v", posts[0].ID, first.ID)
+		}
+		if posts[1].ID != second.ID {
+			t.Errorf("ListByIDs()[1].ID = %v, want %v", posts[1].ID, second.ID)
+		}
+		if posts[1].UnpublishedAt == nil {
+			t.Error("ListByIDs()[1].UnpublishedAt = nil, want the stamped time")
+		}
+		if posts[1].Body != second.Body {
+			t.Errorf("ListByIDs()[1].Body = %q, want %q", posts[1].Body, second.Body)
+		}
+	})
+
+	t.Run("存在しない id は結果に現れない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		thread := repos.createThread(t, ctx, board.ID, "SQLite の話")
+		created := repos.createPost(t, ctx, thread.ID, 1, "唯一の投稿")
+
+		posts, err := repos.post.ListByIDs(ctx, []model.PostID{created.ID, created.ID + 100000})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(posts) != 1 {
+			t.Fatalf("len(ListByIDs()) = %d, want 1", len(posts))
+		}
+		if posts[0].ID != created.ID {
+			t.Errorf("ListByIDs()[0].ID = %v, want %v", posts[0].ID, created.ID)
+		}
+	})
+
+	t.Run("空の id は空を返す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+
+		posts, err := repos.post.ListByIDs(ctx, nil)
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(posts) != 0 {
+			t.Errorf("len(ListByIDs()) = %d, want 0", len(posts))
+		}
+	})
+}
+
+// TestPostRepository_Unpublish_KeepsTheThreadsCountAndLatestPost verifies that
+// unpublishing a post leaves the thread's denormalized view of its posts alone.
+// The count is the number of reply numbers issued rather than the number of
+// bodies on display, so a thread at the cap stays closed and the next post keeps
+// the number it would have had.
+//
+// [Ja] TestPostRepository_Unpublish_KeepsTheThreadsCountAndLatestPostは、投稿を非公開に
+// してもスレッドが持つ投稿の非正規化された姿がそのままであることを検証します。件数は表示
+// されている本文の数ではなく発行したレス番号の数であるため、上限に達したスレッドは閉じた
+// ままであり、次の投稿は本来の番号を保ちます。
+func TestPostRepository_Unpublish_KeepsTheThreadsCountAndLatestPost(t *testing.T) {
+	t.Parallel()
+
+	repos, ctx := newContentRepos(t)
+	board := repos.createBoardWithCategory(t, ctx, "tech")
+	lastPostedAt := time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC)
+	thread := repos.createThreadPostedAt(t, ctx, board.ID, "1 件だけのスレッド", lastPostedAt)
+
+	post, err := repos.post.FindByThreadIDAndNumber(ctx, thread.ID, 1)
+	if err != nil {
+		t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+	}
+	if post == nil {
+		t.Fatal("FindByThreadIDAndNumber() = nil, want post")
+	}
+
+	if err := repos.post.Unpublish(ctx, post.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	found, err := repos.thread.FindByID(ctx, thread.ID)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if found == nil {
+		t.Fatal("FindByID() = nil, want thread")
+	}
+	if found.PostsCount != 1 {
+		t.Errorf("thread.PostsCount = %d, want 1", found.PostsCount)
+	}
+	if found.LastPostID == nil {
+		t.Fatal("thread.LastPostID = nil, want the post's id")
+	}
+	if *found.LastPostID != post.ID {
+		t.Errorf("thread.LastPostID = %v, want %v", *found.LastPostID, post.ID)
+	}
+	if !found.LastPostedAt.Equal(lastPostedAt) {
+		t.Errorf("thread.LastPostedAt = %v, want %v", found.LastPostedAt, lastPostedAt)
+	}
 }

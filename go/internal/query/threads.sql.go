@@ -7,6 +7,7 @@ package query
 
 import (
 	"context"
+	"strings"
 
 	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
@@ -14,7 +15,7 @@ import (
 const createThread = `-- name: CreateThread :one
 INSERT INTO threads (board_id, user_id, title, language)
 VALUES (?, ?, ?, ?)
-RETURNING id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at
+RETURNING id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at, locked_at, unpublished_at
 `
 
 type CreateThreadParams struct {
@@ -43,12 +44,14 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thr
 		&i.LastPostedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LockedAt,
+		&i.UnpublishedAt,
 	)
 	return i, err
 }
 
 const getThreadByID = `-- name: GetThreadByID :one
-SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads WHERE id = ? LIMIT 1
+SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at, locked_at, unpublished_at FROM threads WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetThreadByID(ctx context.Context, id int64) (Thread, error) {
@@ -65,15 +68,17 @@ func (q *Queries) GetThreadByID(ctx context.Context, id int64) (Thread, error) {
 		&i.LastPostedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LockedAt,
+		&i.UnpublishedAt,
 	)
 	return i, err
 }
 
 const listRecentThreadsPerBoard = `-- name: ListRecentThreadsPerBoard :many
-SELECT threads.id, threads.board_id, threads.user_id, threads.title, threads.language, threads.posts_count, threads.last_post_id, threads.last_posted_at, threads.created_at, threads.updated_at FROM boards
+SELECT threads.id, threads.board_id, threads.user_id, threads.title, threads.language, threads.posts_count, threads.last_post_id, threads.last_posted_at, threads.created_at, threads.updated_at, threads.locked_at, threads.unpublished_at FROM boards
 JOIN threads ON threads.id IN (
     SELECT recent.id FROM threads AS recent
-    WHERE recent.board_id = boards.id
+    WHERE recent.board_id = boards.id AND recent.unpublished_at IS NULL
     ORDER BY recent.last_posted_at DESC, recent.id DESC
     LIMIT ?1
 )
@@ -100,6 +105,8 @@ func (q *Queries) ListRecentThreadsPerBoard(ctx context.Context, perBoard int64)
 			&i.LastPostedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LockedAt,
+			&i.UnpublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -115,8 +122,8 @@ func (q *Queries) ListRecentThreadsPerBoard(ctx context.Context, perBoard int64)
 }
 
 const listThreadsByBoardID = `-- name: ListThreadsByBoardID :many
-SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at FROM threads
-WHERE board_id = ?
+SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at, locked_at, unpublished_at FROM threads
+WHERE board_id = ? AND unpublished_at IS NULL
 ORDER BY last_posted_at DESC, id DESC
 `
 
@@ -140,6 +147,8 @@ func (q *Queries) ListThreadsByBoardID(ctx context.Context, boardID int64) ([]Th
 			&i.LastPostedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LockedAt,
+			&i.UnpublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -152,6 +161,94 @@ func (q *Queries) ListThreadsByBoardID(ctx context.Context, boardID int64) ([]Th
 		return nil, err
 	}
 	return items, nil
+}
+
+const listThreadsByIDs = `-- name: ListThreadsByIDs :many
+SELECT id, board_id, user_id, title, language, posts_count, last_post_id, last_posted_at, created_at, updated_at, locked_at, unpublished_at FROM threads
+WHERE id IN (/*SLICE:ids*/?)
+ORDER BY id
+`
+
+func (q *Queries) ListThreadsByIDs(ctx context.Context, ids []int64) ([]Thread, error) {
+	query := listThreadsByIDs
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Thread{}
+	for rows.Next() {
+		var i Thread
+		if err := rows.Scan(
+			&i.ID,
+			&i.BoardID,
+			&i.UserID,
+			&i.Title,
+			&i.Language,
+			&i.PostsCount,
+			&i.LastPostID,
+			&i.LastPostedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.LockedAt,
+			&i.UnpublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockThread = `-- name: LockThread :exec
+UPDATE threads
+SET locked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) LockThread(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, lockThread, id)
+	return err
+}
+
+const unlockThread = `-- name: UnlockThread :exec
+UPDATE threads
+SET locked_at = NULL,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) UnlockThread(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, unlockThread, id)
+	return err
+}
+
+const unpublishThread = `-- name: UnpublishThread :exec
+UPDATE threads
+SET unpublished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) UnpublishThread(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, unpublishThread, id)
+	return err
 }
 
 const updateThreadLastPost = `-- name: UpdateThreadLastPost :exec

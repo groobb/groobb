@@ -7,12 +7,13 @@ package query
 
 import (
 	"context"
+	"strings"
 )
 
 const createPost = `-- name: CreatePost :one
 INSERT INTO posts (thread_id, user_id, number, body)
 VALUES (?, ?, ?, ?)
-RETURNING id, thread_id, user_id, number, body, created_at, updated_at
+RETURNING id, thread_id, user_id, number, body, created_at, updated_at, unpublished_at
 `
 
 type CreatePostParams struct {
@@ -38,12 +39,13 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnpublishedAt,
 	)
 	return i, err
 }
 
 const getLatestPostByUserID = `-- name: GetLatestPostByUserID :one
-SELECT id, thread_id, user_id, number, body, created_at, updated_at FROM posts
+SELECT id, thread_id, user_id, number, body, created_at, updated_at, unpublished_at FROM posts
 WHERE user_id = ?
 ORDER BY created_at DESC, id DESC
 LIMIT 1
@@ -60,12 +62,88 @@ func (q *Queries) GetLatestPostByUserID(ctx context.Context, userID *int64) (Pos
 		&i.Body,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnpublishedAt,
 	)
 	return i, err
 }
 
+const getPostByThreadIDAndNumber = `-- name: GetPostByThreadIDAndNumber :one
+SELECT id, thread_id, user_id, number, body, created_at, updated_at, unpublished_at FROM posts
+WHERE thread_id = ? AND number = ?
+LIMIT 1
+`
+
+type GetPostByThreadIDAndNumberParams struct {
+	ThreadID int64 `json:"thread_id"`
+	Number   int64 `json:"number"`
+}
+
+func (q *Queries) GetPostByThreadIDAndNumber(ctx context.Context, arg GetPostByThreadIDAndNumberParams) (Post, error) {
+	row := q.db.QueryRowContext(ctx, getPostByThreadIDAndNumber, arg.ThreadID, arg.Number)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.ThreadID,
+		&i.UserID,
+		&i.Number,
+		&i.Body,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UnpublishedAt,
+	)
+	return i, err
+}
+
+const listPostsByIDs = `-- name: ListPostsByIDs :many
+SELECT id, thread_id, user_id, number, body, created_at, updated_at, unpublished_at FROM posts
+WHERE id IN (/*SLICE:ids*/?)
+ORDER BY id
+`
+
+func (q *Queries) ListPostsByIDs(ctx context.Context, ids []int64) ([]Post, error) {
+	query := listPostsByIDs
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Post{}
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThreadID,
+			&i.UserID,
+			&i.Number,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UnpublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPostsByThreadID = `-- name: ListPostsByThreadID :many
-SELECT id, thread_id, user_id, number, body, created_at, updated_at FROM posts
+SELECT id, thread_id, user_id, number, body, created_at, updated_at, unpublished_at FROM posts
 WHERE thread_id = ?
 ORDER BY number
 `
@@ -87,6 +165,7 @@ func (q *Queries) ListPostsByThreadID(ctx context.Context, threadID int64) ([]Po
 			&i.Body,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UnpublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -99,4 +178,16 @@ func (q *Queries) ListPostsByThreadID(ctx context.Context, threadID int64) ([]Po
 		return nil, err
 	}
 	return items, nil
+}
+
+const unpublishPost = `-- name: UnpublishPost :exec
+UPDATE posts
+SET unpublished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) UnpublishPost(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, unpublishPost, id)
+	return err
 }
