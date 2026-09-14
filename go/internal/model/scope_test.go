@@ -23,6 +23,11 @@ func TestScopes(t *testing.T) {
 		model.ScopeCommunityAdmin,
 		model.ScopeUserRead,
 		model.ScopeUserRoleWrite,
+		model.ScopeThreadLockWrite,
+		model.ScopeThreadUnpublicationWrite,
+		model.ScopePostUnpublicationWrite,
+		model.ScopeUserSuspensionWrite,
+		model.ScopeModerationLogRead,
 	}
 	if got := model.Scopes(); !slices.Equal(got, want) {
 		t.Errorf("Scopes() = %v, want %v", got, want)
