@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/net/html"
 
 	"github.com/groobb/groobb/go/internal/config"
 	"github.com/groobb/groobb/go/internal/database"
@@ -47,6 +48,15 @@ const communityName = "ジャズ喫茶"
 // [Ja] fixture はテスト対象のハンドラーと、各ケースが指すスレッドの id です。
 type fixture struct {
 	handler *thread.Handler
+
+	// db is the database the handler reads through, so that a case can change a
+	// row after the seeding: an administrator's mark is put on a thread or a post
+	// that was already there, which is the state those cases are about.
+	//
+	// [Ja] dbはハンドラーが読み取るデータベースで、ケースが投入後の行を変えられるように
+	// するためのものです。管理者の印は既にそこにあるスレッドや投稿に付くものであり、
+	// それらのケースが対象とするのはその状態です。
+	db *database.DB
 
 	// open is the thread the page is read on: three posts, one of them by an
 	// account that has withdrawn, and replies pointing back at the earlier ones.
@@ -215,7 +225,7 @@ func newFixture(t *testing.T) fixture {
 		t.Fatalf("UpdateLastPost() error = %v", err)
 	}
 
-	return fixture{handler: newHandlerForDB(db), open: open.ID, english: english.ID, other: other.ID, full: full.ID}
+	return fixture{handler: newHandlerForDB(db), db: db, open: open.ID, english: english.ID, other: other.ID, full: full.ID}
 }
 
 // newHandlerForDB builds the thread Handler over the supplied application
@@ -264,6 +274,7 @@ func newHandlerForDatabases(threadDB, boardDB, navigationDB, listingDB *database
 		repository.NewPostRepository(threadDB),
 		repository.NewPostReferenceRepository(threadDB),
 		repository.NewUserRepository(threadDB),
+		repository.NewRoleRepository(threadDB),
 	)
 	getBoardThreadsUC := usecase.NewGetBoardThreadsUsecase(repository.NewThreadRepository(listingDB))
 	createThreadUC := usecase.NewCreateThreadUsecase(
@@ -1208,4 +1219,526 @@ func newThreadDB(t *testing.T) (*database.DB, model.ThreadID) {
 	}
 
 	return db, created.ID
+}
+
+// TestShow_UnpublishedThread verifies that a thread an administrator took out of
+// view answers 404 with the page saying so, rather than with the thread or with
+// the 404 an address naming nothing gets. The status is what a crawler acts on,
+// and the page is what the visitor holding a link shared while the thread still
+// answered is told; the title and the posts are not on it.
+//
+// [Ja] TestShow_UnpublishedThread は、管理者が見えない場所へ移したスレッドが、スレッド
+// 自身でも、何も名指さないアドレスが受け取る404でもなく、その旨を述べるページを伴う404で
+// 応答することを検証します。クローラーが従うのはステータスで、まだ応答していた頃に共有された
+// リンクを手にした訪問者に伝えるのがこのページです。タイトルも投稿もそこにはありません。
+func TestShow_UnpublishedThread(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+
+	if err := repository.NewThreadRepository(fixture.db).Unpublish(context.Background(), fixture.open); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"このページは管理者により非公開にされました。",
+		`<meta name="robots" content="noindex"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("非公開のスレッドのレスポンスに %q が含まれていない", want)
+		}
+	}
+	for _, unwanted := range []string{"枯葉の名演", "Bill Evans", "ページが見つかりません"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("非公開のスレッドのレスポンスに %q が含まれている", unwanted)
+		}
+	}
+}
+
+// TestShow_UnpublishedPost verifies that a post an administrator took out of
+// view keeps its place in the thread as a placeholder: its number still
+// addresses it, the line saying it was unpublished stands where the post was,
+// and the placeholder has no body, author, time or replies footer. The reply
+// pointing at it from a later post stays a link, so the numbering a thread is read by holds
+// whether or not what was written is still shown (ADR 0009).
+//
+// [Ja] TestShow_UnpublishedPost は、管理者が見えない場所へ移した投稿が占位としてスレッドの
+// 中に位置を保つことを検証します。番号は変わらずその投稿を名指し、非公開にされた旨の1行が
+// 投稿のあった場所に立ち、占位は本文・作者・時刻・返信フッターを含みません。後続の投稿からそれを指す
+// 返信はリンクのままであり、スレッドを読むための番号は、書かれたものがまだ示されているか
+// どうかによらず保たれます (ADR 0009)。
+func TestShow_UnpublishedPost(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fixture := newFixture(t)
+
+	postRepo := repository.NewPostRepository(fixture.db)
+	second, err := postRepo.FindByThreadIDAndNumber(ctx, fixture.open, 2)
+	if err != nil {
+		t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+	}
+	if second == nil {
+		t.Fatal("レス 2 が見つからない")
+	}
+	third, err := postRepo.Create(ctx, repository.CreatePostInput{
+		ThreadID: fixture.open,
+		Number:   3,
+		Body:     ">>2 私も好きです",
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := repository.NewPostReferenceRepository(fixture.db).Create(ctx, repository.CreatePostReferenceInput{
+		PostID:           third.ID,
+		ReferencedPostID: second.ID,
+	}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := repository.NewThreadRepository(fixture.db).UpdateLastPost(ctx, fixture.open, repository.UpdateThreadLastPostInput{
+		PostsCount:   3,
+		LastPostID:   third.ID,
+		LastPostedAt: third.CreatedAt,
+	}); err != nil {
+		t.Fatalf("UpdateLastPost() error = %v", err)
+	}
+	if err := postRepo.Unpublish(ctx, second.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"管理者により非公開にされました",
+		`id="p2"`,
+		`href="#p2"`,
+		"好きな演奏は?",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("非公開の投稿を含むスレッドのレスポンスに %q が含まれていない", want)
+		}
+	}
+	if strings.Contains(body, "Bill Evans") {
+		t.Error("非公開の投稿の本文がレスポンスに含まれている")
+	}
+
+	root, err := html.Parse(strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("html.Parse() error = %v", err)
+	}
+	postsByID := make(map[string]*html.Node)
+	for node := range root.Descendants() {
+		if node.Type != html.ElementNode || node.Data != "li" {
+			continue
+		}
+		for _, attr := range node.Attr {
+			if attr.Key == "id" {
+				postsByID[attr.Val] = node
+			}
+		}
+	}
+	placeholder, publicPost := postsByID["p2"], postsByID["p3"]
+	if placeholder == nil || publicPost == nil {
+		t.Fatal("非公開投稿の占位または公開投稿が見つからない")
+	}
+
+	var publicBody *html.Node
+	for node := range publicPost.Descendants() {
+		if node.Type == html.ElementNode && node.Data == "div" && node.Parent.Data == "article" {
+			publicBody = node
+			break
+		}
+	}
+	if publicBody == nil {
+		t.Fatal("公開投稿の本文要素が見つからない")
+	}
+	foundReference := false
+	for node := range publicBody.Descendants() {
+		if node.Type != html.ElementNode || node.Data != "a" {
+			continue
+		}
+		for _, attr := range node.Attr {
+			if attr.Key == "href" && attr.Val == "#p2" && node.FirstChild != nil && node.FirstChild.Data == ">>2" {
+				foundReference = true
+			}
+		}
+	}
+	if !foundReference {
+		t.Error("公開投稿の本文内に、非公開投稿への >>2 リンクが含まれていない")
+	}
+
+	for node := range placeholder.Descendants() {
+		if node.Type == html.TextNode && strings.Contains(node.Data, "退会した利用者") {
+			t.Error("非公開投稿の占位に作者が含まれている")
+		}
+		if node.Type != html.ElementNode {
+			continue
+		}
+		if node.Data == "time" || node.Data == "footer" || (node.Data == "div" && node.Parent.Data == "article") {
+			t.Errorf("非公開投稿の占位に時刻・本文・返信フッターの要素 <%s> が含まれている", node.Data)
+		}
+	}
+}
+
+// TestShow_BoardListingExcludesUnpublishedThreads verifies that a thread an
+// administrator took out of view leaves the listing beside the thread being
+// read. The listing is how a visitor moves from one thread of the board to the
+// next, and a row leading to a page that answers 404 is not a way on.
+//
+// [Ja] TestShow_BoardListingExcludesUnpublishedThreads は、管理者が見えない場所へ移した
+// スレッドが、読んでいるスレッドの傍らの一覧から外れることを検証します。一覧は訪問者が
+// その掲示板のスレッドを次々と辿るためのものであり、404で応答するページへ導く行は道では
+// ありません。
+func TestShow_BoardListingExcludesUnpublishedThreads(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+
+	before := httptest.NewRecorder()
+	fixture.handler.Show(before, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+	if !strings.Contains(before.Body.String(), "Records I picked up") {
+		t.Fatal("一覧カラムに、公開されているスレッドが含まれていない")
+	}
+
+	if err := repository.NewThreadRepository(fixture.db).Unpublish(context.Background(), fixture.english); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if strings.Contains(rec.Body.String(), "Records I picked up") {
+		t.Error("一覧カラムに、非公開のスレッドが含まれている")
+	}
+}
+
+// seedModerator creates an account holding a role with the given scopes and
+// returns it as the visitor a request is made by. The role is narrower than the
+// built-in admin one, because what the page draws is decided by the scopes
+// rather than by being an administrator, and only a narrow role shows that.
+//
+// [Ja] seedModeratorは、指定されたスコープを持つロールを与えたアカウントを作り、それを
+// リクエストの主となる訪問者として返します。ロールを組み込みのadminより狭いものにするのは、
+// ページが描くものを決めるのが管理者であることではなくスコープであり、それを示せるのは狭い
+// ロールだけであるためです。
+func seedModerator(t *testing.T, db *database.DB, atname string, scopes []model.Scope) *model.User {
+	t.Helper()
+
+	roleName := model.RoleName("role_" + atname)
+	testutil.NewRoleBuilder(t, db).WithName(roleName).WithScopes(scopes).Build()
+	userID := testutil.NewUserBuilder(t, db).
+		WithAtname(atname).
+		WithEmail(atname + "@example.com").
+		Build()
+	testutil.NewUserRoleBuilder(t, db).WithUserID(userID).WithRoleName(roleName).Build()
+
+	return &model.User{ID: userID, Atname: atname}
+}
+
+// TestShow_ModerationActions verifies that the operations on a thread are drawn
+// for the visitor admitted to them and for nobody else: an anonymous visitor and
+// a signed-in one holding no role are both shown a page without them, and a
+// visitor holding one scope is shown that operation alone.
+//
+// It is asserted per operation rather than as one "is an administrator" case
+// because each is granted by a scope of its own, and a page drawing all three for
+// anyone holding one would offer a visitor a link that refuses them on arrival.
+//
+// [Ja] TestShow_ModerationActions は、スレッドへの操作が、それを許された訪問者にだけ描かれ、
+// 他の誰にも描かれないことを検証します。匿名の訪問者も、ロールを1つも持たないサインイン済みの
+// 訪問者も、操作の無いページを示され、1つのスコープを持つ訪問者にはその操作だけが示されます。
+//
+// 「管理者であるかどうか」の1ケースではなく操作ごとに検証するのは、それぞれが固有のスコープで
+// 与えられるためです。1つを持つ人に3つとも描くページは、辿り着いた先で拒否されるリンクを
+// 訪問者に差し出すことになります。
+func TestShow_ModerationActions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		atname            string
+		scopes            []model.Scope
+		signedIn          bool
+		wantLockLink      bool
+		wantUnpublishLink bool
+		wantPostLink      bool
+	}{
+		{
+			name:              "community:admin はすべての操作を示される",
+			atname:            "admin",
+			scopes:            []model.Scope{model.ScopeCommunityAdmin},
+			signedIn:          true,
+			wantLockLink:      true,
+			wantUnpublishLink: true,
+			wantPostLink:      true,
+		},
+		{
+			name:         "thread_lock:write だけを持つ",
+			atname:       "locker",
+			scopes:       []model.Scope{model.ScopeThreadLockWrite},
+			signedIn:     true,
+			wantLockLink: true,
+		},
+		{
+			name:              "thread_unpublication:write だけを持つ",
+			atname:            "threadhider",
+			scopes:            []model.Scope{model.ScopeThreadUnpublicationWrite},
+			signedIn:          true,
+			wantUnpublishLink: true,
+		},
+		{
+			name:         "post_unpublication:write だけを持つ",
+			atname:       "posthider",
+			scopes:       []model.Scope{model.ScopePostUnpublicationWrite},
+			signedIn:     true,
+			wantPostLink: true,
+		},
+		{
+			name:     "ロールを1つも持たない利用者",
+			atname:   "reader",
+			signedIn: true,
+		},
+		{
+			name: "匿名の訪問者",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newFixture(t)
+
+			var user *model.User
+			switch {
+			case len(tt.scopes) > 0:
+				user = seedModerator(t, fixture.db, tt.atname, tt.scopes)
+			case tt.signedIn:
+				userID := testutil.NewUserBuilder(t, fixture.db).
+					WithAtname(tt.atname).
+					WithEmail(tt.atname + "@example.com").
+					Build()
+				user = &model.User{ID: userID, Atname: tt.atname}
+			}
+
+			rec := httptest.NewRecorder()
+			fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, user))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			body := rec.Body.String()
+			id := viewmodel.ThreadID(fixture.open)
+			for _, want := range []struct {
+				drawn bool
+				path  templates.Path
+			}{
+				{drawn: tt.wantLockLink, path: templates.ThreadLockNewPath(id)},
+				{drawn: tt.wantUnpublishLink, path: templates.ThreadUnpublicationNewPath(id)},
+				{drawn: tt.wantPostLink, path: templates.PostUnpublicationNewPath(id, 1)},
+			} {
+				href := `href="` + want.path.String() + `"`
+				if got := strings.Contains(body, href); got != want.drawn {
+					t.Errorf("%s の描画 = %t, want %t", href, got, want.drawn)
+				}
+			}
+
+		})
+	}
+}
+
+// TestShow_ModerationActionsOnLockedThread verifies that a thread an
+// administrator locked offers lifting the lock in place of placing it. The two
+// are the same permission, so what decides between them is the lock the thread
+// carries; lifting has no confirmation page, so it is a form submitted from
+// here rather than a link.
+//
+// The request is answered through the CSRF middleware rather than by the handler
+// alone, so that the token the form carries is the one the submission would be
+// checked against. Asserting the field by name alone would pass on a form
+// carrying an empty token, which is the shape the page takes if what fills it in
+// is ever dropped, and the lift would be refused before reaching the handler.
+//
+// [Ja] TestShow_ModerationActionsOnLockedThread は、管理者がロックしたスレッドが、ロックを
+// 掛ける操作の代わりに外す操作を差し出すことを検証します。2つは同じ権限であるため、どちらに
+// なるかを決めるのはスレッドが持つロックです。外すことは確認ページを持たないため、リンクでは
+// なくここから送信するフォームになります。
+//
+// リクエストをハンドラー単体ではなくCSRFミドルウェア越しに答えさせるのは、フォームが運ぶ
+// トークンを、送信が照合される相手と同じものにするためです。フィールドを名前だけで検証すると、
+// 空のトークンを運ぶフォームでも通ります。それを埋めるものが失われたときページが取る形が
+// それであり、解除はハンドラーに届く前に拒否されます。
+func TestShow_ModerationActionsOnLockedThread(t *testing.T) {
+	t.Parallel()
+
+	const csrfToken = "test-csrf-token"
+
+	tests := []struct {
+		locale  model.Locale
+		button  string
+		confirm string
+	}{
+		{locale: model.LocaleJa, button: "ロックを解除する", confirm: "スレッドのロックを解除しますか？"},
+		{locale: model.LocaleEn, button: "Unlock thread", confirm: "Unlock this thread?"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.locale), func(t *testing.T) {
+			t.Parallel()
+
+			fixture := newFixture(t)
+			user := seedModerator(t, fixture.db, "locker", []model.Scope{model.ScopeThreadLockWrite})
+
+			if err := repository.NewThreadRepository(fixture.db).Lock(context.Background(), fixture.open); err != nil {
+				t.Fatalf("Lock() error = %v", err)
+			}
+
+			req := newRequest(t, fixture.open.String(), tt.locale, user)
+			req.AddCookie(&http.Cookie{Name: middleware.CSRFCookieName, Value: csrfToken})
+
+			rec := httptest.NewRecorder()
+			csrf := middleware.NewCSRF(&config.Config{Env: "test"})
+			csrf.Middleware(http.HandlerFunc(fixture.handler.Show)).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			body := rec.Body.String()
+			id := viewmodel.ThreadID(fixture.open)
+			if strings.Contains(body, `href="`+templates.ThreadLockNewPath(id).String()+`"`) {
+				t.Error("ロック中のスレッドに、ロックの確認ページへのリンクが描かれている")
+			}
+
+			form := testutil.Element(t, body, `<form action="`+templates.ThreadLockPath(id).String()+`"`, "</form>")
+			for _, want := range []string{
+				`name="_method" value="DELETE"`,
+				`name="csrf_token" value="` + csrfToken + `"`,
+				tt.button,
+				`data-confirm="` + tt.confirm + `"`,
+				`onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"`,
+			} {
+				if !strings.Contains(form, want) {
+					t.Errorf("ロックの解除フォームに %q が含まれていない: %s", want, form)
+				}
+			}
+		})
+	}
+}
+
+// TestShow_ModerationActionsOnFullThread verifies that a thread holding every
+// post it can hold is still offered the lock rather than the lift. The cap is a
+// state the thread arrived at by being written to, not a decision anyone made,
+// so there is no administrator's lock standing on it to take off; a lift sent
+// here would report success and leave the thread exactly as closed as it was.
+//
+// This is the one thread that tells the two locks apart, so it is what keeps the
+// page asking whether an administrator locked this thread rather than whether it
+// is locked at all.
+//
+// [Ja] TestShow_ModerationActionsOnFullThread は、持てる投稿をすべて持っているスレッドにも、
+// 解除ではなくロックが差し出されることを検証します。上限は書き込まれることで到達した状態で
+// あって誰かの判断ではないため、そこに外すべき管理者のロックは立っていません。ここへ解除を
+// 送れば成功を報告しながら、スレッドは閉じたままです。
+//
+// 2つのロックを区別できるスレッドはこれだけであり、ページが「ロックされているか」ではなく
+// 「管理者がこのスレッドをロックしたか」を問い続けることを保つのがこのテストです。
+func TestShow_ModerationActionsOnFullThread(t *testing.T) {
+	t.Parallel()
+
+	fixture := newFixture(t)
+	user := seedModerator(t, fixture.db, "locker", []model.Scope{model.ScopeThreadLockWrite})
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.full.String(), model.LocaleJa, user))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	id := viewmodel.ThreadID(fixture.full)
+	if !strings.Contains(body, `href="`+templates.ThreadLockNewPath(id).String()+`"`) {
+		t.Error("上限に達しただけのスレッドに、ロックの確認ページへのリンクが描かれていない")
+	}
+	if strings.Contains(body, `<form action="`+templates.ThreadLockPath(id).String()+`"`) {
+		t.Error("上限に達しただけのスレッドに、ロックの解除フォームが描かれている")
+	}
+}
+
+// TestShow_ModerationActionsSkipUnpublishedPosts verifies that a post already
+// taken out of view carries no link to take it out of view, while the posts
+// standing beside it still do. The placeholder is what is left of a post the
+// operation has already been carried out on, so offering it there would lead to
+// a page naming a target it cannot show.
+//
+// The accessible name of the link that is drawn is asserted alongside its
+// address, because the two links are told apart by that name alone: the visible
+// text is the same short phrase on every post, and the reply number is what says
+// which post a link acts on to someone reading the links by themselves.
+//
+// [Ja] TestShow_ModerationActionsSkipUnpublishedPosts は、すでに視界の外へ移された投稿が
+// それを外すリンクを持たず、その傍らに立つ投稿は持ち続けることを検証します。占位は、その操作が
+// すでに行われた投稿の残りであるため、そこにリンクを差し出せば、示せない対象を名指すページへ
+// 導くことになります。
+//
+// 描かれたリンクのアクセシブルネームをアドレスと併せて検証するのは、2つのリンクを区別するもの
+// がその名前だけであるためです。可視テキストはどの投稿でも同じ短い文言であり、リンクだけを
+// 拾い読みする人に、そのリンクがどの投稿へ働きかけるかを述べるのはレス番号です。
+func TestShow_ModerationActionsSkipUnpublishedPosts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fixture := newFixture(t)
+	user := seedModerator(t, fixture.db, "posthider", []model.Scope{model.ScopePostUnpublicationWrite})
+
+	postRepo := repository.NewPostRepository(fixture.db)
+	second, err := postRepo.FindByThreadIDAndNumber(ctx, fixture.open, 2)
+	if err != nil {
+		t.Fatalf("FindByThreadIDAndNumber() error = %v", err)
+	}
+	if second == nil {
+		t.Fatal("レス 2 が見つからない")
+	}
+	if err := postRepo.Unpublish(ctx, second.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	fixture.handler.Show(rec, newRequest(t, fixture.open.String(), model.LocaleJa, user))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	id := viewmodel.ThreadID(fixture.open)
+	if !strings.Contains(body, `href="`+templates.PostUnpublicationNewPath(id, 1).String()+`"`) {
+		t.Error("公開されている投稿に、非公開の確認ページへのリンクが描かれていない")
+	}
+	if !strings.Contains(body, `aria-label="レス 1 を非公開にする"`) {
+		t.Error("投稿の非公開のリンクに、レス番号を含むアクセシブルネームが描かれていない")
+	}
+	if strings.Contains(body, `href="`+templates.PostUnpublicationNewPath(id, 2).String()+`"`) {
+		t.Error("非公開の投稿の占位に、非公開の確認ページへのリンクが描かれている")
+	}
 }

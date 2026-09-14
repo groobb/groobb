@@ -91,7 +91,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// [Ja] スレッドは、その先頭ではなく今書かれた投稿の位置で応答する。そうしなければ、
 	// 1000 件の投稿を持つスレッドは、その最後の 1 件を加えた訪問者を先頭に着地させる
 	// ことになる。
-	target := templates.ThreadPath(viewmodel.ThreadID(id)) + templates.PostAnchor(output.Number)
+	target := templates.ThreadPostAnchorPath(viewmodel.ThreadID(id), output.Number)
 	http.Redirect(w, r, target.String(), http.StatusSeeOther)
 }
 
@@ -123,9 +123,9 @@ type refusedReply struct {
 // they can correct, a wait they can sit out, or a failure they can try again. A
 // thread that takes no further post comes back holding it too, so it can be
 // copied out, but without a way to send it again — a button that would be
-// refused a second time is not a way out. Only a thread that is not there is
-// answered with another page, since there is no reply to draw for a thread the
-// address does not name.
+// refused a second time is not a way out. Another page answers only where there
+// is no reply to draw: a thread the address does not name, and one the
+// community has taken out of view.
 //
 // [Ja] createRefused は保存されなかった送信に応答し、UseCase が何を理由に拒否したかを
 // ステータスとページの述べることに変えます。
@@ -133,8 +133,9 @@ type refusedReply struct {
 // 訪問者が手を打てるものは、いずれも書いたものを保ったまま返ってきます。直せるフィールド、
 // 待てば済む待ち時間、もう一度試せる失敗です。これ以上の投稿を受け付けないスレッドも、
 // 写し取れるようにそれを保ったまま返ってきますが、もう一度送る手立ては伴いません。
-// 2 度目も拒否されるボタンは出口ではないためです。別のページで応答するのは、そこに無い
-// スレッドだけです。アドレスがどのスレッドも名指していないとき、描くべき返信がありません。
+// 2 度目も拒否されるボタンは出口ではないためです。別のページで応答するのは、描くべき返信が
+// 無い場合だけです。アドレスがどのスレッドも名指していない場合と、コミュニティがそのスレッドを
+// 見えない場所へ移した場合です。
 func (h *Handler) createRefused(w http.ResponseWriter, r *http.Request, id model.ThreadID, body string, err error) {
 	ctx := r.Context()
 
@@ -153,6 +154,16 @@ func (h *Handler) createRefused(w http.ResponseWriter, r *http.Request, id model
 	switch ae.Code {
 	case model.AppErrCodeResourceNotFound:
 		h.errorRenderer.NotFound(w, r)
+	case model.AppErrCodeResourceUnpublished:
+		// The thread was taken out of view between the form being opened and the
+		// submission arriving. There is no page to put the reply back on, and the
+		// visitor is told what happened to the thread rather than being handed a
+		// form for one the community no longer shows.
+		//
+		// [Ja] フォームが開かれてから送信が届くまでの間に、スレッドが見えない場所へ移された。
+		// 返信を戻して置くページは無く、訪問者にはスレッドに何が起きたかを伝える。コミュニティが
+		// もう示していないスレッドのフォームを渡すのではない。
+		h.errorRenderer.Unpublished(w, r)
 	case model.AppErrCodeThreadLocked:
 		// The reasons travel to the page as they were decided, and the notice
 		// drawn from them is the whole of what is said. A message about the
@@ -186,8 +197,9 @@ func (h *Handler) createRefused(w http.ResponseWriter, r *http.Request, id model
 // which the submission carries, and its posts are left unread: the page shows
 // the reply rather than the conversation.
 //
-// A thread the address no longer names is answered with the 404 page, and a read
-// that fails for any other reason with the plain error. Either way the
+// A thread the address no longer names is answered with the 404 page, one that
+// was unpublished with the page saying so, and a read that fails for any other
+// reason with the plain error. Either way the
 // submission is lost, which is the reason this read happens at all: without the
 // thread there is no page to put it back on.
 //
@@ -199,8 +211,8 @@ func (h *Handler) createRefused(w http.ResponseWriter, r *http.Request, id model
 // もう一度読むのは、ページがそれを名指してリンクするためで、どちらも送信は運んでいない
 // ためです。その投稿は読みません。このページが見せるのは会話ではなく返信だからです。
 //
-// アドレスがもう名指していないスレッドには 404 ページで応答し、それ以外の理由で読み取りが
-// 失敗したときは素のエラーで応答します。どちらでも送信は失われますが、この読み取りを行う
+// アドレスがもう名指していないスレッドには 404 ページで応答し、非公開にされたスレッドには
+// その旨を述べるページで応答し、それ以外の理由で読み取りが失敗したときは素のエラーで応答します。どちらでも送信は失われますが、この読み取りを行う
 // 理由自体がそこにあります。スレッドが無ければ、それを戻して置くページがありません。
 //
 // このページは noindex を持ち、no-store で送ります。検索結果が見せるアドレスではなく送信に
@@ -210,9 +222,15 @@ func (h *Handler) renderRefused(w http.ResponseWriter, r *http.Request, status i
 
 	resolved, err := h.getThreadSummaryUC.Execute(ctx, usecase.GetThreadSummaryInput{ID: id})
 	if err != nil {
-		if ae := model.AsAppError(err); ae != nil && ae.Code == model.AppErrCodeResourceNotFound {
-			h.errorRenderer.NotFound(w, r)
-			return
+		if ae := model.AsAppError(err); ae != nil {
+			switch ae.Code {
+			case model.AppErrCodeResourceNotFound:
+				h.errorRenderer.NotFound(w, r)
+				return
+			case model.AppErrCodeResourceUnpublished:
+				h.errorRenderer.Unpublished(w, r)
+				return
+			}
 		}
 		slog.ErrorContext(ctx, "返信の再試行ページのためのスレッドの取得に失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

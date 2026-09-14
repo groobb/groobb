@@ -86,7 +86,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// [Ja] スレッドは、その先頭ではなく、それを始めた投稿の位置で応答する。スレッドが
 	// もっと多くの投稿を持つようになっても、ブラウザが今書かれたものの位置に着地する
 	// ようにするためである。
-	target := templates.ThreadPath(viewmodel.ThreadID(output.ThreadID)) + templates.PostAnchor(output.Number)
+	target := templates.ThreadPostAnchorPath(viewmodel.ThreadID(output.ThreadID), output.Number)
 	http.Redirect(w, r, target.String(), http.StatusSeeOther)
 }
 

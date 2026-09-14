@@ -284,7 +284,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	saved := readLatestPost(t, f.db, f.open)
-	wantLocation := templates.ThreadPath(viewmodel.ThreadID(f.open)).String() + templates.PostAnchor(2).String()
+	wantLocation := templates.ThreadPostAnchorPath(viewmodel.ThreadID(f.open), 2).String()
 	if got := rec.Header().Get("Location"); got != wantLocation {
 		t.Errorf("Location = %q, want %q", got, wantLocation)
 	}
@@ -657,7 +657,7 @@ func TestCreate_NonCanonicalID(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	want := templates.ThreadPath(viewmodel.ThreadID(f.open)).String() + templates.PostAnchor(2).String()
+	want := templates.ThreadPostAnchorPath(viewmodel.ThreadID(f.open), 2).String()
 	if got := rec.Header().Get("Location"); got != want {
 		t.Errorf("Location = %q, want %q", got, want)
 	}
@@ -768,7 +768,7 @@ func TestCreate_ThroughRouter(t *testing.T) {
 			}
 
 			saved := readLatestPost(t, f.db, f.open)
-			want := templates.ThreadPath(viewmodel.ThreadID(f.open)).String() + templates.PostAnchor(saved.number).String()
+			want := templates.ThreadPostAnchorPath(viewmodel.ThreadID(f.open), saved.number).String()
 			if got := rec.Header().Get("Location"); got != want {
 				t.Errorf("Location = %q, want %q", got, want)
 			}
@@ -891,7 +891,7 @@ func TestCreate_ThreadFillsAfterFormIsOpened(t *testing.T) {
 		usecase.NewGetCommunityNavigationUsecase(repository.NewCommunityRepository(f.db), boardRepo, repository.NewRoleRepository(f.db)),
 		usecase.NewGetBoardUsecase(boardRepo, categoryRepo),
 		usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo,
-			repository.NewPostRepository(f.db), repository.NewPostReferenceRepository(f.db), userRepo),
+			repository.NewPostRepository(f.db), repository.NewPostReferenceRepository(f.db), userRepo, repository.NewRoleRepository(f.db)),
 		usecase.NewGetBoardThreadsUsecase(threadRepo), nil,
 	)
 	auth := middleware.NewAuth(session.NewManager(userRepo, cfg))
@@ -1050,5 +1050,66 @@ func replyFormValues(t *testing.T, markup, action string) url.Values {
 				inside = false
 			}
 		}
+	}
+}
+
+// TestCreate_UnpublishedThread verifies that a reply to a thread an
+// administrator took out of view is answered with the page saying the thread
+// was taken down (HTTP 404), and that nothing is saved. The form is not drawn
+// again: a thread the community no longer shows is not one to write to, so
+// there is no page to put the submission back on.
+//
+// The refusal comes back through two paths, and both are checked: the write
+// itself refuses the reply, and a submission refused before the write — one
+// with something to fix — reaches the same answer when the page it would come
+// back on reads the thread again.
+//
+// [Ja] TestCreate_UnpublishedThread は、管理者が見えない場所へ移したスレッドへの返信が、
+// スレッドの取り下げを述べるページ (HTTP 404) で応答され、何も保存されないことを検証します。
+// フォームは描き直しません。コミュニティがもう示していないスレッドは書き込む先ではなく、
+// 送信を戻して置くページがありません。
+//
+// この拒否には2つの経路があり、どちらも検証します。書き込み自身が返信を拒否する経路と、
+// 書き込みの前に拒否された送信 (直すところのあるもの) が、戻ってくるページのためにスレッドを
+// 読み直して同じ応答に至る経路です。
+func TestCreate_UnpublishedThread(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		form url.Values
+	}{
+		{name: "整った返信", form: reply("非公開のスレッドへの返信")},
+		{name: "直すところのある返信", form: reply("")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newFixture(t)
+			author := newAuthor(t, f.db, "alice")
+
+			if err := repository.NewThreadRepository(f.db).Unpublish(context.Background(), f.open); err != nil {
+				t.Fatalf("Unpublish() error = %v", err)
+			}
+
+			rec := httptest.NewRecorder()
+			f.handler.Create(rec, newSubmitRequest(t, f.open.String(), model.LocaleJa, author, tt.form))
+
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+			}
+			body := rec.Body.String()
+			if !strings.Contains(body, "このページは管理者により非公開にされました。") {
+				t.Error("非公開のページの文言が含まれていない")
+			}
+			if strings.Contains(body, "ページが見つかりません") {
+				t.Error("非公開のスレッドへの返信に 404 ページの文言が含まれている")
+			}
+			if got := countPosts(t, f.db, f.open); got != 1 {
+				t.Errorf("スレッドの投稿 = %d 件, want 1 件", got)
+			}
+		})
 	}
 }

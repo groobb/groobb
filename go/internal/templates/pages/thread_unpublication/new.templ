@@ -1,0 +1,104 @@
+package thread_unpublication
+
+import (
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// New renders the page a thread's unpublication is confirmed on: what
+// unpublishing does, the thread it is about to be done to, an optional note,
+// and the button that does it.
+//
+// The lead says both halves of what the mark means, because an administrator
+// standing here is deciding between this and leaving the thread where it is.
+// The thread and its replies stop being shown to anyone, and nothing written in
+// it is destroyed; what it does not say is that the thread can be brought back,
+// because no screen in this instance does that.
+//
+// The thread is not chosen here. It is named by the address the form submits
+// to, so the page can only take out of view the thread it was opened from, and
+// it states which one that is instead of offering a choice that is already
+// made.
+//
+// A cancel link stands beside the button, leading back to the thread as it
+// still stands. It is the way out of a destructive confirmation, so it is not
+// styled as a second thing to press.
+//
+// [Ja] Newは、スレッドの非公開を確認するページを描画します。非公開が何をするのか、これから
+// それが行われるスレッド、任意の注記、そしてそれを行うボタンです。
+//
+// 説明文が印の意味の両面を述べるのは、ここに立つ管理者が、これを行うことと、スレッドをその
+// ままにしておくこととの間で決めようとしているためです。スレッドとその返信は誰にも示されなく
+// なり、そこに書かれたものは何も失われません。述べないのは、スレッドを戻せることです。この
+// インスタンスにそれを行う画面は無いためです。
+//
+// スレッドはここで選びません。フォームの送信先のアドレスが名指すため、このページは自身が
+// 開かれたスレッドしか視界から外せず、既に決まっている選択を差し出すのではなく、どのスレッドで
+// あるかを述べます。
+//
+// ボタンの傍らに取り消しのリンクを置き、まだそこに立っているスレッドへ戻します。これは破壊的な
+// 確認からの出口であり、押すべき2つ目のものとしては装いません。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-12">
+		<div class="flex flex-col gap-2">
+			<h1 class="text-2xl font-bold tracking-tight">
+				{ templates.T(ctx, "thread_unpublication_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "thread_unpublication_new_lead") }
+			</p>
+		</div>
+		<div class="flex flex-col gap-1 rounded-md border border-border bg-muted px-4 py-3">
+			<p class="text-xs text-muted-foreground">
+				{ templates.T(ctx, "thread_unpublication_new_target_label") }
+			</p>
+			<p
+				class="font-medium wrap-anywhere"
+				if data.Language.Declared() {
+					lang={ data.Language.Tag }
+				}
+			>
+				{ data.Title }
+			</p>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form
+			action={ templates.ThreadUnpublicationPath(data.ThreadID).SafeURL() }
+			method="POST"
+			class="flex flex-col gap-4"
+		>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("reason") {
+					data-invalid="true"
+				}
+			>
+				<label for="reason">{ templates.T(ctx, "thread_unpublication_new_reason_label") }</label>
+				<textarea
+					id="reason"
+					name="reason"
+					rows="4"
+					autofocus
+					if data.FormErrors.HasFieldError("reason") {
+						aria-invalid="true"
+						aria-describedby={ "reason-hint " + components.FieldErrorsDescribedBy("reason", data.FormErrors) }
+					} else {
+						aria-describedby="reason-hint"
+					}
+				>{ "\n" + data.Reason }</textarea>
+				<p id="reason-hint">{ templates.T(ctx, "thread_unpublication_new_reason_hint") }</p>
+				@components.FieldErrors("reason", data.FormErrors)
+			</div>
+			<div class="flex flex-wrap items-center gap-4">
+				<button type="submit" class="btn" data-variant="destructive">
+					{ templates.T(ctx, "thread_unpublication_new_submit_button") }
+				</button>
+				<a href={ templates.ThreadPath(data.ThreadID).SafeURL() } class="text-sm underline">
+					{ templates.T(ctx, "thread_unpublication_new_cancel") }
+				</a>
+			</div>
+		</form>
+	</div>
+}

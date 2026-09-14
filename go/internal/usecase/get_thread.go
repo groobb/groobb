@@ -18,6 +18,16 @@ import (
 // 既に共有されたリンクが壊れます。
 type GetThreadInput struct {
 	ID model.ThreadID
+
+	// UserID is who the page is being read for, and nil for an anonymous
+	// visitor. What the thread holds is the same for everyone, so the id arrives
+	// for the one part that is not: whether the page offers the operations an
+	// administrator acts on the thread through.
+	//
+	// [Ja] UserIDはページが誰のために読まれるかで、匿名の訪問者のときはnilです。スレッドの
+	// 持つものは誰にとっても同じであるため、idが届くのはそうでない唯一の部分、すなわち
+	// ページが、管理者がスレッドに対して働きかける操作を差し出すかどうかのためです。
+	UserID *model.UserID
 }
 
 // ThreadPost is one post of a thread together with what the thread, rather than
@@ -73,6 +83,32 @@ type GetThreadOutput struct {
 	Board    *model.Board
 	Category *model.Category
 	Posts    []ThreadPost
+
+	// CanLockThread reports whether the visitor the page was read for may work
+	// this thread's lock, which is to say place it and lift it alike. One scope
+	// admits the pair (ADR 0013), so one answer covers both, and which of the two
+	// the page offers is decided by the lock the thread carries rather than by a
+	// second answer here.
+	//
+	// [Ja] CanLockThreadは、このページを読んだ訪問者がこのスレッドのロックを扱ってよいか
+	// どうか、すなわち掛けることと外すことの双方を返します。1つのスコープがこの対を許す
+	// ため (ADR 0013)、1つの答えが両方を覆います。2つのうちどちらをページが差し出すかは、
+	// ここにもう1つの答えを置くのではなく、スレッドが持つロックが決めます。
+	CanLockThread bool
+
+	// CanUnpublishThread reports whether the visitor may take this thread out of
+	// the community's view.
+	//
+	// [Ja] CanUnpublishThreadは、訪問者がこのスレッドをコミュニティの視界から外して
+	// よいかどうかを返します。
+	CanUnpublishThread bool
+
+	// CanUnpublishPost reports whether the visitor may take one post out of view,
+	// which is what decides whether the posts below carry that operation.
+	//
+	// [Ja] CanUnpublishPostは、訪問者が投稿1件を視界から外してよいかどうかを返します。
+	// 下に並ぶ投稿がその操作を持つかどうかを決めるものがこれです。
+	CanUnpublishPost bool
 }
 
 // GetThreadUsecase reads everything a thread's page is drawn from. It is a read
@@ -102,13 +138,15 @@ type GetThreadUsecase struct {
 	postRepo          *repository.PostRepository
 	postReferenceRepo *repository.PostReferenceRepository
 	userRepo          *repository.UserRepository
+	roleRepo          *repository.RoleRepository
 }
 
 // NewGetThreadUsecase builds a GetThreadUsecase over the repositories a thread's
-// page is read from.
+// page is read from, together with the role repository a signed-in visitor's
+// permission is resolved through.
 //
-// [Ja] NewGetThreadUsecase は、スレッドのページが読み取る各リポジトリから
-// GetThreadUsecase を構築します。
+// [Ja] NewGetThreadUsecase は、スレッドのページが読み取る各リポジトリと、サインイン済みの
+// 訪問者の権限を解決するために通すロールのリポジトリから GetThreadUsecase を構築します。
 func NewGetThreadUsecase(
 	threadRepo *repository.ThreadRepository,
 	boardRepo *repository.BoardRepository,
@@ -116,6 +154,7 @@ func NewGetThreadUsecase(
 	postRepo *repository.PostRepository,
 	postReferenceRepo *repository.PostReferenceRepository,
 	userRepo *repository.UserRepository,
+	roleRepo *repository.RoleRepository,
 ) *GetThreadUsecase {
 	return &GetThreadUsecase{
 		threadRepo:        threadRepo,
@@ -124,6 +163,7 @@ func NewGetThreadUsecase(
 		postRepo:          postRepo,
 		postReferenceRepo: postReferenceRepo,
 		userRepo:          userRepo,
+		roleRepo:          roleRepo,
 	}
 }
 
@@ -136,6 +176,13 @@ func NewGetThreadUsecase(
 // behind by a deleted thread rather than a failure, so it is not logged as an
 // error here.
 //
+// An id naming a thread an administrator unpublished is reported as
+// AppErrCodeResourceUnpublished, and Execute returns before it reads a post:
+// the mark on the thread hides the conversation under it, so there is nothing
+// left for this page to assemble. The two are told apart so that the handler
+// can say the thread was taken down rather than leave a visitor holding a
+// shared link to wonder whether they mistyped it.
+//
 // A board that cannot be read back, or a category a board names but that cannot
 // be read back, is a failure instead: a thread always belongs to a board and
 // deleting a board takes its threads with it, while deleting a category clears
@@ -147,6 +194,13 @@ func NewGetThreadUsecase(
 // than per post, so the page costs a fixed number of queries whether the thread
 // holds one post or the thousand it is capped at.
 //
+// A signed-in visitor costs one more query, for the roles their permission to
+// moderate the thread is read from. An anonymous visitor does not: holding no
+// account is already the whole answer, and a thread's page is what an anonymous
+// visitor reads most. The roles are read last, after the thread has been
+// resolved, so a missing or unpublished thread is answered without paying for
+// them.
+//
 // [Ja] Execute はスレッドを解決し、その在り処を読み、投稿を作者と、それを指して戻る
 // 返信とともに組み立てます。
 //
@@ -154,6 +208,12 @@ func NewGetThreadUsecase(
 // ハンドラーが共通の not-found ページで 404 を返せるようにします。これは推測された、
 // あるいは削除されたスレッドの残した URL の既知の結果であって失敗ではないため、ここでは
 // エラーとしてログに残しません。
+//
+// 管理者が非公開にしたスレッドを指すidはAppErrCodeResourceUnpublishedとして報告し、Executeは
+// 投稿を1件も読まないうちに返ります。スレッドに付いた印がその下の会話を隠すため、このページが
+// 組み立てるものは残っていないためです。2つを分けるのは、ハンドラーがスレッドの取り下げを
+// 述べられるようにするためです。そうしなければ、共有されたリンクを手にした訪問者に、それを
+// 打ち間違えたのかどうかを考えさせることになります。
 //
 // 一方、掲示板を読み戻せない場合、および掲示板がカテゴリーを名指しているのにそれを
 // 読み戻せない場合は失敗です。スレッドは必ず掲示板に属し、掲示板の削除はそのスレッドを
@@ -163,6 +223,12 @@ func NewGetThreadUsecase(
 //
 // 作者と参照はいずれも投稿ごとではなく全投稿分をまとめて読むため、スレッドが投稿 1 件を
 // 持つ場合でも上限の 1000 件を持つ場合でも、ページのクエリ数は一定です。
+//
+// サインイン済みの訪問者はクエリを1つ多く払います。スレッドをモデレートしてよいかどうかを
+// 読む元となるロールのためです。匿名の訪問者は払いません。アカウントを持たないことが
+// すでに答えのすべてであり、スレッドのページは匿名の訪問者が最も多く読むページであるため
+// です。ロールはスレッドを解決した後、最後に読みます。不在のスレッドと非公開のスレッドには、
+// その支払いをせずに応答するためです。
 func (uc *GetThreadUsecase) Execute(ctx context.Context, input GetThreadInput) (*GetThreadOutput, error) {
 	thread, err := uc.threadRepo.FindByID(ctx, input.ID)
 	if err != nil {
@@ -173,6 +239,14 @@ func (uc *GetThreadUsecase) Execute(ctx context.Context, input GetThreadInput) (
 			Code:     model.AppErrCodeResourceNotFound,
 			UserMsg:  i18n.T(ctx, "error_not_found_message"),
 			Internal: fmt.Errorf("スレッドが見つからない: id=%s", input.ID),
+			Metadata: map[string]string{"thread_id": input.ID.String()},
+		}
+	}
+	if thread.UnpublishedAt != nil {
+		return nil, &model.AppError{
+			Code:     model.AppErrCodeResourceUnpublished,
+			UserMsg:  i18n.T(ctx, "error_unpublished_message"),
+			Internal: fmt.Errorf("非公開のスレッドの読み取り: id=%s", input.ID),
 			Metadata: map[string]string{"thread_id": input.ID.String()},
 		}
 	}
@@ -205,12 +279,24 @@ func (uc *GetThreadUsecase) Execute(ctx context.Context, input GetThreadInput) (
 		return nil, fmt.Errorf("投稿の作者の取得に失敗: %w", err)
 	}
 
-	return &GetThreadOutput{
+	output := &GetThreadOutput{
 		Thread:   thread,
 		Board:    board,
 		Category: category,
 		Posts:    assembleThreadPosts(posts, references, authors),
-	}, nil
+	}
+
+	if input.UserID != nil {
+		communityPolicy, err := resolveCommunityPolicy(ctx, uc.roleRepo, UserActor(*input.UserID))
+		if err != nil {
+			return nil, err
+		}
+		output.CanLockThread = communityPolicy.CanLockThread()
+		output.CanUnpublishThread = communityPolicy.CanUnpublishThread()
+		output.CanUnpublishPost = communityPolicy.CanUnpublishPost()
+	}
+
+	return output, nil
 }
 
 // findBoardCategory reads the category the given board names, and returns nil

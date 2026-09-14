@@ -379,6 +379,19 @@ func ThreadPath(id viewmodel.ThreadID) Path {
 	return Path("/t/" + id.String())
 }
 
+// ThreadPostAnchorPath returns the link to one post of a thread from a page
+// that is not that thread. PostAnchor writes the same link for a page that is,
+// where the fragment alone reaches it; a page standing elsewhere has to name
+// the thread the post is served with before the fragment means anything.
+//
+// [Ja] ThreadPostAnchorPathは、スレッドの投稿1件への、そのスレッドではないページからの
+// リンクを返します。そのスレッドであるページのための同じリンクはPostAnchorが書き、そこでは
+// フラグメントだけでその投稿へ届きます。別の場所に立つページは、フラグメントが意味を持つ前に、
+// 投稿が一緒に配信されるスレッドを名指さなければなりません。
+func ThreadPostAnchorPath(id viewmodel.ThreadID, number int) Path {
+	return ThreadPath(id) + PostAnchor(number)
+}
+
 // BoardThreadsPath returns the path to the threads of the board with the given
 // slug: the collection a new thread is added to. A thread is only ever written
 // to this address — once created it is read at the ThreadPath of its own id, so
@@ -413,6 +426,80 @@ func BoardThreadsNewPath(slug string) Path {
 // 自身のページで読まれ、そこでは与えられたレス番号で名指されます (ADR 0009)。
 func ThreadPostsPath(id viewmodel.ThreadID) Path {
 	return ThreadPath(id) + "/posts"
+}
+
+// ThreadLockPath returns the path to the lock of the thread with the given id:
+// the thing a moderator puts on the thread and takes back off. Placing and
+// lifting are the same address because what they act on is the one lock, so a
+// thread carries one place a lock is made and unmade rather than two verbs of
+// its own.
+//
+// [Ja] ThreadLockPathは指定idのスレッドのロック、すなわちモデレーターがそのスレッドに
+// 掛け、また外すもののパスを返します。掛けることと外すことが同じアドレスであるのは、どちらも
+// 1つの同じロックに対して行われるためです。スレッドが持つのは、ロックが作られまた取り払われる
+// 1つの場所であって、それ自身の2つの動詞ではありません。
+func ThreadLockPath(id viewmodel.ThreadID) Path {
+	return ThreadPath(id) + "/lock"
+}
+
+// ThreadLockNewPath returns the path to the page a thread's lock is confirmed
+// on. The thread is named by the address rather than chosen on the page, so the
+// page is opened from the thread it closes and can close no other.
+//
+// [Ja] ThreadLockNewPathは、スレッドのロックを確認するページのパスを返します。スレッドは
+// ページ上で選ぶのではなくアドレスが名指すため、このページは自身が閉じるスレッドから開かれ、
+// それ以外のスレッドを閉じることはできません。
+func ThreadLockNewPath(id viewmodel.ThreadID) Path {
+	return ThreadLockPath(id) + "/new"
+}
+
+// ThreadUnpublicationPath returns the path to the unpublication of the thread
+// with the given id: the mark that takes the thread out of the community's
+// view. The thread keeps its title and its posts under the mark, so what this
+// addresses is the mark rather than the thread's removal.
+//
+// [Ja] ThreadUnpublicationPathは、指定idのスレッドの非公開、すなわちスレッドをコミュニティ
+// の視界から外す印のパスを返します。印の下でもスレッドはタイトルと投稿を保つため、これが
+// 名指すのはスレッドの削除ではなく印です。
+func ThreadUnpublicationPath(id viewmodel.ThreadID) Path {
+	return ThreadPath(id) + "/unpublication"
+}
+
+// ThreadUnpublicationNewPath returns the path to the page a thread's
+// unpublication is confirmed on. The thread is named by the address rather than
+// chosen on the page, so the page is opened from the thread it takes out of
+// view and can take no other.
+//
+// [Ja] ThreadUnpublicationNewPathは、スレッドの非公開を確認するページのパスを返します。
+// スレッドはページ上で選ぶのではなくアドレスが名指すため、このページは自身が視界から外す
+// スレッドから開かれ、それ以外のスレッドを外すことはできません。
+func ThreadUnpublicationNewPath(id viewmodel.ThreadID) Path {
+	return ThreadUnpublicationPath(id) + "/new"
+}
+
+// PostUnpublicationPath returns the path to the unpublication of one post of a
+// thread. The post is named by its thread and its reply number, which is how it
+// is addressed everywhere it is referred to (ADR 0009): it has no id of its own
+// in any address, so the pair that names it in a >>N names it here too.
+//
+// [Ja] PostUnpublicationPathは、スレッドの投稿1件の非公開のパスを返します。投稿はスレッド
+// とレス番号で名指されます。それが、投稿が参照されるあらゆる場所でのその投稿の指し方である
+// ためです (ADR 0009)。投稿はどのアドレスにも自身のidを持たないため、>>Nの中でそれを名指す
+// 組が、ここでもそれを名指します。
+func PostUnpublicationPath(id viewmodel.ThreadID, number int) Path {
+	return ThreadPostsPath(id) + Path("/"+strconv.Itoa(number)) + "/unpublication"
+}
+
+// PostUnpublicationNewPath returns the path to the page a post's unpublication
+// is confirmed on. The post is named by the address for the reason the thread
+// is on the page above it: the page is opened from the post it takes out of
+// view and can take no other.
+//
+// [Ja] PostUnpublicationNewPathは、投稿の非公開を確認するページのパスを返します。投稿を
+// アドレスが名指すのは、その上のページでスレッドがそうされるのと同じ理由です。このページは
+// 自身が視界から外す投稿から開かれ、それ以外の投稿を外すことはできません。
+func PostUnpublicationNewPath(id viewmodel.ThreadID, number int) Path {
+	return PostUnpublicationPath(id, number) + "/new"
 }
 
 // AdminPath returns the path to the admin hub: the page the community's

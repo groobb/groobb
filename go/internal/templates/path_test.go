@@ -276,3 +276,45 @@ func TestAdminUserRolePaths(t *testing.T) {
 		t.Errorf("AdminUserRolePath(%v, %q) = %q, want %q", id, "admin", got, want)
 	}
 }
+
+// TestModerationPaths verifies the addresses the moderation screens are reached
+// at: the mark a thread or a post carries, the page each is confirmed on, and
+// the link to one post from a page that is not its thread. A post's two are
+// built from the pair that names it inside its thread (ADR 0009), so this states
+// that the number lands between the thread's posts and the mark rather than
+// anywhere else in the path.
+//
+// [Ja] TestModerationPathsは、モデレーションの各画面が到達されるアドレスを検証します。
+// スレッドや投稿が持つ印、それぞれを確認するページ、そしてスレッドではないページからの投稿
+// 1件へのリンクです。投稿の2つはスレッドの中でそれを名指す組から組み立てられるため
+// (ADR 0009)、番号がパスの他のどこでもなくスレッドの投稿と印の間に来ることをここで述べます。
+func TestModerationPaths(t *testing.T) {
+	t.Parallel()
+
+	const id = viewmodel.ThreadID(12)
+	const number = 3
+
+	tests := []struct {
+		name string
+		got  templates.Path
+		want templates.Path
+	}{
+		{name: "thread lock", got: templates.ThreadLockPath(id), want: "/t/12/lock"},
+		{name: "thread lock new", got: templates.ThreadLockNewPath(id), want: "/t/12/lock/new"},
+		{name: "thread unpublication", got: templates.ThreadUnpublicationPath(id), want: "/t/12/unpublication"},
+		{name: "thread unpublication new", got: templates.ThreadUnpublicationNewPath(id), want: "/t/12/unpublication/new"},
+		{name: "post unpublication", got: templates.PostUnpublicationPath(id, number), want: "/t/12/posts/3/unpublication"},
+		{name: "post unpublication new", got: templates.PostUnpublicationNewPath(id, number), want: "/t/12/posts/3/unpublication/new"},
+		{name: "post anchor from elsewhere", got: templates.ThreadPostAnchorPath(id, number), want: "/t/12#p3"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if tt.got != tt.want {
+				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
+			}
+		})
+	}
+}
