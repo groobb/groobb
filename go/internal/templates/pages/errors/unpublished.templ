@@ -1,0 +1,51 @@
+package errors
+
+import "github.com/groobb/groobb/go/internal/templates"
+
+// Unpublished renders the body of the page answering an address an
+// administrator took out of view: that what stood here was removed, and a link
+// on to the top page so the visitor is not left at a dead end.
+//
+// It says the thread was taken down rather than that the page does not exist,
+// because the address is one the community held and the visitor may have
+// reached it from a link that was shared while it still answered. A bare 404
+// would leave them to wonder whether the link they followed was mistyped.
+//
+// It does not say who removed it or why. The reason travels to the moderation
+// log, which the administrators read; a visitor reading a thread is told what
+// happened to it, not what was decided about somebody's post.
+//
+// The link points at the top page for the reason NotFound's does: the page is
+// rendered without resolving who is asking, and the top page hands a signed-in
+// visitor on to home by itself.
+//
+// [Ja] Unpublishedは、管理者が見えない場所へ移したアドレスに応答するページの本文を
+// 描画します。ここに立っていたものが取り除かれたことを示し、訪問者を行き止まりに
+// 残さないようトップページへのリンクを置きます。
+//
+// ページが存在しないことではなくスレッドが取り下げられたことを述べるのは、そのアドレスが
+// コミュニティの持っていたものであり、訪問者がまだ応答していた頃に共有されたリンクから
+// 辿り着いたのかもしれないためです。素の404は、辿ったリンクが打ち間違いだったのかどうかを
+// 考えさせることになります。
+//
+// 誰がなぜ取り除いたのかは述べません。理由は管理者が読む操作履歴へ渡ります。スレッドを
+// 読んでいる訪問者に伝えるのはそれに何が起きたかであって、誰かの投稿について何が判断されたか
+// ではありません。
+//
+// リンク先をトップページにするのはNotFoundと同じ理由です。このページは誰が尋ねているかを
+// 解決せずに描画され、トップページはサインイン済みの訪問者を自分でホームへ引き渡します。
+templ Unpublished() {
+	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
+		<div class="card text-center">
+			<header>
+				<h1 class="card-title">{ templates.T(ctx, "error_unpublished_heading") }</h1>
+				<p>{ templates.T(ctx, "error_unpublished_message") }</p>
+			</header>
+			<footer>
+				<a href={ templates.RootPath().SafeURL() } class="btn w-full">
+					{ templates.T(ctx, "error_unpublished_back_to_home") }
+				</a>
+			</footer>
+		</div>
+	</div>
+}
