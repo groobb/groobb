@@ -116,17 +116,19 @@ func (r *UserRoleRepository) ListByUserIDs(ctx context.Context, userIDs []model.
 }
 
 // CountHoldersByRoleID returns how many people hold the role, counting only
-// those who have not withdrawn. A withdrawn user keeps their assignments until
-// the account is purged, and counting them would let the community be left with
-// an administrator nobody can sign in as.
+// those who can still act on it. A withdrawn user keeps their assignments until
+// the account is purged, and a suspended one keeps theirs for as long as the
+// suspension stands; counting either would let the community be left with an
+// administrator nobody can sign in as.
 //
 // A caller that has to keep a role held by at least one person reads this count
 // inside the transaction that writes, so that the number it acts on cannot
 // change under it.
 //
-// [Ja] CountHoldersByRoleID は、そのロールを何人が持っているかを、退会していない人だけを
-// 数えて返します。退会したユーザーはアカウントが完全に削除されるまで割当を保つため、
-// その人を数えると、誰もサインインできない管理者だけがコミュニティに残りえます。
+// [Ja] CountHoldersByRoleID は、そのロールを何人が持っているかを、まだそのロールで行動
+// できる人だけを数えて返します。退会したユーザーはアカウントが完全に削除されるまで割当を
+// 保ち、停止されたユーザーも停止が続く間は割当を保ちます。どちらを数えても、誰もサイン
+// インできない管理者だけがコミュニティに残りえます。
 //
 // あるロールを 1 人以上が持つ状態を保たなければならない呼び出し側は、この件数を書き込む
 // トランザクションの中で読み、判断の対象にした数がその足元で変わらないようにします。

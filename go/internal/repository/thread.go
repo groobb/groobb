@@ -68,21 +68,31 @@ func (r *ThreadRepository) FindByID(ctx context.Context, id model.ThreadID) (*mo
 // denormalized last_posted_at, so a row of the list is rendered without
 // touching posts at all.
 //
-// The whole list is one SELECT, and the rows it drops will be dropped inside
-// that same statement: muting (M3) excludes threads and people in SQL, and
-// pagination (M4) puts a LIMIT after that exclusion. Assembling the list from
-// several queries and filtering it in Go would let the number of rows on a page
-// vary with how many of them turned out to be muted.
+// A thread an administrator unpublished is left out, because a visitor browsing
+// the board should not meet it. A caller that already holds its id still reaches
+// it, through FindByID or ListByIDs.
+//
+// The whole list is one SELECT, and the rows it drops are dropped inside that
+// same statement: the unpublished ones already are, muting (M3) will exclude
+// threads and people in SQL too, and pagination (M4) puts a LIMIT after that
+// exclusion. Assembling the list from several queries and filtering it in Go
+// would let the number of rows on a page vary with how many of them turned out
+// to be dropped.
 //
 // [Ja] ListByBoardID は掲示板のスレッドを、最後に投稿されたものから順に返します
 // (時刻が同じスレッドも順序が固定されるよう id で同着を解き、後のものを先に置きます)。
 // 並び順は非正規化された last_posted_at から得るため、一覧の 1 行は posts にまったく
 // 触れずに描けます。
 //
+// 管理者が非公開にしたスレッドは落とします。掲示板を見て回る訪問者が出会うべきで
+// ないためです。idを既に持っている呼び出し元はFindByIDやListByIDsから引き続き
+// 届きます。
+//
 // 一覧全体を 1 つの SELECT にしているのは、落とす行を同じ文の中で落とすためです。
-// ミュート (M3) はスレッドと人を SQL で除外し、ページネーション (M4) はその除外の後ろに
-// LIMIT を置きます。複数のクエリを束ねて Go 側で絞り込む形にすると、そのうち何件が
-// ミュート対象だったかによって 1 ページの件数が揺れてしまいます。
+// 非公開のスレッドは既にそうしており、ミュート (M3) もスレッドと人を SQL で除外し、
+// ページネーション (M4) はその除外の後ろに LIMIT を置きます。複数のクエリを束ねて
+// Go 側で絞り込む形にすると、そのうち何件が落ちたかによって 1 ページの件数が
+// 揺れてしまいます。
 func (r *ThreadRepository) ListByBoardID(ctx context.Context, boardID model.BoardID) ([]*model.Thread, error) {
 	rows, err := r.reader.ListThreadsByBoardID(ctx, int64(boardID))
 	if err != nil {
@@ -102,12 +112,18 @@ func (r *ThreadRepository) ListByBoardID(ctx context.Context, boardID model.Boar
 // posted in yet contributes no row, so the caller pairs the result with the
 // boards it means to draw rather than reading the set of boards out of it.
 //
-// The listing is one statement whose cost is set by the number of boards rather
-// than the number of threads: the community's home page shows a few threads of
-// each board, and a query per board would grow with a listing the sidebar
-// already draws from a single row set. Ranking every thread first and keeping
-// the top few (a window function over threads) would instead read the whole
-// table on every visit to the page a signed-in visitor lands on.
+// A thread an administrator unpublished is left out, and left out before the
+// perBoard cut rather than after it, so a board still contributes its perBoard
+// most recent published threads instead of losing one of them to a hidden
+// thread.
+//
+// The listing uses one statement for all boards: the community's home page
+// shows a few threads of each board, and a query per board would grow with a
+// listing the sidebar already draws from a single row set. Each board's search
+// also reads unpublished candidates before finding its latest published threads.
+// Ranking every thread first and keeping the top few (a window function over
+// threads) would instead read the whole table on every visit to the page a
+// signed-in visitor lands on.
 //
 // [Ja] ListRecentPerBoard は、各掲示板について最後に投稿されたものから perBoard 件の
 // スレッドを返します。掲示板はコミュニティが並べた順、各掲示板のスレッドは最後に投稿
@@ -115,9 +131,14 @@ func (r *ThreadRepository) ListByBoardID(ctx context.Context, boardID model.Boar
 // 呼び出し側は描きたい掲示板の一覧と突き合わせるのであって、結果から掲示板の集合を
 // 読み取るのではありません。
 //
-// この一覧は 1 つの文であり、その費用はスレッドの件数ではなく掲示板の数で決まります。
-// コミュニティのホームは掲示板ごとに数件のスレッドを見せるため、掲示板ごとにクエリを
-// 投げる形はサイドバーが 1 つの行の集合から描いている一覧に比例して増えていきます。
+// 管理者が非公開にしたスレッドは落とします。落とすのはperBoard件を切り出した後では
+// なく前であるため、掲示板は隠れたスレッドに枠を取られることなく、公開されている
+// 最新のperBoard件を出します。
+//
+// この一覧はすべての掲示板を1つの文で取得します。コミュニティのホームは掲示板ごとに
+// 数件のスレッドを見せるため、掲示板ごとにクエリを投げる形はサイドバーが1つの行の集合から
+// 描いている一覧に比例して増えていきます。各掲示板の検索では、最新の公開スレッドへ
+// 到達するまでに非公開の候補も読み取ります。
 // 先にすべてのスレッドへ順位を付けて上位だけを残す形 (threads に対する窓関数) では、
 // サインイン済みの訪問者が着地するページを開くたびにテーブル全体を読むことになります。
 func (r *ThreadRepository) ListRecentPerBoard(ctx context.Context, perBoard int) ([]*model.Thread, error) {
@@ -219,6 +240,95 @@ func (r *ThreadRepository) UpdateLastPost(ctx context.Context, id model.ThreadID
 	})
 }
 
+// ListByIDs returns the threads among the given ids that still exist, in id
+// order, so a caller holding a set of ids resolves them in one query.
+//
+// Unpublished threads are returned. The listings leave them out because a
+// visitor browsing the community should not meet them, but a caller that
+// already holds a thread's id is looking at a record of that particular thread —
+// the moderation log naming the thread an operation was aimed at — and a row
+// that came back with nothing would leave the entry unreadable. Telling a
+// published thread from an unpublished one is the caller's to do, from
+// UnpublishedAt.
+//
+// An empty slice of ids returns an empty slice without querying: there is
+// nothing to look threads up by.
+//
+// [Ja] ListByIDsは指定したidのうち、まだ存在するスレッドをid順で返し、idの集合を持つ
+// 呼び出し元が1クエリでそれらを解決できるようにします。
+//
+// 非公開のスレッドも返します。一覧がそれらを落とすのは、コミュニティを見て回る訪問者が
+// 出会うべきでないためですが、スレッドのidを既に持っている呼び出し元が見ているのは、その
+// スレッドについての記録 — 操作の対象となったスレッドを名指す操作履歴 — であり、何も返って
+// こない行はその記録を読めなくします。公開と非公開の区別はUnpublishedAtから呼び出し元が
+// 行います。
+//
+// 空のidスライスに対してはクエリを発行せず空のスライスを返します。スレッドを引く手がかりが
+// 無いためです。
+func (r *ThreadRepository) ListByIDs(ctx context.Context, ids []model.ThreadID) ([]*model.Thread, error) {
+	if len(ids) == 0 {
+		return []*model.Thread{}, nil
+	}
+
+	rawIDs := make([]int64, len(ids))
+	for i, id := range ids {
+		rawIDs[i] = int64(id)
+	}
+
+	rows, err := r.reader.ListThreadsByIDs(ctx, rawIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	threads := make([]*model.Thread, len(rows))
+	for i, row := range rows {
+		threads[i] = r.toModel(row)
+	}
+	return threads, nil
+}
+
+// Lock stamps the thread as locked by an administrator. It writes the column
+// unconditionally, so a caller that would overwrite an existing stamp is one
+// that did not look first: the state a moderation operation acts on is read
+// inside the write transaction it commits in, and a thread already locked is
+// answered there without reaching this method.
+//
+// The timestamp uses the database clock, as does moderation_logs.created_at.
+//
+// [Ja] Lockはスレッドに管理者によるロックの時刻を打刻します。列を無条件に書くため、既に
+// ある打刻を上書きする呼び出し元は、先に読んでいない呼び出し元です。モデレーションの操作が
+// 対象とする状態は、それをコミットする書き込みトランザクションの中で読み、既にロック
+// されているスレッドはそこで答えられ、本メソッドには届きません。
+//
+// 時刻はmoderation_logs.created_atと同じく、データベースの時計を使います。
+func (r *ThreadRepository) Lock(ctx context.Context, id model.ThreadID) error {
+	return r.writer.LockThread(ctx, int64(id))
+}
+
+// Unlock clears the administrator's lock. It clears that column alone, leaving
+// the post cap — which model.Thread.LockReasons derives from PostsCount rather
+// than reading from a column — to hold on its own: a thread that also filled up
+// stays closed for that reason after it is unlocked.
+//
+// [Ja] Unlockは管理者によるロックを外します。外すのはその列だけであり、上限到達
+// (model.Thread.LockReasonsが列からではなくPostsCountから導くもの) はそのまま成り立ち
+// ます。併せて満杯になっているスレッドは、解除された後もその理由で閉じたままです。
+func (r *ThreadRepository) Unlock(ctx context.Context, id model.ThreadID) error {
+	return r.writer.UnlockThread(ctx, int64(id))
+}
+
+// Unpublish stamps the thread as unpublished by an administrator. The row keeps
+// its title and its posts, and the posts are not stamped one by one: the
+// thread's own mark is what takes it out of the listings and answers /t/{id},
+// so taking the mark off brings the whole thread back as it was.
+//
+// [Ja] Unpublishはスレッドに管理者による非公開の時刻を打刻します。行はタイトルと投稿を
+// 保ち、配下の投稿には1件ずつ印を付けません。スレッドを一覧から外し /t/{id} に答えるのは
+// スレッド自身の印であるため、印を外せばスレッドは丸ごと元のとおりに戻ります。
+func (r *ThreadRepository) Unpublish(ctx context.Context, id model.ThreadID) error {
+	return r.writer.UnpublishThread(ctx, int64(id))
+}
+
 // toModel converts a query.Thread row into a model.Thread, casting the raw ids
 // into their typed forms and the stored timestamps back into time.Time at the
 // repository boundary. UserID is nil only after the author's account row has
@@ -244,7 +354,11 @@ func (r *ThreadRepository) toModel(row query.Thread) *model.Thread {
 		PostsCount:   int(row.PostsCount),
 		LastPostID:   lastPostID,
 		LastPostedAt: time.Time(row.LastPostedAt),
-		CreatedAt:    time.Time(row.CreatedAt),
-		UpdatedAt:    time.Time(row.UpdatedAt),
+
+		LockedAt:      sqlitetime.TimePtr(row.LockedAt),
+		UnpublishedAt: sqlitetime.TimePtr(row.UnpublishedAt),
+
+		CreatedAt: time.Time(row.CreatedAt),
+		UpdatedAt: time.Time(row.UpdatedAt),
 	}
 }

@@ -51,6 +51,19 @@ type User struct {
 	// ユーザーがセッションとして再び解決されることはない。
 	DeletedAt *time.Time
 
+	// SuspendedAt marks an account an administrator has stopped: nil means the
+	// account may act, and a non-nil time is the moment it was suspended. It is
+	// held apart from DeletedAt because the two leave an account in different
+	// places. A suspended account keeps its identity -- its email and atname are
+	// untouched -- and only its activity stops, while a withdrawn one is
+	// anonymized and heads for the purge.
+	//
+	// [Ja] SuspendedAtは管理者が止めたアカウントを表します。nilはアカウントが行動できる
+	// こと、非nilは停止された時刻を意味します。DeletedAtと別に持つのは、2つがアカウントを
+	// 別の場所に置くためです。停止されたアカウントは身元を保ち (emailもatnameもそのまま
+	// です)、止まるのは活動だけですが、退会したアカウントは匿名化されパージへ向かいます。
+	SuspendedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

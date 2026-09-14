@@ -168,6 +168,20 @@ const (
 	//
 	// [Ja] AppErrCodeResourceNotFound はリソース未存在 (404 相当) です。
 	AppErrCodeResourceNotFound AppErrorCode = iota + 1
+	// AppErrCodeResourceUnpublished is a resource an administrator took out of
+	// view (404-equivalent). It stands apart from AppErrCodeResourceNotFound,
+	// which the same status also answers, because a handler has something more to
+	// say here: the address is one the community held and no longer shows, rather
+	// than one it never had, so a visitor is told the thread was taken down
+	// instead of being left to wonder whether the link they followed was mistyped.
+	//
+	// [Ja] AppErrCodeResourceUnpublishedは、管理者が見えない場所へ移したリソース
+	// (404相当) です。同じステータスで応答するAppErrCodeResourceNotFoundと分けているのは、
+	// ここではハンドラーに述べることがもう1つあるためです。そのアドレスは、コミュニティが
+	// 一度も持たなかったものではなく、持っていて今は示さないものであるため、訪問者には
+	// スレッドが取り下げられたことを伝えます。辿ったリンクが打ち間違いだったのかどうかを
+	// 考えさせずに済みます。
+	AppErrCodeResourceUnpublished
 	// AppErrCodeForbidden is insufficient permission (403-equivalent).
 	//
 	// [Ja] AppErrCodeForbidden は権限不足 (403 相当) です。

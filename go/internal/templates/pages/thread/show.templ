@@ -24,6 +24,16 @@ import (
 // 1 つのスレッドを読んでいる訪問者は次のスレッドまで 1 歩の距離にあり、これが無ければ
 // スレッドを離れるにはまず /b/{slug} へ戻ることになります。
 type ShowPageData struct {
+	// ThreadID names the thread this page is, which the operations acting on it
+	// address. The posts are reached by a fragment from here and need no id, but
+	// an operation is a separate address under /t/{id} and cannot be written
+	// without it.
+	//
+	// [Ja] ThreadIDは、このページがどのスレッドであるかを名指します。それに対して働きかける
+	// 操作が名指すのがこれです。投稿はここからフラグメントで届くためidを要しませんが、操作は
+	// /t/{id} の下の別のアドレスであり、idが無ければ書けません。
+	ThreadID viewmodel.ThreadID
+
 	Title string
 
 	// Language is the language this thread is written in, shown as a badge beside
@@ -68,6 +78,65 @@ type ShowPageData struct {
 	// [Ja] Reply は、スレッドがまだ開いている間にその末尾に来るものです。書ける訪問者
 	// にはフォームを、まだ書けない訪問者にはアカウントへの導線を持ちます。
 	Reply ShowReply
+
+	// Moderation is what a visitor admitted to acting on this thread is offered,
+	// and is empty for everyone else. It stands on the thread's own page rather
+	// than behind the admin screens because that is where an administrator is
+	// when they decide something has to be done: they are reading the thread.
+	//
+	// [Ja] Moderationは、このスレッドに対して働きかけることを許された訪問者に差し出される
+	// ものであり、それ以外の人には空です。管理画面の背後ではなくスレッド自身のページに立つ
+	// のは、何かをしなければならないと管理者が判断するとき、その人が居るのがそこだからです。
+	// スレッドを読んでいるのです。
+	Moderation ShowModeration
+}
+
+// ShowModeration is what the thread's page offers a visitor who may act on it:
+// the operations on the thread itself, and whether the posts carry the one that
+// acts on a post.
+//
+// The permissions arrive one per operation rather than as a single flag, because
+// they are granted one at a time: a role may admit hiding a post without
+// admitting closing the thread, and a visitor holding one is offered that one
+// alone.
+//
+// [Ja] ShowModerationは、スレッドのページが、それに対して働きかけてよい訪問者に差し出す
+// ものです。スレッド自身への操作と、各投稿が投稿への操作を持つかどうかを表します。
+//
+// 権限を単一のフラグではなく操作ごとに受け取るのは、権限が1つずつ与えられるためです。
+// スレッドを閉じることを許さずに投稿を隠すことだけを許すロールがありえ、その1つを持つ
+// 訪問者にはその1つだけが差し出されます。
+type ShowModeration struct {
+	// CanLockThread says the visitor may work this thread's lock. Placing it and
+	// lifting it are one permission (ADR 0013), so this decides both, and the
+	// lock the thread carries decides which of the two is drawn.
+	//
+	// [Ja] CanLockThreadは、訪問者がこのスレッドのロックを扱ってよいことを述べます。掛ける
+	// ことと外すことは1つの権限であるため (ADR 0013)、これが両方を決め、2つのうちどちらを
+	// 描くかはスレッドが持つロックが決めます。
+	CanLockThread bool
+
+	CanUnpublishThread bool
+	CanUnpublishPost   bool
+
+	// CSRFToken is carried by the one operation here that is submitted rather
+	// than followed: lifting a lock has no confirmation page, so its form stands
+	// on this page.
+	//
+	// [Ja] CSRFTokenは、ここにある操作のうち、辿るのではなく送信する唯一のものが運びます。
+	// ロックの解除は確認ページを持たないため、そのフォームはこのページに立ちます。
+	CSRFToken string
+}
+
+// Shown reports whether the group of operations on the thread itself is drawn.
+// A visitor admitted only to hiding a post is offered nothing here: what they
+// may do stands on the posts.
+//
+// [Ja] Shownは、スレッド自身への操作の群を描くかどうかを返します。投稿を隠すことだけを
+// 許された訪問者には、ここには何も差し出されません。その人が行えることは各投稿の側に
+// 立っているためです。
+func (m ShowModeration) Shown() bool {
+	return m.CanLockThread || m.CanUnpublishThread
 }
 
 // LockNotice returns what the notice about the locked thread is drawn from. It
@@ -142,6 +211,25 @@ type ShowReply struct {
 type ShowPost struct {
 	Number int
 
+	// Unpublished says an administrator took this post out of view, which is the
+	// state the page draws a placeholder for. The fields below are then empty:
+	// what the mark hides does not reach this struct, so the placeholder holds
+	// the number and nothing else.
+	//
+	// The post is kept in the list rather than left out because its number
+	// addresses it: the numbers are handed out once and never reused (ADR 0009),
+	// so a post dropped from the page would take its #p{number} with it and leave
+	// every >>N pointing at it leading nowhere.
+	//
+	// [Ja] Unpublishedは、管理者がこの投稿を見えない場所へ移したことを述べ、ページが占位を
+	// 描くのはこの状態です。このとき下のフィールドは空です。印が隠すものはこの構造体へ届かず、
+	// 占位が持つのは番号だけです。
+	//
+	// 投稿を落とさず一覧に残すのは、その番号が投稿を名指すためです。番号は1度だけ配られ、
+	// 再利用されません (ADR 0009)。ページから落とした投稿は#p{number}を道連れにし、それを指す
+	// すべての>>Nをどこへも繋がらないものにします。
+	Unpublished bool
+
 	// Author is the atname of the account that wrote the post, without the
 	// leading @, and "" when the author has withdrawn. The post is shown either
 	// way: a withdrawal takes the name off what was written, not the writing.
@@ -162,6 +250,17 @@ type ShowPost struct {
 	// 描画され、>>N のもう半分をなします。本文が前向きのリンクを運び、こちらが逆向きの
 	// リンクを運びます。
 	ReplyNumbers []int
+}
+
+// HasReplies reports whether the posts that answered this one are listed under
+// it. A placeholder lists none: the replies to an unpublished post are drawn
+// from what it holds, and it holds nothing the page shows.
+//
+// [Ja] HasRepliesは、この投稿に答えた投稿をその下に並べるかどうかを返します。占位は何も
+// 並べません。非公開の投稿への返信はその投稿が持つものから描かれますが、ページが示すものを
+// それは持たないためです。
+func (p ShowPost) HasReplies() bool {
+	return !p.Unpublished && len(p.ReplyNumbers) > 0
 }
 
 // ShowBoard is the board this thread was posted in and the threads standing in
@@ -332,6 +431,19 @@ templ ShowCenter(data ShowPageData) {
 // also a link to itself, which is how a visitor takes the address of one post out
 // of a page that serves the whole thread under a single URL.
 //
+// A post an administrator unpublished keeps its place in the numbering, drawn as
+// a placeholder holding its number, still linking to itself, and a line saying
+// it was taken out of view. The body, the author, the time and the replies to it
+// are left undrawn. Every >>N pointing at it stays a link, so following one
+// arrives at the placeholder and reads why there is nothing there.
+//
+// A visitor admitted to acting on the thread is given the operations for it
+// under the post count, and the one for a post in that post's header. They are
+// drawn where what they act on is read, so an administrator decides and acts in
+// the same place; a visitor admitted to none of them is shown none of it, and
+// the page reads as it does for everyone else. A placeholder carries no
+// operation: the mark it stands for has already been made.
+//
 // Each post can skip rendering while it is far outside the viewport. Its
 // intrinsic-size fallback matches the measured one-line desktop shape: 4.5625rem
 // for the header, body and border, plus 2rem when a replies footer is present.
@@ -359,6 +471,17 @@ templ ShowCenter(data ShowPageData) {
 // 共有された #p12 が解決する先の id として持ちます。番号は自分自身へのリンクでもあります。
 // スレッド全体を 1 つの URL で配信するページから、訪問者が投稿 1 つのアドレスを取り出す
 // 手立てがこれです。
+//
+// 管理者が非公開にした投稿は番号の並びの中に位置を保ち、占位として描かれます。占位が持つのは、
+// 自分自身へのリンクであり続ける番号と、見えない場所へ移された旨を述べる1行です。本文・作者・
+// 時刻・それへの返信は描きません。それを指す>>Nはすべてリンクのままであるため、辿った訪問者は
+// 占位に着き、そこに何も無い理由を読みます。
+//
+// スレッドに対して働きかけることを許された訪問者には、スレッドへの操作を投稿数の下に、投稿への
+// 操作をその投稿のヘッダーに差し出します。操作は、それが働きかける対象が読まれる場所に描かれ、
+// 管理者は同じ場所で判断し実行します。どれも許されていない訪問者には何も示さず、ページは他の
+// 誰にとってもと同じように読めます。占位は操作を持ちません。それが表す印はすでに付けられて
+// いるためです。
 //
 // 各投稿は、ビューポートから遠く離れている間は描画を省けます。その固有サイズの代替値は、
 // 1 行の本文を持つデスクトップ表示の実測値に合わせます。ヘッダー・本文・境界線で
@@ -394,6 +517,45 @@ templ ShowRight(data ShowPageData) {
 			<p class="text-sm text-muted-foreground">
 				{ templates.T(ctx, "posts_count", map[string]any{"Count": data.PostsCount}) }
 			</p>
+			if data.Moderation.Shown() {
+				<div class="flex flex-wrap items-center gap-2">
+					if data.Moderation.CanLockThread {
+						if data.Lock.LockedByModerator() {
+							<form
+								action={ templates.ThreadLockPath(data.ThreadID).SafeURL() }
+								method="POST"
+								data-confirm={ templates.T(ctx, "thread_show_moderation_unlock_confirm") }
+								onsubmit="if (!confirm(this.dataset.confirm)) { event.preventDefault(); return false; }"
+							>
+								<input type="hidden" name="_method" value="DELETE"/>
+								<input type="hidden" name="csrf_token" value={ data.Moderation.CSRFToken }/>
+								<button type="submit" class="btn" data-variant="outline" data-size="sm">
+									{ templates.T(ctx, "thread_show_moderation_unlock_button") }
+								</button>
+							</form>
+						} else {
+							<a
+								href={ templates.ThreadLockNewPath(data.ThreadID).SafeURL() }
+								class="btn"
+								data-variant="outline"
+								data-size="sm"
+							>
+								{ templates.T(ctx, "thread_show_moderation_lock_link") }
+							</a>
+						}
+					}
+					if data.Moderation.CanUnpublishThread {
+						<a
+							href={ templates.ThreadUnpublicationNewPath(data.ThreadID).SafeURL() }
+							class="btn"
+							data-variant="outline"
+							data-size="sm"
+						>
+							{ templates.T(ctx, "thread_show_moderation_unpublish_link") }
+						</a>
+					}
+				</div>
+			}
 		</div>
 		<ol class="flex flex-col gap-4">
 			for _, post := range data.Posts {
@@ -403,8 +565,8 @@ templ ShowRight(data ShowPageData) {
 						"scroll-mt-4",
 						"[content-visibility:auto]",
 						"print:[content-visibility:visible]",
-						templ.KV("[contain-intrinsic-size:auto_6.5625rem]", len(post.ReplyNumbers) > 0),
-						templ.KV("[contain-intrinsic-size:auto_4.5625rem]", len(post.ReplyNumbers) == 0),
+						templ.KV("[contain-intrinsic-size:auto_6.5625rem]", post.HasReplies()),
+						templ.KV("[contain-intrinsic-size:auto_4.5625rem]", !post.HasReplies()),
 					}
 				>
 					<article aria-labelledby={ postLabelID(post.Number) } class="flex flex-col gap-2 border-b border-border pb-4">
@@ -417,18 +579,33 @@ templ ShowRight(data ShowPageData) {
 								>
 									{ strconv.Itoa(post.Number) }
 								</a>
-								if post.Author != "" {
+								if post.Unpublished {
+									<span>{ templates.T(ctx, "thread_show_post_unpublished") }</span>
+								} else if post.Author != "" {
 									<span>{ "@" + post.Author }</span>
 								} else {
 									<span>{ templates.T(ctx, "thread_show_withdrawn_author") }</span>
 								}
 							</span>
-							<time datetime={ templates.MachineDateTime(post.PostedAt) }>
-								{ templates.RelativeTime(ctx, post.PostedAt) }
-							</time>
+							if !post.Unpublished {
+								<time datetime={ templates.MachineDateTime(post.PostedAt) }>
+									{ templates.RelativeTime(ctx, post.PostedAt) }
+								</time>
+							}
+							if data.Moderation.CanUnpublishPost && !post.Unpublished {
+								<a
+									href={ templates.PostUnpublicationNewPath(data.ThreadID, post.Number).SafeURL() }
+									aria-label={ templates.T(ctx, "thread_show_moderation_post_unpublish_link_label", map[string]any{"Number": post.Number}) }
+									class="inline-flex min-h-6 items-center underline underline-offset-2"
+								>
+									{ templates.T(ctx, "thread_show_moderation_post_unpublish_link") }
+								</a>
+							}
 						</header>
-						@components.PostBody(post.Body)
-						if len(post.ReplyNumbers) > 0 {
+						if !post.Unpublished {
+							@components.PostBody(post.Body)
+						}
+						if post.HasReplies() {
 							<footer class="flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
 								<span>{ templates.T(ctx, "thread_show_replies_label") }</span>
 								for _, number := range post.ReplyNumbers {

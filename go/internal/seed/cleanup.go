@@ -21,6 +21,11 @@ import (
 // points at that row (a category belongs to the instance as a whole), so it is
 // emptied after the content the community is made of.
 //
+// moderation_logs leads for the same reason the children do, even though its
+// references are ON DELETE SET NULL and would not refuse a delete: a log emptied
+// after its targets would be emptied with its columns already nulled, saying
+// nothing about what the run before it recorded.
+//
 // [Ja] cleanupTables は、実行が毎回作り直すテーブルを、空にする順に並べたものです。
 // 実行のたびにこれらを空にしてから始めることで、画面に出るデータが常に現在のコードの
 // 生成結果と一致するようにします。
@@ -34,7 +39,12 @@ import (
 // communities の位置を決めているのは制約ではなく、それが抱えるものです。この行を指す
 // ものは無く (カテゴリーはインスタンス全体に属します)、そのためコミュニティを構成する
 // 中身を空にした後に空にしています。
+//
+// moderation_logsを先頭に置く理由は子テーブルと同じです。参照はON DELETE SET NULLであり
+// 削除を拒みはしませんが、対象より後に空にすれば、列が既にNULLになった記録を空にすることに
+// なり、前回の実行が何を記録したかを何も述べないものになります。
 var cleanupTables = []string{
+	"moderation_logs",
 	"post_references",
 	"posts",
 	"threads",

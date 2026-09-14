@@ -3,13 +3,14 @@ package model_test
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestThread_LockReasons verifies where a thread stops taking posts: it takes
-// one until it holds the cap, and from the cap onwards it says the cap is why it
-// takes no more.
+// TestThread_LockReasons verifies where a thread stops taking posts and which
+// reasons it gives: an administrator's lock, holding the cap, or both at once,
+// with the administrator's decision first.
 //
 // The counts are written against ThreadPostLimit rather than spelled out, so
 // that a cap changed in one place moves the boundary the test checks with it. A
@@ -17,20 +18,23 @@ import (
 // about for the lock to be trustworthy: a thread that overshot is closed, not
 // reopened by having missed the number.
 //
-// [Ja] TestThread_LockReasons は、スレッドがどこで投稿を受け付けなくなるかを検証します。
-// 上限の件数を持つまでは受け付け、上限からは、それ以上受け付けない理由が上限であることを
-// 述べます。
+// [Ja] TestThread_LockReasonsは、スレッドがどこで投稿を受け付けなくなるかと、そのとき
+// どの理由を述べるかを検証します。管理者によるロック・上限の件数を持つこと・その両方が
+// 同時に成立することのそれぞれについて、管理者の判断が先に来ることを確かめます。
 //
-// 件数を書き下さず ThreadPostLimit から組み立てるのは、上限を 1 箇所で変えたときに、
-// テストが確かめる境界もともに動くようにするためです。上限を越えた件数を含めるのは、
-// ロックが信頼できるためにはそこでの答えが正しくなければならないからです。行き過ぎた
-// スレッドは閉じているのであって、番号を踏み外したことで開き直りはしません。
+// 件数を書き下さずThreadPostLimitから組み立てるのは、上限を1箇所で変えたときに、テストが
+// 確かめる境界もともに動くようにするためです。上限を越えた件数を含めるのは、ロックが
+// 信頼できるためにはそこでの答えが正しくなければならないからです。行き過ぎたスレッドは
+// 閉じているのであって、番号を踏み外したことで開き直りはしません。
 func TestThread_LockReasons(t *testing.T) {
 	t.Parallel()
+
+	lockedAt := time.Date(2026, 9, 12, 10, 44, 48, 0, time.UTC)
 
 	tests := []struct {
 		name       string
 		postsCount int
+		lockedAt   *time.Time
 		want       []model.ThreadLockReason
 	}{
 		{
@@ -44,6 +48,12 @@ func TestThread_LockReasons(t *testing.T) {
 			want:       nil,
 		},
 		{
+			name:       "locked by an administrator",
+			postsCount: 1,
+			lockedAt:   &lockedAt,
+			want:       []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator},
+		},
+		{
 			name:       "the cap",
 			postsCount: model.ThreadPostLimit,
 			want:       []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached},
@@ -53,18 +63,27 @@ func TestThread_LockReasons(t *testing.T) {
 			postsCount: model.ThreadPostLimit + 1,
 			want:       []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached},
 		},
+		{
+			name:       "locked by an administrator and at the cap",
+			postsCount: model.ThreadPostLimit,
+			lockedAt:   &lockedAt,
+			want: []model.ThreadLockReason{
+				model.ThreadLockReasonLockedByModerator,
+				model.ThreadLockReasonPostLimitReached,
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			thread := &model.Thread{PostsCount: tt.postsCount}
+			thread := &model.Thread{PostsCount: tt.postsCount, LockedAt: tt.lockedAt}
 			before := *thread
 
 			got := thread.LockReasons()
 			if !slices.Equal(got, tt.want) {
-				t.Errorf("Thread{PostsCount: %d}.LockReasons() = %v, want %v", tt.postsCount, got, tt.want)
+				t.Errorf("Thread{PostsCount: %d, LockedAt: %v}.LockReasons() = %v, want %v", tt.postsCount, tt.lockedAt, got, tt.want)
 			}
 
 			// Asking the question leaves the thread as it was found, so a caller may
@@ -94,7 +113,10 @@ func TestThread_LockReasons(t *testing.T) {
 func TestThreadLockReasons(t *testing.T) {
 	t.Parallel()
 
-	want := []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached}
+	want := []model.ThreadLockReason{
+		model.ThreadLockReasonLockedByModerator,
+		model.ThreadLockReasonPostLimitReached,
+	}
 	if got := model.ThreadLockReasons(); !slices.Equal(got, want) {
 		t.Errorf("ThreadLockReasons() = %v, want %v", got, want)
 	}

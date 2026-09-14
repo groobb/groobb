@@ -107,10 +107,10 @@ func holdsRole(
 	return false, nil
 }
 
-// removingLeavesNoAdmin reports whether taking the admin role away from one of
-// its holders would leave the community with nobody holding it. The caller has
-// confirmed that the person it is about to remove is a holder, so the role
-// having a single holder left is that person.
+// removingLeavesNoAdmin reports whether removing one active admin holder would
+// leave the community without an active administrator. The result applies only
+// to targets included in the count: a suspended or withdrawn holder is already
+// excluded, so removing their assignment does not reduce the count.
 //
 // Losing the last administrator is not a state anyone can undo from a screen:
 // the admin screens are what appoints an administrator, and nobody would be
@@ -120,9 +120,9 @@ func holdsRole(
 // The count must be read inside the transaction that writes, so that the number
 // the refusal is decided against cannot change before the removal it admits.
 //
-// [Ja] removingLeavesNoAdmin は、admin ロールを保持者の 1 人から取り上げると、誰もそれを
-// 持たない状態になるかどうかを返します。呼び出し側は、これから取り上げる相手が保持者で
-// あることを確かめているため、ロールの保持者が 1 人だけならそれはその人です。
+// [Ja] removingLeavesNoAdminは、有効なadminロールの保持者を1人外すと、有効な管理者が
+// いなくなるかどうかを返します。この結果は人数に含まれる対象にだけ適用します。停止中・
+// 退会済みの保持者は既に除外されており、その割当を外しても人数は減りません。
 //
 // 最後の管理者を失うことは、画面から取り消せる状態ではありません。管理者を立てるのは管理
 // 画面であり、誰もそこを許されなくなるためです。残るのはデータベースファイルに対する

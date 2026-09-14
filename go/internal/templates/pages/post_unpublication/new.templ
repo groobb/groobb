@@ -1,0 +1,98 @@
+package post_unpublication
+
+import (
+	"strconv"
+
+	"github.com/groobb/groobb/go/internal/templates"
+	"github.com/groobb/groobb/go/internal/templates/components"
+)
+
+// New renders the page a post's unpublication is confirmed on: what
+// unpublishing does, the post it is about to be done to, an optional note, and
+// the button that does it.
+//
+// The lead says what is left behind, because that is what separates this from
+// removing the post: the reply number stays where it is, so the replies quoting
+// it still lead to the place they were written about, and what they meet there
+// is a line saying the post was taken out of view.
+//
+// The post is shown as the thread shows it — the number, the author, the body —
+// but nothing in it is a link. A confirmation page is read to decide, not to be
+// followed out of, and the body's own notation would lead to a thread this page
+// is not.
+//
+// [Ja] Newは、投稿の非公開を確認するページを描画します。非公開が何をするのか、これからそれが
+// 行われる投稿、任意の注記、そしてそれを行うボタンです。
+//
+// 説明文が、後に残るものを述べるのは、それがこの操作を投稿の削除から分けるものだからです。
+// レス番号はその位置に残るため、それを引用した返信は、書かれたときに指していた場所へ今も辿り
+// 着き、そこで出会うのは、投稿が視界の外へ移された旨を述べる1行です。
+//
+// 投稿はスレッドが示すとおりに、すなわち番号・作者・本文として示しますが、その中の何もリンクに
+// しません。確認ページは、そこから出て行くためではなく、判断するために読まれるものであり、
+// 本文の記法が連れて行く先は、このページではないスレッドであるためです。
+templ New(data NewPageData) {
+	<div class="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-12">
+		<div class="flex flex-col gap-2">
+			<h1 class="text-2xl font-bold tracking-tight">
+				{ templates.T(ctx, "post_unpublication_new_heading") }
+			</h1>
+			<p class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "post_unpublication_new_lead") }
+			</p>
+		</div>
+		<div class="flex flex-col gap-2 rounded-md border border-border bg-muted px-4 py-3">
+			<p class="text-xs text-muted-foreground">
+				{ templates.T(ctx, "post_unpublication_new_target_label") }
+			</p>
+			<p class="flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
+				<span class="font-semibold text-foreground">{ strconv.Itoa(data.Number) }</span>
+				if data.Author != "" {
+					<span>{ "@" + data.Author }</span>
+				} else {
+					<span>{ templates.T(ctx, "post_unpublication_new_withdrawn_author") }</span>
+				}
+			</p>
+			<div class="whitespace-pre-wrap wrap-break-word">{ data.Body }</div>
+		</div>
+		@components.FormErrors(data.FormErrors)
+		<form
+			action={ templates.PostUnpublicationPath(data.ThreadID, data.Number).SafeURL() }
+			method="POST"
+			class="flex flex-col gap-4"
+		>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("reason") {
+					data-invalid="true"
+				}
+			>
+				<label for="reason">{ templates.T(ctx, "post_unpublication_new_reason_label") }</label>
+				<textarea
+					id="reason"
+					name="reason"
+					rows="4"
+					autofocus?={ data.FormErrors.HasFieldError("reason") }
+					if data.FormErrors.HasFieldError("reason") {
+						aria-invalid="true"
+						aria-describedby={ "reason-hint " + components.FieldErrorsDescribedBy("reason", data.FormErrors) }
+					} else {
+						aria-describedby="reason-hint"
+					}
+				>{ "\n" + data.Reason }</textarea>
+				<p id="reason-hint">{ templates.T(ctx, "post_unpublication_new_reason_hint") }</p>
+				@components.FieldErrors("reason", data.FormErrors)
+			</div>
+			<div class="flex flex-wrap items-center gap-4">
+				<button type="submit" class="btn" data-variant="destructive">
+					{ templates.T(ctx, "post_unpublication_new_submit_button") }
+				</button>
+				<a href={ templates.ThreadPostAnchorPath(data.ThreadID, data.Number).SafeURL() } class="text-sm underline">
+					{ templates.T(ctx, "post_unpublication_new_cancel") }
+				</a>
+			</div>
+		</form>
+	</div>
+}

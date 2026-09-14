@@ -28,6 +28,17 @@ type ThreadLockReason string
 // 1 つの URL のもとで永久アドレスでいられます。
 const ThreadLockReasonPostLimitReached ThreadLockReason = "post_limit_reached"
 
+// ThreadLockReasonLockedByModerator says an administrator closed the thread.
+// Unlike the cap, it is a decision rather than a state the thread arrived at by
+// being written to, which is why a thread holding it is not offered the next
+// thread as a way on: starting one would be walking around the decision.
+//
+// [Ja] ThreadLockReasonLockedByModeratorは、管理者がスレッドを閉じたことを表します。
+// 上限と違い、書き込まれることで到達した状態ではなく判断であるため、これを持つ
+// スレッドには次のスレッドへの導線を差し出しません。新しいスレッドを立てることは、
+// その判断を迂回することになるためです。
+const ThreadLockReasonLockedByModerator ThreadLockReason = "locked_by_moderator"
+
 // ThreadLockReasons returns every reason a thread can be locked for. It is the
 // one place the set is written out, and it exists so that what a locked thread
 // says can be checked against it: the end of a locked thread carries neither the
@@ -46,13 +57,16 @@ const ThreadLockReasonPostLimitReached ThreadLockReason = "post_limit_reached"
 // 呼び出しごとに新しいスライスを返すため、ある呼び出し側が他から見える集合を書き換えて
 // しまうことはありません。
 func ThreadLockReasons() []ThreadLockReason {
-	return []ThreadLockReason{ThreadLockReasonPostLimitReached}
+	return []ThreadLockReason{ThreadLockReasonLockedByModerator, ThreadLockReasonPostLimitReached}
 }
 
-// LockReasons returns the lock reasons derived from t's current PostsCount,
-// or an empty slice if it is unlocked. It does not modify t. Callers deciding
-// whether to accept a post must call this method on a model re-read inside
-// their write transaction.
+// LockReasons returns the lock reasons t currently carries, or an empty slice
+// if it is unlocked. It does not modify t. Callers deciding whether to accept a
+// post must call this method on a model re-read inside their write transaction.
+//
+// The moderator's lock comes first, because it is the one a visitor is answered
+// by: it is a decision about this thread, while the cap is a state the thread
+// arrived at on its own.
 //
 // The answer is a list because reasons hold alongside one another rather than
 // replace one another. Kept as a single value, the reason that arrived last
@@ -66,10 +80,12 @@ func ThreadLockReasons() []ThreadLockReason {
 // A count that has passed the cap reads as locked as well, since what the reason
 // says is that there is no room left, not that the number landed exactly on it.
 //
-// [Ja] LockReasons は、tの現在のPostsCountからロック理由を返し、ロックされていなければ
-// 空のスライスを返します。tを変更しません。投稿の可否を判断する呼び出し元は、
-// 書き込みトランザクション内で読み直したモデルに対して、このメソッドを呼び出す必要が
-// あります。
+// [Ja] LockReasonsは、tが現在持つロック理由を返し、ロックされていなければ空のスライスを
+// 返します。tを変更しません。投稿の可否を判断する呼び出し元は、書き込みトランザクション内で
+// 読み直したモデルに対して、このメソッドを呼び出す必要があります。
+//
+// 管理者によるロックを先に置くのは、それが訪問者に対して答えとなる理由であるためです。
+// こちらはこのスレッドについての判断であり、上限はスレッドが自ら到達した状態です。
 //
 // 答えが一覧なのは、理由が互いを置き換えるのではなく並び立つためです。単一の値として
 // 持つと、最後に成立した理由が、成立し続けている他の理由を隠します。そしてその値を
@@ -82,6 +98,10 @@ func ThreadLockReasons() []ThreadLockReason {
 // ちょうど上限に載ったことではないためです。
 func (t *Thread) LockReasons() []ThreadLockReason {
 	var reasons []ThreadLockReason
+
+	if t.LockedAt != nil {
+		reasons = append(reasons, ThreadLockReasonLockedByModerator)
+	}
 
 	if t.PostsCount >= ThreadPostLimit {
 		reasons = append(reasons, ThreadLockReasonPostLimitReached)

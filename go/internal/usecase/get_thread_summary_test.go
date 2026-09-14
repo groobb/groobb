@@ -105,3 +105,43 @@ func TestGetThreadSummaryUsecase_Execute_NotFound(t *testing.T) {
 		t.Errorf("エラーコード = %v, want %v", ae.Code, model.AppErrCodeResourceNotFound)
 	}
 }
+
+// TestGetThreadSummaryUsecase_Execute_Unpublished verifies that a thread an
+// administrator took out of view comes back as the unpublished AppError, the
+// way GetThreadUsecase reports it. The page this read serves is the one a
+// refused reply comes back on, and a thread that shows nothing is not a page to
+// write on.
+//
+// [Ja] TestGetThreadSummaryUsecase_Execute_Unpublished は、管理者が見えない場所へ移した
+// スレッドが、GetThreadUsecaseが報告するのと同じく非公開のAppErrorとして返ることを検証
+// します。この読み取りが配信するのは拒否された返信が戻ってくるページであり、何も示さなく
+// なったスレッドは書き込む先のページではありません。
+func TestGetThreadSummaryUsecase_Execute_Unpublished(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := testutil.SetupDB(t)
+
+	board, err := repository.NewBoardRepository(db).Create(ctx, repository.CreateBoardInput{Slug: "jazz", Name: "ジャズ"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	threadRepo := repository.NewThreadRepository(db)
+	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{
+		BoardID:  board.ID,
+		Title:    "枯葉の名演",
+		Language: model.LocaleJa.ThreadLanguage(),
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := threadRepo.Unpublish(ctx, thread.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	output, err := usecase.NewGetThreadSummaryUsecase(threadRepo).Execute(ctx, usecase.GetThreadSummaryInput{ID: thread.ID})
+	if output != nil {
+		t.Errorf("出力 = %v, want nil", output)
+	}
+	assertAppErrCode(t, err, model.AppErrCodeResourceUnpublished)
+}

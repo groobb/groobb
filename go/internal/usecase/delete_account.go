@@ -176,6 +176,11 @@ func (uc *DeleteAccountUsecase) deleteAccount(
 // an administrator first. A field error would have nothing to point at, since no
 // field they filled in is what was refused.
 //
+// The account leaving is always one of the active holders removingLeavesNoAdmin
+// counts, which is what that helper asks of the target it is called about: a
+// withdrawal is performed by whoever is signed in, and a suspended account no
+// longer resolves from its session.
+//
 // [Ja] verifyWithdrawalKeepsAnAdmin は、去ろうとしているアカウントが残る唯一の管理者で
 // あるときに退会を拒否します。
 //
@@ -183,6 +188,10 @@ func (uc *DeleteAccountUsecase) deleteAccount(
 // 退会フォームを見ているためです。その人と退会の間に立っているのはコミュニティの状態であり、
 // 先に別の人を管理者にすることで自ら変えられます。フィールドのエラーでは指し示す先が
 // ありません。拒否されたのは、その人が入力したどのフィールドでもないためです。
+//
+// 去ろうとしているアカウントは、removingLeavesNoAdmin が数える有効な保持者に常に含まれます。
+// それがこのヘルパーが対象に求めるものです。退会を行うのはサインインしている本人であり、
+// 停止されたアカウントはセッションから解決されないためです。
 func verifyWithdrawalKeepsAnAdmin(
 	ctx context.Context,
 	userRoleRepo *repository.UserRoleRepository,

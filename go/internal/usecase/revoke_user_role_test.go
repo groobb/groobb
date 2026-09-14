@@ -31,13 +31,13 @@ func newRevokeUserRoleUsecase(db *database.DB) *usecase.RevokeUserRoleUsecase {
 }
 
 // countAdminHolders returns how many people still hold the built-in admin role,
-// counting only those who have not withdrawn. It is what the protection of the
-// last administrator is about, so a test states its outcome in these terms
-// rather than in rows of user_roles.
+// counting only those who have neither withdrawn nor been suspended. Tests
+// assert this count because the last-administrator protection keeps an active
+// administrator, not just a row in user_roles.
 //
-// [Ja] countAdminHolders は、組み込みの admin ロールを何人が持っているかを、退会していない
-// 人だけ数えて返します。最後の管理者の保護が対象とするのがこれであるため、テストは結果を
-// user_roles の行ではなくこの数で述べます。
+// [Ja] countAdminHoldersは、退会も停止もしていない組み込みのadminロールの保持者数を
+// 返します。最後の管理者の保護が残すのは有効な管理者であり、user_rolesの行だけでは
+// ないため、テストはこの件数を検証します。
 func countAdminHolders(t *testing.T, db *database.DB) int {
 	t.Helper()
 
@@ -47,7 +47,7 @@ func countAdminHolders(t *testing.T, db *database.DB) int {
 		FROM user_roles
 		JOIN roles ON roles.id = user_roles.role_id
 		JOIN users ON users.id = user_roles.user_id
-		WHERE roles.name = ? AND users.deleted_at IS NULL
+		WHERE roles.name = ? AND users.deleted_at IS NULL AND users.suspended_at IS NULL
 	`, string(model.RoleNameAdmin)).Scan(&count); err != nil {
 		t.Fatalf("管理者の人数の取得に失敗: %v", err)
 	}
@@ -89,6 +89,59 @@ func TestRevokeUserRoleUsecase_Execute_Success(t *testing.T) {
 	}
 	if got := countAdminHolders(t, db); got != 1 {
 		t.Errorf("剥奪後の管理者の人数 = %d, want 1", got)
+	}
+}
+
+// TestRevokeUserRoleUsecase_Execute_WithSuspendedAdmin checks that only an active
+// target needs last-administrator protection: removing a suspended holder does
+// not reduce the active count, but removing the only active holder does.
+//
+// [Ja] TestRevokeUserRoleUsecase_Execute_WithSuspendedAdminは、最後の管理者の保護が
+// 有効な対象にだけ必要なことを検証します。停止中の保持者を外しても有効な人数は減りませんが、
+// 唯一の有効な保持者を外すと減ります。
+func TestRevokeUserRoleUsecase_Execute_WithSuspendedAdmin(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		revokeSelf bool
+	}{
+		{name: "停止中の管理者からは剥奪できる"},
+		{name: "ほかの管理者が停止中なら自己剥奪を拒否する", revokeSelf: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := testutil.SetupDB(t)
+			ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+			activeID := seedAdmin(t, db)
+			suspendedID := testutil.NewUserBuilder(t, db).WithSuspendedAt(time.Now()).Build()
+			testutil.NewUserRoleBuilder(t, db).WithUserID(suspendedID).Build()
+			targetID := suspendedID
+			if tt.revokeSelf {
+				targetID = activeID
+			}
+
+			_, err := newRevokeUserRoleUsecase(db).Execute(ctx, usecase.RevokeUserRoleInput{
+				Actor:        usecase.UserActor(activeID),
+				TargetUserID: targetID,
+				RoleName:     model.RoleNameAdmin,
+			})
+			wantRoles := 0
+			if tt.revokeSelf {
+				assertAppErrCode(t, err, model.AppErrCodeConflict)
+				wantRoles = 1
+			} else if err != nil {
+				t.Fatalf("Execute() error = %v, want nil", err)
+			}
+			if got := countUserRoles(t, db, targetID); got != wantRoles {
+				t.Errorf("対象のロール割当数 = %d, want %d", got, wantRoles)
+			}
+			if got := countAdminHolders(t, db); got != 1 {
+				t.Errorf("有効な管理者の人数 = %d, want 1", got)
+			}
+		})
 	}
 }
 

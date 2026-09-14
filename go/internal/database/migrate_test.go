@@ -13,18 +13,15 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// migratedTableNames are the application's own tables. The most recent
-// migration creates none of them: it inserts the built-in admin role, so what
-// rolling it back undoes is checked through that row rather than through a table
-// disappearing. A later migration that creates tables gives them a list of their
-// own, which the rollback test reads as what the last migration owns, leaving
-// these here.
+// migratedTableNames are the application's own tables that predate the most
+// recent migration, so the rollback test reads them as what has to survive
+// rolling it back. What that migration itself creates is listed separately in
+// lastMigratedTableNames.
 //
-// [Ja] migratedTableNames はアプリケーション自身のテーブルです。最新のマイグレーションは
-// このどれも作りません。組み込みの admin ロールを挿入するものであるため、それをロールバック
-// すると何が戻るのかは、テーブルが消えることではなくその行で確かめます。この後にテーブルを
-// 作るマイグレーションを足すときは、そのテーブルに専用の一覧を与えます。ロールバックの
-// テストはそれを「最後のマイグレーションが所有するもの」として読み、これらはここに残ります。
+// [Ja] migratedTableNamesは、最新のマイグレーションより前から存在するアプリケーション
+// 自身のテーブルです。ロールバックのテストはこれを「最新のマイグレーションを戻しても
+// 残るもの」として読みます。そのマイグレーション自身が作るものは
+// lastMigratedTableNamesに分けて挙げています。
 var migratedTableNames = []string{
 	"boards",
 	"categories",
@@ -41,6 +38,31 @@ var migratedTableNames = []string{
 	"user_two_factor_auths",
 	"users",
 }
+
+// lastMigratedTableNames and lastMigratedColumns are what the most recent
+// migration owns: the table holding the history of moderation, and the four
+// state columns it adds to tables that already existed. The rollback test reads
+// both as what going back one step takes away, and the schema test reads them
+// alongside migratedTableNames as what a migrated database carries.
+//
+// [Ja] lastMigratedTableNamesとlastMigratedColumnsは、最新のマイグレーションが所有する
+// ものです。モデレーションの履歴を保持するテーブルと、既にあったテーブルへ足す4つの
+// 状態の列です。ロールバックのテストはこの両方を「1つ戻すと無くなるもの」として読み、
+// スキーマのテストはmigratedTableNamesと併せて「マイグレート済みのデータベースが持つ
+// もの」として読みます。
+var (
+	lastMigratedTableNames = []string{"moderation_logs"}
+
+	lastMigratedColumns = []struct {
+		table  string
+		column string
+	}{
+		{table: "threads", column: "locked_at"},
+		{table: "threads", column: "unpublished_at"},
+		{table: "posts", column: "unpublished_at"},
+		{table: "users", column: "suspended_at"},
+	}
+)
 
 // riverMigratedTableNames are the tables migrated for River (the background job
 // queue). They sit apart from the application's own tables because River, not
@@ -91,6 +113,33 @@ func hasIndex(t *testing.T, db *database.DB, name string) bool {
 	return false
 }
 
+// hasColumn reports whether the named table currently carries the named column.
+// It reads pragma_table_info rather than the table's declaration text, so a
+// column name appearing inside another column's name or inside a default
+// expression is not mistaken for the column itself.
+//
+// [Ja] hasColumnは、そのテーブルが現在その名前の列を持っているかを返します。テーブルの
+// 宣言文ではなくpragma_table_infoを読むのは、別の列の名前の中や既定値の式の中に現れた
+// 名前を、その列そのものと取り違えないためです。
+func hasColumn(t *testing.T, db *database.DB, table, column string) bool {
+	t.Helper()
+
+	var found string
+	err := db.Reader.QueryRowContext(
+		context.Background(),
+		"SELECT name FROM pragma_table_info(?) WHERE name = ?",
+		table, column,
+	).Scan(&found)
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("checking column %s.%s failed: %v", table, column, err)
+	}
+
+	return false
+}
+
 // migratedTestDB opens a throwaway database and brings it up to the latest
 // migration.
 //
@@ -118,7 +167,7 @@ func TestMigrate_CreatesTheSchema(t *testing.T) {
 
 	db := migratedTestDB(t)
 
-	for _, table := range migratedTableNames {
+	for _, table := range slices.Concat(migratedTableNames, lastMigratedTableNames) {
 		var name string
 		err := db.Reader.QueryRowContext(
 			context.Background(),
@@ -127,6 +176,28 @@ func TestMigrate_CreatesTheSchema(t *testing.T) {
 		).Scan(&name)
 		if err != nil {
 			t.Errorf("table %q is missing after migrating: %v", table, err)
+		}
+	}
+}
+
+// TestMigrate_AddsTheModerationColumns verifies that a migrated database carries
+// the columns an administrator's decisions are held in. They are checked here
+// rather than only through the repositories, because a column added to a table
+// that already holds rows is the part of the migration that can fail on a
+// database with data in it.
+//
+// [Ja] TestMigrate_AddsTheModerationColumnsは、マイグレート済みのデータベースが、管理者の
+// 判断を保持する列を持つことを検証します。リポジトリ経由だけでなくここで確かめるのは、
+// 既に行を持つテーブルへの列の追加が、データの入ったデータベースで失敗しうる部分である
+// ためです。
+func TestMigrate_AddsTheModerationColumns(t *testing.T) {
+	t.Parallel()
+
+	db := migratedTestDB(t)
+
+	for _, c := range lastMigratedColumns {
+		if !hasColumn(t, db, c.table, c.column) {
+			t.Errorf("column %s.%s is missing after migrating", c.table, c.column)
 		}
 	}
 }
@@ -293,14 +364,16 @@ func TestMigrate_UserUniquenessIgnoresLetterCase(t *testing.T) {
 }
 
 // TestRollback_RevertsTheLastMigration verifies that rolling back undoes what
-// the most recent migration did, and only that: the built-in admin role goes
-// away, while the index the migration before it left in place and every table
-// the migrations before it created stay where they are.
+// the most recent migration did, and only that: the moderation history and the
+// four state columns go away, while the built-in admin role the migration
+// before it inserted, the index the one before that left in place, and every
+// table the migrations before them created stay where they are.
 //
-// [Ja] TestRollback_RevertsTheLastMigration は、ロールバックが最新のマイグレーションの
-// 行ったことを取り消すこと、そしてそれだけを取り消すことを検証します。組み込みの admin
-// ロールが消え、その 1 つ前のマイグレーションが残した索引と、それより前のマイグレーションが
-// 作ったテーブルはどれもそのままです。
+// [Ja] TestRollback_RevertsTheLastMigrationは、ロールバックが最新のマイグレーションの
+// 行ったことを取り消すこと、そしてそれだけを取り消すことを検証します。モデレーションの
+// 履歴と4つの状態の列が消え、その1つ前のマイグレーションが挿入した組み込みのadminロール、
+// さらに1つ前が残した索引、そしてそれらより前のマイグレーションが作ったテーブルはどれも
+// そのままです。
 func TestRollback_RevertsTheLastMigration(t *testing.T) {
 	t.Parallel()
 
@@ -311,8 +384,25 @@ func TestRollback_RevertsTheLastMigration(t *testing.T) {
 		t.Fatalf("failed to roll back the migration: %v", err)
 	}
 
-	if count := countRows(t, db, "SELECT COUNT(*) FROM roles WHERE name = ?", string(model.RoleNameAdmin)); count != 0 {
-		t.Errorf("rows left for the %q role after rolling back = %d, want 0", model.RoleNameAdmin, count)
+	for _, table := range lastMigratedTableNames {
+		var name string
+		err := db.Reader.QueryRowContext(
+			ctx,
+			"SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+			table,
+		).Scan(&name)
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("table %q should be gone after rolling back the last migration, but it is still there", table)
+		}
+	}
+	for _, c := range lastMigratedColumns {
+		if hasColumn(t, db, c.table, c.column) {
+			t.Errorf("column %s.%s should be gone after rolling back the last migration, but it is still there", c.table, c.column)
+		}
+	}
+
+	if count := countRows(t, db, "SELECT COUNT(*) FROM roles WHERE name = ?", string(model.RoleNameAdmin)); count != 1 {
+		t.Errorf("rows left for the %q role after rolling back = %d, want 1", model.RoleNameAdmin, count)
 	}
 	if !hasIndex(t, db, postAuthorIndexName) {
 		t.Errorf("index %q should survive rolling back the last migration, but it is missing", postAuthorIndexName)
@@ -386,6 +476,66 @@ func TestMigrate_KeepsThePostsAcrossTheIndexReplacement(t *testing.T) {
 	}
 	if !hasIndex(t, db, postAuthorIndexName) {
 		t.Errorf("index %q is missing after applying the migration again", postAuthorIndexName)
+	}
+}
+
+// TestMigrate_KeepsTheContentAcrossTheModerationColumns verifies that a
+// database holding a community's writing crosses the moderation migration in
+// both directions with its rows where they were.
+//
+// It is the direction the migration can lose something in: SQLite adds and
+// drops a column on a table that already holds rows, and an instance that has
+// to step back to the previous version and forward again must find its threads
+// and posts still there. What the columns held is not expected back -- rolling
+// back removes the column, so the decisions recorded in it are gone -- and the
+// writing they were about is.
+//
+// [Ja] TestMigrate_KeepsTheContentAcrossTheModerationColumnsは、コミュニティの書き込みを
+// 持つデータベースがモデレーションのマイグレーションを両方向に越えても、行がそのままで
+// あることを検証します。
+//
+// ここがこのマイグレーションで何かを失いうる向きです。SQLiteは既に行を持つテーブルに対して
+// 列を足し、また落とします。前のバージョンへ戻してからまた進めることになったインスタンスは、
+// スレッドと投稿がそのまま残っていなければなりません。列が持っていたものが戻ることは期待
+// しません (ロールバックは列ごと取り除くため、そこに記録された判断は失われます)。戻るのは、
+// それらが向けられていた書き込みのほうです。
+func TestMigrate_KeepsTheContentAcrossTheModerationColumns(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := migratedTestDB(t)
+	ids := insertCommunityContent(t, db)
+
+	if err := database.Rollback(ctx, db.Writer); err != nil {
+		t.Fatalf("failed to roll back the migration: %v", err)
+	}
+
+	// A post written while the columns are gone is the state an instance
+	// migrates forward from.
+	//
+	// [Ja] 列が無い間に書かれた投稿は、インスタンスがそこから先へマイグレートする状態
+	// そのものである。
+	rolledBackPostID := insertRow(t, db,
+		"INSERT INTO posts (thread_id, user_id, number, body) VALUES (?, ?, ?, ?)",
+		ids.threadID, ids.userID, 2, "列を戻している間に書いた投稿",
+	)
+
+	if err := database.Migrate(ctx, db.Writer); err != nil {
+		t.Fatalf("failed to apply the migration again: %v", err)
+	}
+
+	if count := countRows(t, db, "SELECT COUNT(*) FROM threads WHERE id = ?", ids.threadID); count != 1 {
+		t.Errorf("rows left for the thread after migrating back and forth = %d, want 1", count)
+	}
+	for _, postID := range []int64{ids.postID, rolledBackPostID} {
+		if count := countRows(t, db, "SELECT COUNT(*) FROM posts WHERE id = ?", postID); count != 1 {
+			t.Errorf("rows left for the post %d after migrating back and forth = %d, want 1", postID, count)
+		}
+	}
+	for _, c := range lastMigratedColumns {
+		if !hasColumn(t, db, c.table, c.column) {
+			t.Errorf("column %s.%s is missing after applying the migration again", c.table, c.column)
+		}
 	}
 }
 

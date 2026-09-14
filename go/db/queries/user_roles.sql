@@ -11,7 +11,9 @@ ORDER BY user_id, role_id;
 -- name: CountUserRoleHoldersByRoleID :one
 SELECT COUNT(*) FROM user_roles
 JOIN users ON users.id = user_roles.user_id
-WHERE user_roles.role_id = ? AND users.deleted_at IS NULL;
+WHERE user_roles.role_id = ?
+  AND users.deleted_at IS NULL
+  AND users.suspended_at IS NULL;
 
 -- name: DeleteUserRoleByUserIDAndRoleID :exec
 DELETE FROM user_roles WHERE user_id = ? AND role_id = ?;

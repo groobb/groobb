@@ -23,6 +23,25 @@ func newUserRepo(t *testing.T) (*repository.UserRepository, context.Context) {
 	return repository.NewUserRepository(db), context.Background()
 }
 
+// findUser reads the account back through the repository, failing the test when
+// it is not there, for the tests whose subject is what a write left behind
+// rather than the lookup itself.
+//
+// [Ja] findUserはリポジトリ経由でアカウントを読み戻し、存在しなければテストを失敗させる。
+// ルックアップそのものではなく、書き込みが何を残したかを主題とするテストのためのものである。
+func findUser(t *testing.T, ctx context.Context, repo *repository.UserRepository, id model.UserID) *model.User {
+	t.Helper()
+
+	user, err := repo.FindByID(ctx, id)
+	if err != nil {
+		t.Fatalf("FindByID() error = %v", err)
+	}
+	if user == nil {
+		t.Fatalf("FindByID() = nil, want user (id=%v)", id)
+	}
+	return user
+}
+
 func TestUserRepository_Create(t *testing.T) {
 	t.Parallel()
 
@@ -103,6 +122,166 @@ func TestUserRepository_FindByID(t *testing.T) {
 	})
 }
 
+// TestUserRepository_Suspend verifies the two writes a suspension is made of:
+// the mark goes on and comes back off, and the account's identity is untouched
+// either way.
+//
+// [Ja] TestUserRepository_Suspendは停止を成す2つの書き込みを検証する。印が付き、そして
+// 外れること、そしてそのどちらでもアカウントの身元が変わらないことである。
+func TestUserRepository_Suspend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("停止の時刻を立て、解除がそれを外す", func(t *testing.T) {
+		t.Parallel()
+
+		repo, ctx := newUserRepo(t)
+		created, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "suspended@example.com",
+			Atname:   "suspendeduser",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		if err := repo.Suspend(ctx, created.ID); err != nil {
+			t.Fatalf("Suspend() error = %v", err)
+		}
+
+		suspended := findUser(t, ctx, repo, created.ID)
+		if suspended.SuspendedAt == nil {
+			t.Fatal("user.SuspendedAt = nil, want the stamped time")
+		}
+		if suspended.SuspendedAt.Before(created.CreatedAt) {
+			t.Errorf("user.SuspendedAt = %v, want at or after the account's creation (%v)", suspended.SuspendedAt, created.CreatedAt)
+		}
+
+		if err := repo.Unsuspend(ctx, created.ID); err != nil {
+			t.Fatalf("Unsuspend() error = %v", err)
+		}
+
+		unsuspended := findUser(t, ctx, repo, created.ID)
+		if unsuspended.SuspendedAt != nil {
+			t.Errorf("user.SuspendedAt = %v, want nil", unsuspended.SuspendedAt)
+		}
+	})
+
+	// A suspension stops what an account may do, not who it is, so the two
+	// values that name it are what the write must leave alone.
+	//
+	// [Ja] 停止が止めるのはアカウントが何をできるかであって、それが誰であるかではない。
+	// したがって、その身元を名指す2つの値こそが、この書き込みが触れてはならないものである。
+	t.Run("停止は身元を変えない", func(t *testing.T) {
+		t.Parallel()
+
+		repo, ctx := newUserRepo(t)
+		created, err := repo.Create(ctx, repository.CreateUserInput{
+			Email:    "identity@example.com",
+			Atname:   "identityuser",
+			Locale:   "ja",
+			TimeZone: "Asia/Tokyo",
+		})
+		if err != nil {
+			t.Fatalf("Create() error = %v", err)
+		}
+
+		if err := repo.Suspend(ctx, created.ID); err != nil {
+			t.Fatalf("Suspend() error = %v", err)
+		}
+
+		user := findUser(t, ctx, repo, created.ID)
+		if user.Email != "identity@example.com" {
+			t.Errorf("user.Email = %q, want %q", user.Email, "identity@example.com")
+		}
+		if user.Atname != "identityuser" {
+			t.Errorf("user.Atname = %q, want %q", user.Atname, "identityuser")
+		}
+		if user.DeletedAt != nil {
+			t.Errorf("user.DeletedAt = %v, want nil (停止は退会ではない)", user.DeletedAt)
+		}
+	})
+}
+
+// TestUserRepository_SuspendedUsersAreExcludedFromTheSessionLookup verifies
+// where a suspension takes effect and where it does not. The session lookup is
+// the one place the mark hides the account, since resolving it there is what
+// would let a cookie issued before the suspension go on acting; every other
+// lookup still returns the row, because the admin screens that lift the
+// suspension have to reach the account they are about.
+//
+// [Ja] TestUserRepository_SuspendedUsersAreExcludedFromTheSessionLookupは、停止が
+// どこで効き、どこで効かないかを検証する。印がアカウントを隠すのはセッションの解決だけで
+// ある。そこで解決されることこそが、停止の前に発行されたCookieを行動させ続けるもので
+// あるためだ。ほかのルックアップは行を返し続ける。停止を解除する管理画面は、その対象の
+// アカウントへ届かなければならないためである。
+func TestUserRepository_SuspendedUsersAreExcludedFromTheSessionLookup(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+	repo := repository.NewUserRepository(db)
+	ctx := context.Background()
+
+	// A fixed time stands in for the moment the administrator suspended the
+	// account. It is written out rather than derived from time.Now, because the
+	// column holds milliseconds and a value read back has to be comparable to
+	// the one the test wrote.
+	//
+	// [Ja] 固定の時刻を、管理者がアカウントを停止した時点の代わりに使う。time.Nowから
+	// 導かずに書き下すのは、列がミリ秒までを保持するためであり、読み戻した値が、テストが
+	// 書いた値と比べられる必要があるためである。
+	suspendedAt := time.Date(2026, 9, 12, 12, 30, 0, 0, time.UTC)
+
+	t.Run("FindBySessionToken は停止中のアカウントのセッションを解決しない", func(t *testing.T) {
+		userID := testutil.NewUserBuilder(t, db).WithSuspendedAt(suspendedAt).Build()
+		testutil.NewUserSessionBuilder(t, db).
+			WithUserID(userID).
+			WithToken("suspended-token").
+			Build()
+
+		user, err := repo.FindBySessionToken(ctx, "suspended-token")
+		if err != nil {
+			t.Fatalf("FindBySessionToken() error = %v", err)
+		}
+		if user != nil {
+			t.Errorf("FindBySessionToken() = %v, want nil (停止中は解決されないはず)", user)
+		}
+	})
+
+	t.Run("FindByID は停止中のアカウントを返し、停止の時刻を伝える", func(t *testing.T) {
+		userID := testutil.NewUserBuilder(t, db).WithSuspendedAt(suspendedAt).Build()
+
+		user, err := repo.FindByID(ctx, userID)
+		if err != nil {
+			t.Fatalf("FindByID() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("FindByID() = nil, want user (停止中でも管理画面から届くはず)")
+		}
+		if user.SuspendedAt == nil {
+			t.Fatal("user.SuspendedAt = nil, want the stored timestamp")
+		}
+		if !user.SuspendedAt.Equal(suspendedAt) {
+			t.Errorf("user.SuspendedAt = %v, want %v", user.SuspendedAt, suspendedAt)
+		}
+	})
+
+	t.Run("FindByEmail は停止中のアカウントを返す", func(t *testing.T) {
+		email := "suspended-findbyemail@example.com"
+		testutil.NewUserBuilder(t, db).WithEmail(email).WithSuspendedAt(suspendedAt).Build()
+
+		user, err := repo.FindByEmail(ctx, email)
+		if err != nil {
+			t.Fatalf("FindByEmail() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("FindByEmail() = nil, want user (サインインの照合が停止を見分けるため)")
+		}
+		if user.SuspendedAt == nil {
+			t.Error("user.SuspendedAt = nil, want the stored timestamp")
+		}
+	})
+}
 func TestUserRepository_FindByEmail(t *testing.T) {
 	t.Parallel()
 

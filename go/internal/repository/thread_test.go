@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -506,4 +507,407 @@ func TestThreadRepository_UpdateLastPost(t *testing.T) {
 	if !updated.LastPostedAt.Equal(lastPostedAt) {
 		t.Errorf("thread.LastPostedAt = %v, want %v", updated.LastPostedAt, lastPostedAt)
 	}
+}
+
+// findThread reads the thread back through the repository, failing the test when
+// it is gone. Assertions about a column a moderation write sets go through the
+// lookup the application itself uses, so a write that lands in the database
+// without reaching model.Thread does not pass.
+//
+// [Ja] findThreadはスレッドをリポジトリ経由で読み戻し、失われている場合はテストを
+// 失敗させる。モデレーションの書き込みが立てる列についての検証を、アプリケーション自身が
+// 使う引き当てを通して行うことで、データベースには届いてもmodel.Threadに現れない書き込みが
+// 通らないようにする。
+func (r *contentRepos) findThread(t *testing.T, ctx context.Context, id model.ThreadID) *model.Thread {
+	t.Helper()
+
+	thread, err := r.thread.FindByID(ctx, id)
+	if err != nil {
+		t.Fatalf("スレッドの取得に失敗: %v", err)
+	}
+	if thread == nil {
+		t.Fatal("スレッドが見つからない")
+	}
+
+	return thread
+}
+
+func TestThreadRepository_Lock(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ロックの時刻を立て、解除がそれを外す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "ロックされるスレッド")
+
+		if err := repos.thread.Lock(ctx, created.ID); err != nil {
+			t.Fatalf("Lock() error = %v", err)
+		}
+
+		locked := repos.findThread(t, ctx, created.ID)
+		if locked.LockedAt == nil {
+			t.Fatal("thread.LockedAt = nil, want the stamped time")
+		}
+		if locked.LockedAt.Before(created.CreatedAt) {
+			t.Errorf("thread.LockedAt = %v, want at or after the thread's creation (%v)", locked.LockedAt, created.CreatedAt)
+		}
+
+		if err := repos.thread.Unlock(ctx, created.ID); err != nil {
+			t.Fatalf("Unlock() error = %v", err)
+		}
+
+		unlocked := repos.findThread(t, ctx, created.ID)
+		if unlocked.LockedAt != nil {
+			t.Errorf("thread.LockedAt = %v, want nil", unlocked.LockedAt)
+		}
+	})
+
+	// The two marks are separate columns, so a thread carrying both is the case
+	// that shows unlocking clears the one it is asked to and leaves the other
+	// standing.
+	//
+	// [Ja] 2つの印は別々の列であるため、両方を持つスレッドこそが、解除が求められた
+	// ほうだけを外し、もう一方をそのままにすることを示す場合になる。
+	t.Run("解除が外すのはロックだけで、非公開の印は残る", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "ロックされて非公開にされたスレッド")
+
+		if err := repos.thread.Lock(ctx, created.ID); err != nil {
+			t.Fatalf("Lock() error = %v", err)
+		}
+		if err := repos.thread.Unpublish(ctx, created.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+		if err := repos.thread.Unlock(ctx, created.ID); err != nil {
+			t.Fatalf("Unlock() error = %v", err)
+		}
+
+		thread := repos.findThread(t, ctx, created.ID)
+		if thread.LockedAt != nil {
+			t.Errorf("thread.LockedAt = %v, want nil", thread.LockedAt)
+		}
+		if thread.UnpublishedAt == nil {
+			t.Error("thread.UnpublishedAt = nil, want the stamped time")
+		}
+	})
+
+	// The three writes name their row in a WHERE and read no affected count, so
+	// an id matching nothing is a statement that changes nothing. A caller is
+	// meant to have read the thread inside the transaction it writes in, and
+	// this is what it gets when it did not: silence rather than an error. The
+	// thread standing beside the missing id is checked too, so a WHERE that
+	// stopped narrowing cannot pass.
+	//
+	// [Ja] 3つの書き込みはいずれもWHEREで行を名指し、更新した行数を読まないため、何にも
+	// 一致しないidは何も変えない文になる。呼び出し元は書き込むトランザクションの中で
+	// スレッドを読んでいるはずであり、読んでいなかったときに得るのがこれである。
+	// エラーではなく沈黙である。存在しないidの隣にあるスレッドも確認することで、
+	// WHEREが絞り込みをやめた場合に通らないようにする。
+	t.Run("存在しない id への書き込みは何も変えずに成功する", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "無関係なスレッド")
+		missing := created.ID + 100000
+
+		if err := repos.thread.Lock(ctx, missing); err != nil {
+			t.Errorf("Lock() error = %v, want nil", err)
+		}
+		if err := repos.thread.Unlock(ctx, missing); err != nil {
+			t.Errorf("Unlock() error = %v, want nil", err)
+		}
+		if err := repos.thread.Unpublish(ctx, missing); err != nil {
+			t.Errorf("Unpublish() error = %v, want nil", err)
+		}
+
+		thread := repos.findThread(t, ctx, created.ID)
+		if thread.LockedAt != nil {
+			t.Errorf("thread.LockedAt = %v, want nil", thread.LockedAt)
+		}
+		if thread.UnpublishedAt != nil {
+			t.Errorf("thread.UnpublishedAt = %v, want nil", thread.UnpublishedAt)
+		}
+	})
+
+	// Unlocking a thread that was never locked writes NULL over NULL, which is
+	// the same silence: the caller learns nothing about what the column held.
+	//
+	// [Ja] ロックされていないスレッドの解除はNULLにNULLを書くものであり、同じ沈黙で
+	// ある。呼び出し元は列が何を持っていたかを知らされない。
+	t.Run("ロックされていないスレッドの解除も成功する", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "ロックされていないスレッド")
+
+		if err := repos.thread.Unlock(ctx, created.ID); err != nil {
+			t.Fatalf("Unlock() error = %v", err)
+		}
+
+		thread := repos.findThread(t, ctx, created.ID)
+		if thread.LockedAt != nil {
+			t.Errorf("thread.LockedAt = %v, want nil", thread.LockedAt)
+		}
+	})
+}
+
+func TestThreadRepository_Unpublish(t *testing.T) {
+	t.Parallel()
+
+	t.Run("非公開のスレッドも FindByID は返す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "非公開にされるスレッド")
+
+		if err := repos.thread.Unpublish(ctx, created.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		thread := repos.findThread(t, ctx, created.ID)
+		if thread.UnpublishedAt == nil {
+			t.Fatal("thread.UnpublishedAt = nil, want the stamped time")
+		}
+		if thread.Title != created.Title {
+			t.Errorf("thread.Title = %q, want %q", thread.Title, created.Title)
+		}
+	})
+
+	t.Run("非公開のスレッドは掲示板の一覧と各板の最新から消える", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		noon := time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC)
+		hidden := repos.createThreadPostedAt(t, ctx, board.ID, "非公開にされるスレッド", noon.Add(time.Hour))
+		repos.createThreadPostedAt(t, ctx, board.ID, "残るスレッド", noon)
+
+		if err := repos.thread.Unpublish(ctx, hidden.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		listed, err := repos.thread.ListByBoardID(ctx, board.ID)
+		if err != nil {
+			t.Fatalf("ListByBoardID() error = %v", err)
+		}
+		if len(listed) != 1 {
+			t.Fatalf("len(ListByBoardID()) = %d, want 1", len(listed))
+		}
+		if listed[0].Title != "残るスレッド" {
+			t.Errorf("ListByBoardID()[0].Title = %q, want %q", listed[0].Title, "残るスレッド")
+		}
+
+		recent, err := repos.thread.ListRecentPerBoard(ctx, 5)
+		if err != nil {
+			t.Fatalf("ListRecentPerBoard() error = %v", err)
+		}
+		if len(recent) != 1 {
+			t.Fatalf("len(ListRecentPerBoard()) = %d, want 1", len(recent))
+		}
+		if recent[0].Title != "残るスレッド" {
+			t.Errorf("ListRecentPerBoard()[0].Title = %q, want %q", recent[0].Title, "残るスレッド")
+		}
+	})
+
+	// perBoard is asked for below the number of candidates, which is what tells
+	// apart leaving the unpublished thread out before the cut from leaving it
+	// out after. Asked for with room to spare, both orders return the published
+	// thread alone; asked for one, only the first returns anything at all, and
+	// the other hands the board a slot spent on a thread nobody can see.
+	//
+	// [Ja] perBoardを候補の件数より小さく求める。これが、非公開のスレッドを切り出しの
+	// 前に落とすことと後に落とすことを区別する。余裕を持って求めればどちらの順序でも
+	// 公開のスレッド1件が返るが、1件だけを求めると前者しか何も返さず、後者は誰にも
+	// 見えないスレッドに枠を使った掲示板を返す。
+	t.Run("非公開のスレッドは各板の最新の枠を消費しない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		noon := time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC)
+		hidden := repos.createThreadPostedAt(t, ctx, board.ID, "最後に投稿された非公開のスレッド", noon.Add(time.Hour))
+		repos.createThreadPostedAt(t, ctx, board.ID, "その1つ前の公開スレッド", noon)
+
+		if err := repos.thread.Unpublish(ctx, hidden.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		recent, err := repos.thread.ListRecentPerBoard(ctx, 1)
+		if err != nil {
+			t.Fatalf("ListRecentPerBoard() error = %v", err)
+		}
+		if len(recent) != 1 {
+			t.Fatalf("len(ListRecentPerBoard()) = %d, want 1", len(recent))
+		}
+		if recent[0].Title != "その1つ前の公開スレッド" {
+			t.Errorf("ListRecentPerBoard()[0].Title = %q, want %q", recent[0].Title, "その1つ前の公開スレッド")
+		}
+	})
+}
+
+func TestThreadRepository_ListByIDs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("id 順に返し、非公開のスレッドも含む", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		first := repos.createThread(t, ctx, board.ID, "公開されたスレッド")
+		second := repos.createThread(t, ctx, board.ID, "非公開にされるスレッド")
+
+		if err := repos.thread.Unpublish(ctx, second.ID); err != nil {
+			t.Fatalf("Unpublish() error = %v", err)
+		}
+
+		// The ids are asked for out of order and with a repeat, the shape a log
+		// page hands over after collecting them from its rows.
+		//
+		// [Ja] idは順不同かつ重複を含めて渡す。履歴のページが自身の行から集めたときの
+		// 形である。
+		threads, err := repos.thread.ListByIDs(ctx, []model.ThreadID{second.ID, first.ID, second.ID})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(threads) != 2 {
+			t.Fatalf("len(ListByIDs()) = %d, want 2", len(threads))
+		}
+		if threads[0].ID != first.ID {
+			t.Errorf("ListByIDs()[0].ID = %v, want %v", threads[0].ID, first.ID)
+		}
+		if threads[1].ID != second.ID {
+			t.Errorf("ListByIDs()[1].ID = %v, want %v", threads[1].ID, second.ID)
+		}
+		if threads[1].UnpublishedAt == nil {
+			t.Error("ListByIDs()[1].UnpublishedAt = nil, want the stamped time")
+		}
+	})
+
+	t.Run("存在しない id は結果に現れない", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+		board := repos.createBoardWithCategory(t, ctx, "tech")
+		created := repos.createThread(t, ctx, board.ID, "唯一のスレッド")
+
+		threads, err := repos.thread.ListByIDs(ctx, []model.ThreadID{created.ID, created.ID + 100000})
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(threads) != 1 {
+			t.Fatalf("len(ListByIDs()) = %d, want 1", len(threads))
+		}
+		if threads[0].ID != created.ID {
+			t.Errorf("ListByIDs()[0].ID = %v, want %v", threads[0].ID, created.ID)
+		}
+	})
+
+	t.Run("空の id は空を返す", func(t *testing.T) {
+		t.Parallel()
+
+		repos, ctx := newContentRepos(t)
+
+		threads, err := repos.thread.ListByIDs(ctx, nil)
+		if err != nil {
+			t.Fatalf("ListByIDs() error = %v", err)
+		}
+		if len(threads) != 0 {
+			t.Errorf("len(ListByIDs()) = %d, want 0", len(threads))
+		}
+	})
+}
+
+// TestThreadRepository_Listings_KeepTheirSearchWithoutTheUnpublishedThreads
+// verifies that leaving unpublished threads out of the two listings does not
+// change how SQLite finds their rows. The condition is on no index, so it can
+// only be applied to rows something else already found; the check is that the
+// something else is unchanged, by comparing each statement's plan against the
+// same statement with the condition removed.
+//
+// The one difference the comparison forgives is the index no longer covering
+// the per-board subquery, since unpublished_at is not in it: that subquery now
+// reads the row for each candidate it walks, including unpublished ones.
+// LIMIT bounds the returned rows; finding enough published rows can require
+// reading many unpublished candidates, or the entire board's range when too
+// few published rows remain. This test checks the search plan, not a bound on
+// the number of rows read.
+//
+// [Ja] TestThreadRepository_Listings_KeepTheirSearchWithoutTheUnpublishedThreadsは、
+// 2つの一覧から非公開のスレッドを落とすことが、SQLiteのそれらの行の見つけ方を変えない
+// ことを検証します。この条件はどの索引にも乗らないため、ほかの何かが既に見つけた行に
+// 対してしか適用できません。検査するのは、そのほかの何かが変わっていないことであり、
+// 各文の実行計画を、条件を取り除いた同じ文の実行計画と比べます。
+//
+// 比較が見逃す唯一の違いは、掲示板ごとの副問い合わせを索引が覆わなくなることです。
+// unpublished_atが索引に含まれないためで、この副問い合わせは非公開を含む候補ごとに行を
+// 読みます。LIMITが制限するのは返却件数であり、公開行が必要な件数に達するまでに多数の
+// 非公開行を読むことも、公開行が不足して掲示板の範囲全体を読むこともあります。
+// このテストは検索の形を確認するもので、読み取る行数の上限を検証するものではありません。
+func TestThreadRepository_Listings_KeepTheirSearchWithoutTheUnpublishedThreads(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		query     string
+		condition string
+		arg       int64
+	}{
+		{
+			name:      "掲示板のスレッド一覧",
+			query:     "ListThreadsByBoardID",
+			condition: " AND unpublished_at IS NULL",
+			arg:       1,
+		},
+		{
+			name:      "各掲示板の最新スレッド",
+			query:     "ListRecentThreadsPerBoard",
+			condition: " AND recent.unpublished_at IS NULL",
+			arg:       5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			repos, ctx := newContentRepos(t)
+
+			statement := queryStatement(t, "threads.sql", tt.query)
+			if !strings.Contains(statement, tt.condition) {
+				t.Fatalf("%s に %q が見つからない", tt.query, tt.condition)
+			}
+			published := strings.Replace(statement, tt.condition, "", 1)
+
+			got := searchPlan(t, ctx, repos.db, statement, tt.arg)
+			want := searchPlan(t, ctx, repos.db, published, tt.arg)
+			if got != want {
+				t.Errorf("%s の実行計画 = %q, 条件を除いた %q と同じはず", tt.query, got, want)
+			}
+			if !strings.Contains(got, "index_threads_on_board_id_and_last_posted_at") {
+				t.Errorf("%s の実行計画 = %q, 掲示板と最終投稿の索引をたどるはず", tt.query, got)
+			}
+		})
+	}
+}
+
+// searchPlan returns the query plan with the distinction between an index and a
+// covering one dropped, so that a comparison of two plans is about which index
+// answers the search rather than whether the rows it found still have to be
+// read.
+//
+// [Ja] searchPlanは、索引とそれが覆う索引の区別を落とした実行計画を返し、2つの実行計画の
+// 比較が、見つけた行をさらに読む必要があるかどうかではなく、どの索引が検索に答えるかに
+// ついてのものになるようにします。
+func searchPlan(t *testing.T, ctx context.Context, db *database.DB, statement string, args ...any) string {
+	t.Helper()
+
+	return strings.ReplaceAll(queryPlan(t, ctx, db, statement, args...), "USING COVERING INDEX", "USING INDEX")
 }

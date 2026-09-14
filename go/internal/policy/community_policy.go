@@ -57,7 +57,8 @@ func NewCommunityPolicy(scopes []model.Scope) *CommunityPolicy {
 // なくどれか 1 つの画面を許された人に対して真になります。後続の計画が固有のスコープを
 // 持つ画面を足すと、この判定はそのぶん広がります。
 func (p *CommunityPolicy) CanAccessAdmin() bool {
-	return p.has(model.ScopeUserRead) || p.has(model.ScopeUserRoleWrite)
+	return p.has(model.ScopeUserRead) || p.has(model.ScopeUserRoleWrite) ||
+		p.has(model.ScopeModerationLogRead)
 }
 
 // CanListUsers reports whether the actor may read the list of the community's
@@ -86,6 +87,93 @@ func (p *CommunityPolicy) CanGrantUserRole() bool {
 // なく、書き込むトランザクションの中で行に対して判断します。
 func (p *CommunityPolicy) CanRevokeUserRole() bool {
 	return p.has(model.ScopeUserRoleWrite)
+}
+
+// CanLockThread reports whether the actor may close a thread to new replies.
+//
+// [Ja] CanLockThread は、操作者がスレッドへの新しい返信を締め切ってよいかどうかを
+// 返します。
+func (p *CommunityPolicy) CanLockThread() bool {
+	return p.has(model.ScopeThreadLockWrite)
+}
+
+// CanUnlockThread reports whether the actor may reopen a thread the moderators
+// closed. Whether the thread then takes replies is a separate question: a thread
+// that reached the cap on its posts stays locked for that reason after the
+// moderators' lock is lifted.
+//
+// [Ja] CanUnlockThread は、操作者が管理者の締め切ったスレッドを開き直してよいかどうかを
+// 返します。そのスレッドが実際に返信を受け付けるかどうかは別の問いです。投稿数の上限に
+// 達したスレッドは、管理者のロックが外れた後もその理由でロックされたままです。
+func (p *CommunityPolicy) CanUnlockThread() bool {
+	return p.has(model.ScopeThreadLockWrite)
+}
+
+// CanUnpublishThread reports whether the actor may hide a thread from the
+// community.
+//
+// [Ja] CanUnpublishThread は、操作者がスレッドをコミュニティから見えなくしてよいか
+// どうかを返します。
+func (p *CommunityPolicy) CanUnpublishThread() bool {
+	return p.has(model.ScopeThreadUnpublicationWrite)
+}
+
+// CanUnpublishPost reports whether the actor may hide one post from the
+// community.
+//
+// [Ja] CanUnpublishPost は、操作者が投稿を 1 つコミュニティから見えなくしてよいか
+// どうかを返します。
+func (p *CommunityPolicy) CanUnpublishPost() bool {
+	return p.has(model.ScopePostUnpublicationWrite)
+}
+
+// CanModerateThread reports whether the actor may open the screens that act on
+// a thread. It is what a confirmation page under /t/{id} asks before it reads
+// the thread it is about, so it holds for anyone admitted to any one of those
+// operations rather than to all of them, the way CanAccessAdmin holds for the
+// admin screens. Which operation a page goes on to carry out is settled by the
+// judgment for that operation, so a visitor admitted to one of them is not
+// admitted to the rest by having reached the screen.
+//
+// [Ja] CanModerateThreadは、操作者がスレッドに対して働きかける画面を開いてよいかどうかを
+// 返します。/t/{id} の下の確認ページが、対象のスレッドを読む前に尋ねるのがこれであるため、
+// CanAccessAdminが管理画面に対してそうであるように、すべてではなくどれか1つの操作を許された
+// 人に対して真になります。そのページが続いてどの操作を行うかはその操作の判定が決めるため、
+// 1つを許された訪問者が、画面に辿り着いたことによって残りを許されることはありません。
+func (p *CommunityPolicy) CanModerateThread() bool {
+	return p.CanLockThread() || p.CanUnpublishThread() || p.CanUnpublishPost()
+}
+
+// CanSuspendUser reports whether the actor may stop what an account does in the
+// community. Whether this particular account may be stopped -- the actor's own,
+// or the last administrator's -- is a separate question, decided against the
+// rows inside the transaction that writes rather than against the actor's
+// scopes.
+//
+// [Ja] CanSuspendUser は、操作者がコミュニティにおけるアカウントの活動を止めてよいか
+// どうかを返します。そのアカウントを止めてよいかどうか (操作者自身のものである場合や、
+// 最後の管理者である場合) は別の問いで、操作者のスコープではなく、書き込むトランザク
+// ションの中で行に対して判断します。
+func (p *CommunityPolicy) CanSuspendUser() bool {
+	return p.has(model.ScopeUserSuspensionWrite)
+}
+
+// CanUnsuspendUser reports whether the actor may let a stopped account act in
+// the community again.
+//
+// [Ja] CanUnsuspendUser は、操作者が止められたアカウントをコミュニティで再び活動
+// できるようにしてよいかどうかを返します。
+func (p *CommunityPolicy) CanUnsuspendUser() bool {
+	return p.has(model.ScopeUserSuspensionWrite)
+}
+
+// CanListModerationLogs reports whether the actor may read the record of
+// moderation operations in the admin screens.
+//
+// [Ja] CanListModerationLogs は、操作者が管理画面でモデレーション操作の記録を読んで
+// よいかどうかを返します。
+func (p *CommunityPolicy) CanListModerationLogs() bool {
+	return p.has(model.ScopeModerationLogRead)
 }
 
 // has reports whether the expanded set holds the given scope.

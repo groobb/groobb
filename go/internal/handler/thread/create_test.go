@@ -172,7 +172,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	saved := readSavedThread(t, db)
-	wantLocation := templates.ThreadPath(viewmodel.ThreadID(saved.id)).String() + templates.PostAnchor(1).String()
+	wantLocation := templates.ThreadPostAnchorPath(viewmodel.ThreadID(saved.id), 1).String()
 	if got := rec.Header().Get("Location"); got != wantLocation {
 		t.Errorf("Location = %q, want %q", got, wantLocation)
 	}
@@ -466,7 +466,7 @@ func TestCreate_NonCanonicalSlug(t *testing.T) {
 	}
 
 	saved := readSavedThread(t, db)
-	if want := templates.ThreadPath(viewmodel.ThreadID(saved.id)).String() + templates.PostAnchor(1).String(); rec.Header().Get("Location") != want {
+	if want := templates.ThreadPostAnchorPath(viewmodel.ThreadID(saved.id), 1).String(); rec.Header().Get("Location") != want {
 		t.Errorf("Location = %q, want %q", rec.Header().Get("Location"), want)
 	}
 }
@@ -573,7 +573,7 @@ func TestCreate_ThroughRouter(t *testing.T) {
 			}
 
 			saved := readSavedThread(t, db)
-			if want := templates.ThreadPath(viewmodel.ThreadID(saved.id)).String() + templates.PostAnchor(1).String(); rec.Header().Get("Location") != want {
+			if want := templates.ThreadPostAnchorPath(viewmodel.ThreadID(saved.id), 1).String(); rec.Header().Get("Location") != want {
 				t.Errorf("Location = %q, want %q", rec.Header().Get("Location"), want)
 			}
 			if saved.authorID != author.ID {

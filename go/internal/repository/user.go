@@ -273,10 +273,23 @@ func atnamePrefixBounds(prefix string) (from, to string) {
 // forged cookie). It resolves the session and its user in a single JOIN so the
 // authentication hot path does not pay two round-trips per request.
 //
+// A suspended account resolves to nothing, the same way a withdrawn one does.
+// Suspension stops an account from acting, while the cookie of whoever was
+// signed in when it was suspended is still in their browser, so a session that
+// went on resolving would let that account act until the cookie happened to
+// expire. What the visitor meets instead is the community as an anonymous
+// visitor sees it, which is what they may still do.
+//
 // [Ja] FindBySessionToken は指定 token のセッションを所有するユーザーを返し、token に
 // 一致するセッションが無い場合 (未知 / 失効 / 偽造された Cookie) は (nil, nil) を
 // 返します。セッションとそのユーザーを 1 度の JOIN で解決し、認証のホットパスが
 // リクエストごとに 2 往復しないようにします。
+//
+// 停止されたアカウントは、退会したアカウントと同じく何にも解決しません。停止はアカウントが
+// 行動することを止めるものである一方、停止された時点でサインインしていた人のCookieはその
+// ブラウザに残っているため、セッションが解決できるままであれば、そのCookieがたまたま失効
+// するまでそのアカウントは行動できてしまいます。訪問者が代わりに出会うのは、匿名の訪問者
+// から見えるコミュニティであり、それは停止されてもなおできることです。
 func (r *UserRepository) FindBySessionToken(ctx context.Context, token string) (*model.User, error) {
 	row, err := r.reader.GetUserBySessionToken(ctx, token)
 	if err != nil {
@@ -389,6 +402,45 @@ func (r *UserRepository) PurgeDeletedBefore(ctx context.Context, cutoff time.Tim
 	return r.writer.PurgeUsersDeletedBefore(ctx, sqlitetime.Ptr(&cutoff))
 }
 
+// Suspend stamps the account as suspended by an administrator. It writes the
+// column unconditionally, so a caller that would overwrite an existing stamp is
+// one that did not look first: the state a moderation operation acts on is read
+// inside the write transaction it commits in, and an account already suspended
+// is answered there without reaching this method.
+//
+// Suspending does not sign the account out; the sessions of whoever was signed
+// in are deleted by the caller, in the same transaction. Nothing else about the
+// account changes: the email and the atname stay as they are, because a
+// suspension stops what the account may do and not who it is.
+//
+// The timestamp uses the database clock, as does moderation_logs.created_at.
+//
+// [Ja] Suspendはアカウントに管理者による停止の時刻を打刻します。列を無条件に書くため、
+// 既にある打刻を上書きする呼び出し元は、先に読んでいない呼び出し元です。モデレーションの
+// 操作が対象とする状態は、それをコミットする書き込みトランザクションの中で読み、既に停止
+// されているアカウントはそこで答えられ、本メソッドには届きません。
+//
+// 停止はアカウントをサインアウトさせません。サインインしていた人のセッションは、同じ
+// トランザクションの中で呼び出し元が削除します。アカウントについてほかに変わるものは
+// ありません。emailもatnameもそのままです。停止が止めるのはアカウントが何をできるかで
+// あって、それが誰であるかではないためです。
+//
+// 時刻はmoderation_logs.created_atと同じく、データベースの時計を使います。
+func (r *UserRepository) Suspend(ctx context.Context, id model.UserID) error {
+	return r.writer.SuspendUser(ctx, int64(id))
+}
+
+// Unsuspend clears the administrator's suspension, letting the account act
+// again. The sessions deleted when it was suspended are not brought back: the
+// person signs in again, which is what proves the account is theirs.
+//
+// [Ja] Unsuspendは管理者による停止を外し、アカウントが再び行動できるようにします。停止の
+// ときに削除したセッションは戻しません。本人はサインインし直すのであり、それがそのアカウント
+// が自分のものであることを示すものです。
+func (r *UserRepository) Unsuspend(ctx context.Context, id model.UserID) error {
+	return r.writer.UnsuspendUser(ctx, int64(id))
+}
+
 // toModel converts a query.User row into a model.User, casting the raw id into the
 // typed UserID and the stored timestamps back into time.Time at the repository
 // boundary.
@@ -397,12 +449,14 @@ func (r *UserRepository) PurgeDeletedBefore(ctx context.Context, cutoff time.Tim
 // 型付きの UserID に、保存書式の時刻を time.Time にキャストします。
 func (r *UserRepository) toModel(row query.User) *model.User {
 	return &model.User{
-		ID:        model.UserID(row.ID),
-		Email:     row.Email,
-		Atname:    row.Atname,
-		Locale:    model.Locale(row.Locale),
-		TimeZone:  row.TimeZone,
-		DeletedAt: sqlitetime.TimePtr(row.DeletedAt),
+		ID:          model.UserID(row.ID),
+		Email:       row.Email,
+		Atname:      row.Atname,
+		Locale:      model.Locale(row.Locale),
+		TimeZone:    row.TimeZone,
+		DeletedAt:   sqlitetime.TimePtr(row.DeletedAt),
+		SuspendedAt: sqlitetime.TimePtr(row.SuspendedAt),
+
 		CreatedAt: time.Time(row.CreatedAt),
 		UpdatedAt: time.Time(row.UpdatedAt),
 	}

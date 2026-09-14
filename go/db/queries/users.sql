@@ -15,7 +15,9 @@ ORDER BY id;
 -- name: GetUserBySessionToken :one
 SELECT users.* FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
-WHERE user_sessions.token = ? AND users.deleted_at IS NULL
+WHERE user_sessions.token = ?
+  AND users.deleted_at IS NULL
+  AND users.suspended_at IS NULL
 LIMIT 1;
 
 -- name: CreateUser :one
@@ -60,3 +62,15 @@ SELECT COUNT(*) FROM users WHERE deleted_at IS NULL;
 SELECT COUNT(*) FROM users
 WHERE atname >= sqlc.arg(atname_from) AND atname < sqlc.arg(atname_to)
   AND deleted_at IS NULL;
+
+-- name: SuspendUser :exec
+UPDATE users
+SET suspended_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?;
+
+-- name: UnsuspendUser :exec
+UPDATE users
+SET suspended_at = NULL,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?;

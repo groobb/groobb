@@ -164,6 +164,24 @@ func (uc *CreatePostUsecase) createPost(
 		}
 	}
 
+	// A thread taken out of view is answered beside the thread that is not there,
+	// before anything about the account or the lock is asked. The community shows
+	// nothing at this address any more, so what is said about the submission is
+	// that its destination is gone rather than that the writing was at fault.
+	//
+	// [Ja] 見えない場所へ移されたスレッドは、そこに無いスレッドの傍らで答える。アカウントに
+	// ついてもロックについても問う前である。コミュニティはこのアドレスで何も示さなくなった
+	// ため、送信について述べるのは、書かれたものに落ち度があることではなく、その宛先が
+	// 失われたことである。
+	if thread.UnpublishedAt != nil {
+		return nil, &model.AppError{
+			Code:     model.AppErrCodeResourceUnpublished,
+			UserMsg:  i18n.T(ctx, "error_unpublished_message"),
+			Internal: fmt.Errorf("非公開のスレッドへの投稿: thread_id=%s", threadID),
+			Metadata: map[string]string{"thread_id": threadID.String()},
+		}
+	}
+
 	// Whether this account may write at all is asked before the thread's own
 	// refusals. An account that has left can post nowhere, so it hears that
 	// rather than hearing about the thread it happened to write to: the guidance

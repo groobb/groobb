@@ -9,6 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/database"
 	"github.com/groobb/groobb/go/internal/model"
 	"github.com/groobb/groobb/go/internal/query"
+	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
 // PostRepository reads and writes posts through sqlc-generated queries.
@@ -130,6 +131,100 @@ func (r *PostRepository) Create(ctx context.Context, input CreatePostInput) (*mo
 	return r.toModel(row), nil
 }
 
+// FindByThreadIDAndNumber returns the post at the given reply number of the
+// thread, or (nil, nil) when the thread has no post with that number. The pair
+// is what addresses a post everywhere it is referred to — a >>N in a body, the
+// #p{number} anchor, a URL shared elsewhere — so it is what a caller acting on
+// one post of a thread holds, rather than the post's own id.
+//
+// An unpublished post is returned. What a caller does with it depends on why it
+// asked: the answer for a moderator aiming at a post is not the answer for the
+// listing, and neither is decided here.
+//
+// [Ja] FindByThreadIDAndNumberはスレッドの指定したレス番号の投稿を返し、その番号の投稿が
+// 無い場合は (nil, nil) を返します。この組は、投稿が参照されるあらゆる場所 — 本文中の
+// >>N、アンカーの #p{number}、外部で共有されたURL — で投稿を指すものであるため、スレッドの
+// 1つの投稿を対象とする呼び出し元が持つのは、投稿自身のidではなくこの組になります。
+//
+// 非公開の投稿も返します。それをどう扱うかは、何のために引いたかによります。投稿を対象と
+// する管理者への答えは一覧への答えとは異なり、そのどちらもここでは決めません。
+func (r *PostRepository) FindByThreadIDAndNumber(ctx context.Context, threadID model.ThreadID, number int) (*model.Post, error) {
+	row, err := r.reader.GetPostByThreadIDAndNumber(ctx, query.GetPostByThreadIDAndNumberParams{
+		ThreadID: int64(threadID),
+		Number:   int64(number),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.toModel(row), nil
+}
+
+// ListByIDs returns the posts among the given ids that still exist, in id
+// order, so a caller holding a set of ids resolves them in one query.
+//
+// Unpublished posts are returned, as they are in ListByThreadID: the mark hides
+// a post's body from the thread's readers, not the row from the callers that
+// name it. The moderation log's entry for an unpublished post is about that very
+// post, and a row that came back with nothing would leave the entry unreadable.
+//
+// An empty slice of ids returns an empty slice without querying: there is
+// nothing to look posts up by.
+//
+// [Ja] ListByIDsは指定したidのうち、まだ存在する投稿をid順で返し、idの集合を持つ
+// 呼び出し元が1クエリでそれらを解決できるようにします。
+//
+// 非公開の投稿も、ListByThreadIDと同じく返します。印が隠すのはスレッドの読み手に対する
+// 本文であって、その投稿を名指す呼び出し元に対する行ではありません。非公開にされた投稿に
+// ついての操作履歴の記録は、まさにその投稿についてのものであり、何も返ってこない行はその
+// 記録を読めなくします。
+//
+// 空のidスライスに対してはクエリを発行せず空のスライスを返します。投稿を引く手がかりが
+// 無いためです。
+func (r *PostRepository) ListByIDs(ctx context.Context, ids []model.PostID) ([]*model.Post, error) {
+	if len(ids) == 0 {
+		return []*model.Post{}, nil
+	}
+
+	rawIDs := make([]int64, len(ids))
+	for i, id := range ids {
+		rawIDs[i] = int64(id)
+	}
+
+	rows, err := r.reader.ListPostsByIDs(ctx, rawIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	posts := make([]*model.Post, len(rows))
+	for i, row := range rows {
+		posts[i] = r.toModel(row)
+	}
+	return posts, nil
+}
+
+// Unpublish stamps the post as unpublished by an administrator. It touches this
+// one row and nothing else: the thread's posts_count, last_post_id and
+// last_posted_at stay as they are, because the count is the number of reply
+// numbers issued rather than the number of bodies on display, and a thread that
+// reached the cap does not reopen by having one of its posts unpublished.
+//
+// The timestamp uses the database clock, as do thread moderation timestamps
+// and moderation_logs.created_at.
+//
+// [Ja] Unpublishは投稿に管理者による非公開の時刻を打刻します。触れるのはこの1行だけで
+// あり、スレッドのposts_count・last_post_id・last_posted_atはそのままです。件数は表示
+// されている本文の数ではなく発行したレス番号の数であり、上限に達したスレッドは、その投稿の
+// 1つが非公開になっても書き込みを再開しないためです。
+//
+// 時刻はスレッドのモデレーションの時刻やmoderation_logs.created_atと同じく、
+// データベースの時計を使います。
+func (r *PostRepository) Unpublish(ctx context.Context, id model.PostID) error {
+	return r.writer.UnpublishPost(ctx, int64(id))
+}
+
 // toModel converts a query.Post row into a model.Post, casting the raw ids into
 // their typed forms and the stored timestamps back into time.Time at the
 // repository boundary. UserID is nil only after the author's account row has
@@ -140,11 +235,14 @@ func (r *PostRepository) Create(ctx context.Context, input CreatePostInput) (*mo
 // された後にだけ nil になり、論理退会では投稿行に id が残ります。
 func (r *PostRepository) toModel(row query.Post) *model.Post {
 	return &model.Post{
-		ID:        model.PostID(row.ID),
-		ThreadID:  model.ThreadID(row.ThreadID),
-		UserID:    typedAuthorID(row.UserID),
-		Number:    int(row.Number),
-		Body:      row.Body,
+		ID:       model.PostID(row.ID),
+		ThreadID: model.ThreadID(row.ThreadID),
+		UserID:   typedAuthorID(row.UserID),
+		Number:   int(row.Number),
+		Body:     row.Body,
+
+		UnpublishedAt: sqlitetime.TimePtr(row.UnpublishedAt),
+
 		CreatedAt: time.Time(row.CreatedAt),
 		UpdatedAt: time.Time(row.UpdatedAt),
 	}

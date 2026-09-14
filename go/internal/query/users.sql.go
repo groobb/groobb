@@ -44,7 +44,7 @@ func (q *Queries) CountUsersByAtnamePrefix(ctx context.Context, arg CountUsersBy
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
 VALUES (?, ?, ?, ?)
-RETURNING id, email, atname, locale, time_zone, deleted_at, created_at, updated_at
+RETURNING id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at
 `
 
 type CreateUserParams struct {
@@ -71,12 +71,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SuspendedAt,
 	)
 	return i, err
 }
 
 const getUserByAtname = `-- name: GetUserByAtname :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE atname = ? AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users WHERE atname = ? AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, error) {
@@ -91,12 +92,13 @@ func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, err
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SuspendedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -111,12 +113,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SuspendedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
@@ -131,14 +134,17 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SuspendedAt,
 	)
 	return i, err
 }
 
 const getUserBySessionToken = `-- name: GetUserBySessionToken :one
-SELECT users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at FROM users
+SELECT users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at, users.suspended_at FROM users
 JOIN user_sessions ON user_sessions.user_id = users.id
-WHERE user_sessions.token = ? AND users.deleted_at IS NULL
+WHERE user_sessions.token = ?
+  AND users.deleted_at IS NULL
+  AND users.suspended_at IS NULL
 LIMIT 1
 `
 
@@ -154,12 +160,13 @@ func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SuspendedAt,
 	)
 	return i, err
 }
 
 const listUsersByIDs = `-- name: ListUsersByIDs :many
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users
 WHERE id IN (/*SLICE:ids*/?) AND deleted_at IS NULL
 ORDER BY id
 `
@@ -192,6 +199,7 @@ func (q *Queries) ListUsersByIDs(ctx context.Context, ids []int64) ([]User, erro
 			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SuspendedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -207,7 +215,7 @@ func (q *Queries) ListUsersByIDs(ctx context.Context, ids []int64) ([]User, erro
 }
 
 const listUsersPage = `-- name: ListUsersPage :many
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users
 WHERE deleted_at IS NULL
 ORDER BY id DESC
 LIMIT ?2 OFFSET ?1
@@ -236,6 +244,7 @@ func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([
 			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SuspendedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -251,7 +260,7 @@ func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([
 }
 
 const listUsersPageByAtnamePrefix = `-- name: ListUsersPageByAtnamePrefix :many
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, suspended_at FROM users
 WHERE atname >= ?1 AND atname < ?2
   AND deleted_at IS NULL
 ORDER BY id DESC
@@ -288,6 +297,7 @@ func (q *Queries) ListUsersPageByAtnamePrefix(ctx context.Context, arg ListUsers
 			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SuspendedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -332,6 +342,30 @@ type SoftDeleteAndAnonymizeUserParams struct {
 
 func (q *Queries) SoftDeleteAndAnonymizeUser(ctx context.Context, arg SoftDeleteAndAnonymizeUserParams) error {
 	_, err := q.db.ExecContext(ctx, softDeleteAndAnonymizeUser, arg.Email, arg.Atname, arg.ID)
+	return err
+}
+
+const suspendUser = `-- name: SuspendUser :exec
+UPDATE users
+SET suspended_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) SuspendUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, suspendUser, id)
+	return err
+}
+
+const unsuspendUser = `-- name: UnsuspendUser :exec
+UPDATE users
+SET suspended_at = NULL,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+func (q *Queries) UnsuspendUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, unsuspendUser, id)
 	return err
 }
 

@@ -18,7 +18,17 @@ import (
 //
 // [Ja] threadFixture はテストが読み戻すスレッドと、その周りの、検証が対象とする行です。
 type threadFixture struct {
-	uc        *usecase.GetThreadUsecase
+	uc *usecase.GetThreadUsecase
+
+	// db is the database the UseCase reads through, so that a test can add the
+	// rows its own case is about: the roles a visitor holds differ from case to
+	// case, while the thread they are reading does not.
+	//
+	// [Ja] dbはUseCaseが読み取るデータベースで、テストが自身のケースの対象となる行を
+	// 足せるようにするためのものです。訪問者が持つロールはケースごとに異なりますが、その人が
+	// 読んでいるスレッドは同じです。
+	db *database.DB
+
 	thread    *model.Thread
 	other     *model.Thread
 	author    model.UserID
@@ -113,6 +123,7 @@ func newGetThreadUsecase(t *testing.T) threadFixture {
 
 	return threadFixture{
 		uc:        newGetThreadUsecaseForDB(db),
+		db:        db,
 		thread:    thread,
 		other:     other,
 		author:    author,
@@ -126,6 +137,18 @@ func newGetThreadUsecase(t *testing.T) threadFixture {
 // [Ja] newGetThreadUsecaseForDB は、渡されたアプリケーションデータベース上に UseCase を
 // 構築します。
 func newGetThreadUsecaseForDB(db *database.DB) *usecase.GetThreadUsecase {
+	return newGetThreadUsecaseForDatabases(db, db)
+}
+
+// newGetThreadUsecaseForDatabases builds the UseCase with a separate database
+// behind the roles the visitor's permission is read from. Production passes the
+// same database for both; a test can break the role read alone to see whether it
+// was issued at all.
+//
+// [Ja] newGetThreadUsecaseForDatabasesは、訪問者の権限を読む元となるロールの背後にだけ
+// 別のデータベースを置いてUseCaseを構築します。本番は両方に同じデータベースを渡しますが、
+// テストではロールの読み取りだけを壊し、そもそもそれが発行されたかどうかを見られます。
+func newGetThreadUsecaseForDatabases(db, roleDB *database.DB) *usecase.GetThreadUsecase {
 	return usecase.NewGetThreadUsecase(
 		repository.NewThreadRepository(db),
 		repository.NewBoardRepository(db),
@@ -133,6 +156,7 @@ func newGetThreadUsecaseForDB(db *database.DB) *usecase.GetThreadUsecase {
 		repository.NewPostRepository(db),
 		repository.NewPostReferenceRepository(db),
 		repository.NewUserRepository(db),
+		repository.NewRoleRepository(roleDB),
 	)
 }
 
@@ -306,5 +330,187 @@ func TestGetThreadUsecase_Execute_LookupFailure(t *testing.T) {
 	}
 	if ae := model.AsAppError(err); ae != nil {
 		t.Errorf("Execute() error = %v, want a plain error rather than an AppError", ae)
+	}
+}
+
+// TestGetThreadUsecase_Execute_UnpublishedThread verifies that a thread an
+// administrator took out of view comes back as the unpublished AppError rather
+// than as the page it was, and that the read stops there: the thread is not
+// handed back with its posts for the caller to hide.
+//
+// It is told apart from a missing thread because the handler has something more
+// to say about an address the community held and no longer shows.
+//
+// [Ja] TestGetThreadUsecase_Execute_UnpublishedThread は、管理者が見えない場所へ移した
+// スレッドが、かつてのページではなく非公開のAppErrorとして返り、読み取りがそこで止まる
+// ことを検証します。スレッドは、呼び出し元が隠すために投稿とともに返されたりはしません。
+//
+// 不在のスレッドと区別するのは、コミュニティが持っていて今は示さないアドレスについて、
+// ハンドラーに述べることがもう1つあるためです。
+func TestGetThreadUsecase_Execute_UnpublishedThread(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	db := testutil.SetupDB(t)
+
+	board, err := repository.NewBoardRepository(db).Create(ctx, repository.CreateBoardInput{Slug: "jazz", Name: "ジャズ"})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	threadRepo := repository.NewThreadRepository(db)
+	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{
+		BoardID:  board.ID,
+		Title:    "枯葉の名演",
+		Language: model.LocaleJa.ThreadLanguage(),
+	})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if _, err := repository.NewPostRepository(db).Create(ctx, repository.CreatePostInput{
+		ThreadID: thread.ID,
+		Number:   1,
+		Body:     "好きな演奏は?",
+	}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := threadRepo.Unpublish(ctx, thread.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	output, err := newGetThreadUsecaseForDB(db).Execute(ctx, usecase.GetThreadInput{ID: thread.ID})
+	if output != nil {
+		t.Errorf("Execute() = %v, want nil", output)
+	}
+	assertAppErrCode(t, err, model.AppErrCodeResourceUnpublished)
+}
+
+// TestGetThreadUsecase_Execute_ModerationPermissions verifies that the page is
+// told which operations on the thread the visitor may carry out, one answer per
+// operation, and that each is decided by the scope that admits it rather than by
+// the visitor being an administrator.
+//
+// A role admitting one of them admits that one alone, so a community can hand
+// out the work of moderating in pieces and the page offers each holder exactly
+// what they hold.
+//
+// [Ja] TestGetThreadUsecase_Execute_ModerationPermissionsは、スレッドに対するどの操作を
+// 訪問者が行ってよいかが、操作ごとに1つの答えとしてページへ伝えられること、そしてそれぞれが、
+// 訪問者が管理者であることではなく、それを許すスコープによって決まることを検証します。
+//
+// どれか1つを許すロールが許すのはその1つだけであるため、コミュニティはモデレートの仕事を
+// 分けて渡すことができ、ページは各人が持つものをそのとおりに差し出します。
+func TestGetThreadUsecase_Execute_ModerationPermissions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                string
+		scopes              []model.Scope
+		wantLockThread      bool
+		wantUnpublishThread bool
+		wantUnpublishPost   bool
+	}{
+		{
+			name:                "community:admin はすべてを許される",
+			scopes:              []model.Scope{model.ScopeCommunityAdmin},
+			wantLockThread:      true,
+			wantUnpublishThread: true,
+			wantUnpublishPost:   true,
+		},
+		{
+			name:           "thread_lock:write だけを持つ",
+			scopes:         []model.Scope{model.ScopeThreadLockWrite},
+			wantLockThread: true,
+		},
+		{
+			name:                "thread_unpublication:write だけを持つ",
+			scopes:              []model.Scope{model.ScopeThreadUnpublicationWrite},
+			wantUnpublishThread: true,
+		},
+		{
+			name:              "post_unpublication:write だけを持つ",
+			scopes:            []model.Scope{model.ScopePostUnpublicationWrite},
+			wantUnpublishPost: true,
+		},
+		{
+			name:   "モデレーションと無関係なスコープだけを持つ",
+			scopes: []model.Scope{model.ScopeUserRead},
+		},
+		{
+			name: "ロールを1つも持たない",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newGetThreadUsecase(t)
+			userID := testutil.NewUserBuilder(t, f.db).Build()
+			if len(tt.scopes) > 0 {
+				roleName := model.RoleName("moderator")
+				testutil.NewRoleBuilder(t, f.db).WithName(roleName).WithScopes(tt.scopes).Build()
+				testutil.NewUserRoleBuilder(t, f.db).WithUserID(userID).WithRoleName(roleName).Build()
+			}
+
+			output, err := f.uc.Execute(context.Background(), usecase.GetThreadInput{
+				ID:     f.thread.ID,
+				UserID: &userID,
+			})
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if output.CanLockThread != tt.wantLockThread {
+				t.Errorf("CanLockThread = %t, want %t", output.CanLockThread, tt.wantLockThread)
+			}
+			if output.CanUnpublishThread != tt.wantUnpublishThread {
+				t.Errorf("CanUnpublishThread = %t, want %t", output.CanUnpublishThread, tt.wantUnpublishThread)
+			}
+			if output.CanUnpublishPost != tt.wantUnpublishPost {
+				t.Errorf("CanUnpublishPost = %t, want %t", output.CanUnpublishPost, tt.wantUnpublishPost)
+			}
+		})
+	}
+}
+
+// TestGetThreadUsecase_Execute_AnonymousVisitorReadsNoRoles verifies that an
+// anonymous visitor costs no query for roles, and is told they may carry out
+// none of the operations. The thread is read from a database of its own while
+// the roles would be read from one that has been closed, so an answer without an
+// error is only possible if no query for them was issued.
+//
+// This is asserted rather than left to the reading of Execute because a thread's
+// page is what an anonymous visitor reads most, and a query added here would be
+// paid on every one of them by everyone holding no account.
+//
+// [Ja] TestGetThreadUsecase_Execute_AnonymousVisitorReadsNoRolesは、匿名の訪問者が
+// ロールのためのクエリを1つも払わないこと、そしてどの操作も行えないと伝えられることを検証
+// します。スレッドは専用のデータベースから読み、ロールはクローズ済みのデータベースから読む
+// ため、エラー無しで答えが返るのは、ロールのためのクエリが1つも発行されなかった場合だけです。
+//
+// これをExecuteの読解に委ねず検証するのは、スレッドのページが匿名の訪問者の最も多く読む
+// ページであり、そこにクエリが1つ増えれば、アカウントを持たないすべての人がそのすべての
+// ページでそれを払うことになるためです。
+func TestGetThreadUsecase_Execute_AnonymousVisitorReadsNoRoles(t *testing.T) {
+	t.Parallel()
+
+	f := newGetThreadUsecase(t)
+	closedDB := testutil.SetupDB(t)
+	if err := closedDB.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	uc := newGetThreadUsecaseForDatabases(f.db, closedDB)
+
+	output, err := uc.Execute(context.Background(), usecase.GetThreadInput{ID: f.thread.ID})
+	if err != nil {
+		t.Fatalf("Execute() error = %v, want no error (匿名の訪問者はロールを読まない)", err)
+	}
+	if output.CanLockThread || output.CanUnpublishThread || output.CanUnpublishPost {
+		t.Errorf("匿名の訪問者に操作が許されている: %+v", output)
+	}
+
+	userID := testutil.NewUserBuilder(t, f.db).Build()
+	if _, err := uc.Execute(context.Background(), usecase.GetThreadInput{ID: f.thread.ID, UserID: &userID}); err == nil {
+		t.Error("Execute() error = nil, want error (サインイン済みの訪問者はロールを読む)")
 	}
 }

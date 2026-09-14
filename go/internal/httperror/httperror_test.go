@@ -259,3 +259,124 @@ func TestForbiddenFallsBackToPlainText(t *testing.T) {
 		t.Errorf("response body = %q, want %q", got, "Forbidden\n")
 	}
 }
+
+// TestUnpublished verifies that the unpublished response carries HTTP 404 with
+// an HTML body, and renders the localized heading, explanation, and the link on
+// to the top page for each supported locale. It also asserts the noindex
+// marker: the address it answers for is one the community answered with a
+// thread, so without it a crawler would record this page in that thread's place.
+//
+// The status is asserted alongside the body for the reason TestNotFound gives,
+// and because it is where this page differs from the guesses that would be made
+// for it: a removed thread answers 404 rather than the 410 that would say the
+// address will never answer again.
+//
+// [Ja] TestUnpublished は、非公開のレスポンスが HTTP 404 と HTML ボディを返し、サポートする
+// 各ロケールについてローカライズされた見出し・説明文・トップページへのリンクを描画すること
+// を検証します。あわせて noindex の印も検証します。ここが応じるアドレスは、コミュニティが
+// スレッドで応答していたものであり、これが無ければクローラーはそのスレッドの代わりにこの
+// ページを記録してしまいます。
+//
+// ステータスをボディと併せて検証するのは TestNotFound が述べる理由に加え、このページについて
+// なされうる推測との違いがそこにあるためです。取り除かれたスレッドは 404 で応答します。
+// そのアドレスが二度と応答しないことを述べる 410 ではありません。
+func TestUnpublished(t *testing.T) {
+	t.Parallel()
+
+	renderer := httperror.NewRenderer(&config.Config{Env: "dev"})
+
+	tests := []struct {
+		name        string
+		locale      model.Locale
+		wantHeading string
+		wantMessage string
+		wantLink    string
+	}{
+		{
+			name:        "Japanese",
+			locale:      model.LocaleJa,
+			wantHeading: "このページは公開されていません",
+			wantMessage: "このページは管理者により非公開にされました。",
+			wantLink:    "トップページへ",
+		},
+		{
+			name:        "English",
+			locale:      model.LocaleEn,
+			wantHeading: "This page is not published",
+			wantMessage: "This page was unpublished by an administrator.",
+			wantLink:    "Go to the home page",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/t/1", nil)
+			req = req.WithContext(i18n.SetLocale(req.Context(), tt.locale))
+			rec := httptest.NewRecorder()
+
+			renderer.Unpublished(rec, req)
+
+			if rec.Code != http.StatusNotFound {
+				t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+			}
+
+			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+				t.Errorf("Content-Type = %q, want %q", got, "text/html; charset=utf-8")
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
+				t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+			}
+
+			body := rec.Body.String()
+			wants := []string{
+				tt.wantHeading,
+				tt.wantMessage,
+				tt.wantLink,
+				`href="/"`,
+				`<meta name="robots" content="noindex"`,
+				`lang="` + string(tt.locale) + `"`,
+			}
+			for _, want := range wants {
+				if !strings.Contains(body, want) {
+					t.Errorf("response body does not contain %q", want)
+				}
+			}
+		})
+	}
+}
+
+// TestUnpublishedFallsBackToPlainText verifies that a render failure still
+// returns a plain-text 404 response with the same cache policy. A canceled
+// request context makes the templ renderer fail before it writes the page.
+//
+// [Ja] TestUnpublishedFallsBackToPlainText は、描画に失敗しても同じキャッシュ方針を持つ
+// 平文の 404 レスポンスを返すことを検証します。キャンセル済みのリクエスト context に
+// よって、templ の Renderer はページを書き込む前に失敗します。
+func TestUnpublishedFallsBackToPlainText(t *testing.T) {
+	t.Parallel()
+
+	renderer := httperror.NewRenderer(&config.Config{Env: "dev"})
+
+	req := httptest.NewRequest(http.MethodGet, "/t/1", nil)
+	ctx, cancel := context.WithCancel(req.Context())
+	cancel()
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	renderer.Unpublished(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Errorf("Content-Type = %q, want %q", got, "text/plain; charset=utf-8")
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+	}
+	if got := rec.Body.String(); got != "Not Found\n" {
+		t.Errorf("response body = %q, want %q", got, "Not Found\n")
+	}
+}

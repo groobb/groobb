@@ -140,3 +140,67 @@ func (rd *Renderer) Forbidden(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "403 レスポンスの書き込みに失敗", "error", err)
 	}
 }
+
+// Unpublished responds with the page for a resource an administrator took out
+// of view. A page handler calls it when a UseCase reports
+// AppErrCodeResourceUnpublished, so that every address whose content was
+// removed answers with the same page instead of each screen writing its own.
+//
+// The status is 404, which is what a visitor and a crawler act on: the
+// community no longer shows anything here. It is not 410, because the mark can
+// be taken off and the address answer again, while Gone says it never will.
+//
+// The page is built into a buffer before anything reaches w, for the reason
+// NotFound documents, and its fallback is a plain-text 404: the status is the
+// part a crawler reads, so a failed render must not turn a removed thread into
+// a success.
+//
+// [Ja] Unpublishedは、管理者が見えない場所へ移したリソースのページを応答します。UseCaseが
+// AppErrCodeResourceUnpublishedを報告したときにページのハンドラーが呼び、内容が取り除かれた
+// アドレスがどこでも同じページで応答するようにします。各画面がそれぞれ自前のものを書かずに
+// 済みます。
+//
+// ステータスは404です。訪問者もクローラーもそれに従います。コミュニティはここで何も示さなく
+// なったためです。410としないのは、印を外せばそのアドレスがまた応答しうる一方、Goneは二度と
+// 応答しないことを述べるためです。
+//
+// ページはwへ何かが届く前にバッファ上で組み立てます。理由はNotFoundに記したとおりで、
+// 失敗したときの応答は平文の404です。クローラーが読むのはステータスであるため、描画の失敗が
+// 取り除かれたスレッドを成功に変えてはなりません。
+func (rd *Renderer) Unpublished(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// The same policy the other error pages declare, for the same reasons: the
+	// address answers with the thread itself once the mark is taken off, and a
+	// stored answer would stand in front of it.
+	//
+	// [Ja] 他のエラーページが宣言するのと同じ方針で、理由も同じです。印を外せばそのアドレスは
+	// スレッド自身で応答し、保存された応答はその手前に立ってしまいます。
+	w.Header().Set("Cache-Control", "private, no-store")
+
+	meta := viewmodel.DefaultPageMeta(ctx, rd.cfg)
+	meta.Title = i18n.T(ctx, "error_unpublished_title")
+	meta.Description = i18n.T(ctx, "error_unpublished_message")
+	// The address is one the community answered for, and its thread may still be
+	// in a search result. The page that stands here now is the same for every
+	// visitor and holds nothing worth finding, so it is not one to be recorded in
+	// its place.
+	//
+	// [Ja] このアドレスはコミュニティが応答していたものであり、そのスレッドは検索結果に
+	// まだ残っているかもしれません。今ここに立つページは誰にとっても同じもので、見つける
+	// 価値のあるものを持たないため、その代わりに記録されるべきページではありません。
+	meta.NoIndex = true
+
+	var body bytes.Buffer
+	if err := layouts.Default(meta, errorpages.Unpublished()).Render(ctx, &body); err != nil {
+		slog.ErrorContext(ctx, "非公開ページのレンダリングに失敗", "error", err)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	if _, err := w.Write(body.Bytes()); err != nil {
+		slog.ErrorContext(ctx, "非公開ページのレスポンスの書き込みに失敗", "error", err)
+	}
+}

@@ -1055,3 +1055,43 @@ func TestCreatePostUsecase_Execute_RollsBackOnFailure(t *testing.T) {
 		t.Errorf("thread.LockReasons() = %v, want 空", reasons)
 	}
 }
+
+// TestCreatePostUsecase_Execute_UnpublishedThread verifies that a reply to a
+// thread an administrator took out of view is refused as unpublished and saved
+// nowhere. The check happens inside the write transaction, so a thread
+// unpublished while the form was open refuses the submission that arrives after
+// it rather than adding a post under a mark that hides it.
+//
+// The refusal is told apart from a missing thread and from a withdrawn account:
+// nothing about the writer or the body is at fault, and the handler answers with
+// the page saying the thread was taken down.
+//
+// [Ja] TestCreatePostUsecase_Execute_UnpublishedThread は、管理者が見えない場所へ移した
+// スレッドへの返信が非公開として拒否され、どこにも保存されないことを検証します。確認は
+// 書き込みトランザクションの中で行うため、フォームが開かれている間に非公開になったスレッドは、
+// その後に届いた送信を拒否します。それを隠す印の下に投稿を足したりはしません。
+//
+// この拒否を不在のスレッドや退会したアカウントと区別するのは、書き手にも本文にも落ち度が
+// 無いためです。ハンドラーはスレッドの取り下げを述べるページで応答します。
+func TestCreatePostUsecase_Execute_UnpublishedThread(t *testing.T) {
+	t.Parallel()
+
+	f, ctx := newCreatePostUsecase(t)
+
+	if err := f.threadRepo.Unpublish(ctx, f.thread.ID); err != nil {
+		t.Fatalf("Unpublish() error = %v", err)
+	}
+
+	out, err := f.uc.Execute(ctx, usecase.CreatePostInput{
+		ThreadID: f.thread.ID,
+		UserID:   f.author,
+		Body:     "こんにちは",
+	})
+	if out != nil {
+		t.Error("Execute() output は nil のはず")
+	}
+	assertAppErrCode(t, err, model.AppErrCodeResourceUnpublished)
+	if got := countPosts(t, f.db); got != 1 {
+		t.Errorf("投稿の件数 = %d, want %d", got, 1)
+	}
+}

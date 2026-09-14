@@ -320,6 +320,48 @@ func TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin(t *testing.T) {
 	}
 }
 
+// TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended verifies
+// that a suspended administrator does not keep the withdrawal open for the one
+// who can still sign in.
+//
+// Counting a suspended holder would let the last administrator anybody can act
+// as leave, and lifting the suspension is done from the admin screens nobody
+// would then be allowed to open.
+//
+// [Ja] TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended は、停止中の
+// 管理者が、まだサインインできる管理者のために退会の道を開けたままにしないことを検証する。
+//
+// 停止中の保持者を数えれば、行動できる最後の管理者が去れてしまい、その停止を解除するのは、
+// そのとき誰も開けなくなる管理画面である。
+func TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupDB(t)
+
+	uc := newDeleteAccountUsecase(t, db)
+	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
+	userID := seedWithdrawalUser(t, db)
+	testutil.NewUserRoleBuilder(t, db).WithUserID(userID).Build()
+
+	suspendedAdminID := testutil.NewUserBuilder(t, db).WithSuspendedAt(time.Now()).Build()
+	testutil.NewUserRoleBuilder(t, db).WithUserID(suspendedAdminID).Build()
+
+	err := uc.Execute(ctx, usecase.DeleteAccountInput{
+		UserID:          userID,
+		CurrentPassword: "password123",
+	})
+	ve := model.AsValidationError(err)
+	if ve == nil {
+		t.Fatalf("Execute() error = %v, want *model.ValidationError (停止中の管理者は数に含まれない)", err)
+	}
+	if !ve.HasGlobalError() {
+		t.Errorf("拒否がフォーム全体のエラーを持っていない: %+v", ve)
+	}
+	if got := countUserRoles(t, db, userID); got != 1 {
+		t.Errorf("拒否後のロール割当数 = %d, want 1 (削除されるべきでない)", got)
+	}
+}
+
 // TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains
 // verifies that an administrator withdraws while another one remains, and that
 // the account stops being counted among the holders of what it held.

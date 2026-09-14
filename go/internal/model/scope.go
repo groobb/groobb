@@ -48,6 +48,55 @@ const (
 	// [Ja] ScopeUserRoleWrite は、誰かにロールを付与すること、およびそれを剥奪することを
 	// 許します。
 	ScopeUserRoleWrite Scope = "user_role:write"
+
+	// ScopeThreadLockWrite admits locking a thread and lifting that lock. The
+	// resource named on the left is the lock rather than the thread, so that
+	// putting the mark on and taking it off form one boundary, the way granting
+	// a role and revoking it do. Splitting the two apart later means carving the
+	// lifting out as thread_lock:delete.
+	//
+	// [Ja] ScopeThreadLockWrite は、スレッドをロックすること、およびそのロックを解除する
+	// ことを許します。左側で名指すリソースはスレッドではなくロックです。これにより、印を
+	// 付けることと外すことが、ロールの付与と剥奪と同じく 1 つの境界になります。後で 2 つに
+	// 分けるときは、外す側を thread_lock:delete として切り出します。
+	ScopeThreadLockWrite Scope = "thread_lock:write"
+
+	// ScopeThreadUnpublicationWrite admits hiding a thread from the community.
+	// The action is write rather than delete because the thread's row stays
+	// where it is: delete is kept for taking away for good what the left side
+	// names.
+	//
+	// [Ja] ScopeThreadUnpublicationWrite は、スレッドをコミュニティから見えなくすることを
+	// 許します。action が delete ではなく write であるのは、スレッドの行がそのまま残り
+	// 続けるためです。delete は、左側が名指すものを恒久的に取り去る操作のために
+	// 取ってあります。
+	ScopeThreadUnpublicationWrite Scope = "thread_unpublication:write"
+
+	// ScopePostUnpublicationWrite admits hiding one post from the community. It
+	// stands apart from ScopeThreadUnpublicationWrite so that a role may be
+	// admitted to the narrower of the two.
+	//
+	// [Ja] ScopePostUnpublicationWrite は、投稿を 1 つコミュニティから見えなくすることを
+	// 許します。ScopeThreadUnpublicationWrite と別に置いているのは、ロールに 2 つのうち
+	// 狭いほうだけを許せるようにするためです。
+	ScopePostUnpublicationWrite Scope = "post_unpublication:write"
+
+	// ScopeUserSuspensionWrite admits suspending someone and lifting that
+	// suspension. Suspension stops what an account does without touching who it
+	// is, so it is a mark of its own rather than a step on the way out of the
+	// community.
+	//
+	// [Ja] ScopeUserSuspensionWrite は、利用者を停止すること、およびその停止を解除する
+	// ことを許します。停止はアカウントの身元に触れずに活動だけを止めるため、コミュニティ
+	// から去る途中の一段ではなく、それ自体が 1 つの印です。
+	ScopeUserSuspensionWrite Scope = "user_suspension:write"
+
+	// ScopeModerationLogRead admits reading the record of moderation operations
+	// in the admin screens.
+	//
+	// [Ja] ScopeModerationLogRead は、管理画面でモデレーション操作の記録を読むことを
+	// 許します。
+	ScopeModerationLogRead Scope = "moderation_log:read"
 )
 
 // Scopes returns every scope the application defines, which is what
@@ -67,5 +116,14 @@ const (
 // 呼び出しごとに新しいスライスを返すため、ある呼び出し側が他から見える集合を書き換えて
 // しまうことはありません。
 func Scopes() []Scope {
-	return []Scope{ScopeCommunityAdmin, ScopeUserRead, ScopeUserRoleWrite}
+	return []Scope{
+		ScopeCommunityAdmin,
+		ScopeUserRead,
+		ScopeUserRoleWrite,
+		ScopeThreadLockWrite,
+		ScopeThreadUnpublicationWrite,
+		ScopePostUnpublicationWrite,
+		ScopeUserSuspensionWrite,
+		ScopeModerationLogRead,
+	}
 }

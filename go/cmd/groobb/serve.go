@@ -29,6 +29,7 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/password"
 	"github.com/groobb/groobb/go/internal/handler/password_reset"
 	"github.com/groobb/groobb/go/internal/handler/post"
+	"github.com/groobb/groobb/go/internal/handler/post_unpublication"
 	"github.com/groobb/groobb/go/internal/handler/settings"
 	"github.com/groobb/groobb/go/internal/handler/settings_email"
 	"github.com/groobb/groobb/go/internal/handler/settings_email_confirmation"
@@ -39,6 +40,8 @@ import (
 	"github.com/groobb/groobb/go/internal/handler/sign_in_two_factor_recovery"
 	"github.com/groobb/groobb/go/internal/handler/sign_up"
 	"github.com/groobb/groobb/go/internal/handler/thread"
+	"github.com/groobb/groobb/go/internal/handler/thread_lock"
+	"github.com/groobb/groobb/go/internal/handler/thread_unpublication"
 	"github.com/groobb/groobb/go/internal/handler/user_session"
 	"github.com/groobb/groobb/go/internal/handler/welcome"
 	"github.com/groobb/groobb/go/internal/httperror"
@@ -217,6 +220,7 @@ func runServe() {
 	postReferenceRepo := repository.NewPostReferenceRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
 	userRoleRepo := repository.NewUserRoleRepository(db)
+	moderationLogRepo := repository.NewModerationLogRepository(db)
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
@@ -288,7 +292,7 @@ func runServe() {
 	getCategoryBoardsUC := usecase.NewGetCategoryBoardsUsecase(boardRepo)
 	getBoardUC := usecase.NewGetBoardUsecase(boardRepo, categoryRepo)
 	getBoardThreadsUC := usecase.NewGetBoardThreadsUsecase(threadRepo)
-	getThreadUC := usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo, postRepo, postReferenceRepo, userRepo)
+	getThreadUC := usecase.NewGetThreadUsecase(threadRepo, boardRepo, categoryRepo, postRepo, postReferenceRepo, userRepo, roleRepo)
 	getThreadSummaryUC := usecase.NewGetThreadSummaryUsecase(threadRepo)
 
 	threadCreateValidator := validator.NewThreadCreateValidator()
@@ -301,6 +305,13 @@ func runServe() {
 	getAdminUsersUC := usecase.NewGetAdminUsersUsecase(roleRepo, userRepo)
 	grantUserRoleUC := usecase.NewGrantUserRoleUsecase(db.Writer, roleRepo, userRepo, userRoleRepo)
 	revokeUserRoleUC := usecase.NewRevokeUserRoleUsecase(db.Writer, roleRepo, userRepo, userRoleRepo)
+
+	moderationLogCreateValidator := validator.NewModerationLogCreateValidator()
+	getThreadModerationUC := usecase.NewGetThreadModerationUsecase(roleRepo, threadRepo, postRepo, userRepo)
+	lockThreadUC := usecase.NewLockThreadUsecase(db.Writer, moderationLogCreateValidator, roleRepo, threadRepo, moderationLogRepo)
+	unlockThreadUC := usecase.NewUnlockThreadUsecase(db.Writer, roleRepo, threadRepo, moderationLogRepo)
+	unpublishThreadUC := usecase.NewUnpublishThreadUsecase(db.Writer, moderationLogCreateValidator, roleRepo, threadRepo, boardRepo, moderationLogRepo)
+	unpublishPostUC := usecase.NewUnpublishPostUsecase(db.Writer, moderationLogCreateValidator, roleRepo, threadRepo, postRepo, moderationLogRepo)
 
 	errorRenderer := httperror.NewRenderer(cfg)
 
@@ -325,6 +336,9 @@ func runServe() {
 	settingsEmailConfirmationHandler := settings_email_confirmation.NewHandler(cfg, flashMgr, verifyEmailChangeUC)
 	settingsTwoFactorAuthHandler := settings_two_factor_auth.NewHandler(cfg, flashMgr, prepareTwoFactorAuthUC, enableTwoFactorAuthUC, disableTwoFactorAuthUC)
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
+	threadLockHandler := thread_lock.NewHandler(cfg, errorRenderer, flashMgr, getThreadModerationUC, lockThreadUC, unlockThreadUC)
+	threadUnpublicationHandler := thread_unpublication.NewHandler(cfg, errorRenderer, flashMgr, getThreadModerationUC, unpublishThreadUC)
+	postUnpublicationHandler := post_unpublication.NewHandler(cfg, errorRenderer, flashMgr, getThreadModerationUC, unpublishPostUC)
 	adminHandler := admin.NewHandler(cfg, errorRenderer, getAdminHomeUC)
 	adminUserHandler := admin_user.NewHandler(cfg, errorRenderer, getAdminUsersUC)
 	adminUserRoleHandler := admin_user_role.NewHandler(errorRenderer, flashMgr, grantUserRoleUC, revokeUserRoleUC)
@@ -585,6 +599,48 @@ func runServe() {
 	// ここへは書き込むだけである。スレッドの投稿は /t/{id} で読み、そこでは各投稿が
 	// レス番号で名指される (ADR 0009)。
 	r.With(authMiddleware.RequireAuth).Post("/t/{id}/posts", postHandler.Create)
+
+	// The thread's lock: the confirmation page a thread is closed from, closing
+	// it, and lifting the lock again. All three are behind RequireAuth because
+	// only a signed-in visitor can hold a role, and whether the one signed in
+	// may act on this thread is settled by the UseCase. Placing and lifting
+	// share the address of the lock itself, and the lift is reached from the
+	// thread's page through the _method=DELETE override.
+	//
+	// [Ja] スレッドのロック: スレッドがそこから閉じられる確認ページ、閉じること、そして
+	// ロックを外すこと。3つともRequireAuthの背後に置く。ロールを持てるのはサインイン済みの
+	// 訪問者だけであり、そのサインインした人がこのスレッドに働きかけてよいかどうかを決めるのは
+	// UseCaseである。掛けることと外すことはロック自身のアドレスを共有し、外すほうはスレッドの
+	// ページから_method=DELETEのオーバーライドで到達する。
+	r.With(authMiddleware.RequireAuth).Get("/t/{id}/lock/new", threadLockHandler.New)
+	r.With(authMiddleware.RequireAuth).Post("/t/{id}/lock", threadLockHandler.Create)
+	r.With(authMiddleware.RequireAuth).Delete("/t/{id}/lock", threadLockHandler.Delete)
+
+	// The thread's unpublication: the confirmation page a thread is taken out of
+	// the community's view from, and the mark itself. Both are behind RequireAuth
+	// for the reason the lock's routes are, and the pair is shaped like the lock's
+	// two writing routes: the mark has its own address, and the page that confirms
+	// it hangs below that address as /new.
+	//
+	// [Ja] スレッドの非公開: スレッドがそこからコミュニティの視界の外へ移される確認ページと、
+	// 印そのもの。どちらもRequireAuthの背後に置くのはロックのルートと同じ理由である。この組は
+	// ロックの2つの書き込みルートと同じ形をしている。印が自身のアドレスを持ち、それを確認する
+	// ページがそのアドレスの下に /new として下がる。
+	r.With(authMiddleware.RequireAuth).Get("/t/{id}/unpublication/new", threadUnpublicationHandler.New)
+	r.With(authMiddleware.RequireAuth).Post("/t/{id}/unpublication", threadUnpublicationHandler.Create)
+
+	// One post's unpublication: the confirmation page a single post is taken out
+	// of view from, and the mark itself. The post is addressed under its thread's
+	// posts by its reply number, which is how it is named everywhere it is
+	// referred to (ADR 0009); it is the only route that reads a post out of an
+	// address, the thread's posts being read at /t/{id}.
+	//
+	// [Ja] 投稿1件の非公開: 投稿1件がそこから視界の外へ移される確認ページと、印そのもの。
+	// 投稿はスレッドの投稿の下でレス番号によって名指される。それが、投稿が参照されるあらゆる
+	// 場所での名指し方であるためである (ADR 0009)。アドレスから投稿を読むルートはこれだけで
+	// ある。スレッドの投稿は /t/{id} で読まれるためである。
+	r.With(authMiddleware.RequireAuth).Get("/t/{id}/posts/{number}/unpublication/new", postUnpublicationHandler.New)
+	r.With(authMiddleware.RequireAuth).Post("/t/{id}/posts/{number}/unpublication", postUnpublicationHandler.Create)
 
 	// Sign-up: show the form and accept an email to issue a confirmation code.
 	//

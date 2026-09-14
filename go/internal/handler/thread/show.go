@@ -34,6 +34,12 @@ import (
 // redirected to the canonical form, so the thread answers under one URL. Neither
 // answer costs a query: the id alone settles both.
 //
+// A thread an administrator unpublished is answered with the page for a thread
+// that was taken down, rather than with the 404 an id naming nothing gets. Both
+// carry the same status, and the difference is what the visitor is told: this
+// address held a thread, so a shared link that no longer opens is explained
+// instead of left to look like a mistyped one.
+//
 // [Ja] Show GET /t/{id} - スレッドを描画します。読むためのカラムにその投稿を、その傍らに
 // それが立った掲示板の一覧を、そしてコミュニティのシェルがどこでも運ぶサイドバーを
 // 描きます。このページはサインアウト状態でも読めるため、RequireAuth ではなく SetUser の
@@ -45,6 +51,11 @@ import (
 // 名指しません。同じ id を別の綴りで表すもの (strconv が受け付ける先頭のゼロやプラス記号)
 // は正規の形へリダイレクトし、スレッドが 1 つの URL で応答するようにします。どちらの応答も
 // クエリを要しません。id だけで両方が決まるためです。
+//
+// 管理者が非公開にしたスレッドには、どのスレッドも指さないidが受け取る404ではなく、取り下げ
+// られたスレッドのページで応答します。ステータスはどちらも同じで、違うのは訪問者に伝える
+// ことです。このアドレスはスレッドを持っていたため、もう開かないリンクを、打ち間違いのように
+// 見せるのではなく説明します。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	raw := chi.URLParam(r, "id")
@@ -59,12 +70,21 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resolved, err := h.getThreadUC.Execute(ctx, usecase.GetThreadInput{ID: id})
+	resolved, err := h.getThreadUC.Execute(ctx, usecase.GetThreadInput{
+		ID:     id,
+		UserID: middleware.UserIDFromContext(ctx),
+	})
 	if err != nil {
 		var ae *model.AppError
-		if errors.As(err, &ae) && ae.Code == model.AppErrCodeResourceNotFound {
-			h.errorRenderer.NotFound(w, r)
-			return
+		if errors.As(err, &ae) {
+			switch ae.Code {
+			case model.AppErrCodeResourceNotFound:
+				h.errorRenderer.NotFound(w, r)
+				return
+			case model.AppErrCodeResourceUnpublished:
+				h.errorRenderer.Unpublished(w, r)
+				return
+			}
 		}
 		slog.ErrorContext(ctx, "スレッドの取得に失敗", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -100,6 +120,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	language := viewmodel.NewThreadLanguage(resolved.Thread.Language)
 
 	pageData := threadpage.ShowPageData{
+		ThreadID:   viewmodel.ThreadID(id),
 		Title:      resolved.Thread.Title,
 		Language:   language,
 		Breadcrumb: breadcrumb(resolved, language, h.cfg.AppURL),
@@ -109,6 +130,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		Lock:       viewmodel.NewThreadLock(resolved.Thread.LockReasons()),
 		PostLimit:  model.ThreadPostLimit,
 		Reply:      showReply(ctx, viewmodel.ThreadID(id), returnTo),
+		Moderation: showModeration(ctx, resolved),
 	}
 	columns := layouts.CommunityColumns{
 		Center:             threadpage.ShowCenter(pageData),
@@ -205,6 +227,19 @@ func showPosts(posts []usecase.ThreadPost) []threadpage.ShowPost {
 
 	converted := make([]threadpage.ShowPost, len(posts))
 	for i, post := range posts {
+		// An unpublished post is carried as its number and nothing else. The page
+		// draws a placeholder there, and what the mark took out of view does not
+		// travel to it: a body handed over and left undrawn would be one template
+		// change away from being shown again.
+		//
+		// [Ja] 非公開の投稿はその番号だけを運ぶ。ページはそこに占位を描き、印が見えない
+		// 場所へ移したものはそこへ渡らない。渡したうえで描かない本文は、テンプレートの
+		// 変更1つでまた表示されうるものになる。
+		if post.Post.UnpublishedAt != nil {
+			converted[i] = threadpage.ShowPost{Number: post.Post.Number, Unpublished: true}
+			continue
+		}
+
 		author := ""
 		if post.Author != nil {
 			author = post.Author.Atname
@@ -253,6 +288,31 @@ func showReply(ctx context.Context, id viewmodel.ThreadID, returnTo string) thre
 			Action:              templates.ThreadPostsPath(id),
 			PostIntervalSeconds: int(model.PostInterval.Seconds()),
 		},
+	}
+}
+
+// showModeration builds what the page offers a visitor who may act on this
+// thread, which is nothing at all for everyone else: an anonymous visitor and a
+// signed-in one holding no role alike reach here with every permission false.
+//
+// The answers come from the read rather than from the context, so what the page
+// draws and what the operation behind it admits are decided from the same
+// scopes. The token is taken from the request, since the one operation drawn
+// here without a confirmation page in front of it submits from this page.
+//
+// [Ja] showModerationは、このスレッドに対して働きかけてよい訪問者にページが差し出すものを
+// 組み立てます。それ以外の人には何も差し出しません。匿名の訪問者も、ロールを1つも持たない
+// サインイン済みの訪問者も、どの権限も偽のままここへ至ります。
+//
+// 答えをcontextではなく読み取りから得るのは、ページが描くものと、その先の操作が許すものとを、
+// 同じスコープから決めるためです。トークンはリクエストから取ります。ここに描かれる操作のうち、
+// 手前に確認ページを持たないものは、このページから送信するためです。
+func showModeration(ctx context.Context, resolved *usecase.GetThreadOutput) threadpage.ShowModeration {
+	return threadpage.ShowModeration{
+		CanLockThread:      resolved.CanLockThread,
+		CanUnpublishThread: resolved.CanUnpublishThread,
+		CanUnpublishPost:   resolved.CanUnpublishPost,
+		CSRFToken:          middleware.CSRFTokenFromContext(ctx),
 	}
 }
 

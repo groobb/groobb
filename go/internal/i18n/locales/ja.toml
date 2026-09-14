@@ -70,6 +70,22 @@ other = "お探しのページは見つかりませんでした。URL が変更�
 description = "404 ページからトップページ (/) へ移動するリンクのテキスト"
 other = "トップページへ"
 
+[error_unpublished_title]
+description = "非公開にされたスレッドのページのタイトル (title タグ)"
+other = "このページは公開されていません"
+
+[error_unpublished_heading]
+description = "非公開にされたスレッドのページの見出し"
+other = "このページは公開されていません"
+
+[error_unpublished_message]
+description = "管理者が非公開にしたスレッドのアドレスに対して 404 で返す説明文"
+other = "このページは管理者により非公開にされました。"
+
+[error_unpublished_back_to_home]
+description = "非公開のページからトップページ (/) へ移動するリンクのテキスト"
+other = "トップページへ"
+
 [field_required]
 description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通の UI 部品)"
 other = "必須"
@@ -101,6 +117,22 @@ other = "@{{.Atname}}に管理者ロールを付与しました"
 [flash_user_role_revoked]
 description = "利用者からロールを剥奪した後に表示するフラッシュメッセージ (対象のatnameを差し込む)"
 other = "@{{.Atname}}から管理者ロールを剥奪しました"
+
+[flash_thread_locked]
+description = "スレッドをロックした後にスレッドページで表示するフラッシュメッセージ"
+other = "スレッドをロックしました"
+
+[flash_thread_unlocked]
+description = "スレッドのロックを解除した後にスレッドページで表示するフラッシュメッセージ"
+other = "スレッドのロックを解除しました"
+
+[flash_thread_unpublished]
+description = "スレッドを非公開にした後に掲示板ページで表示するフラッシュメッセージ"
+other = "スレッドを非公開にしました"
+
+[flash_post_unpublished]
+description = "投稿を非公開にした後にスレッドページで表示するフラッシュメッセージ"
+other = "投稿を非公開にしました"
 
 [header_home_link]
 description = "サインイン済みページ共通ヘッダーからホームへ誘導するリンクのテキスト"
@@ -294,6 +326,38 @@ other = "退会した利用者"
 description = "スレッドページで、その投稿に返信した投稿のレス番号の並びに添えるラベル"
 other = "返信"
 
+[thread_show_post_unpublished]
+description = "スレッドページで、管理者が非公開にした投稿の位置に描く占位の文言"
+other = "管理者により非公開にされました"
+
+[thread_show_moderation_lock_link]
+description = "スレッドページで、スレッドのロックの確認ページへ向かうリンクの文言"
+other = "スレッドをロックする"
+
+[thread_show_moderation_unlock_button]
+description = "スレッドページで、管理者が掛けたロックを解除する送信ボタン。確認ページを挟まない"
+other = "ロックを解除する"
+
+[thread_show_moderation_unlock_confirm]
+description = "スレッドのロックを解除する前に確認ダイアログで表示する文言"
+other = "スレッドのロックを解除しますか？"
+
+[thread_show_moderation_unpublish_link]
+description = "スレッドページで、スレッドの非公開の確認ページへ向かうリンクの文言"
+other = "スレッドを非公開にする"
+
+[thread_show_moderation_post_unpublish_link]
+description = "スレッドページで、各投稿の非公開の確認ページへ向かうリンクの文言"
+other = "非公開にする"
+
+[thread_show_moderation_post_unpublish_link_label]
+description = "スレッドページで、投稿の非公開の確認ページへ向かうリンクに与えるアクセシブルネーム。レス番号を差し込む"
+other = "レス {{.Number}} を非公開にする"
+
+[thread_lock_locked_by_moderator]
+description = "ロック中のスレッドの案内のうち、管理者がスレッドを閉じたことを述べる文言"
+other = "このスレッドは管理者によりロックされました。これ以上は書き込めません。"
+
 [thread_lock_post_limit_reached]
 description = "ロック中のスレッドの案内のうち、投稿数が上限に達したことを述べる文言。上限の件数を差し込む"
 other = "このスレッドは投稿数の上限 ({{.Limit}} 件) に達しました。これ以上は書き込めません。"
@@ -301,6 +365,118 @@ other = "このスレッドは投稿数の上限 ({{.Limit}} 件) に達しま�
 [thread_lock_next_thread_link]
 description = "投稿数の上限だけを理由にロックされたスレッドの案内に添える、同じ掲示板でスレッドを立てるページへのリンクの文言"
 other = "この掲示板で新しいスレッドを立てる"
+
+[thread_lock_new_title]
+description = "スレッドのロックの確認ページのタイトル (title タグ)"
+other = "スレッドをロックする"
+
+[thread_lock_new_description]
+description = "スレッドのロックの確認ページの meta description"
+other = "このスレッドを新しい返信に対して締め切ります。"
+
+[thread_lock_new_heading]
+description = "スレッドのロックの確認ページの見出し"
+other = "スレッドをロックする"
+
+[thread_lock_new_lead]
+description = "スレッドのロックの確認ページの説明文。ロックで何が起きるかを述べる"
+other = "ロックすると、このスレッドには誰も返信できなくなります。読むことはこれまでどおりできます。ロックは後から解除できます。"
+
+[thread_lock_new_target_label]
+description = "スレッドのロックの確認ページで、対象のスレッドのタイトルに添えるラベル"
+other = "対象のスレッド"
+
+[thread_lock_new_reason_label]
+description = "スレッドのロックの確認ページの理由の入力欄のラベル。入力が任意であることを含める"
+other = "理由 (任意)"
+
+[thread_lock_new_reason_hint]
+description = "スレッドのロックの確認ページの理由の入力欄のヒント。理由の行き先を述べる"
+other = "操作履歴にだけ記録されます。スレッドには表示されません。"
+
+[thread_lock_new_submit_button]
+description = "スレッドのロックの確認ページの送信ボタン"
+other = "ロックする"
+
+[thread_lock_new_cancel]
+description = "スレッドのロックの確認ページから、ロックせずにスレッドへ戻るリンクの文言"
+other = "スレッドに戻る"
+
+[thread_unpublication_new_title]
+description = "スレッドの非公開の確認ページのタイトル (title タグ)"
+other = "スレッドを非公開にする"
+
+[thread_unpublication_new_description]
+description = "スレッドの非公開の確認ページの meta description"
+other = "このスレッドをコミュニティの視界から外します。"
+
+[thread_unpublication_new_heading]
+description = "スレッドの非公開の確認ページの見出し"
+other = "スレッドを非公開にする"
+
+[thread_unpublication_new_lead]
+description = "スレッドの非公開の確認ページの説明文。非公開で何が起きるかと、元に戻す操作が無いことを述べる"
+other = "非公開にすると、このスレッドは一覧に並ばなくなり、共有されたリンクからも開けなくなります。タイトルも投稿も失われませんが、公開に戻す操作は用意されていません。"
+
+[thread_unpublication_new_target_label]
+description = "スレッドの非公開の確認ページで、対象のスレッドのタイトルに添えるラベル"
+other = "対象のスレッド"
+
+[thread_unpublication_new_reason_label]
+description = "スレッドの非公開の確認ページの理由の入力欄のラベル。入力が任意であることを含める"
+other = "理由 (任意)"
+
+[thread_unpublication_new_reason_hint]
+description = "スレッドの非公開の確認ページの理由の入力欄のヒント。理由の行き先を述べる"
+other = "操作履歴にだけ記録されます。利用者には表示されません。"
+
+[thread_unpublication_new_submit_button]
+description = "スレッドの非公開の確認ページの送信ボタン"
+other = "非公開にする"
+
+[thread_unpublication_new_cancel]
+description = "スレッドの非公開の確認ページから、非公開にせずスレッドへ戻るリンクの文言"
+other = "スレッドに戻る"
+
+[post_unpublication_new_title]
+description = "投稿の非公開の確認ページのタイトル (title タグ)"
+other = "投稿を非公開にする"
+
+[post_unpublication_new_description]
+description = "投稿の非公開の確認ページの meta description"
+other = "この投稿をスレッドの視界から外します。"
+
+[post_unpublication_new_heading]
+description = "投稿の非公開の確認ページの見出し"
+other = "投稿を非公開にする"
+
+[post_unpublication_new_lead]
+description = "投稿の非公開の確認ページの説明文。非公開の後に何が残るかと、元に戻す操作が無いことを述べる"
+other = "非公開にすると、この投稿の本文と作者はスレッドに表示されなくなり、レス番号の位置には非公開である旨だけが残ります。書かれた内容は失われませんが、公開に戻す操作は用意されていません。"
+
+[post_unpublication_new_target_label]
+description = "投稿の非公開の確認ページで、対象の投稿に添えるラベル"
+other = "対象の投稿"
+
+[post_unpublication_new_withdrawn_author]
+description = "投稿の非公開の確認ページで、作者が退会した投稿の投稿者欄に表示する文言"
+other = "退会した利用者"
+
+[post_unpublication_new_reason_label]
+description = "投稿の非公開の確認ページの理由の入力欄のラベル。入力が任意であることを含める"
+other = "理由 (任意)"
+
+[post_unpublication_new_reason_hint]
+description = "投稿の非公開の確認ページの理由の入力欄のヒント。理由の行き先を述べる"
+other = "操作履歴にだけ記録されます。スレッドには表示されません。"
+
+[post_unpublication_new_submit_button]
+description = "投稿の非公開の確認ページの送信ボタン"
+other = "非公開にする"
+
+[post_unpublication_new_cancel]
+description = "投稿の非公開の確認ページから、非公開にせず投稿へ戻るリンクの文言"
+other = "投稿に戻る"
 
 [thread_show_reply_heading]
 description = "スレッドページの末尾に置く返信フォームの見出し"
@@ -1057,6 +1233,10 @@ other = "最後の管理者から管理者ロールを外すことはできま�
 [validation_withdrawal_last_admin]
 description = "最後の管理者が退会しようとして拒否したときの、退会フォーム全体のメッセージ"
 other = "最後の管理者は退会できません。先に別の利用者を管理者にしてください。"
+
+[validation_moderation_reason_too_long]
+description = "モデレーションの操作に記録する理由が長すぎるときのバリデーションエラー"
+other = "理由は500文字以内で入力してください"
 
 [thread_new_title]
 description = "スレッド作成ページのタイトル (title タグ)"

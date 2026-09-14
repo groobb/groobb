@@ -69,12 +69,23 @@ func NewGetThreadSummaryUsecase(threadRepo *repository.ThreadRepository) *GetThr
 // of an address left behind by a deleted thread rather than a failure, so it is
 // not logged as an error here.
 //
+// A thread an administrator unpublished is reported as
+// AppErrCodeResourceUnpublished, as GetThreadUsecase reports it. This read
+// serves the page a refused reply comes back on, and a thread that shows
+// nothing is no longer a page to write on, so the refusal is answered with the
+// thread's removal rather than with the form it was written in.
+//
 // [Ja] Execute は id を、それが名指すスレッドへ解決します。
 //
 // どのスレッドも指さない id は、GetThreadUsecase がそうするのと同じく
 // AppErrCodeResourceNotFound を持つ AppError として報告します。どちらの読み取りに応答する
 // ハンドラーも、同じ 404 を伝えるようにするためです。これは削除されたスレッドの残した
 // アドレスの既知の結果であって失敗ではないため、ここではエラーとしてログに残しません。
+//
+// 管理者が非公開にしたスレッドは、GetThreadUsecaseがそうするのと同じく
+// AppErrCodeResourceUnpublishedとして報告します。この読み取りが配信するのは拒否された返信が
+// 戻ってくるページであり、何も示さなくなったスレッドはもう書き込む先のページではないため、
+// 拒否には、それが書かれたフォームではなくスレッドの取り下げで応答します。
 func (uc *GetThreadSummaryUsecase) Execute(ctx context.Context, input GetThreadSummaryInput) (*GetThreadSummaryOutput, error) {
 	thread, err := uc.threadRepo.FindByID(ctx, input.ID)
 	if err != nil {
@@ -85,6 +96,14 @@ func (uc *GetThreadSummaryUsecase) Execute(ctx context.Context, input GetThreadS
 			Code:     model.AppErrCodeResourceNotFound,
 			UserMsg:  i18n.T(ctx, "error_not_found_message"),
 			Internal: fmt.Errorf("スレッドが見つからない: id=%s", input.ID),
+			Metadata: map[string]string{"thread_id": input.ID.String()},
+		}
+	}
+	if thread.UnpublishedAt != nil {
+		return nil, &model.AppError{
+			Code:     model.AppErrCodeResourceUnpublished,
+			UserMsg:  i18n.T(ctx, "error_unpublished_message"),
+			Internal: fmt.Errorf("非公開のスレッドの読み取り: id=%s", input.ID),
 			Metadata: map[string]string{"thread_id": input.ID.String()},
 		}
 	}

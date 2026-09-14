@@ -249,3 +249,15 @@ type UserRoleID int64
 //
 // [Ja] String は UserRoleID を 10 進表記で返します。
 func (id UserRoleID) String() string { return strconv.FormatInt(int64(id), 10) }
+
+// ModerationLogID is the typed identifier for a moderation log entry. Like
+// UserID it wraps int64 so log IDs cannot be mixed up with other entities' IDs.
+//
+// [Ja] ModerationLogIDは操作履歴の1件の型付き識別子です。UserIDと同様にint64を
+// ラップし、履歴IDを他エンティティのIDと取り違えられないようにします。
+type ModerationLogID int64
+
+// String returns the decimal form of the ModerationLogID.
+//
+// [Ja] StringはModerationLogIDを10進表記で返します。
+func (id ModerationLogID) String() string { return strconv.FormatInt(int64(id), 10) }
