@@ -19,7 +19,8 @@ import (
 // A sentence is written per reason rather than one covering them all, because
 // the reasons are not variations of a single message: what each says is
 // different, and one of them may point somewhere to go next while another does
-// not.
+// not. Which of the reasons a thread carries are stated is StatedReasons's to
+// answer.
 //
 // Under the sentences stands the way on to the next thread, when the caller
 // named one and the notice has one to offer. A thread that filled up ended a
@@ -37,7 +38,8 @@ import (
 //
 // すべての理由をまとめた 1 文ではなく理由ごとに文を書くのは、理由が 1 つのメッセージの
 // 変種ではないためです。それぞれが述べることは異なり、次に向かう先を差し出す理由もあれば
-// そうでない理由もあります。
+// そうでない理由もあります。スレッドが持つ理由のうちどれを述べるかはStatedReasonsが
+// 答えます。
 //
 // 文の下には、呼び出し側が次のスレッドを名指し、案内がそれを差し出せるときに、そこへ向かう
 // 道が立ちます。満杯になったスレッドは、まだ終わっていないかもしれない会話を終わらせて
@@ -72,9 +74,9 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, reason := range data.Lock.Reasons {
+			for _, reason := range data.StatedReasons() {
 				switch reason {
-				case viewmodel.ThreadLockReasonPostLimitReached:
+				case viewmodel.ThreadLockReasonLockedByModerator:
 					templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -88,9 +90,9 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 						}
 						ctx = templ.InitializeContext(ctx)
 						var templ_7745c5c3_Var3 string
-						templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_post_limit_reached", map[string]any{"Limit": data.PostLimit}))
+						templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_locked_by_moderator"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 49, Col: 100}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 51, Col: 60}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 						if templ_7745c5c3_Err != nil {
@@ -102,6 +104,34 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
+				case viewmodel.ThreadLockReasonPostLimitReached:
+					templ_7745c5c3_Var4 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+						if !templ_7745c5c3_IsBuffer {
+							defer func() {
+								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err == nil {
+									templ_7745c5c3_Err = templ_7745c5c3_BufErr
+								}
+							}()
+						}
+						ctx = templ.InitializeContext(ctx)
+						var templ_7745c5c3_Var5 string
+						templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_post_limit_reached", map[string]any{"Limit": data.PostLimit}))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 55, Col: 100}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						return nil
+					})
+					templ_7745c5c3_Err = threadLockSentence(data.Refusal).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
 				}
 			}
 			if path := data.NextThreadPath(); path != "" {
@@ -109,12 +139,12 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var4 templ.SafeURL
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(path.SafeURL())
+				var templ_7745c5c3_Var6 templ.SafeURL
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(path.SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 54, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 60, Col: 28}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -122,12 +152,12 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_next_thread_link"))
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_next_thread_link"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 55, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 61, Col: 55}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -168,9 +198,9 @@ func threadLockSentence(refusal bool) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var6 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var6 == nil {
-			templ_7745c5c3_Var6 = templ.NopComponent
+		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var8 == nil {
+			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if refusal {
@@ -178,7 +208,7 @@ func threadLockSentence(refusal bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ_7745c5c3_Var6.Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templ_7745c5c3_Var8.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -191,7 +221,7 @@ func threadLockSentence(refusal bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ_7745c5c3_Var6.Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templ_7745c5c3_Var8.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

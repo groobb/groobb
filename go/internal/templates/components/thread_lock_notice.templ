@@ -12,7 +12,8 @@ import (
 // A sentence is written per reason rather than one covering them all, because
 // the reasons are not variations of a single message: what each says is
 // different, and one of them may point somewhere to go next while another does
-// not.
+// not. Which of the reasons a thread carries are stated is StatedReasons's to
+// answer.
 //
 // Under the sentences stands the way on to the next thread, when the caller
 // named one and the notice has one to offer. A thread that filled up ended a
@@ -30,7 +31,8 @@ import (
 //
 // すべての理由をまとめた 1 文ではなく理由ごとに文を書くのは、理由が 1 つのメッセージの
 // 変種ではないためです。それぞれが述べることは異なり、次に向かう先を差し出す理由もあれば
-// そうでない理由もあります。
+// そうでない理由もあります。スレッドが持つ理由のうちどれを述べるかはStatedReasonsが
+// 答えます。
 //
 // 文の下には、呼び出し側が次のスレッドを名指し、案内がそれを差し出せるときに、そこへ向かう
 // 道が立ちます。満杯になったスレッドは、まだ終わっていないかもしれない会話を終わらせて
@@ -42,8 +44,12 @@ import (
 templ ThreadLockNotice(data ThreadLockNoticeData) {
 	if data.Lock.Locked() {
 		<div class="flex flex-col gap-3">
-			for _, reason := range data.Lock.Reasons {
+			for _, reason := range data.StatedReasons() {
 				switch reason {
+					case viewmodel.ThreadLockReasonLockedByModerator:
+						@threadLockSentence(data.Refusal) {
+							{ templates.T(ctx, "thread_lock_locked_by_moderator") }
+						}
 					case viewmodel.ThreadLockReasonPostLimitReached:
 						@threadLockSentence(data.Refusal) {
 							{ templates.T(ctx, "thread_lock_post_limit_reached", map[string]any{"Limit": data.PostLimit}) }

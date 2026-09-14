@@ -27,6 +27,13 @@ type ThreadLockReason model.ThreadLockReason
 // よって到達する理由です (ADR 0009)。
 const ThreadLockReasonPostLimitReached = ThreadLockReason(model.ThreadLockReasonPostLimitReached)
 
+// ThreadLockReasonLockedByModerator is the reason a thread carries because an
+// administrator closed it.
+//
+// [Ja] ThreadLockReasonLockedByModeratorは、管理者がスレッドを閉じたことによって
+// スレッドが持つ理由です。
+const ThreadLockReasonLockedByModerator = ThreadLockReason(model.ThreadLockReasonLockedByModerator)
+
 // ThreadLock is whether a thread takes a further post, together with the reasons
 // it does not. It carries the reasons rather than a single flag because they
 // hold alongside one another: a page saying only that a thread is locked would
@@ -61,6 +68,26 @@ func NewThreadLock(reasons []model.ThreadLockReason) ThreadLock {
 // そもそも返信フォームを描くかどうかを決めるものがこれです。
 func (l ThreadLock) Locked() bool {
 	return len(l.Reasons) > 0
+}
+
+// LockedByModerator reports whether an administrator's decision is among the
+// reasons the thread takes no further post. A page acts on this where what it
+// draws depends on the decision having been taken rather than on it being the
+// only thing holding: the notice states that decision instead of the conditions
+// standing beside it, and the thread's own page offers the way to lift it.
+//
+// [Ja] LockedByModeratorは、スレッドがこれ以上の投稿を受け付けない理由のうちに管理者の
+// 判断があるかどうかを返します。ページがこれに基づいて動くのは、描くものが、その判断が
+// 下されていることに懸かっていて、それが唯一成立しているものであることには懸かっていない
+// 場合です。案内はその隣に並ぶ条件ではなくその判断を述べ、スレッド自身のページはそれを
+// 外す手立てを差し出します。
+func (l ThreadLock) LockedByModerator() bool {
+	for _, reason := range l.Reasons {
+		if reason == ThreadLockReasonLockedByModerator {
+			return true
+		}
+	}
+	return false
 }
 
 // LockedOnly reports whether reason is the only thing standing in the way of a

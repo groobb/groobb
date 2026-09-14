@@ -46,6 +46,30 @@ type ThreadLockNoticeData struct {
 	Refusal bool
 }
 
+// StatedReasons returns the reasons the notice writes a sentence for.
+//
+// An administrator's lock is stated on its own, without the other reasons
+// standing beside it. It is a decision about this thread, and a thread carrying
+// it is closed whatever else is true of it: the cap the thread also reached
+// would read as a second, independent answer to a visitor who is in fact being
+// told one thing. Every other reason is stated, because those hold alongside
+// one another and each says something the others do not.
+//
+// [Ja] StatedReasonsは、案内が文を書く理由を返します。
+//
+// 管理者のロックは、他の理由を隣に並べず、それだけを述べます。これはこのスレッドについての
+// 判断であり、それを持つスレッドは他に何が成り立っていても閉じています。併せて到達していた
+// 上限は、実のところ1つのことを告げられている訪問者にとって、2つ目の独立した答えとして
+// 読まれてしまいます。それ以外の理由はいずれも述べます。それらは互いに並び立ち、どれもが
+// 他の理由の述べないことを述べるためです。
+func (d ThreadLockNoticeData) StatedReasons() []viewmodel.ThreadLockReason {
+	if d.Lock.LockedByModerator() {
+		return []viewmodel.ThreadLockReason{viewmodel.ThreadLockReasonLockedByModerator}
+	}
+
+	return d.Lock.Reasons
+}
+
 // NextThreadPath returns where the notice sends a visitor who still has
 // something to write, and "" when it sends them nowhere.
 //

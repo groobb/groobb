@@ -237,6 +237,21 @@ func populateForCleanup(t *testing.T, db *database.DB) {
 		t.Fatalf("failed to create the post reference: %v", err)
 	}
 
+	// The moderation history is written with a statement rather than through a
+	// repository, since the one that owns this table does not exist yet. The row
+	// names a post so that it refers into the content emptied around it.
+	//
+	// [Ja] モデレーションの履歴は、このテーブルを所有するリポジトリがまだ無いため、
+	// リポジトリではなく文で書き込みます。この行が投稿を名指すのは、周囲で空にされる
+	// 中身を参照した状態にするためです。
+	if _, err := db.Writer.ExecContext(
+		ctx,
+		"INSERT INTO moderation_logs (user_id, action, thread_id, post_id, reason) VALUES (?, ?, ?, ?, ?)",
+		int64(authorID), string(model.ModerationActionPostUnpublish), int64(thread.ID), int64(second.ID), "スパムのため",
+	); err != nil {
+		t.Fatalf("failed to insert the moderation log: %v", err)
+	}
+
 	for _, table := range cleanupTables {
 		if countRows(t, db, table) == 0 {
 			t.Fatalf("the table %s was left empty, so the cleanup of it would not be exercised", table)

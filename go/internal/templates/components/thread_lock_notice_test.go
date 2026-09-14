@@ -38,13 +38,13 @@ func renderThreadLockNotice(t *testing.T, locale model.Locale, reasons []model.T
 	return buf.String()
 }
 
-// TestThreadLockNotice verifies that a thread holding every post it can hold
-// says so in either UI language, with the cap the application enforces written
-// into the sentence, and that a thread still taking posts draws nothing at all.
+// TestThreadLockNotice verifies that every lock reason says what closed the
+// thread in either UI language, with the cap written into its sentence where it
+// applies, and that a thread still taking posts draws nothing at all.
 //
-// [Ja] TestThreadLockNotice は、持てる投稿をすべて持っているスレッドがどちらの UI 言語
-// でもその旨を述べること、そしてその文にアプリケーションが適用する上限が書き込まれること、
-// また投稿をまだ受け付けるスレッドには何も描かれないことを検証します。
+// [Ja] TestThreadLockNoticeは、どのロック理由も、スレッドを閉じたものをどちらのUI言語でも
+// 述べること、上限については文にアプリケーションが適用する件数が書き込まれること、また
+// 投稿をまだ受け付けるスレッドには何も描かれないことを検証します。
 func TestThreadLockNotice(t *testing.T) {
 	t.Parallel()
 
@@ -65,6 +65,18 @@ func TestThreadLockNotice(t *testing.T) {
 			locale:  model.LocaleEn,
 			reasons: []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached},
 			want:    "This thread has reached its limit of 1000 posts.",
+		},
+		{
+			name:    "moderator lock on a Japanese page",
+			locale:  model.LocaleJa,
+			reasons: []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator},
+			want:    "このスレッドは管理者によりロックされました。これ以上は書き込めません。",
+		},
+		{
+			name:    "moderator lock on an English page",
+			locale:  model.LocaleEn,
+			reasons: []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator},
+			want:    "This thread has been locked by an administrator. Nothing more can be written here.",
 		},
 	}
 
@@ -112,6 +124,37 @@ func TestThreadLockNotice_Refusal(t *testing.T) {
 	}
 }
 
+// TestThreadLockNotice_ModeratorLockStatedAlone verifies that a thread an
+// administrator closed says that and nothing else, even when it also holds
+// every post it can hold.
+//
+// The administrator's decision is the answer to why nothing more can be written
+// here. Drawing the cap's sentence beside it would offer a second, independent
+// explanation for one refusal, and the first thing a visitor would take from it
+// is that the conversation carries on in the next thread.
+//
+// [Ja] TestThreadLockNotice_ModeratorLockStatedAloneは、管理者が閉じたスレッドが、
+// 持てる投稿をすべて持っている場合でも、そのことだけを述べることを検証します。
+//
+// ここにこれ以上書けない理由への答えは管理者の判断です。その隣に上限の文を描けば、1つの
+// 拒否に対して2つ目の独立した説明を差し出すことになり、訪問者がそこからまず読み取るのは、
+// 会話が次のスレッドで続くということになります。
+func TestThreadLockNotice_ModeratorLockStatedAlone(t *testing.T) {
+	t.Parallel()
+
+	got := renderThreadLockNotice(t, model.LocaleJa, []model.ThreadLockReason{
+		model.ThreadLockReasonLockedByModerator,
+		model.ThreadLockReasonPostLimitReached,
+	}, false)
+
+	if !strings.Contains(got, "このスレッドは管理者によりロックされました。") {
+		t.Errorf("管理者のロックの文が含まれていない: %s", got)
+	}
+	if strings.Contains(got, "投稿数の上限") {
+		t.Errorf("管理者のロックと並べて上限の文が描かれている: %s", got)
+	}
+}
+
 // TestThreadLockNotice_NextThread verifies that the way on to the next thread
 // stands under the notice exactly when the cap is the only thing holding and the
 // caller named where a thread is started.
@@ -134,13 +177,11 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 	t.Parallel()
 
 	limitReached := []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached}
-	// A reason the application does not hold yet stands in for the one M3 adds:
-	// what the notice does with a second reason is decided here rather than when
-	// that reason arrives.
-	//
-	// [Ja] アプリケーションがまだ持たない理由を、M3 が追加する理由の代わりに置く。2 つ目の
-	// 理由に対して案内が何をするかは、その理由が現れたときではなくここで決めておく。
-	alsoStopped := append([]model.ThreadLockReason{model.ThreadLockReason("stopped_by_an_admin")}, limitReached...)
+	moderatorLocked := []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator}
+	moderatorLockedAtLimit := []model.ThreadLockReason{
+		model.ThreadLockReasonLockedByModerator,
+		model.ThreadLockReasonPostLimitReached,
+	}
 
 	tests := []struct {
 		name     string
@@ -167,7 +208,8 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 			wantText: "Start a new thread in this board",
 		},
 		{name: "no board named", locale: model.LocaleJa, reasons: limitReached, wantLink: false},
-		{name: "another reason as well", locale: model.LocaleJa, reasons: alsoStopped, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
+		{name: "moderator lock alone", locale: model.LocaleJa, reasons: moderatorLocked, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
+		{name: "moderator lock alongside the post limit", locale: model.LocaleJa, reasons: moderatorLockedAtLimit, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
 	}
 
 	for _, tt := range tests {

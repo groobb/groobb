@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // PostInterval is the time one person waits between posts. It is measured from
 // their last saved post wherever in the instance it was written, because the
@@ -84,6 +87,47 @@ type Post struct {
 	// リンク化は取り出す側で行うため、記法は描画側の変更だけで後から足せます。
 	Body string
 
+	// UnpublishedAt is when an administrator unpublished the post, and nil while
+	// it is published. The post stays in its thread and keeps its number, so the
+	// replies that quote it still resolve and the numbers after it do not shift.
+	//
+	// [Ja] UnpublishedAtは管理者が投稿を非公開にした時刻で、公開されている間はnilです。
+	// 投稿はスレッドに残り、レス番号も保つため、それを引用した返信は変わらず解決し、
+	// 後続の番号がずれることもありません。
+	UnpublishedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// ParsePostNumber reads a reply number out of the decimal form an address
+// spells it in, reporting whether raw spells one at all. A post is addressed
+// inside its thread by this number (ADR 0009), so a route naming one post
+// resolves it here, and every route naming the same post agrees on what counts
+// as its address.
+//
+// Anything that is not a positive whole number is rejected rather than looked
+// up: a thread numbers its posts from 1, so no post carries such a number, and
+// a lookup would answer that it is missing after a query. The spellings strconv
+// accepts around a number it does read are accepted here as well, as they are
+// for a thread's id: what is drawn from the number afterwards is built from the
+// parsed value rather than from the path that was walked.
+//
+// [Ja] ParsePostNumberは、アドレスがレス番号を綴る10進表記からそれを読み取り、そもそも
+// rawがそれを表しているかどうかを併せて返します。投稿はスレッドの中でこの番号によって
+// 名指されるため (ADR 0009)、投稿1件を名指すルートはここでそれを解決し、同じ投稿を名指す
+// どのルートも、何がその投稿のアドレスであるかについて一致します。
+//
+// 正の整数でないものはルックアップせずに拒否します。スレッドは投稿に1から番号を振るため、
+// そのような番号を持つ投稿は無く、ルックアップしてもクエリを1回発行した末に不在と答える
+// だけだからです。strconvが読み取る数の周りに認める綴りは、スレッドのidと同じくここでも
+// 受け付けます。番号から描かれるものは、辿られたパスではなく読み取った値から組み立てる
+// ためです。
+func ParsePostNumber(raw string) (int, bool) {
+	number, err := strconv.Atoi(raw)
+	if err != nil || number <= 0 {
+		return 0, false
+	}
+
+	return number, true
 }

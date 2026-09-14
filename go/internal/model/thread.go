@@ -76,6 +76,27 @@ type Thread struct {
 	LastPostID   *PostID
 	LastPostedAt time.Time
 
+	// LockedAt is when an administrator locked the thread, and nil while no
+	// administrator has. It is held apart from the post cap, which LockReasons
+	// derives from PostsCount rather than reading from a column, because the two
+	// conditions stand alongside each other: clearing this one leaves the cap to
+	// be derived from the count the thread still carries.
+	//
+	// [Ja] LockedAtは管理者がスレッドをロックした時刻で、管理者がロックしていない間は
+	// nilです。LockReasonsが列からではなくPostsCountから導く上限到達とは別に持ちます。
+	// 2つの条件は並び立つものであり、こちらを空にしても、上限到達はスレッドが持ち続ける
+	// 件数から導かれ続けるためです。
+	LockedAt *time.Time
+
+	// UnpublishedAt is when an administrator unpublished the thread, and nil
+	// while it is published. The thread keeps its title and its posts either
+	// way, so the mark is what hides it and taking the mark off brings it back.
+	//
+	// [Ja] UnpublishedAtは管理者がスレッドを非公開にした時刻で、公開されている間は
+	// nilです。いずれの場合もスレッドはタイトルと投稿を保つため、対象を隠すのは印であり、
+	// 印を外せば戻ります。
+	UnpublishedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
