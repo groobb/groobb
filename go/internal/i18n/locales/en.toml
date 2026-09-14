@@ -75,6 +75,22 @@ other = "The page you were looking for was not found. Its URL may have changed, 
 description = "Link text on the 404 page that leads to the top page (/)"
 other = "Go to the home page"
 
+[error_unpublished_title]
+description = "Title (title tag) of the page for a thread an administrator unpublished"
+other = "This page is not published"
+
+[error_unpublished_heading]
+description = "Heading of the page for a thread an administrator unpublished"
+other = "This page is not published"
+
+[error_unpublished_message]
+description = "Message returned with a 404 for the address of a thread an administrator unpublished"
+other = "This page was unpublished by an administrator."
+
+[error_unpublished_back_to_home]
+description = "Link text on the unpublished page that leads to the top page (/)"
+other = "Go to the home page"
+
 [field_required]
 description = "Marker added to the label of a required field (UI element shared by every form)"
 other = "Required"
@@ -106,6 +122,22 @@ other = "The administrator role has been granted to @{{.Atname}}."
 [flash_user_role_revoked]
 description = "Flash message shown after a role has been taken from a user, with the user's atname interpolated"
 other = "The administrator role has been taken from @{{.Atname}}."
+
+[flash_thread_locked]
+description = "Flash message shown on the thread page after the thread has been locked"
+other = "The thread has been locked."
+
+[flash_thread_unlocked]
+description = "Flash message shown on the thread page after the thread's lock has been lifted"
+other = "The thread has been unlocked."
+
+[flash_thread_unpublished]
+description = "Flash message shown on the board page after a thread has been unpublished"
+other = "The thread has been unpublished"
+
+[flash_post_unpublished]
+description = "Flash message shown on the thread page after a post has been unpublished"
+other = "The post has been unpublished"
 
 [header_home_link]
 description = "Link text in the shared signed-in header that leads to the home page"
@@ -300,6 +332,38 @@ other = "A withdrawn member"
 description = "Label placed before the reply numbers of the posts that replied to a post on the thread page"
 other = "Replies"
 
+[thread_show_post_unpublished]
+description = "Placeholder drawn on the thread page where a post an administrator unpublished stood"
+other = "Unpublished by an administrator"
+
+[thread_show_moderation_lock_link]
+description = "Text of the link to the thread lock confirmation page, on the thread page"
+other = "Lock thread"
+
+[thread_show_moderation_unlock_button]
+description = "Submit button lifting the lock an administrator placed, on the thread page; it has no confirmation page in front of it"
+other = "Unlock thread"
+
+[thread_show_moderation_unlock_confirm]
+description = "Confirmation dialog text shown before unlocking a thread"
+other = "Unlock this thread?"
+
+[thread_show_moderation_unpublish_link]
+description = "Text of the link to the thread unpublication confirmation page, on the thread page"
+other = "Unpublish thread"
+
+[thread_show_moderation_post_unpublish_link]
+description = "Text of the link to a post's unpublication confirmation page, on the thread page"
+other = "Unpublish"
+
+[thread_show_moderation_post_unpublish_link_label]
+description = "Accessible name of the link to a post's unpublication confirmation page on the thread page, interpolating the reply number"
+other = "Unpublish post {{.Number}}"
+
+[thread_lock_locked_by_moderator]
+description = "Sentence in the notice about a locked thread saying an administrator closed it"
+other = "This thread has been locked by an administrator. Nothing more can be written here."
+
 [thread_lock_post_limit_reached]
 description = "Sentence in the notice about a locked thread saying it holds every post it can hold, with the cap interpolated"
 other = "This thread has reached its limit of {{.Limit}} posts. Nothing more can be written here."
@@ -307,6 +371,118 @@ other = "This thread has reached its limit of {{.Limit}} posts. Nothing more can
 [thread_lock_next_thread_link]
 description = "Text of the link to the thread creation page of the same board, added to the notice of a thread locked for the post cap alone"
 other = "Start a new thread in this board"
+
+[thread_lock_new_title]
+description = "Title (title tag) of the page a thread's lock is confirmed on"
+other = "Lock this thread"
+
+[thread_lock_new_description]
+description = "Meta description of the page a thread's lock is confirmed on"
+other = "Close this thread to new replies."
+
+[thread_lock_new_heading]
+description = "Heading of the page a thread's lock is confirmed on"
+other = "Lock this thread"
+
+[thread_lock_new_lead]
+description = "Text on the page a thread's lock is confirmed on, saying what locking does"
+other = "Once locked, nobody can reply to this thread. It stays readable as it was, and the lock can be lifted later."
+
+[thread_lock_new_target_label]
+description = "Label placed before the title of the thread to be locked, on the lock confirmation page"
+other = "Thread to lock"
+
+[thread_lock_new_reason_label]
+description = "Label of the reason field on the lock confirmation page, stating that it is optional"
+other = "Reason (optional)"
+
+[thread_lock_new_reason_hint]
+description = "Hint under the reason field on the lock confirmation page, saying where the reason goes"
+other = "Recorded in the moderation history only. It is not shown on the thread."
+
+[thread_lock_new_submit_button]
+description = "Submit button of the page a thread's lock is confirmed on"
+other = "Lock this thread"
+
+[thread_lock_new_cancel]
+description = "Text of the link back to the thread from the lock confirmation page, leaving it unlocked"
+other = "Back to the thread"
+
+[thread_unpublication_new_title]
+description = "Title (title tag) of the page a thread's unpublication is confirmed on"
+other = "Unpublish this thread"
+
+[thread_unpublication_new_description]
+description = "Meta description of the page a thread's unpublication is confirmed on"
+other = "Take this thread out of the community's view."
+
+[thread_unpublication_new_heading]
+description = "Heading of the page a thread's unpublication is confirmed on"
+other = "Unpublish this thread"
+
+[thread_unpublication_new_lead]
+description = "Text on the page a thread's unpublication is confirmed on, saying what unpublishing does and that there is no screen for undoing it"
+other = "Once unpublished, this thread no longer appears in the listings and no longer opens from a shared link. Neither the title nor the posts are lost, but there is no screen for publishing it again."
+
+[thread_unpublication_new_target_label]
+description = "Label placed before the title of the thread to be unpublished, on the unpublication confirmation page"
+other = "Thread to unpublish"
+
+[thread_unpublication_new_reason_label]
+description = "Label of the reason field on the thread unpublication confirmation page, stating that it is optional"
+other = "Reason (optional)"
+
+[thread_unpublication_new_reason_hint]
+description = "Hint under the reason field on the thread unpublication confirmation page, saying where the reason goes"
+other = "Recorded in the moderation history only. It is not shown to members."
+
+[thread_unpublication_new_submit_button]
+description = "Submit button of the page a thread's unpublication is confirmed on"
+other = "Unpublish this thread"
+
+[thread_unpublication_new_cancel]
+description = "Text of the link back to the thread from the thread unpublication confirmation page, leaving it published"
+other = "Back to the thread"
+
+[post_unpublication_new_title]
+description = "Title (title tag) of the page a post's unpublication is confirmed on"
+other = "Unpublish this post"
+
+[post_unpublication_new_description]
+description = "Meta description of the page a post's unpublication is confirmed on"
+other = "Take this post out of the thread's view."
+
+[post_unpublication_new_heading]
+description = "Heading of the page a post's unpublication is confirmed on"
+other = "Unpublish this post"
+
+[post_unpublication_new_lead]
+description = "Text on the page a post's unpublication is confirmed on, saying what is left behind and that there is no screen for undoing it"
+other = "Once unpublished, this post's body and author are no longer shown in the thread, and its reply number is left holding only a line saying it was unpublished. Nothing written is lost, but there is no screen for publishing it again."
+
+[post_unpublication_new_target_label]
+description = "Label placed before the post to be unpublished, on the post unpublication confirmation page"
+other = "Post to unpublish"
+
+[post_unpublication_new_withdrawn_author]
+description = "Text shown in place of the author of the post to be unpublished, on the post unpublication confirmation page, when that author has withdrawn"
+other = "A withdrawn member"
+
+[post_unpublication_new_reason_label]
+description = "Label of the reason field on the post unpublication confirmation page, stating that it is optional"
+other = "Reason (optional)"
+
+[post_unpublication_new_reason_hint]
+description = "Hint under the reason field on the post unpublication confirmation page, saying where the reason goes"
+other = "Recorded in the moderation history only. It is not shown on the thread."
+
+[post_unpublication_new_submit_button]
+description = "Submit button of the page a post's unpublication is confirmed on"
+other = "Unpublish this post"
+
+[post_unpublication_new_cancel]
+description = "Text of the link back to the post from the post unpublication confirmation page, leaving it published"
+other = "Back to the post"
 
 [thread_show_reply_heading]
 description = "Heading of the reply form at the end of the thread page"
@@ -1064,6 +1240,10 @@ other = "The administrator role cannot be taken from the last administrator. Mak
 [validation_withdrawal_last_admin]
 description = "Form-wide message shown when withdrawal was refused because the account is the last administrator"
 other = "The last administrator cannot withdraw. Make someone else an administrator first."
+
+[validation_moderation_reason_too_long]
+description = "Validation error when the reason recorded with a moderation operation is too long"
+other = "must be at most 500 characters"
 
 [thread_new_title]
 description = "Thread creation page title (title tag)"
