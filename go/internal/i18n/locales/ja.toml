@@ -4,34 +4,34 @@ other = "Groobb"
 
 [default_description]
 description = "デフォルトのページ説明文 (meta description)"
-other = "Groobb は掲示板サービスです。"
+other = "Groobbは掲示板サービスです。"
 
 [breadcrumb_label]
 description = "パンくずのナビゲーション領域のアクセシブルラベル"
 other = "パンくず"
 
 [datetime_just_now]
-description = "1 分未満前の時刻の相対表示"
+description = "1分未満前の時刻の相対表示"
 other = "たった今"
 
 [datetime_minutes_ago]
-description = "1 時間未満前の時刻の相対表示 (分単位)"
+description = "1時間未満前の時刻の相対表示 (分単位)"
 other = "{{.Count}} 分前"
 
 [datetime_hours_ago]
-description = "24 時間未満前の時刻の相対表示 (時間単位)"
+description = "24時間未満前の時刻の相対表示 (時間単位)"
 other = "{{.Count}} 時間前"
 
 [datetime_days_ago]
-description = "約 1 か月未満前の時刻の相対表示 (日単位)"
+description = "約1か月未満前の時刻の相対表示 (日単位)"
 other = "{{.Count}} 日前"
 
 [datetime_months_ago]
-description = "約 1 年未満前の時刻の相対表示 (月単位)"
+description = "約1年未満前の時刻の相対表示 (月単位)"
 other = "{{.Count}} か月前"
 
 [datetime_years_ago]
-description = "約 1 年以上前の時刻の相対表示 (年単位)"
+description = "約1年以上前の時刻の相対表示 (年単位)"
 other = "{{.Count}} 年前"
 
 [document_title]
@@ -39,39 +39,39 @@ description = "<title> 要素の書式。ページ自身の名前 (Page) と、�
 other = "{{.Page}} - {{.Site}}"
 
 [error_forbidden_title]
-description = "403 ページのタイトル (title タグ)"
+description = "403ページのタイトル (titleタグ)"
 other = "権限がありません"
 
 [error_forbidden_heading]
-description = "403 ページの見出し"
+description = "403ページの見出し"
 other = "権限がありません"
 
 [error_forbidden_message]
-description = "権限が無い操作や画面に対して 403 で返す説明文"
+description = "権限が無い操作や画面に対して403で返す説明文"
 other = "この操作を行う権限がありません。"
 
 [error_forbidden_back_to_home]
-description = "403 ページからトップページ (/) へ移動するリンクのテキスト"
+description = "403ページからトップページ (/) へ移動するリンクのテキスト"
 other = "トップページへ"
 
 [error_not_found_title]
-description = "404 ページのタイトル (title タグ)"
+description = "404ページのタイトル (titleタグ)"
 other = "ページが見つかりません"
 
 [error_not_found_heading]
-description = "404 ページの見出し"
+description = "404ページの見出し"
 other = "ページが見つかりません"
 
 [error_not_found_message]
-description = "リクエストされた URL に対応するものが存在しないときに 404 で返す説明文"
-other = "お探しのページは見つかりませんでした。URL が変更されたか、ページが削除された可能性があります。"
+description = "リクエストされたURLに対応するものが存在しないときに404で返す説明文"
+other = "お探しのページは見つかりませんでした。URLが変更されたか、ページが削除された可能性があります。"
 
 [error_not_found_back_to_home]
-description = "404 ページからトップページ (/) へ移動するリンクのテキスト"
+description = "404ページからトップページ (/) へ移動するリンクのテキスト"
 other = "トップページへ"
 
 [error_unpublished_title]
-description = "非公開にされたスレッドのページのタイトル (title タグ)"
+description = "非公開にされたスレッドのページのタイトル (titleタグ)"
 other = "このページは公開されていません"
 
 [error_unpublished_heading]
@@ -79,7 +79,7 @@ description = "非公開にされたスレッドのページの見出し"
 other = "このページは公開されていません"
 
 [error_unpublished_message]
-description = "管理者が非公開にしたスレッドのアドレスに対して 404 で返す説明文"
+description = "管理者が非公開にしたスレッドのアドレスに対して404で返す説明文"
 other = "このページは管理者により非公開にされました。"
 
 [error_unpublished_back_to_home]
@@ -87,11 +87,11 @@ description = "非公開のページからトップページ (/) へ移動する
 other = "トップページへ"
 
 [field_required]
-description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通の UI 部品)"
+description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通のUI部品)"
 other = "必須"
 
 [flash_dismiss]
-description = "フラッシュメッセージの toast を閉じるボタン (全ページ共通の UI 部品)"
+description = "フラッシュメッセージのtoastを閉じるボタン (全ページ共通のUI部品)"
 other = "閉じる"
 
 [flash_sign_out_success]
@@ -107,8 +107,8 @@ description = "退会完了時のフラッシュメッセージ"
 other = "退会しました"
 
 [flash_two_factor_auth_disabled]
-description = "2 段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
-other = "2 段階認証を無効にしました"
+description = "2段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
+other = "2段階認証を無効にしました"
 
 [flash_user_role_granted]
 description = "利用者にロールを付与した後に利用者一覧で表示するフラッシュメッセージ (対象のatnameを差し込む)"
@@ -143,7 +143,7 @@ description = "サインイン済みページ共通ヘッダーのナビゲー�
 other = "グローバルナビゲーション"
 
 [posts_count]
-description = "UI に表示する投稿数"
+description = "UIに表示する投稿数"
 other = "{{.Count}} 件の投稿"
 
 [sidebar_admin_link]
@@ -159,7 +159,7 @@ description = "コミュニティのシェル共通のサイドバー (コミュ
 other = "コミュニティ"
 
 [sidebar_no_boards]
-description = "サイドバーの掲示板一覧で、コミュニティが掲示板を 1 つも持たないときに表示する文言"
+description = "サイドバーの掲示板一覧で、コミュニティが掲示板を1つも持たないときに表示する文言"
 other = "まだ掲示板がありません。"
 
 [sidebar_settings_link]
@@ -183,7 +183,7 @@ description = "サイドバーの、匿名の訪問者に表示する新規登�
 other = "新規登録"
 
 [skip_to_main_content]
-description = "コミュニティのシェルで、サイドバーを飛ばして本文へ移動するスキップリンクのテキスト (全ページ共通の UI 部品)"
+description = "コミュニティのシェルで、サイドバーを飛ばして本文へ移動するスキップリンクのテキスト (全ページ共通のUI部品)"
 other = "本文へスキップ"
 
 [thread_language_label]
@@ -195,12 +195,12 @@ description = "スレッドの主言語のバッジで、アプリがロケー�
 other = "その他"
 
 [welcome_show_title]
-description = "トップページのページタイトル (title タグ)"
+description = "トップページのページタイトル (titleタグ)"
 other = "Groobb"
 
 [welcome_show_description]
-description = "トップページの meta description"
-other = "Groobb は誰でも自分の掲示板をつくれる掲示板サービスです。"
+description = "トップページのmeta description"
+other = "Groobbは誰でも自分の掲示板をつくれる掲示板サービスです。"
 
 [welcome_show_heading]
 description = "トップページのヒーロー見出し"
@@ -208,18 +208,18 @@ other = "あなたの掲示板を、つくろう。"
 
 [welcome_show_lead]
 description = "トップページのヒーロー説明文"
-other = "Groobb は、自分だけの掲示板をつくって仲間と交流できる掲示板サービスです。"
+other = "Groobbは、自分だけの掲示板をつくって仲間と交流できる掲示板サービスです。"
 
 [welcome_show_sign_up_link]
-description = "トップページからサインアップ (アカウント登録) へ誘導する CTA リンクのテキスト"
+description = "トップページからサインアップ (アカウント登録) へ誘導するCTAリンクのテキスト"
 other = "アカウント登録"
 
 [welcome_show_sign_in_link]
-description = "トップページからサインイン (ログイン) へ誘導する CTA リンクのテキスト"
+description = "トップページからサインイン (ログイン) へ誘導するCTAリンクのテキスト"
 other = "ログイン"
 
 [home_show_title]
-description = "ホームページのタイトル (title タグ)"
+description = "ホームページのタイトル (titleタグ)"
 other = "ホーム"
 
 [home_show_heading]
@@ -227,11 +227,11 @@ description = "ホームページ (コミュニティのトップ) の見出し"
 other = "コミュニティのトップ"
 
 [home_show_no_boards]
-description = "ホームページで、コミュニティが掲示板を 1 つも持たないときに表示する文言"
+description = "ホームページで、コミュニティが掲示板を1つも持たないときに表示する文言"
 other = "このコミュニティにはまだ掲示板がありません。"
 
 [home_show_board_no_threads]
-description = "ホームページの掲示板の区画で、その掲示板がスレッドを 1 つも持たないときに表示する文言"
+description = "ホームページの掲示板の区画で、その掲示板がスレッドを1つも持たないときに表示する文言"
 other = "まだスレッドがありません。"
 
 [home_show_last_posted_label]
@@ -239,15 +239,15 @@ description = "ホームページのスレッド一覧で、最終投稿日時�
 other = "最終投稿"
 
 [category_show_title]
-description = "カテゴリーページのタイトル (title タグ)。カテゴリー名を差し込む"
+description = "カテゴリーページのタイトル (titleタグ)。カテゴリー名を差し込む"
 other = "{{.Name}}"
 
 [category_show_description]
-description = "カテゴリーページの meta description。カテゴリー名を差し込む"
+description = "カテゴリーページのmeta description。カテゴリー名を差し込む"
 other = "{{.Name}} カテゴリーの掲示板の一覧です。"
 
 [category_show_no_boards]
-description = "カテゴリーページで、そのカテゴリーが掲示板を 1 つも持たないときに表示する文言"
+description = "カテゴリーページで、そのカテゴリーが掲示板を1つも持たないときに表示する文言"
 other = "このカテゴリーにはまだ掲示板がありません。"
 
 [category_show_board_prompt]
@@ -255,7 +255,7 @@ description = "カテゴリーページの読むためのカラムで、一覧�
 other = "掲示板を選ぶと、その中のスレッドが表示されます。"
 
 [category_show_no_boards_thread_prompt]
-description = "カテゴリーページの読むためのカラムで、そのカテゴリーが掲示板を 1 つも持たず、選べる掲示板が無いときに表示する文言"
+description = "カテゴリーページの読むためのカラムで、そのカテゴリーが掲示板を1つも持たず、選べる掲示板が無いときに表示する文言"
 other = "掲示板が置かれると、そのスレッドがここに表示されます。"
 
 [category_show_board_prompt_region_label]
@@ -263,15 +263,15 @@ description = "カテゴリーページの読むためのカラムのアクセ�
 other = "スレッドの閲覧"
 
 [board_show_title]
-description = "掲示板ページのタイトル (title タグ)。掲示板名を差し込む"
+description = "掲示板ページのタイトル (titleタグ)。掲示板名を差し込む"
 other = "{{.Name}}"
 
 [board_show_description]
-description = "掲示板ページの meta description。掲示板が説明を持たないときに使い、掲示板名を差し込む"
+description = "掲示板ページのmeta description。掲示板が説明を持たないときに使い、掲示板名を差し込む"
 other = "{{.Name}} のスレッドの一覧です。"
 
 [board_show_no_threads]
-description = "掲示板ページで、その掲示板がスレッドを 1 つも持たないときに表示する文言"
+description = "掲示板ページで、その掲示板がスレッドを1つも持たないときに表示する文言"
 other = "この掲示板にはまだスレッドがありません。"
 
 [board_show_new_thread_link]
@@ -279,7 +279,7 @@ description = "掲示板ページで、スレッド一覧の上に置くスレ�
 other = "スレッドを立てる"
 
 [board_show_first_thread_link]
-description = "掲示板ページで、その掲示板がスレッドを 1 つも持たないときに空状態に置くスレッド作成フォームへのリンク"
+description = "掲示板ページで、その掲示板がスレッドを1つも持たないときに空状態に置くスレッド作成フォームへのリンク"
 other = "最初のスレッドを立てる"
 
 [board_show_last_posted_label]
@@ -291,7 +291,7 @@ description = "掲示板ページの読むためのカラムで、一覧から�
 other = "スレッドを選ぶと、その投稿が表示されます。"
 
 [board_show_no_threads_post_prompt]
-description = "掲示板ページの読むためのカラムで、その掲示板がスレッドを 1 つも持たず、選べるスレッドが無いときに表示する文言"
+description = "掲示板ページの読むためのカラムで、その掲示板がスレッドを1つも持たず、選べるスレッドが無いときに表示する文言"
 other = "スレッドが立つと、その投稿がここに表示されます。"
 
 [board_show_thread_prompt_region_label]
@@ -299,11 +299,11 @@ description = "掲示板ページの読むためのカラムのアクセシブ�
 other = "スレッドの閲覧"
 
 [thread_show_title]
-description = "スレッドページのタイトル (title タグ)。スレッドのタイトルを差し込む"
+description = "スレッドページのタイトル (titleタグ)。スレッドのタイトルを差し込む"
 other = "{{.Title}}"
 
 [thread_show_description]
-description = "スレッドページの meta description。スレッドのタイトルと掲示板名を差し込む"
+description = "スレッドページのmeta description。スレッドのタイトルと掲示板名を差し込む"
 other = "{{.Board}} に立っているスレッド「{{.Title}}」の投稿の一覧です。"
 
 [thread_show_board_threads_region_label]
@@ -367,11 +367,11 @@ description = "投稿数の上限だけを理由にロックされたスレッ�
 other = "この掲示板で新しいスレッドを立てる"
 
 [thread_lock_new_title]
-description = "スレッドのロックの確認ページのタイトル (title タグ)"
+description = "スレッドのロックの確認ページのタイトル (titleタグ)"
 other = "スレッドをロックする"
 
 [thread_lock_new_description]
-description = "スレッドのロックの確認ページの meta description"
+description = "スレッドのロックの確認ページのmeta description"
 other = "このスレッドを新しい返信に対して締め切ります。"
 
 [thread_lock_new_heading]
@@ -403,11 +403,11 @@ description = "スレッドのロックの確認ページから、ロックせ�
 other = "スレッドに戻る"
 
 [thread_unpublication_new_title]
-description = "スレッドの非公開の確認ページのタイトル (title タグ)"
+description = "スレッドの非公開の確認ページのタイトル (titleタグ)"
 other = "スレッドを非公開にする"
 
 [thread_unpublication_new_description]
-description = "スレッドの非公開の確認ページの meta description"
+description = "スレッドの非公開の確認ページのmeta description"
 other = "このスレッドをコミュニティの視界から外します。"
 
 [thread_unpublication_new_heading]
@@ -439,11 +439,11 @@ description = "スレッドの非公開の確認ページから、非公開に�
 other = "スレッドに戻る"
 
 [post_unpublication_new_title]
-description = "投稿の非公開の確認ページのタイトル (title タグ)"
+description = "投稿の非公開の確認ページのタイトル (titleタグ)"
 other = "投稿を非公開にする"
 
 [post_unpublication_new_description]
-description = "投稿の非公開の確認ページの meta description"
+description = "投稿の非公開の確認ページのmeta description"
 other = "この投稿をスレッドの視界から外します。"
 
 [post_unpublication_new_heading]
@@ -503,16 +503,16 @@ description = "メールアドレス変更通知メールの件名"
 other = "[Groobb] メールアドレスが変更されました"
 
 [sign_up_new_title]
-description = "サインアップページのタイトル (title タグ)"
+description = "サインアップページのタイトル (titleタグ)"
 other = "アカウント登録"
 
 [sign_up_new_description]
-description = "サインアップページの meta description"
-other = "Groobb のアカウントを新規登録します。"
+description = "サインアップページのmeta description"
+other = "Groobbのアカウントを新規登録します。"
 
 [sign_up_new_heading]
 description = "サインアップページの見出し"
-other = "Groobb に登録"
+other = "Groobbに登録"
 
 [sign_up_new_lead]
 description = "サインアップページの説明文 (メール確認コード送信の案内)"
@@ -527,11 +527,11 @@ description = "サインアップページの送信ボタン"
 other = "確認コードを送信"
 
 [email_confirmation_new_title]
-description = "メール確認コード入力ページのタイトル (title タグ)"
+description = "メール確認コード入力ページのタイトル (titleタグ)"
 other = "確認コードの入力"
 
 [email_confirmation_new_description]
-description = "メール確認コード入力ページの meta description"
+description = "メール確認コード入力ページのmeta description"
 other = "メールで届いた確認コードを入力してアカウント登録を続けます。"
 
 [email_confirmation_new_heading]
@@ -540,7 +540,7 @@ other = "確認コードを入力"
 
 [email_confirmation_new_lead]
 description = "メール確認コード入力ページの説明文 (コードの入力を促す)"
-other = "メールに記載された 6 桁の確認コードを入力してください。"
+other = "メールに記載された6桁の確認コードを入力してください。"
 
 [email_confirmation_new_code_label]
 description = "メール確認コード入力ページの確認コードのラベル"
@@ -551,11 +551,11 @@ description = "メール確認コード入力ページの送信ボタン"
 other = "確認する"
 
 [account_new_title]
-description = "アカウント作成ページのタイトル (title タグ)"
+description = "アカウント作成ページのタイトル (titleタグ)"
 other = "アカウントを作成"
 
 [account_new_description]
-description = "アカウント作成ページの meta description"
+description = "アカウント作成ページのmeta description"
 other = "アットネームとパスワードを設定してアカウント登録を完了します。"
 
 [account_new_heading]
@@ -567,12 +567,12 @@ description = "アカウント作成ページの説明文 (最後のステップ
 other = "アカウント登録の最後のステップです。アットネームとパスワードを設定してください。"
 
 [account_new_atname_label]
-description = "アカウント作成ページの atname のラベル"
+description = "アカウント作成ページのatnameのラベル"
 other = "アットネーム"
 
 [account_new_atname_hint]
-description = "アカウント作成ページの atname のヒント (使用可能な文字と文字数)"
-other = "半角英数字とアンダースコアが使えます (最大 20 文字)"
+description = "アカウント作成ページのatnameのヒント (使用可能な文字と文字数)"
+other = "半角英数字とアンダースコアが使えます (最大20文字)"
 
 [account_new_password_label]
 description = "アカウント作成ページのパスワードのラベル"
@@ -580,7 +580,7 @@ other = "パスワード"
 
 [account_new_password_hint]
 description = "アカウント作成ページのパスワードのヒント (文字数)"
-other = "8 文字以上で入力してください"
+other = "8文字以上で入力してください"
 
 [account_new_password_confirmation_label]
 description = "アカウント作成ページのパスワード確認のラベル"
@@ -591,16 +591,16 @@ description = "アカウント作成ページの送信ボタン"
 other = "アカウントを作成"
 
 [sign_in_new_title]
-description = "サインインページのタイトル (title タグ)"
+description = "サインインページのタイトル (titleタグ)"
 other = "ログイン"
 
 [sign_in_new_description]
-description = "サインインページの meta description"
-other = "Groobb アカウントにログインします。"
+description = "サインインページのmeta description"
+other = "Groobbアカウントにログインします。"
 
 [sign_in_new_heading]
 description = "サインインページの見出し"
-other = "Groobb にログイン"
+other = "Groobbにログイン"
 
 [sign_in_new_lead]
 description = "サインインページの説明文 (メールアドレスとパスワードの入力を促す)"
@@ -627,39 +627,39 @@ description = "サインインページからパスワードリセット申請�
 other = "パスワードを忘れた場合"
 
 [sign_in_two_factor_new_title]
-description = "サインイン時の 2 段階認証チャレンジページのタイトル (title タグ)"
-other = "2 段階認証"
+description = "サインイン時の2段階認証チャレンジページのタイトル (titleタグ)"
+other = "2段階認証"
 
 [sign_in_two_factor_new_description]
-description = "サインイン時の 2 段階認証チャレンジページの meta description"
+description = "サインイン時の2段階認証チャレンジページのmeta description"
 other = "認証アプリのコードを入力してサインインを完了します。"
 
 [sign_in_two_factor_new_heading]
-description = "サインイン時の 2 段階認証チャレンジページの見出し"
-other = "2 段階認証"
+description = "サインイン時の2段階認証チャレンジページの見出し"
+other = "2段階認証"
 
 [sign_in_two_factor_new_lead]
-description = "サインイン時の 2 段階認証チャレンジページの説明文 (認証アプリのコード入力を促す)"
-other = "認証アプリに表示されている 6 桁のコードを入力してください。"
+description = "サインイン時の2段階認証チャレンジページの説明文 (認証アプリのコード入力を促す)"
+other = "認証アプリに表示されている6桁のコードを入力してください。"
 
 [sign_in_two_factor_new_code_label]
-description = "サインイン時の 2 段階認証チャレンジページの認証コードのラベル"
+description = "サインイン時の2段階認証チャレンジページの認証コードのラベル"
 other = "認証コード"
 
 [sign_in_two_factor_new_submit]
-description = "サインイン時の 2 段階認証チャレンジページの送信ボタン (サインインを完了する)"
+description = "サインイン時の2段階認証チャレンジページの送信ボタン (サインインを完了する)"
 other = "ログイン"
 
 [sign_in_two_factor_new_use_recovery_link]
-description = "サインイン時の 2 段階認証チャレンジページからリカバリーコードチャレンジへのリンク"
+description = "サインイン時の2段階認証チャレンジページからリカバリーコードチャレンジへのリンク"
 other = "リカバリーコードを使う"
 
 [sign_in_two_factor_recovery_new_title]
-description = "サインイン時のリカバリーコードチャレンジページのタイトル (title タグ)"
+description = "サインイン時のリカバリーコードチャレンジページのタイトル (titleタグ)"
 other = "リカバリーコード"
 
 [sign_in_two_factor_recovery_new_description]
-description = "サインイン時のリカバリーコードチャレンジページの meta description"
+description = "サインイン時のリカバリーコードチャレンジページのmeta description"
 other = "リカバリーコードを入力してサインインを完了します。"
 
 [sign_in_two_factor_recovery_new_heading]
@@ -668,7 +668,7 @@ other = "リカバリーコード"
 
 [sign_in_two_factor_recovery_new_lead]
 description = "サインイン時のリカバリーコードチャレンジページの説明文 (保存済みリカバリーコードの入力を促す)"
-other = "2 段階認証を有効化したときに保存したリカバリーコードのいずれか 1 つを入力してください。"
+other = "2段階認証を有効化したときに保存したリカバリーコードのいずれか1つを入力してください。"
 
 [sign_in_two_factor_recovery_new_code_label]
 description = "サインイン時のリカバリーコードチャレンジページのリカバリーコードのラベル"
@@ -683,11 +683,11 @@ description = "サインイン時のリカバリーコードチャレンジペ�
 other = "認証アプリのコードを使う"
 
 [password_reset_new_title]
-description = "パスワードリセット申請ページのタイトル (title タグ)"
+description = "パスワードリセット申請ページのタイトル (titleタグ)"
 other = "パスワードの再設定"
 
 [password_reset_new_description]
-description = "パスワードリセット申請ページの meta description"
+description = "パスワードリセット申請ページのmeta description"
 other = "登録したメールアドレスにパスワード再設定用のリンクを送信します。"
 
 [password_reset_new_heading]
@@ -711,11 +711,11 @@ description = "パスワードリセット申請ページからサインイン�
 other = "ログインに戻る"
 
 [password_reset_sent_title]
-description = "パスワードリセット送信完了ページのタイトル (title タグ)"
+description = "パスワードリセット送信完了ページのタイトル (titleタグ)"
 other = "メールを送信しました"
 
 [password_reset_sent_description]
-description = "パスワードリセット送信完了ページの meta description"
+description = "パスワードリセット送信完了ページのmeta description"
 other = "パスワード再設定用のリンクを送信しました。"
 
 [password_reset_sent_heading]
@@ -731,11 +731,11 @@ description = "パスワードリセット送信完了ページからサイン�
 other = "ログインに戻る"
 
 [password_edit_title]
-description = "パスワード更新 (新パスワード設定) ページのタイトル (title タグ)"
+description = "パスワード更新 (新パスワード設定) ページのタイトル (titleタグ)"
 other = "新しいパスワードの設定"
 
 [password_edit_description]
-description = "パスワード更新 (新パスワード設定) ページの meta description"
+description = "パスワード更新 (新パスワード設定) ページのmeta description"
 other = "新しいパスワードを設定します。"
 
 [password_edit_heading]
@@ -752,7 +752,7 @@ other = "新しいパスワード"
 
 [password_edit_password_hint]
 description = "パスワード更新ページのパスワードのヒント (文字数)"
-other = "8 文字以上で入力してください"
+other = "8文字以上で入力してください"
 
 [password_edit_password_confirmation_label]
 description = "パスワード更新ページのパスワード確認のラベル"
@@ -767,7 +767,7 @@ description = "パスワード更新ページからパスワードリセット�
 other = "新しい再設定用リンクを申請"
 
 [settings_show_title]
-description = "設定ハブページのタイトル (title タグ)"
+description = "設定ハブページのタイトル (titleタグ)"
 other = "設定"
 
 [settings_show_heading]
@@ -779,19 +779,19 @@ description = "設定ハブページからメールアドレス変更ページ�
 other = "メールアドレスの変更"
 
 [settings_show_two_factor_auth_link]
-description = "設定ハブページから 2 段階認証の設定ページへ誘導するリンクのテキスト"
-other = "2 段階認証"
+description = "設定ハブページから2段階認証の設定ページへ誘導するリンクのテキスト"
+other = "2段階認証"
 
 [settings_show_withdrawal_link]
 description = "設定ハブページから退会ページへ誘導するリンクのテキスト"
 other = "退会"
 
 [settings_email_edit_title]
-description = "メールアドレス変更ページのタイトル (title タグ)"
+description = "メールアドレス変更ページのタイトル (titleタグ)"
 other = "メールアドレスの変更"
 
 [settings_email_edit_description]
-description = "メールアドレス変更ページの meta description"
+description = "メールアドレス変更ページのmeta description"
 other = "メールアドレスを変更します。"
 
 [settings_email_edit_heading]
@@ -819,11 +819,11 @@ description = "メールアドレス変更ページの送信ボタン"
 other = "変更する"
 
 [settings_email_confirmation_new_title]
-description = "メールアドレス変更の確認コード入力ページのタイトル (title タグ)"
+description = "メールアドレス変更の確認コード入力ページのタイトル (titleタグ)"
 other = "確認コードの入力"
 
 [settings_email_confirmation_new_description]
-description = "メールアドレス変更の確認コード入力ページの meta description"
+description = "メールアドレス変更の確認コード入力ページのmeta description"
 other = "新しいメールアドレスに送信した確認コードを入力します。"
 
 [settings_email_confirmation_new_heading]
@@ -831,8 +831,8 @@ description = "メールアドレス変更の確認コード入力ページの�
 other = "確認コードの入力"
 
 [settings_email_confirmation_new_lead]
-description = "メールアドレス変更の確認コード入力ページの説明文 (新しいアドレスに送った 6 桁コードの入力案内)"
-other = "新しいメールアドレスに送信した 6 桁の確認コードを入力してください。"
+description = "メールアドレス変更の確認コード入力ページの説明文 (新しいアドレスに送った6桁コードの入力案内)"
+other = "新しいメールアドレスに送信した6桁の確認コードを入力してください。"
 
 [settings_email_confirmation_new_code_label]
 description = "メールアドレス変更の確認コード入力ページの確認コードのラベル"
@@ -843,11 +843,11 @@ description = "メールアドレス変更の確認コード入力ページの�
 other = "メールアドレスを変更"
 
 [settings_withdrawal_new_title]
-description = "退会確認ページのタイトル (title タグ)"
+description = "退会確認ページのタイトル (titleタグ)"
 other = "退会"
 
 [settings_withdrawal_new_description]
-description = "退会確認ページの meta description"
+description = "退会確認ページのmeta description"
 other = "アカウントを退会します。"
 
 [settings_withdrawal_new_heading]
@@ -863,7 +863,7 @@ description = "退会確認ページの現在のパスワードのラベル"
 other = "現在のパスワード"
 
 [settings_withdrawal_new_confirm]
-description = "退会を実行する前にブラウザの confirm() で表示する最終確認の文言"
+description = "退会を実行する前にブラウザのconfirm() で表示する最終確認の文言"
 other = "本当に退会しますか？"
 
 [settings_withdrawal_new_submit]
@@ -871,103 +871,103 @@ description = "退会確認ページの送信ボタン"
 other = "退会する"
 
 [settings_two_factor_auth_new_title]
-description = "2 段階認証の設定 (登録) ページのタイトル (title タグ)"
-other = "2 段階認証の設定"
+description = "2段階認証の設定 (登録) ページのタイトル (titleタグ)"
+other = "2段階認証の設定"
 
 [settings_two_factor_auth_new_description]
-description = "2 段階認証の設定 (登録) ページの meta description"
-other = "認証アプリを登録して 2 段階認証を有効にします。"
+description = "2段階認証の設定 (登録) ページのmeta description"
+other = "認証アプリを登録して2段階認証を有効にします。"
 
 [settings_two_factor_auth_new_heading]
-description = "2 段階認証の設定 (登録) ページの見出し"
-other = "2 段階認証の設定"
+description = "2段階認証の設定 (登録) ページの見出し"
+other = "2段階認証の設定"
 
 [settings_two_factor_auth_new_lead]
-description = "2 段階認証の設定 (登録) ページの説明文 (QR 読み取り / 手動入力とコード入力の案内)"
-other = "認証アプリで QR コードを読み取るか、下のキーを手動で入力してから、アプリに表示された 6 桁のコードを入力してください。"
+description = "2段階認証の設定 (登録) ページの説明文 (QR読み取り / 手動入力とコード入力の案内)"
+other = "認証アプリでQRコードを読み取るか、下のキーを手動で入力してから、アプリに表示された6桁のコードを入力してください。"
 
 [settings_two_factor_auth_new_qr_alt]
-description = "2 段階認証の設定 (登録) ページの QR コード画像の代替テキスト"
-other = "認証アプリ登録用の QR コード"
+description = "2段階認証の設定 (登録) ページのQRコード画像の代替テキスト"
+other = "認証アプリ登録用のQRコード"
 
 [settings_two_factor_auth_new_secret_label]
-description = "2 段階認証の設定 (登録) ページで、QR を読み取れない場合に手動入力するキーのラベル"
+description = "2段階認証の設定 (登録) ページで、QRを読み取れない場合に手動入力するキーのラベル"
 other = "手動で入力する場合のキー"
 
 [settings_two_factor_auth_new_code_label]
-description = "2 段階認証の設定 (登録) ページの認証コードのラベル"
+description = "2段階認証の設定 (登録) ページの認証コードのラベル"
 other = "認証コード"
 
 [settings_two_factor_auth_new_submit]
-description = "2 段階認証の設定 (登録) ページの送信ボタン (有効化する)"
+description = "2段階認証の設定 (登録) ページの送信ボタン (有効化する)"
 other = "有効にする"
 
 [settings_two_factor_auth_create_title]
-description = "2 段階認証の有効化完了 (リカバリーコード表示) ページのタイトル (title タグ)"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページのタイトル (titleタグ)"
 other = "リカバリーコード"
 
 [settings_two_factor_auth_create_description]
-description = "2 段階認証の有効化完了 (リカバリーコード表示) ページの meta description"
-other = "2 段階認証のリカバリーコードです。"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページのmeta description"
+other = "2段階認証のリカバリーコードです。"
 
 [settings_two_factor_auth_create_heading]
-description = "2 段階認証の有効化完了 (リカバリーコード表示) ページの見出し"
-other = "2 段階認証を有効にしました"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページの見出し"
+other = "2段階認証を有効にしました"
 
 [settings_two_factor_auth_create_lead]
-description = "2 段階認証の有効化完了ページの説明文 (リカバリーコードの用途)"
+description = "2段階認証の有効化完了ページの説明文 (リカバリーコードの用途)"
 other = "認証アプリを使えないときは、以下のリカバリーコードでサインインできます。"
 
 [settings_two_factor_auth_create_recovery_codes_warning]
-description = "2 段階認証の有効化完了ページで、リカバリーコードを今すぐ保存するよう促す警告 (一度しか表示されない)"
-other = "各コードは 1 回だけ使えます。この画面を離れると二度と表示されないため、今すぐ安全な場所に保存してください。"
+description = "2段階認証の有効化完了ページで、リカバリーコードを今すぐ保存するよう促す警告 (一度しか表示されない)"
+other = "各コードは1回だけ使えます。この画面を離れると二度と表示されないため、今すぐ安全な場所に保存してください。"
 
 [settings_two_factor_auth_create_done]
-description = "2 段階認証の有効化完了ページから設定ハブへ戻るリンク / ボタンのテキスト"
+description = "2段階認証の有効化完了ページから設定ハブへ戻るリンク / ボタンのテキスト"
 other = "設定に戻る"
 
 [settings_two_factor_auth_delete_title]
-description = "2 段階認証の無効化 (確認) ページのタイトル (title タグ)"
-other = "2 段階認証の無効化"
+description = "2段階認証の無効化 (確認) ページのタイトル (titleタグ)"
+other = "2段階認証の無効化"
 
 [settings_two_factor_auth_delete_description]
-description = "2 段階認証の無効化 (確認) ページの meta description"
-other = "2 段階認証を無効にします。"
+description = "2段階認証の無効化 (確認) ページのmeta description"
+other = "2段階認証を無効にします。"
 
 [settings_two_factor_auth_delete_heading]
-description = "2 段階認証の無効化 (確認) ページの見出し"
-other = "2 段階認証の無効化"
+description = "2段階認証の無効化 (確認) ページの見出し"
+other = "2段階認証の無効化"
 
 [settings_two_factor_auth_delete_lead]
-description = "2 段階認証の無効化 (確認) ページの説明文 (無効化で何が起きるかと再認証の案内)"
-other = "2 段階認証を無効にすると、サインイン時に認証コードを求められなくなります。続けるには、現在のパスワードか認証アプリの認証コードのどちらか一方を入力してください。"
+description = "2段階認証の無効化 (確認) ページの説明文 (無効化で何が起きるかと再認証の案内)"
+other = "2段階認証を無効にすると、サインイン時に認証コードを求められなくなります。続けるには、現在のパスワードか認証アプリの認証コードのどちらか一方を入力してください。"
 
 [settings_two_factor_auth_delete_reauth_legend]
-description = "2 段階認証の無効化 (確認) ページの再認証 fieldset (現在のパスワード / 認証コード) を示す legend"
+description = "2段階認証の無効化 (確認) ページの再認証fieldset (現在のパスワード / 認証コード) を示すlegend"
 other = "本人確認"
 
 [settings_two_factor_auth_delete_reauth_hint]
-description = "2 段階認証の無効化 (確認) ページで、パスワードとコードのどちらか一方を入力すればよいことを伝えるヒント"
+description = "2段階認証の無効化 (確認) ページで、パスワードとコードのどちらか一方を入力すればよいことを伝えるヒント"
 other = "どちらか一方だけ入力してください。"
 
 [settings_two_factor_auth_delete_current_password_label]
-description = "2 段階認証の無効化 (確認) ページの現在のパスワードのラベル"
+description = "2段階認証の無効化 (確認) ページの現在のパスワードのラベル"
 other = "現在のパスワード"
 
 [settings_two_factor_auth_delete_code_label]
-description = "2 段階認証の無効化 (確認) ページの認証コードのラベル"
+description = "2段階認証の無効化 (確認) ページの認証コードのラベル"
 other = "認証コード"
 
 [settings_two_factor_auth_delete_confirm]
-description = "2 段階認証を無効化する前にブラウザの confirm() で表示する最終確認の文言"
-other = "2 段階認証を無効にしますか？"
+description = "2段階認証を無効化する前にブラウザのconfirm() で表示する最終確認の文言"
+other = "2段階認証を無効にしますか？"
 
 [settings_two_factor_auth_delete_submit]
-description = "2 段階認証の無効化 (確認) ページの送信ボタン"
+description = "2段階認証の無効化 (確認) ページの送信ボタン"
 other = "無効にする"
 
 [admin_show_title]
-description = "管理ハブページのタイトル (title タグ)"
+description = "管理ハブページのタイトル (titleタグ)"
 other = "管理"
 
 [admin_show_heading]
@@ -979,19 +979,19 @@ description = "管理ハブページから利用者一覧ページへ誘導す�
 other = "利用者の一覧"
 
 [admin_user_index_title]
-description = "利用者一覧ページのタイトル (title タグ)"
+description = "利用者一覧ページのタイトル (titleタグ)"
 other = "利用者の一覧"
 
 [admin_user_index_title_filtered]
-description = "atname の先頭部分で絞り込んだ利用者一覧ページのタイトル (絞り込み文字列を差し込む title タグ)"
+description = "atnameの先頭部分で絞り込んだ利用者一覧ページのタイトル (絞り込み文字列を差し込むtitleタグ)"
 other = "「{{.Query}}」で絞り込んだ利用者の一覧"
 
 [admin_user_index_title_paginated]
-description = "2 ページ目以降の利用者一覧ページのタイトル (ページ番号を差し込む title タグ)"
+description = "2ページ目以降の利用者一覧ページのタイトル (ページ番号を差し込むtitleタグ)"
 other = "利用者の一覧 ({{.Page}}ページ目)"
 
 [admin_user_index_title_filtered_paginated]
-description = "atname の先頭部分で絞り込んだ 2 ページ目以降の利用者一覧ページのタイトル (絞り込み文字列とページ番号を差し込む title タグ)"
+description = "atnameの先頭部分で絞り込んだ2ページ目以降の利用者一覧ページのタイトル (絞り込み文字列とページ番号を差し込むtitleタグ)"
 other = "「{{.Query}}」で絞り込んだ利用者の一覧 ({{.Page}}ページ目)"
 
 [admin_user_index_heading]
@@ -999,7 +999,7 @@ description = "利用者一覧ページの見出し"
 other = "利用者の一覧"
 
 [admin_user_index_search_label]
-description = "利用者一覧ページの絞り込み入力欄のラベル (atname の前方一致で絞り込む)"
+description = "利用者一覧ページの絞り込み入力欄のラベル (atnameの前方一致で絞り込む)"
 other = "atnameで絞り込む"
 
 [admin_user_index_search_submit_button]
@@ -1027,7 +1027,7 @@ description = "利用者一覧ページの表で、行ごとの操作の列の�
 other = "操作"
 
 [admin_user_index_no_roles]
-description = "利用者一覧ページの表で、ロールを 1 つも持たない利用者の行に表示する文言"
+description = "利用者一覧ページの表で、ロールを1つも持たない利用者の行に表示する文言"
 other = "なし"
 
 [admin_user_index_grant_admin_button]
@@ -1047,7 +1047,7 @@ description = "利用者一覧ページで自分自身から管理者ロール�
 other = "自分から管理者ロールを外すと、この管理画面を開けなくなります。外しますか？"
 
 [admin_user_index_empty]
-description = "利用者一覧ページで、絞り込みが無く、表示する利用者が 1 人もいないときの文言"
+description = "利用者一覧ページで、絞り込みが無く、表示する利用者が1人もいないときの文言"
 other = "利用者がいません。"
 
 [admin_user_index_no_results]
@@ -1063,11 +1063,11 @@ description = "利用者一覧ページのページ送りのナビゲーショ�
 other = "ページ送り"
 
 [admin_user_index_previous_page_link]
-description = "利用者一覧ページから 1 つ前のページへ移動するリンクのテキスト"
+description = "利用者一覧ページから1つ前のページへ移動するリンクのテキスト"
 other = "前のページ"
 
 [admin_user_index_next_page_link]
-description = "利用者一覧ページから 1 つ次のページへ移動するリンクのテキスト"
+description = "利用者一覧ページから1つ次のページへ移動するリンクのテキスト"
 other = "次のページ"
 
 [admin_user_index_page_position]
@@ -1075,7 +1075,7 @@ description = "利用者一覧ページで、読んでいるページが全体�
 other = "全{{.TotalPages}}ページ中{{.Page}}ページ目"
 
 [role_name_admin]
-description = "組み込みの admin ロールの表示名 (画面がロール名を表示するときに使う)"
+description = "組み込みのadminロールの表示名 (画面がロール名を表示するときに使う)"
 other = "管理者"
 
 [validation_required]
@@ -1095,20 +1095,20 @@ description = "新しいメールアドレスが現在のアドレスと同一�
 other = "現在のメールアドレスと同じです"
 
 [validation_atname_too_long]
-description = "atname が長すぎるときのバリデーションエラー"
-other = "アットネームは 20 文字以内で入力してください"
+description = "atnameが長すぎるときのバリデーションエラー"
+other = "アットネームは20文字以内で入力してください"
 
 [validation_atname_invalid_format]
-description = "atname に使えない文字が含まれるときのバリデーションエラー"
+description = "atnameに使えない文字が含まれるときのバリデーションエラー"
 other = "アットネームは半角英数字とアンダースコアのみ使用できます"
 
 [validation_atname_already_taken]
-description = "atname 重複のバリデーションエラー"
+description = "atname重複のバリデーションエラー"
 other = "このアットネームは既に使用されています"
 
 [validation_code_invalid_format]
 description = "確認コードの形式が不正なときのバリデーションエラー"
-other = "確認コードは 6 桁の数字で入力してください"
+other = "確認コードは6桁の数字で入力してください"
 
 [validation_code_incorrect_or_expired]
 description = "確認コードが一致しない、または有効期限切れのときのフォーム全体のエラー"
@@ -1124,7 +1124,7 @@ other = "このメールアドレスは既に使用されています。別の�
 
 [validation_password_too_short]
 description = "パスワードが短すぎるときのバリデーションエラー"
-other = "パスワードは 8 文字以上で入力してください"
+other = "パスワードは8文字以上で入力してください"
 
 [validation_password_too_long]
 description = "パスワードが長すぎるときのバリデーションエラー"
@@ -1135,7 +1135,7 @@ description = "パスワードと確認用パスワードが一致しないと�
 other = "パスワードが一致しません"
 
 [validation_credentials_invalid]
-description = "サインイン時に email とパスワードの組み合わせが正しくないときのフォーム全体のエラー (どちらが誤りかは明かさない)"
+description = "サインイン時にemailとパスワードの組み合わせが正しくないときのフォーム全体のエラー (どちらが誤りかは明かさない)"
 other = "メールアドレスかパスワードが正しくありません"
 
 [validation_current_password_incorrect]
@@ -1143,32 +1143,32 @@ description = "現在のパスワードの照合に失敗したときのバリ�
 other = "現在のパスワードが正しくありません"
 
 [validation_totp_code_invalid_format]
-description = "2 段階認証の認証コードの形式が不正なときのバリデーションエラー"
-other = "認証コードは 6 桁の数字で入力してください"
+description = "2段階認証の認証コードの形式が不正なときのバリデーションエラー"
+other = "認証コードは6桁の数字で入力してください"
 
 [validation_totp_code_incorrect]
-description = "2 段階認証の認証コードが認証アプリの生成値と一致しないときのバリデーションエラー"
+description = "2段階認証の認証コードが認証アプリの生成値と一致しないときのバリデーションエラー"
 other = "認証コードが正しくありません"
 
 [validation_totp_setup_invalid]
-description = "2 段階認証の有効化時に登録中の設定が見つからない (未開始・既に有効) ときのフォーム全体のエラー"
-other = "2 段階認証の設定が見つかりませんでした。もう一度やり直してください"
+description = "2段階認証の有効化時に登録中の設定が見つからない (未開始・既に有効) ときのフォーム全体のエラー"
+other = "2段階認証の設定が見つかりませんでした。もう一度やり直してください"
 
 [validation_two_factor_disable_reauth_required]
-description = "2 段階認証の無効化で、現在のパスワードも認証コードも入力されていないときのフォーム全体のエラー"
+description = "2段階認証の無効化で、現在のパスワードも認証コードも入力されていないときのフォーム全体のエラー"
 other = "現在のパスワードか認証コードを入力してください"
 
 [validation_two_factor_disable_reauth_incorrect]
-description = "2 段階認証の無効化で、入力された現在のパスワード / 認証コードが正しくないときのフォーム全体のエラー"
+description = "2段階認証の無効化で、入力された現在のパスワード / 認証コードが正しくないときのフォーム全体のエラー"
 other = "現在のパスワードか認証コードが正しくありません"
 
 [validation_two_factor_challenge_invalid]
-description = "サインイン時の 2 段階認証チャレンジで、保留中ユーザーの有効な 2FA 設定が見つからない (Cookie が失効・不正、または途中で無効化) ときのフォーム全体のエラー (再サインインを促す)"
-other = "2 段階認証を完了できませんでした。お手数ですが、もう一度サインインしてください"
+description = "サインイン時の2段階認証チャレンジで、保留中ユーザーの有効な2FA設定が見つからない (Cookieが失効・不正、または途中で無効化) ときのフォーム全体のエラー (再サインインを促す)"
+other = "2段階認証を完了できませんでした。お手数ですが、もう一度サインインしてください"
 
 [validation_recovery_code_invalid_format]
 description = "リカバリーコードの形式が不正なときのバリデーションエラー"
-other = "リカバリーコードは 8 文字の英数字で入力してください"
+other = "リカバリーコードは8文字の英数字で入力してください"
 
 [validation_recovery_code_incorrect]
 description = "リカバリーコードが保存済みのいずれのコードとも一致しないときのバリデーションエラー"
@@ -1187,7 +1187,7 @@ description = "パスワードリセットのトークンが期限切れのと�
 other = "このパスワード再設定用リンクは有効期限が切れています。新しいリンクを申請してください"
 
 [validation_turnstile_failed]
-description = "Turnstile の Bot 検証に失敗したときのフォーム全体のエラー (再試行を促す)"
+description = "TurnstileのBot検証に失敗したときのフォーム全体のエラー (再試行を促す)"
 other = "ロボットでないことの確認に失敗しました。もう一度お試しください。"
 
 [validation_text_invalid_characters]
@@ -1239,7 +1239,7 @@ description = "モデレーションの操作に記録する理由が長すぎ�
 other = "理由は500文字以内で入力してください"
 
 [thread_new_title]
-description = "スレッド作成ページのタイトル (title タグ)"
+description = "スレッド作成ページのタイトル (titleタグ)"
 other = "スレッドを立てる"
 
 [thread_new_heading]
@@ -1288,7 +1288,7 @@ other = "10,000文字以内で入力してください"
 
 [post_reference_hint]
 description = "返信フォームの本文のヒント。同じスレッドの投稿を引用する書き方を伝える"
-other = "同じスレッドの投稿は >>1 のようにレス番号で引用できます"
+other = "同じスレッドの投稿は >>1のようにレス番号で引用できます"
 
 [post_interval_hint]
 description = "投稿フォームで、投稿と投稿の間に空ける間隔を伝える案内。秒数を差し込む"
@@ -1303,7 +1303,7 @@ description = "返信フォームの送信ボタン"
 other = "返信する"
 
 [post_create_title]
-description = "返信が保存されなかったときに表示するページのタイトル (title タグ)"
+description = "返信が保存されなかったときに表示するページのタイトル (titleタグ)"
 other = "返信を投稿できませんでした"
 
 [post_create_heading]
