@@ -35,10 +35,10 @@ func TestFlashManager_SetAndGetFlash(t *testing.T) {
 
 			cookie := findCookie(setRec, session.FlashCookieName)
 			if cookie == nil {
-				t.Fatalf("フラッシュ Cookie %q が設定されていない", session.FlashCookieName)
+				t.Fatalf("フラッシュCookie %q が設定されていない", session.FlashCookieName)
 			}
 			if cookie.HttpOnly {
-				t.Error("フラッシュ Cookie は JS から読めるよう HttpOnly でないべき")
+				t.Error("フラッシュCookieがHttpOnlyになっている (JSから読めるようHttpOnlyでないことを期待)")
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -47,13 +47,13 @@ func TestFlashManager_SetAndGetFlash(t *testing.T) {
 
 			flash := fm.GetFlash(getRec, req)
 			if flash == nil {
-				t.Fatal("GetFlash() = nil, want flash")
+				t.Fatal("GetFlash() = nil、期待値はフラッシュ")
 			}
 			if flash.Type != tt.wantType {
-				t.Errorf("flash.Type = %q, want %q", flash.Type, tt.wantType)
+				t.Errorf("flash.Type = %q、期待値 = %q", flash.Type, tt.wantType)
 			}
 			if flash.Message != "こんにちは" {
-				t.Errorf("flash.Message = %q, want %q", flash.Message, "こんにちは")
+				t.Errorf("flash.Message = %q、期待値 = %q", flash.Message, "こんにちは")
 			}
 		})
 	}
@@ -68,7 +68,7 @@ func TestFlashManager_GetFlashClearsCookie(t *testing.T) {
 	fm.SetSuccess(setRec, "一度きり")
 	cookie := findCookie(setRec, session.FlashCookieName)
 	if cookie == nil {
-		t.Fatalf("フラッシュ Cookie %q が設定されていない", session.FlashCookieName)
+		t.Fatalf("フラッシュCookie %q が設定されていない", session.FlashCookieName)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -76,15 +76,15 @@ func TestFlashManager_GetFlashClearsCookie(t *testing.T) {
 	getRec := httptest.NewRecorder()
 
 	if flash := fm.GetFlash(getRec, req); flash == nil {
-		t.Fatal("GetFlash() = nil, want flash")
+		t.Fatal("GetFlash() = nil、期待値はフラッシュ")
 	}
 
 	cleared := findCookie(getRec, session.FlashCookieName)
 	if cleared == nil {
-		t.Fatal("GetFlash() は読み取り後に消去 Cookie を設定するはず")
+		t.Fatal("GetFlash() は読み取り後に消去Cookieを設定するはず")
 	}
 	if cleared.MaxAge >= 0 {
-		t.Errorf("消去 Cookie の MaxAge = %d, want 負の値", cleared.MaxAge)
+		t.Errorf("消去CookieのMaxAge = %d、期待値は負の値", cleared.MaxAge)
 	}
 }
 
@@ -96,7 +96,7 @@ func TestFlashManager_GetFlashNoCookie(t *testing.T) {
 	getRec := httptest.NewRecorder()
 
 	if flash := fm.GetFlash(getRec, req); flash != nil {
-		t.Errorf("GetFlash() = %v, want nil", flash)
+		t.Errorf("GetFlash() = %v、期待値 = nil", flash)
 	}
 }
 
@@ -105,18 +105,16 @@ func TestFlashManager_GetFlashCorruptCookie(t *testing.T) {
 
 	fm := session.NewFlashManager(&config.Config{Env: "test"})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	// "!" is outside the base64 alphabet, so decoding fails.
-	//
-	// [Ja] "!" は base64 のアルファベット外なのでデコードに失敗する。
+	// "!" はbase64のアルファベット外なのでデコードに失敗する。
 	req.AddCookie(&http.Cookie{Name: session.FlashCookieName, Value: "!!!not-base64!!!"})
 	getRec := httptest.NewRecorder()
 
 	if flash := fm.GetFlash(getRec, req); flash != nil {
-		t.Errorf("壊れた Cookie の GetFlash() = %v, want nil", flash)
+		t.Errorf("壊れたCookieのGetFlash() = %v、期待値 = nil", flash)
 	}
 	cleared := findCookie(getRec, session.FlashCookieName)
 	if cleared == nil || cleared.MaxAge >= 0 {
-		t.Error("壊れた Cookie は消去されるはず")
+		t.Error("壊れたCookieは消去されるはず")
 	}
 }
 
@@ -129,7 +127,7 @@ func TestFlashManager_Middleware(t *testing.T) {
 	fm.SetInfo(setRec, "ミドルウェア経由")
 	cookie := findCookie(setRec, session.FlashCookieName)
 	if cookie == nil {
-		t.Fatalf("フラッシュ Cookie %q が設定されていない", session.FlashCookieName)
+		t.Fatalf("フラッシュCookie %q が設定されていない", session.FlashCookieName)
 	}
 
 	var got *session.FlashMessage
@@ -144,13 +142,13 @@ func TestFlashManager_Middleware(t *testing.T) {
 	fm.Middleware(handler).ServeHTTP(rec, req)
 
 	if got == nil {
-		t.Fatal("FlashFromContext() = nil, ミドルウェアが context へ格納するはず")
+		t.Fatal("FlashFromContext() = nil、ミドルウェアがcontextへ格納するはず")
 	}
 	if got.Type != session.FlashInfo {
-		t.Errorf("flash.Type = %q, want %q", got.Type, session.FlashInfo)
+		t.Errorf("flash.Type = %q、期待値 = %q", got.Type, session.FlashInfo)
 	}
 	if got.Message != "ミドルウェア経由" {
-		t.Errorf("flash.Message = %q, want %q", got.Message, "ミドルウェア経由")
+		t.Errorf("flash.Message = %q、期待値 = %q", got.Message, "ミドルウェア経由")
 	}
 }
 
@@ -158,6 +156,6 @@ func TestFlashFromContext_Absent(t *testing.T) {
 	t.Parallel()
 
 	if flash := session.FlashFromContext(context.Background()); flash != nil {
-		t.Errorf("FlashFromContext() = %v, want nil", flash)
+		t.Errorf("FlashFromContext() = %v、期待値 = nil", flash)
 	}
 }

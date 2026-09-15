@@ -15,12 +15,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newCreateSignUpUsecase wires the usecase over the test's database with a fake
-// job inserter, returning the usecase together with the inserter so a test can
-// assert what was enqueued.
-//
-// [Ja] newCreateSignUpUsecase はテストのデータベース上に、フェイクのジョブ
-// インサーターを伴って UseCase を組み立て、何が投入されたかをテストが検証できるよう
+// newCreateSignUpUsecaseはテストのデータベース上に、フェイクのジョブ
+// インサーターを伴ってUseCaseを組み立て、何が投入されたかをテストが検証できるよう
 // インサーターと一緒に返します。
 func newCreateSignUpUsecase(t *testing.T, db *database.DB) (*usecase.CreateSignUpUsecase, *testutil.FakeJobInserter, *repository.EmailConfirmationRepository) {
 	t.Helper()
@@ -37,11 +33,7 @@ func newCreateSignUpUsecase(t *testing.T, db *database.DB) (*usecase.CreateSignU
 	return uc, inserter, emailConfirmationRepo
 }
 
-// TestCreateSignUpUsecase_Execute_Success verifies that a valid email creates a
-// sign-up confirmation (persisted with a code) and enqueues the confirmation
-// mail carrying the same code and locale.
-//
-// [Ja] TestCreateSignUpUsecase_Execute_Success は、有効なメールがサインアップ確認を
+// TestCreateSignUpUsecase_Execute_Successは、有効なメールがサインアップ確認を
 // 作成し (コード付きで永続化)、同じコードとロケールを載せた確認メールを投入することを
 // 検証します。
 func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
@@ -57,24 +49,24 @@ func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 		Locale: "ja",
 	})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 
 	confirmation := output.EmailConfirmation
 	if confirmation == nil {
-		t.Fatal("Execute() output.EmailConfirmation = nil")
+		t.Fatal("Execute()のoutput.EmailConfirmation = nil")
 	}
 	if confirmation.ID == 0 {
-		t.Error("作成された確認の ID が空 (永続化されていない可能性)")
+		t.Error("作成された確認のIDが空 (永続化されていない可能性)")
 	}
 	if confirmation.Email != "new@example.com" {
-		t.Errorf("confirmation.Email = %q, want %q", confirmation.Email, "new@example.com")
+		t.Errorf("confirmation.Email = %q、期待値 = %q", confirmation.Email, "new@example.com")
 	}
 	if confirmation.Event != model.EmailConfirmationEventSignUp {
-		t.Errorf("confirmation.Event = %q, want %q", confirmation.Event, model.EmailConfirmationEventSignUp)
+		t.Errorf("confirmation.Event = %q、期待値 = %q", confirmation.Event, model.EmailConfirmationEventSignUp)
 	}
 	if confirmation.Code == "" {
-		t.Error("confirmation.Code が空")
+		t.Error("confirmation.Codeが空")
 	}
 
 	if !inserter.Called {
@@ -82,23 +74,20 @@ func TestCreateSignUpUsecase_Execute_Success(t *testing.T) {
 	}
 	args, ok := inserter.Args.(dispatcher.SendEmailConfirmationArgs)
 	if !ok {
-		t.Fatalf("投入ジョブの引数型 = %T, want dispatcher.SendEmailConfirmationArgs", inserter.Args)
+		t.Fatalf("投入ジョブの引数型 = %T、期待値 = dispatcher.SendEmailConfirmationArgs", inserter.Args)
 	}
 	if args.Email != "new@example.com" {
-		t.Errorf("args.Email = %q, want %q", args.Email, "new@example.com")
+		t.Errorf("args.Email = %q、期待値 = %q", args.Email, "new@example.com")
 	}
 	if args.Code != confirmation.Code {
-		t.Errorf("args.Code = %q, want %q (永続化したコードと一致すべき)", args.Code, confirmation.Code)
+		t.Errorf("args.Code = %q、期待値 = %q (永続化したコードと一致すべき)", args.Code, confirmation.Code)
 	}
 	if args.Locale != "ja" {
-		t.Errorf("args.Locale = %q, want %q", args.Locale, "ja")
+		t.Errorf("args.Locale = %q、期待値 = %q", args.Locale, "ja")
 	}
 }
 
-// TestCreateSignUpUsecase_Execute_DuplicateEmail verifies that a request for an
-// already-registered email fails validation and enqueues no mail.
-//
-// [Ja] TestCreateSignUpUsecase_Execute_DuplicateEmail は、既に登録済みのメールの申請が
+// TestCreateSignUpUsecase_Execute_DuplicateEmailは、既に登録済みのメールの申請が
 // バリデーションで失敗し、メールを投入しないことを検証します。
 func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 	t.Parallel()
@@ -122,23 +111,18 @@ func TestCreateSignUpUsecase_Execute_DuplicateEmail(t *testing.T) {
 	})
 
 	if output != nil {
-		t.Errorf("Execute() output = %v, want nil", output)
+		t.Errorf("Execute()のoutput = %v、期待値 = nil", output)
 	}
 	if ve := model.AsValidationError(err); ve == nil {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError", err)
 	}
 	if inserter.Called {
 		t.Error("重複メールではジョブを投入すべきでない")
 	}
 }
 
-// TestCreateSignUpUsecase_Execute_EnqueueFailure verifies that when the
-// confirmation mail cannot be enqueued, Execute returns a *model.AppError
-// (Internal) and no output, so the handler can keep the user on the form to
-// retry instead of advancing to a code that was never sent.
-//
-// [Ja] TestCreateSignUpUsecase_Execute_EnqueueFailure は、確認メールを投入できないとき
-// に Execute が *model.AppError (Internal) を出力なしで返すことを検証します。これにより
+// TestCreateSignUpUsecase_Execute_EnqueueFailureは、確認メールを投入できないとき
+// にExecuteが *model.AppError (Internal) を出力なしで返すことを検証します。これにより
 // ハンドラーは、送られなかったコードへ進ませる代わりにユーザーをフォームに留めて再申請
 // させられます。
 func TestCreateSignUpUsecase_Execute_EnqueueFailure(t *testing.T) {
@@ -156,13 +140,13 @@ func TestCreateSignUpUsecase_Execute_EnqueueFailure(t *testing.T) {
 	})
 
 	if output != nil {
-		t.Errorf("Execute() output = %v, want nil", output)
+		t.Errorf("Execute()のoutput = %v、期待値 = nil", output)
 	}
 	ae := model.AsAppError(err)
 	if ae == nil {
-		t.Fatalf("Execute() error = %v, want *model.AppError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.AppError", err)
 	}
 	if ae.Code != model.AppErrCodeInternal {
-		t.Errorf("ae.Code = %d, want %d (AppErrCodeInternal)", ae.Code, model.AppErrCodeInternal)
+		t.Errorf("ae.Code = %d、期待値 = %d (AppErrCodeInternal)", ae.Code, model.AppErrCodeInternal)
 	}
 }

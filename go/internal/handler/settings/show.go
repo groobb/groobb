@@ -10,15 +10,9 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Show GET /settings - renders the settings hub, a list of links to the individual
-// settings screens (email change for now). It is registered behind RequireAuth. The
-// page is per-user and behind authentication, so it is marked noindex to keep it out
-// of search indexes. The hub has no form and no per-user data, so it takes no page
-// data.
-//
-// [Ja] Show GET /settings - 設定ハブを描画します。各設定画面 (今はメールアドレス変更)
-// へのリンクの一覧です。RequireAuth の背後に登録されます。このページはユーザー固有かつ
-// 認証の背後にあるため、検索インデックスから除外するよう noindex を付けます。ハブには
+// Show GET /settings - 設定ハブを描画します。各設定画面 (今はメールアドレス変更)
+// へのリンクの一覧です。RequireAuthの背後に登録されます。このページはユーザー固有かつ
+// 認証の背後にあるため、検索インデックスから除外するようnoindexを付けます。ハブには
 // フォームもユーザー固有のデータも無いため、ページデータを取りません。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

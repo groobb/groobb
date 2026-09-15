@@ -12,13 +12,8 @@ import (
 	templruntime "github.com/a-h/templ/runtime"
 )
 
-// JaText renders the Japanese plain-text body. It is built with templ.Raw from a
-// formatted string so the line breaks survive verbatim: templ's default
-// expression output is for HTML (it escapes and collapses whitespace), which
-// would mangle a plain-text email.
-//
-// [Ja] JaText は日本語のプレーンテキスト本文を描画します。整形済み文字列から
-// templ.Raw で組み立て、改行をそのまま保ちます。templ の既定の式出力は HTML 向け
+// JaTextは日本語のプレーンテキスト本文を描画します。整形済み文字列から
+// templ.Rawで組み立て、改行をそのまま保ちます。templの既定の式出力はHTML向け
 // (エスケープと空白の畳み込みを行う) で、プレーンテキストメールでは崩れてしまうためです。
 func JaText(data Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

@@ -14,16 +14,10 @@ import (
 	"github.com/groobb/groobb/go/internal/worker"
 )
 
-// TestPurgeWithdrawnUsersWorker_Work checks the thin adapter drives the purge: the
-// job carries no arguments, so Work just calls the UseCase. It seeds a user
-// soft-deleted before the retention window and asserts Work physically deletes it.
-// The substantive coverage (which users survive, CASCADE of child rows) lives in
-// the UseCase test; this confirms the Work path is wired to it.
-//
-// [Ja] TestPurgeWithdrawnUsersWorker_Work は薄い Adapter がパージを駆動することを確認する。
-// ジョブは引数を持たないため Work は UseCase を呼ぶだけである。保持期間より前に論理削除された
-// ユーザーを用意し、Work がそれを物理削除することを検証する。実質的なカバレッジ (どのユーザーが
-// 生き残るか・子行の CASCADE) は UseCase テストにあり、本テストは Work 経路がそこに配線されて
+// TestPurgeWithdrawnUsersWorker_Workは薄いAdapterがパージを駆動することを確認する。
+// ジョブは引数を持たないためWorkはUseCaseを呼ぶだけである。保持期間より前に論理削除された
+// ユーザーを用意し、Workがそれを物理削除することを検証する。実質的なカバレッジ (どのユーザーが
+// 生き残るか・子行のCASCADE) はUseCaseテストにあり、本テストはWork経路がそこに配線されて
 // いることを確認する。
 func TestPurgeWithdrawnUsersWorker_Work(t *testing.T) {
 	t.Parallel()
@@ -41,7 +35,7 @@ func TestPurgeWithdrawnUsersWorker_Work(t *testing.T) {
 
 	job := &river.Job[dispatcher.PurgeWithdrawnUsersArgs]{Args: dispatcher.PurgeWithdrawnUsersArgs{}}
 	if err := w.Work(ctx, job); err != nil {
-		t.Fatalf("Work() error = %v", err)
+		t.Fatalf("Work()のエラー = %v", err)
 	}
 
 	var exists bool
@@ -51,6 +45,6 @@ func TestPurgeWithdrawnUsersWorker_Work(t *testing.T) {
 		t.Fatalf("ユーザー存在確認に失敗: %v", err)
 	}
 	if exists {
-		t.Error("Work が退会済みユーザーの物理削除を駆動していない")
+		t.Error("Workが退会済みユーザーの物理削除を駆動していない")
 	}
 }

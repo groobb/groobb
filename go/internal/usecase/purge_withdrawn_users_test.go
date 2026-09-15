@@ -12,10 +12,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// userExists reports whether a users row with the given id still exists, so a purge
-// test can assert which users survived.
-//
-// [Ja] userExists は指定 id の users 行がまだ存在するかを返す。パージテストがどのユーザーが
+// userExistsは指定idのusers行がまだ存在するかを返す。パージテストがどのユーザーが
 // 生き残ったかを検証できるようにする。
 func userExists(t *testing.T, db *database.DB, id model.UserID) bool {
 	t.Helper()
@@ -29,11 +26,8 @@ func userExists(t *testing.T, db *database.DB, id model.UserID) bool {
 	return exists
 }
 
-// sessionCount returns how many sessions the given user owns, for asserting the
-// purge removed a withdrawn user's child rows via ON DELETE CASCADE.
-//
-// [Ja] sessionCount は指定ユーザーが所有するセッション数を返す。パージが退会ユーザーの
-// 子行を ON DELETE CASCADE で削除したことを検証するために使う。
+// sessionCountは指定ユーザーが所有するセッション数を返す。パージが退会ユーザーの
+// 子行をON DELETE CASCADEで削除したことを検証するために使う。
 func sessionCount(t *testing.T, db *database.DB, userID model.UserID) int {
 	t.Helper()
 
@@ -46,12 +40,8 @@ func sessionCount(t *testing.T, db *database.DB, userID model.UserID) int {
 	return count
 }
 
-// TestPurgeWithdrawnUsersUsecase_Execute verifies that the purge physically deletes
-// a user soft-deleted before the retention window (along with its child rows via
-// CASCADE), while leaving a recently withdrawn user and an active user untouched.
-//
-// [Ja] TestPurgeWithdrawnUsersUsecase_Execute は、保持期間より前に論理削除された
-// ユーザーを (その子行も CASCADE で) 物理削除する一方、最近退会したユーザーとアクティブな
+// TestPurgeWithdrawnUsersUsecase_Executeは、保持期間より前に論理削除された
+// ユーザーを (その子行もCASCADEで) 物理削除する一方、最近退会したユーザーとアクティブな
 // ユーザーには手を付けないことを検証する。
 func TestPurgeWithdrawnUsersUsecase_Execute(t *testing.T) {
 	t.Parallel()
@@ -63,23 +53,14 @@ func TestPurgeWithdrawnUsersUsecase_Execute(t *testing.T) {
 	uc := usecase.NewPurgeWithdrawnUsersUsecase(userRepo)
 
 	now := time.Now()
-	// Soft-deleted well before the 30-day retention window: must be purged.
-	//
-	// [Ja] 30 日の保持期間より十分前に論理削除済み: 物理削除されるべき。
+	// 30日の保持期間より十分前に論理削除済み: 物理削除されるべき。
 	oldWithdrawn := testutil.NewUserBuilder(t, db).WithDeletedAt(now.Add(-60 * 24 * time.Hour)).Build()
-	// Soft-deleted just now, well within the window: must survive.
-	//
-	// [Ja] 直前に論理削除済みで保持期間内: 生き残るべき。
+	// 直前に論理削除済みで保持期間内: 生き残るべき。
 	recentWithdrawn := testutil.NewUserBuilder(t, db).WithDeletedAt(now.Add(-time.Hour)).Build()
-	// Never withdrawn: must survive.
-	//
-	// [Ja] 退会していない: 生き残るべき。
+	// 退会していない: 生き残るべき。
 	active := testutil.NewUserBuilder(t, db).Build()
 
-	// Give the purge-eligible user a session so the test also proves child rows go
-	// with it via ON DELETE CASCADE.
-	//
-	// [Ja] パージ対象ユーザーにセッションを持たせ、子行が ON DELETE CASCADE で一緒に
+	// パージ対象ユーザーにセッションを持たせ、子行がON DELETE CASCADEで一緒に
 	// 消えることも検証する。
 	if _, err := db.Writer.ExecContext(ctx,
 		`INSERT INTO user_sessions (user_id, token, ip_address, user_agent) VALUES (?, ?, ?, ?)`,
@@ -89,14 +70,14 @@ func TestPurgeWithdrawnUsersUsecase_Execute(t *testing.T) {
 	}
 
 	if err := uc.Execute(ctx); err != nil {
-		t.Fatalf("Execute() error = %v, want nil", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 	}
 
 	if userExists(t, db, oldWithdrawn) {
 		t.Error("猶予期間を過ぎた退会ユーザーが物理削除されていない")
 	}
 	if got := sessionCount(t, db, oldWithdrawn); got != 0 {
-		t.Errorf("退会ユーザーの子データ (セッション) 数 = %d, want 0 (CASCADE で削除されるべき)", got)
+		t.Errorf("退会ユーザーの子データ (セッション) 数 = %d、期待値 = 0 (CASCADEで削除されるべき)", got)
 	}
 	if !userExists(t, db, recentWithdrawn) {
 		t.Error("猶予期間内の退会ユーザーが誤って削除された")

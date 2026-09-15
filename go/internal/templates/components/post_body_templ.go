@@ -12,35 +12,13 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// PostBody renders what someone wrote in a post: the text as they wrote it,
-// with the reply references and the addresses in it turned into links where
-// they stand.
-//
-// Nothing here is markup the author supplied. A body is stored as the plain text
-// it was typed as, and it arrives already split into pieces
-// (viewmodel.NewPostBody), so every piece passes through templ's escaping and a
-// body reading like a tag is shown as that text rather than acted on. This is
-// the whole reason the splitting is not done here into a string of HTML.
-//
-// Line breaks are the author's too, so the text keeps them and wraps within
-// them, and a long unbroken run — an address with no spaces in it is the usual
-// one — is broken rather than pushing the column wider than the page.
-//
-// A reference leads to the post it names on this same page, and an address to
-// wherever it points. The address is shown as it was written: it is what the
-// author offered as the description of where it goes, and rewriting it into a
-// label would be describing a destination this side has not visited. Links out
-// of a body are marked as written by a visitor rather than by the community, so
-// that a community's standing is not something anyone can help themselves to by
-// posting.
-//
-// [Ja] PostBody は、誰かが投稿に書いたものを描画します。書かれたままのテキストと、その
+// PostBodyは、誰かが投稿に書いたものを描画します。書かれたままのテキストと、その
 // 中のレス参照とアドレスを、それが置かれた場所でリンクに変えたものです。
 //
 // ここに書き手が与えたマークアップはありません。本文は打たれたままの平文として保存され、
-// 断片へ分解された状態で届く (viewmodel.NewPostBody) ため、どの断片も templ のエスケープ
+// 断片へ分解された状態で届く (viewmodel.NewPostBody) ため、どの断片もtemplのエスケープ
 // を通り、タグのように読める本文はそのテキストとして表示されて解釈されません。分解を
-// ここで HTML の文字列として行わない理由がこれです。
+// ここでHTMLの文字列として行わない理由がこれです。
 //
 // 改行もまた書き手のものであるため、テキストはそれを保ったまま、その内側で折り返します。
 // 途切れない長い連なり (空白を含まないアドレスがその代表です) は、ページより広くカラムを
@@ -86,7 +64,7 @@ func PostBody(body viewmodel.PostBody) templ.Component {
 				var templ_7745c5c3_Var2 templ.SafeURL
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templates.PostAnchor(token.Number).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 52, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 30, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -99,7 +77,7 @@ func PostBody(body viewmodel.PostBody) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(token.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 52, Col: 111}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 30, Col: 111}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -117,7 +95,7 @@ func PostBody(body viewmodel.PostBody) templ.Component {
 				var templ_7745c5c3_Var4 templ.SafeURL
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(token.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 54, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 32, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -130,7 +108,7 @@ func PostBody(body viewmodel.PostBody) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(token.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 54, Col: 96}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 32, Col: 96}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -144,7 +122,7 @@ func PostBody(body viewmodel.PostBody) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(token.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 56, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_body.templ`, Line: 34, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {

@@ -1,10 +1,6 @@
-// Package repository adapts sqlc-generated queries into domain models. Each
-// repository owns one model (model.User <-> UserRepository) and converts query
-// rows into that model, keeping the database details out of the upper layers.
-//
-// [Ja] repository パッケージは sqlc 生成のクエリをドメインモデルに変換します。
-// 各リポジトリは 1 つのモデルを担当し (model.User <-> UserRepository)、クエリ結果を
-// そのモデルに変換することで、DB の詳細を上位層から隠します。
+// repositoryパッケージはsqlc生成のクエリをドメインモデルに変換します。
+// 各リポジトリは1つのモデルを担当し (model.User <-> UserRepository)、クエリ結果を
+// そのモデルに変換することで、DBの詳細を上位層から隠します。
 package repository
 
 import (
@@ -19,27 +15,19 @@ import (
 	"github.com/groobb/groobb/go/internal/sqlitetime"
 )
 
-// UserRepository reads and writes users through sqlc-generated queries.
-//
-// [Ja] UserRepository は sqlc 生成のクエリ経由で users を読み書きします。
+// UserRepositoryはsqlc生成のクエリ経由でusersを読み書きします。
 type UserRepository struct {
 	reader *query.Queries
 	writer *query.Queries
 }
 
-// NewUserRepository creates a UserRepository that reads through the database's
-// read pool and writes through its write pool.
-//
-// [Ja] NewUserRepository は、データベースの読み取り用プールで読み、書き込み用プールで
-// 書く UserRepository を生成します。
+// NewUserRepositoryは、データベースの読み取り用プールで読み、書き込み用プールで
+// 書くUserRepositoryを生成します。
 func NewUserRepository(db *database.DB) *UserRepository {
 	return &UserRepository{reader: query.New(db.Reader), writer: query.New(db.Writer)}
 }
 
-// WithTx returns a new UserRepository whose queries run inside tx, so a UseCase
-// can enlist this repository in its transaction. The receiver is left unchanged.
-//
-// [Ja] WithTx は queries を tx 内で実行する新しい UserRepository を返し、UseCase が
+// WithTxはqueriesをtx内で実行する新しいUserRepositoryを返し、UseCaseが
 // 本リポジトリを自身のトランザクションに参加させられるようにします。レシーバ自身は
 // 変更しません。
 func (r *UserRepository) WithTx(tx *sql.Tx) *UserRepository {
@@ -47,11 +35,7 @@ func (r *UserRepository) WithTx(tx *sql.Tx) *UserRepository {
 	return &UserRepository{reader: q, writer: q}
 }
 
-// FindByID returns the user with the given ID, or (nil, nil) when none exists.
-// Absence is a normal lookup outcome, not an error; the caller decides whether
-// to treat it as a business-level failure.
-//
-// [Ja] FindByID は指定 ID のユーザーを返し、存在しない場合は (nil, nil) を返します。
+// FindByIDは指定IDのユーザーを返し、存在しない場合は (nil, nil) を返します。
 // 未存在は正常なルックアップ結果でありエラーではありません。業務上の失敗として扱うか
 // は呼び出し側が判断します。
 func (r *UserRepository) FindByID(ctx context.Context, id model.UserID) (*model.User, error) {
@@ -65,11 +49,8 @@ func (r *UserRepository) FindByID(ctx context.Context, id model.UserID) (*model.
 	return r.toModel(row), nil
 }
 
-// FindByEmail returns the user with the given email, or (nil, nil) when none
-// exists. The email column collates NOCASE, so the match ignores letter case.
-//
-// [Ja] FindByEmail は指定 email のユーザーを返し、存在しない場合は (nil, nil) を
-// 返します。email 列は NOCASE 照合のため、照合は大文字小文字を無視します。
+// FindByEmailは指定emailのユーザーを返し、存在しない場合は (nil, nil) を
+// 返します。email列はNOCASE照合のため、照合は大文字小文字を無視します。
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
 	row, err := r.reader.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -81,13 +62,8 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*model.
 	return r.toModel(row), nil
 }
 
-// FindByAtname returns the user with the given atname, or (nil, nil) when none
-// exists. The atname column collates NOCASE, so the match ignores letter case (the
-// same casing rule the atname UNIQUE constraint enforces). Absence is a normal
-// lookup outcome used by the uniqueness check, not an error.
-//
-// [Ja] FindByAtname は指定 atname のユーザーを返し、存在しない場合は (nil, nil) を
-// 返します。atname 列は NOCASE 照合のため大文字小文字を無視します (atname の UNIQUE
+// FindByAtnameは指定atnameのユーザーを返し、存在しない場合は (nil, nil) を
+// 返します。atname列はNOCASE照合のため大文字小文字を無視します (atnameのUNIQUE
 // 制約が強制するのと同じ大小の規則)。未存在は一意性チェックで使う正常なルックアップ結果
 // でありエラーではありません。
 func (r *UserRepository) FindByAtname(ctx context.Context, atname string) (*model.User, error) {
@@ -101,36 +77,19 @@ func (r *UserRepository) FindByAtname(ctx context.Context, atname string) (*mode
 	return r.toModel(row), nil
 }
 
-// ListByIDs returns the accounts among the given ids that are still there, so a
-// caller rendering a thread learns in one query who wrote each of the posts it
-// is about to display. It takes the ids together rather than one at a time
-// because the alternative is one query per post on a page that carries up to a
-// thousand of them.
-//
-// A withdrawn account is left out, the same way every other lookup here leaves
-// it out. An account withdraws by having its atname overwritten with a
-// tombstone, so returning the row would hand the caller a name nobody chose and
-// nobody can be reached at. What was written stays either way, and the caller
-// showing an id it got no account back for is what a withdrawn author looks
-// like: an id that resolves to nothing, exactly like the nil id a purged account
-// leaves behind.
-//
-// An empty slice of ids returns an empty slice without querying: there is
-// nothing to look accounts up by.
-//
-// [Ja] ListByIDs は指定した id のうち、まだ存在するアカウントを返し、スレッドを描く
-// 呼び出し元が、これから表示する各投稿を誰が書いたかを 1 クエリで知れるようにします。
-// id を 1 つずつではなくまとめて取るのは、そうしなければ最大 1000 件の投稿を載せる
-// ページで投稿 1 件につき 1 クエリになるためです。
+// ListByIDsは指定したidのうち、まだ存在するアカウントを返し、スレッドを描く
+// 呼び出し元が、これから表示する各投稿を誰が書いたかを1クエリで知れるようにします。
+// idを1つずつではなくまとめて取るのは、そうしなければ最大1000件の投稿を載せる
+// ページで投稿1件につき1クエリになるためです。
 //
 // 退会済みのアカウントは、ここの他のルックアップと同じく除外します。退会はアカウントの
-// atname を墓標の値で上書きすることで行われるため、その行を返せば、誰も選んでおらず誰にも
+// atnameを墓標の値で上書きすることで行われるため、その行を返せば、誰も選んでおらず誰にも
 // 辿り着けない名前を呼び出し元へ渡すことになります。書かれたものはいずれにせよ残り、
-// アカウントが返ってこない id を呼び出し元が表示する形が、退会した作者の姿そのものです。
-// すなわち何にも解決しない id であり、これは物理削除されたアカウントが残す nil の id と
+// アカウントが返ってこないidを呼び出し元が表示する形が、退会した作者の姿そのものです。
+// すなわち何にも解決しないidであり、これは物理削除されたアカウントが残すnilのidと
 // まったく同じです。
 //
-// 空の id スライスに対してはクエリを発行せず空のスライスを返します。アカウントを引く
+// 空のidスライスに対してはクエリを発行せず空のスライスを返します。アカウントを引く
 // 手がかりが無いためです。
 func (r *UserRepository) ListByIDs(ctx context.Context, ids []model.UserID) ([]*model.User, error) {
 	if len(ids) == 0 {
@@ -154,24 +113,13 @@ func (r *UserRepository) ListByIDs(ctx context.Context, ids []model.UserID) ([]*
 	return users, nil
 }
 
-// ListPageByAtnamePrefix returns one page of the community's accounts, the most
-// recently registered first, leaving out the withdrawn ones. An empty prefix
-// asks for everyone; a non-empty one narrows the page to the accounts whose
-// atname starts with it, ignoring letter case.
+// ListPageByAtnamePrefixは、コミュニティのアカウントを1ページ分、登録の新しい
+// 順に返し、退会したアカウントを除きます。空のprefixは全員を求め、空でないprefixは
+// atnameがそれで始まるアカウントへページを絞ります (大文字小文字は無視します)。
 //
-// The two cases are separate statements rather than one taking a prefix that
-// matches everything. Filtered, the range is answered through the atname index;
-// unfiltered, there is no range to answer, and asking for one would make the
-// listing sort every account by id to hand back fifty of them, where walking the
-// primary key backwards stops as soon as the page is full.
-//
-// [Ja] ListPageByAtnamePrefix は、コミュニティのアカウントを 1 ページ分、登録の新しい
-// 順に返し、退会したアカウントを除きます。空の prefix は全員を求め、空でない prefix は
-// atname がそれで始まるアカウントへページを絞ります (大文字小文字は無視します)。
-//
-// 2 つの場合を、すべてに一致する prefix を取る 1 つの文ではなく別々の文にしています。
-// 絞り込みがあるときは範囲が atname の索引で答えられます。絞り込みが無いときは答えるべき
-// 範囲が無く、それでも範囲を求めれば、一覧は 50 件を返すためにすべてのアカウントを id で
+// 2つの場合を、すべてに一致するprefixを取る1つの文ではなく別々の文にしています。
+// 絞り込みがあるときは範囲がatnameの索引で答えられます。絞り込みが無いときは答えるべき
+// 範囲が無く、それでも範囲を求めれば、一覧は50件を返すためにすべてのアカウントをidで
 // 並べ替えることになります。主キーを逆にたどれば、ページが埋まった時点で読み終わります。
 func (r *UserRepository) ListPageByAtnamePrefix(ctx context.Context, atnamePrefix string, limit, offset int) ([]*model.User, error) {
 	var rows []query.User
@@ -201,14 +149,8 @@ func (r *UserRepository) ListPageByAtnamePrefix(ctx context.Context, atnamePrefi
 	return users, nil
 }
 
-// CountByAtnamePrefix returns how many accounts a listing of the same prefix
-// covers, so the pages can be numbered. It counts what
-// ListPageByAtnamePrefix would return across every page: the withdrawn accounts
-// are left out here too, or the last page would be numbered for rows nobody is
-// shown.
-//
-// [Ja] CountByAtnamePrefix は、同じ prefix の一覧が何件を対象とするかを返し、ページに
-// 番号を振れるようにします。数えるのは ListPageByAtnamePrefix が全ページで返すものです。
+// CountByAtnamePrefixは、同じprefixの一覧が何件を対象とするかを返し、ページに
+// 番号を振れるようにします。数えるのはListPageByAtnamePrefixが全ページで返すものです。
 // 退会したアカウントはここでも除きます。除かなければ、最後のページが、誰にも表示されない
 // 行の分まで番号を振られるためです。
 func (r *UserRepository) CountByAtnamePrefix(ctx context.Context, atnamePrefix string) (int, error) {
@@ -231,59 +173,29 @@ func (r *UserRepository) CountByAtnamePrefix(ctx context.Context, atnamePrefix s
 	return int(count), nil
 }
 
-// atnamePrefixCeiling is appended to a prefix to close the range above it. It is
-// the highest code point there is, so every character an atname may carry sorts
-// before it and no atname can carry it.
-//
-// [Ja] atnamePrefixCeiling は、範囲の上端を閉じるために prefix の末尾へ足す文字です。
-// 存在する最大のコードポイントであるため、atname が持ちうるどの文字もこれより前に並び、
-// atname がこれ自体を持つことはありません。
+// atnamePrefixCeilingは、範囲の上端を閉じるためにprefixの末尾へ足す文字です。
+// 存在する最大のコードポイントであるため、atnameが持ちうるどの文字もこれより前に並び、
+// atnameがこれ自体を持つことはありません。
 const atnamePrefixCeiling = "\U0010FFFF"
 
-// atnamePrefixBounds turns a prefix into the half-open range [from, to) holding
-// exactly the atnames that start with it: an atname is at or after the prefix
-// and before the prefix followed by the ceiling precisely when the prefix is
-// where it begins.
+// atnamePrefixBoundsはprefixを、それで始まるatnameだけを持つ半開区間
+// [from, to) に変換します。あるatnameがprefix以上であり、かつprefixに上端の文字を
+// 足したものより前にあるのは、そのatnameがprefixで始まるとき、そのときに限ります。
 //
-// A prefix match is written as this range instead of as LIKE because LIKE would
-// read the underscore the atname character set allows as its single-character
-// wildcard, so a search for "a_b" would also return "axb". Turning that back
-// into a character takes an ESCAPE clause, and an ESCAPE clause is one of the
-// things that stops SQLite from answering a prefix LIKE through an index,
-// leaving the listing to read every account. The comparison uses the atname
-// column's own NOCASE collation, so the range both ignores letter case and is
-// answered through the index that enforces the atname UNIQUE constraint.
-//
-// [Ja] atnamePrefixBounds は prefix を、それで始まる atname だけを持つ半開区間
-// [from, to) に変換します。ある atname が prefix 以上であり、かつ prefix に上端の文字を
-// 足したものより前にあるのは、その atname が prefix で始まるとき、そのときに限ります。
-//
-// 前方一致を LIKE ではなくこの範囲で書くのは、LIKE が、atname の文字集合の許す
-// アンダースコアを 1 文字ワイルドカードとして読むためです。それでは "a_b" の検索が "axb"
-// も返します。これを文字に戻すには ESCAPE 句が要りますが、ESCAPE 句は、SQLite が前方一致の
-// LIKE を索引で答えるのをやめる条件の 1 つであり、一覧はすべてのアカウントを読むことに
-// なります。比較は atname 列自身の NOCASE 照合で行われるため、範囲は大文字小文字を無視し、
-// しかも atname の UNIQUE 制約を支える索引で答えられます。
+// 前方一致をLIKEではなくこの範囲で書くのは、LIKEが、atnameの文字集合の許す
+// アンダースコアを1文字ワイルドカードとして読むためです。それでは "a_b" の検索が "axb"
+// も返します。これを文字に戻すにはESCAPE句が要りますが、ESCAPE句は、SQLiteが前方一致の
+// LIKEを索引で答えるのをやめる条件の1つであり、一覧はすべてのアカウントを読むことに
+// なります。比較はatname列自身のNOCASE照合で行われるため、範囲は大文字小文字を無視し、
+// しかもatnameのUNIQUE制約を支える索引で答えられます。
 func atnamePrefixBounds(prefix string) (from, to string) {
 	return prefix, prefix + atnamePrefixCeiling
 }
 
-// FindBySessionToken returns the user that owns the session with the given
-// token, or (nil, nil) when no session matches the token (an unknown, stale, or
-// forged cookie). It resolves the session and its user in a single JOIN so the
-// authentication hot path does not pay two round-trips per request.
-//
-// A suspended account resolves to nothing, the same way a withdrawn one does.
-// Suspension stops an account from acting, while the cookie of whoever was
-// signed in when it was suspended is still in their browser, so a session that
-// went on resolving would let that account act until the cookie happened to
-// expire. What the visitor meets instead is the community as an anonymous
-// visitor sees it, which is what they may still do.
-//
-// [Ja] FindBySessionToken は指定 token のセッションを所有するユーザーを返し、token に
-// 一致するセッションが無い場合 (未知 / 失効 / 偽造された Cookie) は (nil, nil) を
-// 返します。セッションとそのユーザーを 1 度の JOIN で解決し、認証のホットパスが
-// リクエストごとに 2 往復しないようにします。
+// FindBySessionTokenは指定tokenのセッションを所有するユーザーを返し、tokenに
+// 一致するセッションが無い場合 (未知 / 失効 / 偽造されたCookie) は (nil, nil) を
+// 返します。セッションとそのユーザーを1度のJOINで解決し、認証のホットパスが
+// リクエストごとに2往復しないようにします。
 //
 // 停止されたアカウントは、退会したアカウントと同じく何にも解決しません。停止はアカウントが
 // 行動することを止めるものである一方、停止された時点でサインインしていた人のCookieはその
@@ -301,11 +213,8 @@ func (r *UserRepository) FindBySessionToken(ctx context.Context, token string) (
 	return r.toModel(row), nil
 }
 
-// CreateUserInput holds the identity-level attributes needed to create a user.
-// id and the timestamps are assigned by the database.
-//
-// [Ja] CreateUserInput はユーザー作成に必要な身元レベルの属性を保持します。
-// id とタイムスタンプは DB 側で採番されます。
+// CreateUserInputはユーザー作成に必要な身元レベルの属性を保持します。
+// idとタイムスタンプはDB側で採番されます。
 type CreateUserInput struct {
 	Email    string
 	Atname   string
@@ -313,10 +222,7 @@ type CreateUserInput struct {
 	TimeZone string
 }
 
-// Create inserts a user and returns it with the database-assigned id and
-// timestamps populated.
-//
-// [Ja] Create はユーザーを挿入し、DB が採番した id とタイムスタンプを設定した状態で
+// Createはユーザーを挿入し、DBが採番したidとタイムスタンプを設定した状態で
 // 返します。
 func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*model.User, error) {
 	row, err := r.writer.CreateUser(ctx, query.CreateUserParams{
@@ -331,15 +237,9 @@ func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*mo
 	return r.toModel(row), nil
 }
 
-// UpdateEmail changes the user's email to the given address and bumps
-// updated_at. The email column collates NOCASE and is UNIQUE, so if another account has
-// claimed the same address between validation and this update, the write fails
-// with a UNIQUE-violation error the caller must handle (e.g. as a validation
-// failure) rather than a silent overwrite.
-//
-// [Ja] UpdateEmail はユーザーの email を指定アドレスに変更し、updated_at を更新します。
-// email 列は NOCASE 照合かつ UNIQUE のため、検証からこの更新までの間に別アカウントが同じ
-// アドレスを取得していた場合、この書き込みは暗黙の上書きではなく UNIQUE 制約違反の
+// UpdateEmailはユーザーのemailを指定アドレスに変更し、updated_atを更新します。
+// email列はNOCASE照合かつUNIQUEのため、検証からこの更新までの間に別アカウントが同じ
+// アドレスを取得していた場合、この書き込みは暗黙の上書きではなくUNIQUE制約違反の
 // エラーで失敗します。呼び出し側はこれを (バリデーション失敗などとして) 扱う必要が
 // あります。
 func (r *UserRepository) UpdateEmail(ctx context.Context, id model.UserID, email string) error {
@@ -349,29 +249,15 @@ func (r *UserRepository) UpdateEmail(ctx context.Context, id model.UserID, email
 	})
 }
 
-// SoftDeleteAndAnonymize withdraws the user in one write: it stamps deleted_at
-// with the current time and overwrites email and atname with the given anonymized
-// values, bumping updated_at. Setting deleted_at makes the account inert
-// immediately (authentication lookups exclude soft-deleted rows), while replacing
-// email and atname frees those unique values so another account can reclaim them
-// before the row is physically purged.
-//
-// This stays a plain UPDATE with no UNIQUE-violation handling because the caller
-// derives both anonymized values from the user id in a shape no account can
-// register: the atname carries a character the atname format rejects, and the
-// email uses the .invalid TLD, which no confirmation code can be delivered to.
-// A caller that supplies a registrable value instead would turn a withdrawal
-// into a constraint error the user cannot resolve.
-//
-// [Ja] SoftDeleteAndAnonymize はユーザーを 1 回の書き込みで退会させます。deleted_at に
-// 現在時刻を打ち、email と atname を与えられた匿名値で上書きし、updated_at を更新します。
-// deleted_at のセットでアカウントを即座に無効化し (認証ルックアップは論理削除済みの行を
-// 除外する)、email と atname の置き換えでそれらの一意な値を解放して、行が物理削除される
+// SoftDeleteAndAnonymizeはユーザーを1回の書き込みで退会させます。deleted_atに
+// 現在時刻を打ち、emailとatnameを与えられた匿名値で上書きし、updated_atを更新します。
+// deleted_atのセットでアカウントを即座に無効化し (認証ルックアップは論理削除済みの行を
+// 除外する)、emailとatnameの置き換えでそれらの一意な値を解放して、行が物理削除される
 // 前に別アカウントが再取得できるようにします。
 //
-// 本処理が UNIQUE 制約違反を扱わない素の UPDATE で済むのは、呼び出し側が両方の匿名値を、
-// どのアカウントも登録できない形でユーザー id から導くためです。atname は atname の形式が
-// 拒否する文字を含み、email は確認コードを配送できない .invalid TLD を使います。登録可能な
+// 本処理がUNIQUE制約違反を扱わない素のUPDATEで済むのは、呼び出し側が両方の匿名値を、
+// どのアカウントも登録できない形でユーザーidから導くためです。atnameはatnameの形式が
+// 拒否する文字を含み、emailは確認コードを配送できない .invalid TLDを使います。登録可能な
 // 値を渡す呼び出し側があれば、退会はユーザーには解消できない制約エラーに変わります。
 func (r *UserRepository) SoftDeleteAndAnonymize(ctx context.Context, id model.UserID, email, atname string) error {
 	return r.writer.SoftDeleteAndAnonymizeUser(ctx, query.SoftDeleteAndAnonymizeUserParams{
@@ -381,41 +267,18 @@ func (r *UserRepository) SoftDeleteAndAnonymize(ctx context.Context, id model.Us
 	})
 }
 
-// PurgeDeletedBefore physically deletes every user soft-deleted before cutoff
-// (deleted_at < cutoff), returning how many rows were removed. Each user's child
-// rows go with it via ON DELETE CASCADE. This is the second, asynchronous stage of
-// withdrawal: the withdrawal request only soft-deletes and anonymizes, and a
-// periodic job calls this later to reclaim the storage once the retention window
-// has passed. The deleted_at IS NOT NULL predicate lets the query use the partial
-// index on deleted_at. The caller passes a time.Time; converting it to the stored
-// timestamp format, and to the pointer the generated query expects (deleted_at is a
-// nullable column), is confined to this boundary.
-//
-// [Ja] PurgeDeletedBefore は cutoff より前に論理削除されたユーザー (deleted_at < cutoff)
-// をすべて物理削除し、削除した行数を返します。各ユーザーの子行は ON DELETE CASCADE で
-// 一緒に消えます。これは退会の第 2 段階 (非同期) です。退会リクエストは論理削除と匿名化
+// PurgeDeletedBeforeはcutoffより前に論理削除されたユーザー (deleted_at < cutoff)
+// をすべて物理削除し、削除した行数を返します。各ユーザーの子行はON DELETE CASCADEで
+// 一緒に消えます。これは退会の第2段階 (非同期) です。退会リクエストは論理削除と匿名化
 // だけを行い、保持期間の経過後に定期ジョブが本メソッドを呼んでストレージを回収します。
-// deleted_at IS NOT NULL の述語により、クエリは deleted_at の部分インデックスを使えます。
-// 呼び出し側は time.Time を渡し、保存書式への変換と、生成クエリが要求するポインタ
-// (deleted_at は nullable なカラム) への変換はこの境界に閉じ込めます。
+// deleted_at IS NOT NULLの述語により、クエリはdeleted_atの部分インデックスを使えます。
+// 呼び出し側はtime.Timeを渡し、保存書式への変換と、生成クエリが要求するポインタ
+// (deleted_atはnullableなカラム) への変換はこの境界に閉じ込めます。
 func (r *UserRepository) PurgeDeletedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	return r.writer.PurgeUsersDeletedBefore(ctx, sqlitetime.Ptr(&cutoff))
 }
 
-// Suspend stamps the account as suspended by an administrator. It writes the
-// column unconditionally, so a caller that would overwrite an existing stamp is
-// one that did not look first: the state a moderation operation acts on is read
-// inside the write transaction it commits in, and an account already suspended
-// is answered there without reaching this method.
-//
-// Suspending does not sign the account out; the sessions of whoever was signed
-// in are deleted by the caller, in the same transaction. Nothing else about the
-// account changes: the email and the atname stay as they are, because a
-// suspension stops what the account may do and not who it is.
-//
-// The timestamp uses the database clock, as does moderation_logs.created_at.
-//
-// [Ja] Suspendはアカウントに管理者による停止の時刻を打刻します。列を無条件に書くため、
+// Suspendはアカウントに管理者による停止の時刻を打刻します。列を無条件に書くため、
 // 既にある打刻を上書きする呼び出し元は、先に読んでいない呼び出し元です。モデレーションの
 // 操作が対象とする状態は、それをコミットする書き込みトランザクションの中で読み、既に停止
 // されているアカウントはそこで答えられ、本メソッドには届きません。
@@ -430,23 +293,15 @@ func (r *UserRepository) Suspend(ctx context.Context, id model.UserID) error {
 	return r.writer.SuspendUser(ctx, int64(id))
 }
 
-// Unsuspend clears the administrator's suspension, letting the account act
-// again. The sessions deleted when it was suspended are not brought back: the
-// person signs in again, which is what proves the account is theirs.
-//
-// [Ja] Unsuspendは管理者による停止を外し、アカウントが再び行動できるようにします。停止の
+// Unsuspendは管理者による停止を外し、アカウントが再び行動できるようにします。停止の
 // ときに削除したセッションは戻しません。本人はサインインし直すのであり、それがそのアカウント
 // が自分のものであることを示すものです。
 func (r *UserRepository) Unsuspend(ctx context.Context, id model.UserID) error {
 	return r.writer.UnsuspendUser(ctx, int64(id))
 }
 
-// toModel converts a query.User row into a model.User, casting the raw id into the
-// typed UserID and the stored timestamps back into time.Time at the repository
-// boundary.
-//
-// [Ja] toModel は query.User を model.User に変換し、リポジトリの境界で生の id を
-// 型付きの UserID に、保存書式の時刻を time.Time にキャストします。
+// toModelはquery.Userをmodel.Userに変換し、リポジトリの境界で生のidを
+// 型付きのUserIDに、保存書式の時刻をtime.Timeにキャストします。
 func (r *UserRepository) toModel(row query.User) *model.User {
 	return &model.User{
 		ID:          model.UserID(row.ID),

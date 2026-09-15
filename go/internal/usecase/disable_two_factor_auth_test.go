@@ -12,14 +12,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newDisableTwoFactorAuthUsecase builds a DisableTwoFactorAuthUsecase (and its
-// validator) over the test's own database and creates a user, returning the
-// usecase, the 2FA repository (for assertions), and the user ID so a test can seed
-// the enabled setting and a password for that user.
-//
-// [Ja] newDisableTwoFactorAuthUsecase はテスト専用のデータベース上に
-// DisableTwoFactorAuthUsecase (とその validator) を作り、ユーザーを作成して、usecase・
-// (検証用の) 2FA リポジトリ・(有効な設定とパスワードを投入するための) ユーザー ID を返す。
+// newDisableTwoFactorAuthUsecaseはテスト専用のデータベース上に
+// DisableTwoFactorAuthUsecase (とそのvalidator) を作り、ユーザーを作成して、usecase・
+// (検証用の) 2FAリポジトリ・(有効な設定とパスワードを投入するための) ユーザーIDを返す。
 func newDisableTwoFactorAuthUsecase(t *testing.T, db *database.DB) (*usecase.DisableTwoFactorAuthUsecase, *repository.UserTwoFactorAuthRepository, model.UserID) {
 	t.Helper()
 	userID := testutil.NewUserBuilder(t, db).Build()
@@ -29,12 +24,8 @@ func newDisableTwoFactorAuthUsecase(t *testing.T, db *database.DB) (*usecase.Dis
 	return usecase.NewDisableTwoFactorAuthUsecase(v, repo), repo, userID
 }
 
-// TestDisableTwoFactorAuthUsecase_Execute_Success verifies that a correct current
-// password disables 2FA: the setting row is deleted, discarding the secret and
-// recovery codes with it.
-//
-// [Ja] TestDisableTwoFactorAuthUsecase_Execute_Success は、正しい現在のパスワードが 2FA を
-// 無効化することを検証する。設定行が削除され、secret とリカバリーコードが行ごと破棄される。
+// TestDisableTwoFactorAuthUsecase_Execute_Successは、正しい現在のパスワードが2FAを
+// 無効化することを検証する。設定行が削除され、secretとリカバリーコードが行ごと破棄される。
 func TestDisableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
@@ -49,23 +40,20 @@ func TestDisableTwoFactorAuthUsecase_Execute_Success(t *testing.T) {
 		UserID:          userID,
 		CurrentPassword: testutil.DefaultBuilderPassword,
 	}); err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 
 	stored, err := repo.FindByUserID(ctx, userID)
 	if err != nil {
-		t.Fatalf("FindByUserID() error = %v", err)
+		t.Fatalf("FindByUserID()のエラー = %v", err)
 	}
 	if stored != nil {
-		t.Error("無効化後も 2FA 設定が残っている")
+		t.Error("無効化後も2FA設定が残っている")
 	}
 }
 
-// TestDisableTwoFactorAuthUsecase_Execute_InvalidReauth verifies that a wrong current
-// password (and no code) returns a ValidationError and leaves 2FA enabled.
-//
-// [Ja] TestDisableTwoFactorAuthUsecase_Execute_InvalidReauth は、誤った現在のパスワード
-// (コードなし) が ValidationError を返し、2FA を有効なまま残すことを検証する。
+// TestDisableTwoFactorAuthUsecase_Execute_InvalidReauthは、誤った現在のパスワード
+// (コードなし) がValidationErrorを返し、2FAを有効なまま残すことを検証する。
 func TestDisableTwoFactorAuthUsecase_Execute_InvalidReauth(t *testing.T) {
 	t.Parallel()
 
@@ -81,17 +69,17 @@ func TestDisableTwoFactorAuthUsecase_Execute_InvalidReauth(t *testing.T) {
 		CurrentPassword: "wrongpassword",
 	})
 	if model.AsValidationError(err) == nil {
-		t.Fatalf("Execute() error = %v, want *ValidationError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *ValidationError", err)
 	}
 
 	stored, err := repo.FindByUserID(ctx, userID)
 	if err != nil {
-		t.Fatalf("FindByUserID() error = %v", err)
+		t.Fatalf("FindByUserID()のエラー = %v", err)
 	}
 	if stored == nil {
-		t.Fatal("バリデーション失敗時に 2FA 設定が削除された")
+		t.Fatal("バリデーション失敗時に2FA設定が削除された")
 	}
 	if !stored.Enabled {
-		t.Error("バリデーション失敗時に 2FA が無効化された")
+		t.Error("バリデーション失敗時に2FAが無効化された")
 	}
 }

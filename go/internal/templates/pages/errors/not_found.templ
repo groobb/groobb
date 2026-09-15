@@ -2,15 +2,7 @@ package errors
 
 import "github.com/groobb/groobb/go/internal/templates"
 
-// NotFound renders the body of the 404 page: what happened, in plain words, and
-// a link on to the top page so the visitor is not left at a dead end.
-//
-// The link points at the top page rather than at home, because the page answers
-// requests from anyone: the top page hands a signed-in visitor on to home,
-// while a link straight to home would send an anonymous one to the sign-in form
-// instead of anywhere they asked for.
-//
-// [Ja] NotFound は 404 ページの本文を描画します。何が起きたのかを平易な言葉で示し、
+// NotFoundは404ページの本文を描画します。何が起きたのかを平易な言葉で示し、
 // 訪問者を行き止まりに残さないようトップページへのリンクを置きます。
 //
 // リンク先をホームではなくトップページにするのは、このページが誰からのリクエストにも

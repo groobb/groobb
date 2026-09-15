@@ -7,10 +7,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// TestStaticPaths verifies that the no-argument path helpers return the exact
-// route strings registered in cmd/groobb/serve.go, so the two never drift apart.
-//
-// [Ja] TestStaticPaths は引数なしのパスヘルパーが cmd/groobb/serve.go で登録された
+// TestStaticPathsは引数なしのパスヘルパーがcmd/groobb/serve.goで登録された
 // ルート文字列と完全に一致することを検証し、両者が乖離しないようにします。
 func TestStaticPaths(t *testing.T) {
 	t.Parallel()
@@ -47,20 +44,14 @@ func TestStaticPaths(t *testing.T) {
 			t.Parallel()
 
 			if tt.got != tt.want {
-				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
+				t.Errorf("%s = %q、期待値 = %q", tt.name, tt.got, tt.want)
 			}
 		})
 	}
 }
 
-// TestPath_AbsoluteURL verifies that a path is named under the instance's
-// public base URL, and that an instance which has not been told its own address
-// yields nothing rather than a host-relative one. The callers publish these to
-// machines that read them away from the page they were written on, where a path
-// by itself names no host.
-//
-// [Ja] TestPath_AbsoluteURL は、パスがインスタンスの公開ベース URL の下で名指される
-// こと、そして自身のアドレスを教えられていないインスタンスでは、ホスト相対の URL では
+// TestPath_AbsoluteURLは、パスがインスタンスの公開ベースURLの下で名指される
+// こと、そして自身のアドレスを教えられていないインスタンスでは、ホスト相対のURLでは
 // なく何も返らないことを検証します。呼び出し側はこれらを、それが書かれたページから離れて
 // 読む機械に向けて公開します。そこではパスだけではどのホストのことかが定まりません。
 func TestPath_AbsoluteURL(t *testing.T) {
@@ -73,13 +64,13 @@ func TestPath_AbsoluteURL(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "ベース URL の下の絶対 URL になる",
+			name:    "ベースURLの下の絶対URLになる",
 			path:    templates.BoardPath("jazz"),
 			baseURL: "https://groobb.example.com",
 			want:    "https://groobb.example.com/b/jazz",
 		},
 		{
-			name:    "ベース URL が空なら空になる",
+			name:    "ベースURLが空なら空になる",
 			path:    templates.BoardPath("jazz"),
 			baseURL: "",
 			want:    "",
@@ -91,17 +82,13 @@ func TestPath_AbsoluteURL(t *testing.T) {
 			t.Parallel()
 
 			if got := tt.path.AbsoluteURL(tt.baseURL); got != tt.want {
-				t.Errorf("AbsoluteURL(%q) = %q, want %q", tt.baseURL, got, tt.want)
+				t.Errorf("AbsoluteURL(%q) = %q、期待値 = %q", tt.baseURL, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestPath_WithReturnTo verifies that a destination is attached as an encoded
-// return_to query parameter, and that an empty one leaves the path untouched so
-// a flow carrying no destination links to the bare path.
-//
-// [Ja] TestPath_WithReturnTo は遷移先がエンコードされた return_to クエリパラメータとして
+// TestPath_WithReturnToは遷移先がエンコードされたreturn_toクエリパラメータとして
 // 付くこと、そして空のときはパスがそのままになり、遷移先を持たないフローが素のパスへ
 // リンクすることを検証します。
 func TestPath_WithReturnTo(t *testing.T) {
@@ -138,97 +125,72 @@ func TestPath_WithReturnTo(t *testing.T) {
 			t.Parallel()
 
 			if got := tt.path.WithReturnTo(tt.returnTo); got != tt.want {
-				t.Errorf("WithReturnTo(%q) = %q, want %q", tt.returnTo, got, tt.want)
+				t.Errorf("WithReturnTo(%q) = %q、期待値 = %q", tt.returnTo, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestAfterSignInPath verifies that a session-issuing route lands the visitor on
-// the destination the flow carried, and on the home page when it carried none.
-// Home rather than the top page keeps sign-in from redirecting twice, since the
-// top page would only send a signed-in visitor on to home.
-//
-// [Ja] TestAfterSignInPath は、セッションを発行するルートが、フローの運んできた遷移先へ、
+// TestAfterSignInPathは、セッションを発行するルートが、フローの運んできた遷移先へ、
 // 運んでこなかったときはホームへ訪問者を着地させることを検証します。トップページではなく
-// ホームであることで、サインインが 2 段リダイレクトにならない (トップページはサインイン済みの
+// ホームであることで、サインインが2段リダイレクトにならない (トップページはサインイン済みの
 // 訪問者をホームへ送るだけであるため)。
 func TestAfterSignInPath(t *testing.T) {
 	t.Parallel()
 
 	if got := templates.AfterSignInPath("/settings"); got != "/settings" {
-		t.Errorf("AfterSignInPath(%q) = %q, want %q", "/settings", got, "/settings")
+		t.Errorf("AfterSignInPath(%q) = %q、期待値 = %q", "/settings", got, "/settings")
 	}
 	if got := templates.AfterSignInPath(""); got != templates.HomePath() {
-		t.Errorf("AfterSignInPath(%q) = %q, want %q", "", got, templates.HomePath())
+		t.Errorf("AfterSignInPath(%q) = %q、期待値 = %q", "", got, templates.HomePath())
 	}
 }
 
-// TestCategoryPath verifies that a category's slug is placed under the /c prefix
-// the category route is registered on, so a sidebar link and the route stay in
-// step.
-//
-// [Ja] TestCategoryPath はカテゴリーの slug が、カテゴリーのルートが登録されている
-// /c の接頭辞の下に置かれることを検証します。サイドバーのリンクとルートが乖離しない
+// TestCategoryPathはカテゴリーのslugが、カテゴリーのルートが登録されている
+// /cの接頭辞の下に置かれることを検証します。サイドバーのリンクとルートが乖離しない
 // ためです。
 func TestCategoryPath(t *testing.T) {
 	t.Parallel()
 
 	if got, want := templates.CategoryPath("music"), templates.Path("/c/music"); got != want {
-		t.Errorf("CategoryPath(%q) = %q, want %q", "music", got, want)
+		t.Errorf("CategoryPath(%q) = %q、期待値 = %q", "music", got, want)
 	}
 }
 
-// TestBoardPath verifies that a board's slug is placed under the /b prefix the
-// board route is registered on, so a sidebar link and the route stay in step.
-//
-// [Ja] TestBoardPath は掲示板の slug が、掲示板のルートが登録されている /b の接頭辞の
+// TestBoardPathは掲示板のslugが、掲示板のルートが登録されている /bの接頭辞の
 // 下に置かれることを検証します。サイドバーのリンクとルートが乖離しないためです。
 func TestBoardPath(t *testing.T) {
 	t.Parallel()
 
 	if got, want := templates.BoardPath("jazz"), templates.Path("/b/jazz"); got != want {
-		t.Errorf("BoardPath(%q) = %q, want %q", "jazz", got, want)
+		t.Errorf("BoardPath(%q) = %q、期待値 = %q", "jazz", got, want)
 	}
 }
 
-// TestPostElementID verifies that a reply number becomes the id the post is
-// rendered with, since that is what an anchor ending in #p12 has to find on the
-// page.
-//
-// [Ja] TestPostElementID はレス番号が、その投稿が描画される際の id になることを検証
-// します。#p12 で終わるアンカーがページ上で見つけねばならないものがこれであるためです。
+// TestPostElementIDはレス番号が、その投稿が描画される際のidになることを検証
+// します。#p12で終わるアンカーがページ上で見つけねばならないものがこれであるためです。
 func TestPostElementID(t *testing.T) {
 	t.Parallel()
 
 	if got, want := templates.PostElementID(12), "p12"; got != want {
-		t.Errorf("PostElementID(%d) = %q, want %q", 12, got, want)
+		t.Errorf("PostElementID(%d) = %q、期待値 = %q", 12, got, want)
 	}
 }
 
-// TestPostAnchor verifies that a link to a post is a same-document reference to
-// that post's id, so a >>N in a body leads to the element PostElementID names.
-//
-// [Ja] TestPostAnchor は投稿へのリンクが、その投稿の id への同一文書内の参照になること
-// を検証します。本文の >>N が PostElementID の名指す要素へ繋がるようにするためです。
+// TestPostAnchorは投稿へのリンクが、その投稿のidへの同一文書内の参照になること
+// を検証します。本文の >>NがPostElementIDの名指す要素へ繋がるようにするためです。
 func TestPostAnchor(t *testing.T) {
 	t.Parallel()
 
 	if got, want := templates.PostAnchor(12), templates.Path("#p12"); got != want {
-		t.Errorf("PostAnchor(%d) = %q, want %q", 12, got, want)
+		t.Errorf("PostAnchor(%d) = %q、期待値 = %q", 12, got, want)
 	}
 }
 
-// TestAdminUsersPagePath verifies which of the listing's two parameters end up
-// in the address: the search when something is being searched for, and the page
-// number when the page is not the first one. Leaving both out where they say
-// nothing keeps the opened listing, the searched listing, and the pages under
-// each at one address apiece.
-//
-// [Ja] TestAdminUsersPagePath は、一覧の 2 つのパラメータのどちらがアドレスに現れるかを
+// TestAdminUsersPagePathは、一覧の2つのパラメータのどちらがアドレスに現れるかを
 // 検証します。何かを検索しているときの検索と、最初のページでないときのページ番号です。
 // 何も述べない場面で双方を落とすことが、開いた一覧・検索した一覧・それぞれの下のページを、
-// 1 つずつのアドレスに保ちます。
+// 1つずつのアドレスに保ちます。
 func TestAdminUsersPagePath(t *testing.T) {
 	t.Parallel()
 
@@ -249,42 +211,30 @@ func TestAdminUsersPagePath(t *testing.T) {
 			t.Parallel()
 
 			if got := templates.AdminUsersPagePath(tt.atnamePrefix, tt.page); got != tt.want {
-				t.Errorf("AdminUsersPagePath(%q, %d) = %q, want %q", tt.atnamePrefix, tt.page, got, tt.want)
+				t.Errorf("AdminUsersPagePath(%q, %d) = %q、期待値 = %q", tt.atnamePrefix, tt.page, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestAdminUserRolePaths verifies the two addresses a row's forms submit to: the
-// account's roles, which a grant is written to, and one role it holds, which a
-// revoke removes. They are checked together because the second is built from the
-// first, and both have to match the routes registered in cmd/groobb/serve.go.
-//
-// [Ja] TestAdminUserRolePaths は、行のフォームが送信する 2 つのアドレスを検証します。
+// TestAdminUserRolePathsは、行のフォームが送信する2つのアドレスを検証します。
 // 付与が書き込まれる先であるアカウントのロールと、剥奪が取り除く、そのアカウントが持つ
-// 1 つのロールです。2 つ目が 1 つ目から組み立てられること、そしてどちらも
-// cmd/groobb/serve.go で登録されたルートと一致する必要があることから、まとめて検証します。
+// 1つのロールです。2つ目が1つ目から組み立てられること、そしてどちらも
+// cmd/groobb/serve.goで登録されたルートと一致する必要があることから、まとめて検証します。
 func TestAdminUserRolePaths(t *testing.T) {
 	t.Parallel()
 
 	id := viewmodel.UserID(42)
 
 	if got, want := templates.AdminUserRolesPath(id), templates.Path("/admin/users/42/roles"); got != want {
-		t.Errorf("AdminUserRolesPath(%v) = %q, want %q", id, got, want)
+		t.Errorf("AdminUserRolesPath(%v) = %q、期待値 = %q", id, got, want)
 	}
 	if got, want := templates.AdminUserRolePath(id, "admin"), templates.Path("/admin/users/42/roles/admin"); got != want {
-		t.Errorf("AdminUserRolePath(%v, %q) = %q, want %q", id, "admin", got, want)
+		t.Errorf("AdminUserRolePath(%v, %q) = %q、期待値 = %q", id, "admin", got, want)
 	}
 }
 
-// TestModerationPaths verifies the addresses the moderation screens are reached
-// at: the mark a thread or a post carries, the page each is confirmed on, and
-// the link to one post from a page that is not its thread. A post's two are
-// built from the pair that names it inside its thread (ADR 0009), so this states
-// that the number lands between the thread's posts and the mark rather than
-// anywhere else in the path.
-//
-// [Ja] TestModerationPathsは、モデレーションの各画面が到達されるアドレスを検証します。
+// TestModerationPathsは、モデレーションの各画面が到達されるアドレスを検証します。
 // スレッドや投稿が持つ印、それぞれを確認するページ、そしてスレッドではないページからの投稿
 // 1件へのリンクです。投稿の2つはスレッドの中でそれを名指す組から組み立てられるため
 // (ADR 0009)、番号がパスの他のどこでもなくスレッドの投稿と印の間に来ることをここで述べます。
@@ -299,13 +249,13 @@ func TestModerationPaths(t *testing.T) {
 		got  templates.Path
 		want templates.Path
 	}{
-		{name: "thread lock", got: templates.ThreadLockPath(id), want: "/t/12/lock"},
-		{name: "thread lock new", got: templates.ThreadLockNewPath(id), want: "/t/12/lock/new"},
-		{name: "thread unpublication", got: templates.ThreadUnpublicationPath(id), want: "/t/12/unpublication"},
-		{name: "thread unpublication new", got: templates.ThreadUnpublicationNewPath(id), want: "/t/12/unpublication/new"},
-		{name: "post unpublication", got: templates.PostUnpublicationPath(id, number), want: "/t/12/posts/3/unpublication"},
-		{name: "post unpublication new", got: templates.PostUnpublicationNewPath(id, number), want: "/t/12/posts/3/unpublication/new"},
-		{name: "post anchor from elsewhere", got: templates.ThreadPostAnchorPath(id, number), want: "/t/12#p3"},
+		{name: "スレッドのロック", got: templates.ThreadLockPath(id), want: "/t/12/lock"},
+		{name: "スレッドのロックの確認", got: templates.ThreadLockNewPath(id), want: "/t/12/lock/new"},
+		{name: "スレッドの非公開", got: templates.ThreadUnpublicationPath(id), want: "/t/12/unpublication"},
+		{name: "スレッドの非公開の確認", got: templates.ThreadUnpublicationNewPath(id), want: "/t/12/unpublication/new"},
+		{name: "投稿の非公開", got: templates.PostUnpublicationPath(id, number), want: "/t/12/posts/3/unpublication"},
+		{name: "投稿の非公開の確認", got: templates.PostUnpublicationNewPath(id, number), want: "/t/12/posts/3/unpublication/new"},
+		{name: "別のページからの投稿へのアンカー", got: templates.ThreadPostAnchorPath(id, number), want: "/t/12#p3"},
 	}
 
 	for _, tt := range tests {
@@ -313,7 +263,7 @@ func TestModerationPaths(t *testing.T) {
 			t.Parallel()
 
 			if tt.got != tt.want {
-				t.Errorf("%s = %q, want %q", tt.name, tt.got, tt.want)
+				t.Errorf("%s = %q、期待値 = %q", tt.name, tt.got, tt.want)
 			}
 		})
 	}

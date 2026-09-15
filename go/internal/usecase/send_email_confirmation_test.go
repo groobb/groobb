@@ -9,12 +9,8 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// fakeConfirmationSender records the arguments of the last Send call and
-// optionally returns a preset error, so tests can assert what the UseCase
-// forwarded and how it propagates failures.
-//
-// [Ja] fakeConfirmationSender は最後の Send 呼び出しの引数を記録し、任意で指定した
-// エラーを返す。UseCase が何を渡したか、失敗をどう伝搬するかをテストで検証するため。
+// fakeConfirmationSenderは最後のSend呼び出しの引数を記録し、任意で指定した
+// エラーを返す。UseCaseが何を渡したか、失敗をどう伝搬するかをテストで検証するため。
 type fakeConfirmationSender struct {
 	called     bool
 	to         string
@@ -36,7 +32,7 @@ func (f *fakeConfirmationSender) Send(_ context.Context, to, code string, locale
 func TestSendEmailConfirmationUsecase_Execute(t *testing.T) {
 	t.Parallel()
 
-	t.Run("送信内容を sender にそのまま渡す", func(t *testing.T) {
+	t.Run("送信内容をsenderにそのまま渡す", func(t *testing.T) {
 		t.Parallel()
 
 		fake := &fakeConfirmationSender{}
@@ -48,27 +44,27 @@ func TestSendEmailConfirmationUsecase_Execute(t *testing.T) {
 			Locale: "ja",
 		})
 		if err != nil {
-			t.Fatalf("Execute() error = %v", err)
+			t.Fatalf("Execute()のエラー = %v", err)
 		}
 
 		if !fake.called {
-			t.Fatal("sender.Send が呼ばれていません")
+			t.Fatal("sender.Sendが呼ばれていません")
 		}
 		if fake.callsCount != 1 {
-			t.Errorf("Send の呼び出し回数 = %d, want 1", fake.callsCount)
+			t.Errorf("Sendの呼び出し回数 = %d、期待値 = 1", fake.callsCount)
 		}
 		if fake.to != "user@example.dev" {
-			t.Errorf("to = %q, want %q", fake.to, "user@example.dev")
+			t.Errorf("to = %q、期待値 = %q", fake.to, "user@example.dev")
 		}
 		if fake.code != "246813" {
-			t.Errorf("code = %q, want %q", fake.code, "246813")
+			t.Errorf("code = %q、期待値 = %q", fake.code, "246813")
 		}
 		if fake.locale != "ja" {
-			t.Errorf("locale = %q, want %q", fake.locale, "ja")
+			t.Errorf("locale = %q、期待値 = %q", fake.locale, "ja")
 		}
 	})
 
-	t.Run("sender の失敗をそのまま返す", func(t *testing.T) {
+	t.Run("senderの失敗をそのまま返す", func(t *testing.T) {
 		t.Parallel()
 
 		wantErr := errors.New("送信失敗")
@@ -81,7 +77,7 @@ func TestSendEmailConfirmationUsecase_Execute(t *testing.T) {
 			Locale: "en",
 		})
 		if !errors.Is(err, wantErr) {
-			t.Errorf("Execute() error = %v, want %v", err, wantErr)
+			t.Errorf("Execute()のエラー = %v、期待値 = %v", err, wantErr)
 		}
 	})
 }

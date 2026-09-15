@@ -11,40 +11,22 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Head renders the shared <head> contents: meta tags, a preconnect hint, and
-// asset references. The "?v=" query string busts the browser cache whenever the
-// asset version changes.
-//
-// The title is composed by the page metadata rather than here, so that the one
-// element every page has is written in the one place every page passes through.
-//
-// The preconnect to challenges.cloudflare.com warms the connection the
-// Turnstile widget on the public forms will use. It is unconditional because
-// <head> has no access to the per-page site key; on pages that never open the
-// connection the browser drops the unused preconnect after a few seconds.
-//
-// The canonical link is rendered only when the page carries one and asks to be
-// indexed. A page that asks not to be has no signals to gather onto a canonical
-// address, and an instance that does not know its own public address has none to
-// name; declaring the two together would tell a search engine to consolidate
-// onto an address the same page just asked it to leave out.
-//
-// [Ja] Head は共通の <head> 内容 (メタタグ、preconnect ヒント、アセット参照) を
+// Headは共通の <head> 内容 (メタタグ、preconnectヒント、アセット参照) を
 // 描画します。"?v=" クエリ文字列は、アセットのバージョンが変わるたびにブラウザ
 // キャッシュを無効化します。
 //
-// タイトルはここではなくページのメタ情報が組み立てます。どのページも持つ 1 つの要素を、
-// どのページも通る 1 箇所で書くためです。
+// タイトルはここではなくページのメタ情報が組み立てます。どのページも持つ1つの要素を、
+// どのページも通る1箇所で書くためです。
 //
-// challenges.cloudflare.com への preconnect は、公開フォームの Turnstile
+// challenges.cloudflare.comへのpreconnectは、公開フォームのTurnstile
 // ウィジェットが使う接続を事前に温めます。<head> はページ単位のサイトキーを
 // 参照できないため無条件で置いており、接続を開かないページではブラウザが数秒後に
-// 未使用の preconnect を破棄します。
+// 未使用のpreconnectを破棄します。
 //
-// canonical のリンクは、ページがそれを持ち、かつインデックスされることを求めるときだけ
-// 描画します。インデックスされないよう求めるページには canonical のアドレスへ集める
+// canonicalのリンクは、ページがそれを持ち、かつインデックスされることを求めるときだけ
+// 描画します。インデックスされないよう求めるページにはcanonicalのアドレスへ集める
 // シグナルが無く、自身の公開アドレスを知らないインスタンスには名指すアドレスがありません。
-// 2 つを併記することは、同じページがたった今除外するよう求めたアドレスへ集約せよと検索
+// 2つを併記することは、同じページがたった今除外するよう求めたアドレスへ集約せよと検索
 // エンジンに述べることになります。
 func Head(meta viewmodel.PageMeta) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -74,7 +56,7 @@ func Head(meta viewmodel.PageMeta) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(meta.DocumentTitle(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 42, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 24, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -87,7 +69,7 @@ func Head(meta viewmodel.PageMeta) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(meta.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 43, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 25, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +93,7 @@ func Head(meta viewmodel.PageMeta) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(meta.CanonicalURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 48, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 30, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -129,7 +111,7 @@ func Head(meta viewmodel.PageMeta) templ.Component {
 		var templ_7745c5c3_Var5 templ.SafeURL
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs("/static/css/style.css?v=" + meta.AssetVersion)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 52, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 34, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -142,7 +124,7 @@ func Head(meta viewmodel.PageMeta) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("/static/js/main.js?v=" + meta.AssetVersion)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 53, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/head.templ`, Line: 35, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {

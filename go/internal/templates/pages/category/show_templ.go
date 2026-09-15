@@ -11,58 +11,35 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// ShowPageData is the data for a category's page: the category's own name and
-// the boards it groups, in the order the community placed them.
-//
-// [Ja] ShowPageData はカテゴリーページのデータです。カテゴリー自身の名前と、それが
+// ShowPageDataはカテゴリーページのデータです。カテゴリー自身の名前と、それが
 // まとめる掲示板を、コミュニティが並べた順で持ちます。
 type ShowPageData struct {
 	Name   string
 	Boards []ShowBoard
 }
 
-// ShowBoard is one board of the listing. It carries the slug rather than the id
-// because /b/{slug} is what addresses a board.
-//
-// [Ja] ShowBoard は一覧に並ぶ掲示板 1 つです。掲示板を指すのは /b/{slug} であるため、
-// id ではなく slug を運びます。
+// ShowBoardは一覧に並ぶ掲示板1つです。掲示板を指すのは /b/{slug} であるため、
+// idではなくslugを運びます。
 type ShowBoard struct {
 	Slug        string
 	Name        string
 	Description string
 }
 
-// ShowHeadingID is the id of this page's main heading. The community layout
-// points the <main> landmark at it with aria-labelledby, so the region's
-// accessible name and the heading a sighted visitor reads are the same text.
-//
-// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
-// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// ShowHeadingIDはこのページの主見出しのidです。コミュニティレイアウトが
+// aria-labelledbyで <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
 // 目で見る訪問者が読む見出しが同じ文字列になります。
 const ShowHeadingID = "category-show-heading"
 
-// ShowCenter renders the list column of a category's page: the category's name
-// as the page heading, and the boards it groups below it. This is the page's
-// main column, because a category is the list of its boards and nothing else.
-//
-// Each board is a card headed by its name, so the board names form the second
-// level of the page outline below the category. The link is the name itself
-// rather than a trailing "open" control, which is what makes the link text say
-// where it leads when read on its own.
-//
-// A category with no boards says so instead of rendering an empty list: the
-// community placed the category and has yet to place a board in it, and a bare
-// list would leave the visitor unsure whether the page failed to load.
-//
-// [Ja] ShowCenter はカテゴリーページの一覧カラムを描画します。ページ見出しとしての
+// ShowCenterはカテゴリーページの一覧カラムを描画します。ページ見出しとしての
 // カテゴリー名と、その下にそれがまとめる掲示板です。カテゴリーとはその掲示板の一覧に
 // ほかならないため、これがページの主カラムです。
 //
 // 各掲示板は自身の名前を見出しに持つカードであり、掲示板名はカテゴリーの下、ページの
-// アウトラインの第 2 階層をなします。リンクは末尾の「開く」といった操作ではなく名前
+// アウトラインの第2階層をなします。リンクは末尾の「開く」といった操作ではなく名前
 // そのものであり、これによりリンクのテキストは単独で読まれてもどこへ導くかを述べます。
 //
-// 掲示板を 1 つも持たないカテゴリーは、空の一覧ではなくその旨を伝えます。コミュニティが
+// 掲示板を1つも持たないカテゴリーは、空の一覧ではなくその旨を伝えます。コミュニティが
 // カテゴリーを置き、まだそこに掲示板を置いていない状態であり、素の空一覧では訪問者が
 // ページの読み込みに失敗したのかどうか判断できないためです。
 func ShowCenter(data ShowPageData) templ.Component {
@@ -93,7 +70,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ShowHeadingID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 61, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 38, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -106,7 +83,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 61, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 38, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +101,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "category_show_no_boards"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 63, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 40, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +124,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardPath(board.Slug).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 71, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 48, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -160,7 +137,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(board.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 72, Col: 22}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 49, Col: 22}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -178,7 +155,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(board.Description)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 76, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 53, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -207,21 +184,11 @@ func ShowCenter(data ShowPageData) templ.Component {
 	})
 }
 
-// ShowRight renders the reading column of a category's page. A category holds
-// no thread of its own, so the column that shows a thread everywhere else says
-// here that none has been opened yet, and points back at the board list beside
-// it.
-//
-// A category with no boards is told what will fill this column instead of being
-// invited to choose one, since the list beside it is the empty state rather than
-// a set of choices. Pointing at boards that are not there would contradict the
-// column the visitor is reading.
-//
-// [Ja] ShowRight はカテゴリーページの読むためのカラムを描画します。カテゴリー自身は
+// ShowRightはカテゴリーページの読むためのカラムを描画します。カテゴリー自身は
 // スレッドを持たないため、他のページではスレッドを表示するこのカラムが、ここではまだ
 // スレッドが開かれていないことを伝え、隣の掲示板の一覧を指し示します。
 //
-// 掲示板を 1 つも持たないカテゴリーには、選ぶよう促すのではなく、このカラムに何が
+// 掲示板を1つも持たないカテゴリーには、選ぶよう促すのではなく、このカラムに何が
 // 現れるのかを伝えます。隣の一覧は選択肢ではなく空状態だからです。そこに無い掲示板を
 // 指し示せば、訪問者が読んでいるカラムと矛盾してしまいます。
 func ShowRight(data ShowPageData) templ.Component {
@@ -257,7 +224,7 @@ func ShowRight(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "category_show_no_boards_thread_prompt"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 107, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 74, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -275,7 +242,7 @@ func ShowRight(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "category_show_board_prompt"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 109, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/category/show.templ`, Line: 76, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {

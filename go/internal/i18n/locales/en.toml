@@ -1,1331 +1,1331 @@
 [default_title]
-description = "Default page title"
+description = "デフォルトのページタイトル"
 other = "Groobb"
 
 [default_description]
-description = "Default meta description for the page"
+description = "デフォルトのページ説明文 (meta description)"
 other = "Groobb is a bulletin board service."
 
 [breadcrumb_label]
-description = "Accessible label for the breadcrumb navigation region"
+description = "パンくずのナビゲーション領域のアクセシブルラベル"
 other = "Breadcrumb"
 
 [datetime_just_now]
-description = "Relative rendering of an instant less than a minute ago"
+description = "1分未満前の時刻の相対表示"
 other = "Just now"
 
 [datetime_minutes_ago]
-description = "Relative rendering of an instant less than an hour ago, in minutes"
+description = "1時間未満前の時刻の相対表示 (分単位)"
 one = "{{.Count}} minute ago"
 other = "{{.Count}} minutes ago"
 
 [datetime_hours_ago]
-description = "Relative rendering of an instant less than a day ago, in hours"
+description = "24時間未満前の時刻の相対表示 (時間単位)"
 one = "{{.Count}} hour ago"
 other = "{{.Count}} hours ago"
 
 [datetime_days_ago]
-description = "Relative rendering of an instant less than about a month ago, in days"
+description = "約1か月未満前の時刻の相対表示 (日単位)"
 one = "{{.Count}} day ago"
 other = "{{.Count}} days ago"
 
 [datetime_months_ago]
-description = "Relative rendering of an instant less than about a year ago, in months"
+description = "約1年未満前の時刻の相対表示 (月単位)"
 one = "{{.Count}} month ago"
 other = "{{.Count}} months ago"
 
 [datetime_years_ago]
-description = "Relative rendering of an instant about a year ago or more, in years"
+description = "約1年以上前の時刻の相対表示 (年単位)"
 one = "{{.Count}} year ago"
 other = "{{.Count}} years ago"
 
 [document_title]
-description = "Format of the <title> element, with the name of the page itself (Page) and the name of the site it belongs to (Site, the name of the community this instance hosts) interpolated"
+description = "<title> 要素の書式。ページ自身の名前 (Page) と、それが属するサイトの名前 (Site。このインスタンスが運営するコミュニティの名前) を差し込む"
 other = "{{.Page}} - {{.Site}}"
 
 [error_forbidden_title]
-description = "403 page title (title tag)"
+description = "403ページのタイトル (titleタグ)"
 other = "Access denied"
 
 [error_forbidden_heading]
-description = "403 page heading"
+description = "403ページの見出し"
 other = "Access denied"
 
 [error_forbidden_message]
-description = "Message returned with a 403 when the actor is not admitted to the operation or screen"
+description = "権限が無い操作や画面に対して403で返す説明文"
 other = "You do not have permission to do this."
 
 [error_forbidden_back_to_home]
-description = "Link text on the 403 page that leads to the top page (/)"
+description = "403ページからトップページ (/) へ移動するリンクのテキスト"
 other = "Go to the home page"
 
 [error_not_found_title]
-description = "404 page title (title tag)"
+description = "404ページのタイトル (titleタグ)"
 other = "Page not found"
 
 [error_not_found_heading]
-description = "404 page heading"
+description = "404ページの見出し"
 other = "Page not found"
 
 [error_not_found_message]
-description = "Message returned with a 404 when nothing matches the requested URL"
+description = "リクエストされたURLに対応するものが存在しないときに404で返す説明文"
 other = "The page you were looking for was not found. Its URL may have changed, or the page may have been deleted."
 
 [error_not_found_back_to_home]
-description = "Link text on the 404 page that leads to the top page (/)"
+description = "404ページからトップページ (/) へ移動するリンクのテキスト"
 other = "Go to the home page"
 
 [error_unpublished_title]
-description = "Title (title tag) of the page for a thread an administrator unpublished"
+description = "非公開にされたスレッドのページのタイトル (titleタグ)"
 other = "This page is not published"
 
 [error_unpublished_heading]
-description = "Heading of the page for a thread an administrator unpublished"
+description = "非公開にされたスレッドのページの見出し"
 other = "This page is not published"
 
 [error_unpublished_message]
-description = "Message returned with a 404 for the address of a thread an administrator unpublished"
+description = "管理者が非公開にしたスレッドのアドレスに対して404で返す説明文"
 other = "This page was unpublished by an administrator."
 
 [error_unpublished_back_to_home]
-description = "Link text on the unpublished page that leads to the top page (/)"
+description = "非公開のページからトップページ (/) へ移動するリンクのテキスト"
 other = "Go to the home page"
 
 [field_required]
-description = "Marker added to the label of a required field (UI element shared by every form)"
+description = "入力必須のフィールドのラベルに添えるマーカー (全フォーム共通のUI部品)"
 other = "Required"
 
 [flash_dismiss]
-description = "Dismiss button for the flash message toast (site-wide UI element)"
+description = "フラッシュメッセージのtoastを閉じるボタン (全ページ共通のUI部品)"
 other = "Dismiss"
 
 [flash_sign_out_success]
-description = "Flash message shown after a successful sign-out"
+description = "サインアウト完了時のフラッシュメッセージ"
 other = "Signed out."
 
 [flash_email_changed]
-description = "Flash message shown after a successful email address change"
+description = "メールアドレス変更完了時のフラッシュメッセージ"
 other = "Your email address has been changed."
 
 [flash_account_withdrawn]
-description = "Flash message shown after a successful account withdrawal"
+description = "退会完了時のフラッシュメッセージ"
 other = "Your account has been deleted."
 
 [flash_two_factor_auth_disabled]
-description = "Flash message shown on the settings hub after two-factor authentication is disabled"
+description = "2段階認証を無効化したときに設定ハブで表示するフラッシュメッセージ"
 other = "Two-factor authentication is now off."
 
 [flash_user_role_granted]
-description = "Flash message shown on the user list after a role has been given to a user, with the user's atname interpolated"
+description = "利用者にロールを付与した後に利用者一覧で表示するフラッシュメッセージ (対象のatnameを差し込む)"
 other = "The administrator role has been granted to @{{.Atname}}."
 
 [flash_user_role_revoked]
-description = "Flash message shown after a role has been taken from a user, with the user's atname interpolated"
+description = "利用者からロールを剥奪した後に表示するフラッシュメッセージ (対象のatnameを差し込む)"
 other = "The administrator role has been taken from @{{.Atname}}."
 
 [flash_thread_locked]
-description = "Flash message shown on the thread page after the thread has been locked"
+description = "スレッドをロックした後にスレッドページで表示するフラッシュメッセージ"
 other = "The thread has been locked."
 
 [flash_thread_unlocked]
-description = "Flash message shown on the thread page after the thread's lock has been lifted"
+description = "スレッドのロックを解除した後にスレッドページで表示するフラッシュメッセージ"
 other = "The thread has been unlocked."
 
 [flash_thread_unpublished]
-description = "Flash message shown on the board page after a thread has been unpublished"
+description = "スレッドを非公開にした後に掲示板ページで表示するフラッシュメッセージ"
 other = "The thread has been unpublished"
 
 [flash_post_unpublished]
-description = "Flash message shown on the thread page after a post has been unpublished"
+description = "投稿を非公開にした後にスレッドページで表示するフラッシュメッセージ"
 other = "The post has been unpublished"
 
 [header_home_link]
-description = "Link text in the shared signed-in header that leads to the home page"
+description = "サインイン済みページ共通ヘッダーからホームへ誘導するリンクのテキスト"
 other = "Home"
 
 [header_nav_label]
-description = "Accessible label for the navigation landmark in the shared signed-in header"
+description = "サインイン済みページ共通ヘッダーのナビゲーションランドマークのアクセシブルラベル"
 other = "Global navigation"
 
 [posts_count]
-description = "Number of posts shown in the UI"
+description = "UIに表示する投稿数"
 one = "{{.Count}} post"
 other = "{{.Count}} posts"
 
 [sidebar_admin_link]
-description = "Link text in the sidebar's account section that leads to the admin hub, shown only to a user who may open the admin screens"
+description = "サイドバーのアカウント欄から管理ハブへ誘導するリンクのテキスト (管理画面を開ける利用者にだけ表示する)"
 other = "Admin"
 
 [sidebar_boards_label]
-description = "Accessible label for the board list's navigation landmark in the community shell's shared sidebar"
+description = "コミュニティのシェル共通のサイドバーで、掲示板一覧のナビゲーションランドマークに付けるアクセシブルラベル"
 other = "Boards in this community"
 
 [sidebar_label]
-description = "Accessible label for the complementary region wrapping the community shell's shared sidebar (community identity, board navigation, account controls)"
+description = "コミュニティのシェル共通のサイドバー (コミュニティの識別・掲示板のナビゲーション・アカウント操作) を包む補助領域のアクセシブルラベル"
 other = "Community"
 
 [sidebar_no_boards]
-description = "Message shown in the sidebar's board list when the community holds no boards"
+description = "サイドバーの掲示板一覧で、コミュニティが掲示板を1つも持たないときに表示する文言"
 other = "No boards yet."
 
 [sidebar_settings_link]
-description = "Link text in the sidebar's account section that leads to the settings hub"
+description = "サイドバーのアカウント欄から設定ハブへ誘導するリンクのテキスト"
 other = "Settings"
 
 [sidebar_sign_in_link]
-description = "Link text shown to an anonymous visitor in the sidebar, leading to the sign-in form"
+description = "サイドバーの、匿名の訪問者に表示するログインリンクのテキスト"
 other = "Sign in"
 
 [sidebar_sign_out_button]
-description = "Sign-out button in the sidebar's account section"
+description = "サイドバーのアカウント欄のログアウトボタン"
 other = "Sign out"
 
 [sidebar_sign_out_confirm]
-description = "Confirmation prompt shown before signing out from the sidebar"
+description = "サイドバーからログアウトする前に表示する確認文言"
 other = "Sign out?"
 
 [sidebar_sign_up_link]
-description = "Link text shown to an anonymous visitor in the sidebar, leading to the sign-up form"
+description = "サイドバーの、匿名の訪問者に表示する新規登録リンクのテキスト"
 other = "Sign up"
 
 [skip_to_main_content]
-description = "Skip link text in the community shell that jumps past the sidebar to the main content (shared UI part across pages)"
+description = "コミュニティのシェルで、サイドバーを飛ばして本文へ移動するスキップリンクのテキスト (全ページ共通のUI部品)"
 other = "Skip to main content"
 
 [thread_language_label]
-description = "Visually hidden label on a thread's primary-language badge, telling a screen reader what the badge's wording is a value of"
+description = "スレッドの主言語のバッジに添える、視覚的に隠したラベル。バッジの文言が何の値であるかを読み上げに伝える"
 other = "Primary language:"
 
 [thread_language_other]
-description = "Wording on a thread's primary-language badge for a thread written in a language the application has no locale for"
+description = "スレッドの主言語のバッジで、アプリがロケールを持たない言語で書かれたスレッドに表示する文言"
 other = "Other"
 
 [welcome_show_title]
-description = "Top page title (title tag)"
+description = "トップページのページタイトル (titleタグ)"
 other = "Groobb"
 
 [welcome_show_description]
-description = "Top page meta description"
+description = "トップページのmeta description"
 other = "Groobb is a bulletin board service where anyone can create their own board."
 
 [welcome_show_heading]
-description = "Top page hero heading"
+description = "トップページのヒーロー見出し"
 other = "Create your own bulletin board."
 
 [welcome_show_lead]
-description = "Top page hero lead text"
+description = "トップページのヒーロー説明文"
 other = "Groobb is a bulletin board service where you can create your own board and interact with others."
 
 [welcome_show_sign_up_link]
-description = "CTA link text on the top page that leads to sign-up (account registration)"
+description = "トップページからサインアップ (アカウント登録) へ誘導するCTAリンクのテキスト"
 other = "Sign up"
 
 [welcome_show_sign_in_link]
-description = "CTA link text on the top page that leads to sign-in"
+description = "トップページからサインイン (ログイン) へ誘導するCTAリンクのテキスト"
 other = "Sign in"
 
 [home_show_title]
-description = "Home page title (title tag)"
+description = "ホームページのタイトル (titleタグ)"
 other = "Home"
 
 [home_show_heading]
-description = "Home page (community home) heading"
+description = "ホームページ (コミュニティのトップ) の見出し"
 other = "Community home"
 
 [home_show_no_boards]
-description = "Text shown on the home page when the community holds no boards"
+description = "ホームページで、コミュニティが掲示板を1つも持たないときに表示する文言"
 other = "This community has no boards yet."
 
 [home_show_board_no_threads]
-description = "Text shown in a board's section on the home page when the board holds no threads"
+description = "ホームページの掲示板の区画で、その掲示板がスレッドを1つも持たないときに表示する文言"
 other = "No threads yet."
 
 [home_show_last_posted_label]
-description = "Label placed before the last-posted time in the home page's thread listings"
+description = "ホームページのスレッド一覧で、最終投稿日時の前に置くラベル"
 other = "Last post"
 
 [category_show_title]
-description = "Category page title (title tag), with the category name interpolated"
+description = "カテゴリーページのタイトル (titleタグ)。カテゴリー名を差し込む"
 other = "{{.Name}}"
 
 [category_show_description]
-description = "Category page meta description, with the category name interpolated"
+description = "カテゴリーページのmeta description。カテゴリー名を差し込む"
 other = "The boards in the {{.Name}} category."
 
 [category_show_no_boards]
-description = "Text shown on the category page when the category holds no boards"
+description = "カテゴリーページで、そのカテゴリーが掲示板を1つも持たないときに表示する文言"
 other = "This category has no boards yet."
 
 [category_show_board_prompt]
-description = "Prompt in the category page's reading column inviting the visitor to pick a board from the list"
+description = "カテゴリーページの読むためのカラムで、一覧から掲示板を選ぶよう促す文言"
 other = "Choose a board to see the threads in it."
 
 [category_show_no_boards_thread_prompt]
-description = "Text shown in the category page's reading column when the category holds no boards, so there is none to choose"
+description = "カテゴリーページの読むためのカラムで、そのカテゴリーが掲示板を1つも持たず、選べる掲示板が無いときに表示する文言"
 other = "Threads appear here once a board is placed in this category."
 
 [category_show_board_prompt_region_label]
-description = "Accessible label for the category page's reading column, the region standing in for a thread that has not been opened yet"
+description = "カテゴリーページの読むためのカラムのアクセシブルラベル。まだスレッドを開いていない状態の領域であることを表す"
 other = "Reading a thread"
 
 [board_show_title]
-description = "Board page title (title tag), with the board name interpolated"
+description = "掲示板ページのタイトル (titleタグ)。掲示板名を差し込む"
 other = "{{.Name}}"
 
 [board_show_description]
-description = "Board page meta description, used when the board carries no description of its own, with the board name interpolated"
+description = "掲示板ページのmeta description。掲示板が説明を持たないときに使い、掲示板名を差し込む"
 other = "The threads in the {{.Name}} board."
 
 [board_show_no_threads]
-description = "Text shown on the board page when the board holds no threads"
+description = "掲示板ページで、その掲示板がスレッドを1つも持たないときに表示する文言"
 other = "This board has no threads yet."
 
 [board_show_new_thread_link]
-description = "Link to the thread creation form, placed above the thread list on the board page"
+description = "掲示板ページで、スレッド一覧の上に置くスレッド作成フォームへのリンク"
 other = "Start a thread"
 
 [board_show_first_thread_link]
-description = "Link to the thread creation form, placed in the empty state of the board page when the board holds no threads"
+description = "掲示板ページで、その掲示板がスレッドを1つも持たないときに空状態に置くスレッド作成フォームへのリンク"
 other = "Start the first thread"
 
 [board_show_last_posted_label]
-description = "Label placed before the last-post time in the board page's thread list"
+description = "掲示板ページのスレッド一覧で、最終投稿の時刻に添えるラベル"
 other = "Last post"
 
 [board_show_thread_prompt]
-description = "Prompt in the board page's reading column inviting the visitor to pick a thread from the list"
+description = "掲示板ページの読むためのカラムで、一覧からスレッドを選ぶよう促す文言"
 other = "Choose a thread to see the posts in it."
 
 [board_show_no_threads_post_prompt]
-description = "Text shown in the board page's reading column when the board holds no threads, so there is none to choose"
+description = "掲示板ページの読むためのカラムで、その掲示板がスレッドを1つも持たず、選べるスレッドが無いときに表示する文言"
 other = "Posts appear here once a thread is started in this board."
 
 [board_show_thread_prompt_region_label]
-description = "Accessible label for the board page's reading column, the region standing in for a thread that has not been opened yet"
+description = "掲示板ページの読むためのカラムのアクセシブルラベル。まだスレッドを開いていない状態の領域であることを表す"
 other = "Reading a thread"
 
 [thread_show_title]
-description = "Thread page title (title tag), with the thread's title interpolated"
+description = "スレッドページのタイトル (titleタグ)。スレッドのタイトルを差し込む"
 other = "{{.Title}}"
 
 [thread_show_description]
-description = "Thread page meta description, with the thread's title and its board's name interpolated"
+description = "スレッドページのmeta description。スレッドのタイトルと掲示板名を差し込む"
 other = "The posts in the {{.Title}} thread, in the {{.Board}} board."
 
 [thread_show_board_threads_region_label]
-description = "Accessible label for the thread page's list column, the region holding the threads of the board this thread was posted in"
+description = "スレッドページの一覧カラムのアクセシブルラベル。そのスレッドが属する掲示板のスレッド一覧であることを表す"
 other = "Threads in this board"
 
 [thread_show_new_thread_link]
-description = "Text of the link to the thread creation page of the board, in the list column of the thread page"
+description = "スレッドページの一覧カラムで、その掲示板にスレッドを立てるページへ向かうリンクの文言"
 other = "Start a thread"
 
 [thread_show_post_link_label]
-description = "Accessible name for the link a post carries to itself (its reply number) on the thread page, with the reply number interpolated"
+description = "スレッドページで、投稿自身へのリンク (レス番号) に与えるアクセシブルネーム。レス番号を差し込む"
 other = "Post {{.Number}}"
 
 [thread_show_withdrawn_author]
-description = "Text shown in place of the author of a post on the thread page when that author has withdrawn"
+description = "スレッドページで、作者が退会した投稿の投稿者欄に表示する文言"
 other = "A withdrawn member"
 
 [thread_show_replies_label]
-description = "Label placed before the reply numbers of the posts that replied to a post on the thread page"
+description = "スレッドページで、その投稿に返信した投稿のレス番号の並びに添えるラベル"
 other = "Replies"
 
 [thread_show_post_unpublished]
-description = "Placeholder drawn on the thread page where a post an administrator unpublished stood"
+description = "スレッドページで、管理者が非公開にした投稿の位置に描く占位の文言"
 other = "Unpublished by an administrator"
 
 [thread_show_moderation_lock_link]
-description = "Text of the link to the thread lock confirmation page, on the thread page"
+description = "スレッドページで、スレッドのロックの確認ページへ向かうリンクの文言"
 other = "Lock thread"
 
 [thread_show_moderation_unlock_button]
-description = "Submit button lifting the lock an administrator placed, on the thread page; it has no confirmation page in front of it"
+description = "スレッドページで、管理者が掛けたロックを解除する送信ボタン。確認ページを挟まない"
 other = "Unlock thread"
 
 [thread_show_moderation_unlock_confirm]
-description = "Confirmation dialog text shown before unlocking a thread"
+description = "スレッドのロックを解除する前に確認ダイアログで表示する文言"
 other = "Unlock this thread?"
 
 [thread_show_moderation_unpublish_link]
-description = "Text of the link to the thread unpublication confirmation page, on the thread page"
+description = "スレッドページで、スレッドの非公開の確認ページへ向かうリンクの文言"
 other = "Unpublish thread"
 
 [thread_show_moderation_post_unpublish_link]
-description = "Text of the link to a post's unpublication confirmation page, on the thread page"
+description = "スレッドページで、各投稿の非公開の確認ページへ向かうリンクの文言"
 other = "Unpublish"
 
 [thread_show_moderation_post_unpublish_link_label]
-description = "Accessible name of the link to a post's unpublication confirmation page on the thread page, interpolating the reply number"
+description = "スレッドページで、投稿の非公開の確認ページへ向かうリンクに与えるアクセシブルネーム。レス番号を差し込む"
 other = "Unpublish post {{.Number}}"
 
 [thread_lock_locked_by_moderator]
-description = "Sentence in the notice about a locked thread saying an administrator closed it"
+description = "ロック中のスレッドの案内のうち、管理者がスレッドを閉じたことを述べる文言"
 other = "This thread has been locked by an administrator. Nothing more can be written here."
 
 [thread_lock_post_limit_reached]
-description = "Sentence in the notice about a locked thread saying it holds every post it can hold, with the cap interpolated"
+description = "ロック中のスレッドの案内のうち、投稿数が上限に達したことを述べる文言。上限の件数を差し込む"
 other = "This thread has reached its limit of {{.Limit}} posts. Nothing more can be written here."
 
 [thread_lock_next_thread_link]
-description = "Text of the link to the thread creation page of the same board, added to the notice of a thread locked for the post cap alone"
+description = "投稿数の上限だけを理由にロックされたスレッドの案内に添える、同じ掲示板でスレッドを立てるページへのリンクの文言"
 other = "Start a new thread in this board"
 
 [thread_lock_new_title]
-description = "Title (title tag) of the page a thread's lock is confirmed on"
+description = "スレッドのロックの確認ページのタイトル (titleタグ)"
 other = "Lock this thread"
 
 [thread_lock_new_description]
-description = "Meta description of the page a thread's lock is confirmed on"
+description = "スレッドのロックの確認ページのmeta description"
 other = "Close this thread to new replies."
 
 [thread_lock_new_heading]
-description = "Heading of the page a thread's lock is confirmed on"
+description = "スレッドのロックの確認ページの見出し"
 other = "Lock this thread"
 
 [thread_lock_new_lead]
-description = "Text on the page a thread's lock is confirmed on, saying what locking does"
+description = "スレッドのロックの確認ページの説明文。ロックで何が起きるかを述べる"
 other = "Once locked, nobody can reply to this thread. It stays readable as it was, and the lock can be lifted later."
 
 [thread_lock_new_target_label]
-description = "Label placed before the title of the thread to be locked, on the lock confirmation page"
+description = "スレッドのロックの確認ページで、対象のスレッドのタイトルに添えるラベル"
 other = "Thread to lock"
 
 [thread_lock_new_reason_label]
-description = "Label of the reason field on the lock confirmation page, stating that it is optional"
+description = "スレッドのロックの確認ページの理由の入力欄のラベル。入力が任意であることを含める"
 other = "Reason (optional)"
 
 [thread_lock_new_reason_hint]
-description = "Hint under the reason field on the lock confirmation page, saying where the reason goes"
+description = "スレッドのロックの確認ページの理由の入力欄のヒント。理由の行き先を述べる"
 other = "Recorded in the moderation history only. It is not shown on the thread."
 
 [thread_lock_new_submit_button]
-description = "Submit button of the page a thread's lock is confirmed on"
+description = "スレッドのロックの確認ページの送信ボタン"
 other = "Lock this thread"
 
 [thread_lock_new_cancel]
-description = "Text of the link back to the thread from the lock confirmation page, leaving it unlocked"
+description = "スレッドのロックの確認ページから、ロックせずにスレッドへ戻るリンクの文言"
 other = "Back to the thread"
 
 [thread_unpublication_new_title]
-description = "Title (title tag) of the page a thread's unpublication is confirmed on"
+description = "スレッドの非公開の確認ページのタイトル (titleタグ)"
 other = "Unpublish this thread"
 
 [thread_unpublication_new_description]
-description = "Meta description of the page a thread's unpublication is confirmed on"
+description = "スレッドの非公開の確認ページのmeta description"
 other = "Take this thread out of the community's view."
 
 [thread_unpublication_new_heading]
-description = "Heading of the page a thread's unpublication is confirmed on"
+description = "スレッドの非公開の確認ページの見出し"
 other = "Unpublish this thread"
 
 [thread_unpublication_new_lead]
-description = "Text on the page a thread's unpublication is confirmed on, saying what unpublishing does and that there is no screen for undoing it"
+description = "スレッドの非公開の確認ページの説明文。非公開で何が起きるかと、元に戻す操作が無いことを述べる"
 other = "Once unpublished, this thread no longer appears in the listings and no longer opens from a shared link. Neither the title nor the posts are lost, but there is no screen for publishing it again."
 
 [thread_unpublication_new_target_label]
-description = "Label placed before the title of the thread to be unpublished, on the unpublication confirmation page"
+description = "スレッドの非公開の確認ページで、対象のスレッドのタイトルに添えるラベル"
 other = "Thread to unpublish"
 
 [thread_unpublication_new_reason_label]
-description = "Label of the reason field on the thread unpublication confirmation page, stating that it is optional"
+description = "スレッドの非公開の確認ページの理由の入力欄のラベル。入力が任意であることを含める"
 other = "Reason (optional)"
 
 [thread_unpublication_new_reason_hint]
-description = "Hint under the reason field on the thread unpublication confirmation page, saying where the reason goes"
+description = "スレッドの非公開の確認ページの理由の入力欄のヒント。理由の行き先を述べる"
 other = "Recorded in the moderation history only. It is not shown to members."
 
 [thread_unpublication_new_submit_button]
-description = "Submit button of the page a thread's unpublication is confirmed on"
+description = "スレッドの非公開の確認ページの送信ボタン"
 other = "Unpublish this thread"
 
 [thread_unpublication_new_cancel]
-description = "Text of the link back to the thread from the thread unpublication confirmation page, leaving it published"
+description = "スレッドの非公開の確認ページから、非公開にせずスレッドへ戻るリンクの文言"
 other = "Back to the thread"
 
 [post_unpublication_new_title]
-description = "Title (title tag) of the page a post's unpublication is confirmed on"
+description = "投稿の非公開の確認ページのタイトル (titleタグ)"
 other = "Unpublish this post"
 
 [post_unpublication_new_description]
-description = "Meta description of the page a post's unpublication is confirmed on"
+description = "投稿の非公開の確認ページのmeta description"
 other = "Take this post out of the thread's view."
 
 [post_unpublication_new_heading]
-description = "Heading of the page a post's unpublication is confirmed on"
+description = "投稿の非公開の確認ページの見出し"
 other = "Unpublish this post"
 
 [post_unpublication_new_lead]
-description = "Text on the page a post's unpublication is confirmed on, saying what is left behind and that there is no screen for undoing it"
+description = "投稿の非公開の確認ページの説明文。非公開の後に何が残るかと、元に戻す操作が無いことを述べる"
 other = "Once unpublished, this post's body and author are no longer shown in the thread, and its reply number is left holding only a line saying it was unpublished. Nothing written is lost, but there is no screen for publishing it again."
 
 [post_unpublication_new_target_label]
-description = "Label placed before the post to be unpublished, on the post unpublication confirmation page"
+description = "投稿の非公開の確認ページで、対象の投稿に添えるラベル"
 other = "Post to unpublish"
 
 [post_unpublication_new_withdrawn_author]
-description = "Text shown in place of the author of the post to be unpublished, on the post unpublication confirmation page, when that author has withdrawn"
+description = "投稿の非公開の確認ページで、作者が退会した投稿の投稿者欄に表示する文言"
 other = "A withdrawn member"
 
 [post_unpublication_new_reason_label]
-description = "Label of the reason field on the post unpublication confirmation page, stating that it is optional"
+description = "投稿の非公開の確認ページの理由の入力欄のラベル。入力が任意であることを含める"
 other = "Reason (optional)"
 
 [post_unpublication_new_reason_hint]
-description = "Hint under the reason field on the post unpublication confirmation page, saying where the reason goes"
+description = "投稿の非公開の確認ページの理由の入力欄のヒント。理由の行き先を述べる"
 other = "Recorded in the moderation history only. It is not shown on the thread."
 
 [post_unpublication_new_submit_button]
-description = "Submit button of the page a post's unpublication is confirmed on"
+description = "投稿の非公開の確認ページの送信ボタン"
 other = "Unpublish this post"
 
 [post_unpublication_new_cancel]
-description = "Text of the link back to the post from the post unpublication confirmation page, leaving it published"
+description = "投稿の非公開の確認ページから、非公開にせず投稿へ戻るリンクの文言"
 other = "Back to the post"
 
 [thread_show_reply_heading]
-description = "Heading of the reply form at the end of the thread page"
+description = "スレッドページの末尾に置く返信フォームの見出し"
 other = "Post a reply"
 
 [thread_show_reply_sign_in_prompt]
-description = "Text at the end of the thread page telling a signed-out visitor that replying takes an account"
+description = "スレッドページの末尾で、サインアウト状態の訪問者に、返信にはアカウントが要ることを伝える文言"
 other = "Sign in to reply to this thread."
 
 [thread_show_reply_sign_in_link]
-description = "Text of the link to sign in for replying, at the end of the thread page"
+description = "スレッドページの末尾で、返信のためにサインインへ向かうリンクの文言"
 other = "Sign in"
 
 [email_confirmation_subject]
-description = "Subject line for the email confirmation code email"
+description = "メール確認コードのメールの件名"
 other = "[Groobb] Confirmation code"
 
 [password_reset_email_subject]
-description = "Subject line for the password reset email"
+description = "パスワードリセットメールの件名"
 other = "[Groobb] Reset your password"
 
 [email_change_notification_subject]
-description = "Subject line for the email change notification email"
+description = "メールアドレス変更通知メールの件名"
 other = "[Groobb] Your email address was changed"
 
 [sign_up_new_title]
-description = "Sign-up page title (title tag)"
+description = "サインアップページのタイトル (titleタグ)"
 other = "Sign up"
 
 [sign_up_new_description]
-description = "Sign-up page meta description"
+description = "サインアップページのmeta description"
 other = "Create a new Groobb account."
 
 [sign_up_new_heading]
-description = "Sign-up page heading"
+description = "サインアップページの見出し"
 other = "Sign up for Groobb"
 
 [sign_up_new_lead]
-description = "Sign-up page lead text (confirmation code guidance)"
+description = "サインアップページの説明文 (メール確認コード送信の案内)"
 other = "We'll send a confirmation code to the email address you enter."
 
 [sign_up_new_email_label]
-description = "Sign-up page email label"
+description = "サインアップページのメールアドレスのラベル"
 other = "Email address"
 
 [sign_up_new_submit]
-description = "Sign-up page submit button"
+description = "サインアップページの送信ボタン"
 other = "Send confirmation code"
 
 [email_confirmation_new_title]
-description = "Email confirmation code entry page title (title tag)"
+description = "メール確認コード入力ページのタイトル (titleタグ)"
 other = "Enter confirmation code"
 
 [email_confirmation_new_description]
-description = "Email confirmation code entry page meta description"
+description = "メール確認コード入力ページのmeta description"
 other = "Enter the confirmation code sent to your email to continue creating your account."
 
 [email_confirmation_new_heading]
-description = "Email confirmation code entry page heading"
+description = "メール確認コード入力ページの見出し"
 other = "Enter your confirmation code"
 
 [email_confirmation_new_lead]
-description = "Email confirmation code entry page lead text (prompts for the code)"
+description = "メール確認コード入力ページの説明文 (コードの入力を促す)"
 other = "Enter the 6-digit confirmation code from the email we sent you."
 
 [email_confirmation_new_code_label]
-description = "Email confirmation code entry page code label"
+description = "メール確認コード入力ページの確認コードのラベル"
 other = "Confirmation code"
 
 [email_confirmation_new_submit]
-description = "Email confirmation code entry page submit button"
+description = "メール確認コード入力ページの送信ボタン"
 other = "Confirm"
 
 [account_new_title]
-description = "Account creation page title (title tag)"
+description = "アカウント作成ページのタイトル (titleタグ)"
 other = "Create your account"
 
 [account_new_description]
-description = "Account creation page meta description"
+description = "アカウント作成ページのmeta description"
 other = "Set your atname and password to finish creating your account."
 
 [account_new_heading]
-description = "Account creation page heading"
+description = "アカウント作成ページの見出し"
 other = "Create your account"
 
 [account_new_lead]
-description = "Account creation page lead text (says it is the final step)"
+description = "アカウント作成ページの説明文 (最後のステップである旨を伝える)"
 other = "This is the final step. Set your atname and password to create your account."
 
 [account_new_atname_label]
-description = "Account creation page atname label"
+description = "アカウント作成ページのatnameのラベル"
 other = "Atname"
 
 [account_new_atname_hint]
-description = "Account creation page atname hint (allowed characters and length)"
+description = "アカウント作成ページのatnameのヒント (使用可能な文字と文字数)"
 other = "Letters, numbers, and underscores, up to 20 characters"
 
 [account_new_password_label]
-description = "Account creation page password label"
+description = "アカウント作成ページのパスワードのラベル"
 other = "Password"
 
 [account_new_password_hint]
-description = "Account creation page password hint (length)"
+description = "アカウント作成ページのパスワードのヒント (文字数)"
 other = "Enter at least 8 characters"
 
 [account_new_password_confirmation_label]
-description = "Account creation page password confirmation label"
+description = "アカウント作成ページのパスワード確認のラベル"
 other = "Password (confirmation)"
 
 [account_new_submit]
-description = "Account creation page submit button"
+description = "アカウント作成ページの送信ボタン"
 other = "Create account"
 
 [sign_in_new_title]
-description = "Sign-in page title (title tag)"
+description = "サインインページのタイトル (titleタグ)"
 other = "Sign in"
 
 [sign_in_new_description]
-description = "Sign-in page meta description"
+description = "サインインページのmeta description"
 other = "Sign in to your Groobb account."
 
 [sign_in_new_heading]
-description = "Sign-in page heading"
+description = "サインインページの見出し"
 other = "Sign in to Groobb"
 
 [sign_in_new_lead]
-description = "Sign-in page lead text (prompts for email and password)"
+description = "サインインページの説明文 (メールアドレスとパスワードの入力を促す)"
 other = "Enter your email address and password."
 
 [sign_in_new_email_label]
-description = "Sign-in page email label"
+description = "サインインページのメールアドレスのラベル"
 other = "Email address"
 
 [sign_in_new_password_label]
-description = "Sign-in page password label"
+description = "サインインページのパスワードのラベル"
 other = "Password"
 
 [sign_in_new_submit]
-description = "Sign-in page submit button"
+description = "サインインページの送信ボタン"
 other = "Sign in"
 
 [sign_in_new_sign_up_link]
-description = "Link text on the sign-in page that leads to sign-up"
+description = "サインインページからサインアップへ誘導するリンクのテキスト"
 other = "Create an account"
 
 [sign_in_new_forgot_password_link]
-description = "Link text on the sign-in page that leads to the password reset request"
+description = "サインインページからパスワードリセット申請へ誘導するリンクのテキスト"
 other = "Forgot your password?"
 
 [sign_in_two_factor_new_title]
-description = "Sign-in two-factor authentication challenge page title (title tag)"
+description = "サインイン時の2段階認証チャレンジページのタイトル (titleタグ)"
 other = "Two-factor authentication"
 
 [sign_in_two_factor_new_description]
-description = "Sign-in two-factor authentication challenge page meta description"
+description = "サインイン時の2段階認証チャレンジページのmeta description"
 other = "Enter your authenticator code to finish signing in."
 
 [sign_in_two_factor_new_heading]
-description = "Sign-in two-factor authentication challenge page heading"
+description = "サインイン時の2段階認証チャレンジページの見出し"
 other = "Two-factor authentication"
 
 [sign_in_two_factor_new_lead]
-description = "Sign-in two-factor authentication challenge page lead text (prompts for the authenticator code)"
+description = "サインイン時の2段階認証チャレンジページの説明文 (認証アプリのコード入力を促す)"
 other = "Enter the 6-digit code shown in your authenticator app."
 
 [sign_in_two_factor_new_code_label]
-description = "Sign-in two-factor authentication challenge page authentication code label"
+description = "サインイン時の2段階認証チャレンジページの認証コードのラベル"
 other = "Authentication code"
 
 [sign_in_two_factor_new_submit]
-description = "Sign-in two-factor authentication challenge page submit button (completes sign-in)"
+description = "サインイン時の2段階認証チャレンジページの送信ボタン (サインインを完了する)"
 other = "Sign in"
 
 [sign_in_two_factor_new_use_recovery_link]
-description = "Link from the sign-in two-factor authentication challenge page to the recovery-code challenge"
+description = "サインイン時の2段階認証チャレンジページからリカバリーコードチャレンジへのリンク"
 other = "Use a recovery code instead"
 
 [sign_in_two_factor_recovery_new_title]
-description = "Sign-in recovery-code challenge page title (title tag)"
+description = "サインイン時のリカバリーコードチャレンジページのタイトル (titleタグ)"
 other = "Recovery code"
 
 [sign_in_two_factor_recovery_new_description]
-description = "Sign-in recovery-code challenge page meta description"
+description = "サインイン時のリカバリーコードチャレンジページのmeta description"
 other = "Enter a recovery code to finish signing in."
 
 [sign_in_two_factor_recovery_new_heading]
-description = "Sign-in recovery-code challenge page heading"
+description = "サインイン時のリカバリーコードチャレンジページの見出し"
 other = "Recovery code"
 
 [sign_in_two_factor_recovery_new_lead]
-description = "Sign-in recovery-code challenge page lead text (prompts for a saved recovery code)"
+description = "サインイン時のリカバリーコードチャレンジページの説明文 (保存済みリカバリーコードの入力を促す)"
 other = "Enter one of the recovery codes you saved when you enabled two-factor authentication."
 
 [sign_in_two_factor_recovery_new_code_label]
-description = "Sign-in recovery-code challenge page recovery code label"
+description = "サインイン時のリカバリーコードチャレンジページのリカバリーコードのラベル"
 other = "Recovery code"
 
 [sign_in_two_factor_recovery_new_submit]
-description = "Sign-in recovery-code challenge page submit button (completes sign-in)"
+description = "サインイン時のリカバリーコードチャレンジページの送信ボタン (サインインを完了する)"
 other = "Sign in"
 
 [sign_in_two_factor_recovery_new_use_authenticator_link]
-description = "Link from the sign-in recovery-code challenge page back to the authenticator (TOTP) challenge"
+description = "サインイン時のリカバリーコードチャレンジページから認証アプリ (TOTP) チャレンジへ戻るリンク"
 other = "Use your authenticator app instead"
 
 [password_reset_new_title]
-description = "Password reset request page title (title tag)"
+description = "パスワードリセット申請ページのタイトル (titleタグ)"
 other = "Reset your password"
 
 [password_reset_new_description]
-description = "Password reset request page meta description"
+description = "パスワードリセット申請ページのmeta description"
 other = "We'll send a password reset link to your registered email address."
 
 [password_reset_new_heading]
-description = "Password reset request page heading"
+description = "パスワードリセット申請ページの見出し"
 other = "Reset your password"
 
 [password_reset_new_lead]
-description = "Password reset request page lead text (reset link guidance)"
+description = "パスワードリセット申請ページの説明文 (リセットリンク送信の案内)"
 other = "Enter your registered email address and we'll send you a link to reset your password."
 
 [password_reset_new_email_label]
-description = "Password reset request page email label"
+description = "パスワードリセット申請ページのメールアドレスのラベル"
 other = "Email address"
 
 [password_reset_new_submit]
-description = "Password reset request page submit button"
+description = "パスワードリセット申請ページの送信ボタン"
 other = "Send reset link"
 
 [password_reset_new_back_to_sign_in]
-description = "Link text on the password reset request page that goes back to sign-in"
+description = "パスワードリセット申請ページからサインインへ戻るリンクのテキスト"
 other = "Back to sign in"
 
 [password_reset_sent_title]
-description = "Password reset sent page title (title tag)"
+description = "パスワードリセット送信完了ページのタイトル (titleタグ)"
 other = "Email sent"
 
 [password_reset_sent_description]
-description = "Password reset sent page meta description"
+description = "パスワードリセット送信完了ページのmeta description"
 other = "We've sent a password reset link."
 
 [password_reset_sent_heading]
-description = "Password reset sent page heading"
+description = "パスワードリセット送信完了ページの見出し"
 other = "Check your email"
 
 [password_reset_sent_lead]
-description = "Password reset sent page lead text (does not reveal whether the account exists)"
+description = "パスワードリセット送信完了ページの説明文 (アカウントの存在を明かさない案内)"
 other = "If an account exists for the email address you entered, we've sent a password reset link. If you don't see it, please check your spam folder."
 
 [password_reset_sent_back_to_sign_in]
-description = "Link text on the password reset sent page that goes back to sign-in"
+description = "パスワードリセット送信完了ページからサインインへ戻るリンクのテキスト"
 other = "Back to sign in"
 
 [password_edit_title]
-description = "Password update (set new password) page title (title tag)"
+description = "パスワード更新 (新パスワード設定) ページのタイトル (titleタグ)"
 other = "Set a new password"
 
 [password_edit_description]
-description = "Password update (set new password) page meta description"
+description = "パスワード更新 (新パスワード設定) ページのmeta description"
 other = "Set a new password."
 
 [password_edit_heading]
-description = "Password update (set new password) page heading"
+description = "パスワード更新 (新パスワード設定) ページの見出し"
 other = "Set a new password"
 
 [password_edit_lead]
-description = "Password update (set new password) page lead text (prompts for the new password)"
+description = "パスワード更新 (新パスワード設定) ページの説明文 (新しいパスワードの入力を促す)"
 other = "Enter your new password."
 
 [password_edit_password_label]
-description = "Password update page password label"
+description = "パスワード更新ページのパスワードのラベル"
 other = "New password"
 
 [password_edit_password_hint]
-description = "Password update page password hint (length)"
+description = "パスワード更新ページのパスワードのヒント (文字数)"
 other = "Enter at least 8 characters"
 
 [password_edit_password_confirmation_label]
-description = "Password update page password confirmation label"
+description = "パスワード更新ページのパスワード確認のラベル"
 other = "New password (confirmation)"
 
 [password_edit_submit]
-description = "Password update page submit button"
+description = "パスワード更新ページの送信ボタン"
 other = "Update password"
 
 [password_edit_request_new_link]
-description = "Link text on the password update page that leads to the password reset request (to request a new link when the current one is invalid)"
+description = "パスワード更新ページからパスワードリセット申請へ誘導するリンクのテキスト (リンクが無効なとき新しいリンクを申請する)"
 other = "Request a new reset link"
 
 [settings_show_title]
-description = "Settings hub page title (title tag)"
+description = "設定ハブページのタイトル (titleタグ)"
 other = "Settings"
 
 [settings_show_heading]
-description = "Settings hub page heading"
+description = "設定ハブページの見出し"
 other = "Settings"
 
 [settings_show_email_change_link]
-description = "Link text on the settings hub page that leads to the email change page"
+description = "設定ハブページからメールアドレス変更ページへ誘導するリンクのテキスト"
 other = "Change email address"
 
 [settings_show_two_factor_auth_link]
-description = "Link text on the settings hub page that leads to the two-factor authentication setup page"
+description = "設定ハブページから2段階認証の設定ページへ誘導するリンクのテキスト"
 other = "Two-factor authentication"
 
 [settings_show_withdrawal_link]
-description = "Link text on the settings hub page that leads to the account withdrawal page"
+description = "設定ハブページから退会ページへ誘導するリンクのテキスト"
 other = "Delete account"
 
 [settings_email_edit_title]
-description = "Email change page title (title tag)"
+description = "メールアドレス変更ページのタイトル (titleタグ)"
 other = "Change email address"
 
 [settings_email_edit_description]
-description = "Email change page meta description"
+description = "メールアドレス変更ページのmeta description"
 other = "Change your email address."
 
 [settings_email_edit_heading]
-description = "Email change page heading"
+description = "メールアドレス変更ページの見出し"
 other = "Change email address"
 
 [settings_email_edit_lead]
-description = "Email change page lead text (guidance that a confirmation code is sent to the new address)"
+description = "メールアドレス変更ページの説明文 (新しいアドレスに確認コードを送る案内)"
 other = "We'll send a confirmation code to your new email address."
 
 [settings_email_edit_current_email_label]
-description = "Email change page current email label"
+description = "メールアドレス変更ページの現在のメールアドレスのラベル"
 other = "Current email address"
 
 [settings_email_edit_new_email_label]
-description = "Email change page new email label"
+description = "メールアドレス変更ページの新しいメールアドレスのラベル"
 other = "New email address"
 
 [settings_email_edit_current_password_label]
-description = "Email change page current password label"
+description = "メールアドレス変更ページの現在のパスワードのラベル"
 other = "Current password"
 
 [settings_email_edit_submit]
-description = "Email change page submit button"
+description = "メールアドレス変更ページの送信ボタン"
 other = "Change email address"
 
 [settings_email_confirmation_new_title]
-description = "Email change confirmation-code entry page title (title tag)"
+description = "メールアドレス変更の確認コード入力ページのタイトル (titleタグ)"
 other = "Enter confirmation code"
 
 [settings_email_confirmation_new_description]
-description = "Email change confirmation-code entry page meta description"
+description = "メールアドレス変更の確認コード入力ページのmeta description"
 other = "Enter the confirmation code sent to your new email address."
 
 [settings_email_confirmation_new_heading]
-description = "Email change confirmation-code entry page heading"
+description = "メールアドレス変更の確認コード入力ページの見出し"
 other = "Enter confirmation code"
 
 [settings_email_confirmation_new_lead]
-description = "Email change confirmation-code entry page lead text (guidance to enter the 6-digit code sent to the new address)"
+description = "メールアドレス変更の確認コード入力ページの説明文 (新しいアドレスに送った6桁コードの入力案内)"
 other = "Enter the 6-digit confirmation code sent to your new email address."
 
 [settings_email_confirmation_new_code_label]
-description = "Email change confirmation-code entry page confirmation code label"
+description = "メールアドレス変更の確認コード入力ページの確認コードのラベル"
 other = "Confirmation code"
 
 [settings_email_confirmation_new_submit]
-description = "Email change confirmation-code entry page submit button"
+description = "メールアドレス変更の確認コード入力ページの送信ボタン"
 other = "Change email address"
 
 [settings_withdrawal_new_title]
-description = "Account withdrawal confirmation page title (title tag)"
+description = "退会確認ページのタイトル (titleタグ)"
 other = "Delete account"
 
 [settings_withdrawal_new_description]
-description = "Account withdrawal confirmation page meta description"
+description = "退会確認ページのmeta description"
 other = "Delete your account."
 
 [settings_withdrawal_new_heading]
-description = "Account withdrawal confirmation page heading"
+description = "退会確認ページの見出し"
 other = "Delete account"
 
 [settings_withdrawal_new_lead]
-description = "Account withdrawal confirmation page lead text (guidance on what withdrawal does)"
+description = "退会確認ページの説明文 (退会で何が起きるかの案内)"
 other = "Deleting your account cannot be undone. You will be signed out, and your email address and username will be released for reuse. Enter your current password to continue."
 
 [settings_withdrawal_new_current_password_label]
-description = "Account withdrawal confirmation page current password label"
+description = "退会確認ページの現在のパスワードのラベル"
 other = "Current password"
 
 [settings_withdrawal_new_confirm]
-description = "Final confirmation text shown by the browser confirm() dialog before executing the withdrawal"
+description = "退会を実行する前にブラウザのconfirm() で表示する最終確認の文言"
 other = "Are you sure you want to delete your account?"
 
 [settings_withdrawal_new_submit]
-description = "Account withdrawal confirmation page submit button"
+description = "退会確認ページの送信ボタン"
 other = "Delete account"
 
 [settings_two_factor_auth_new_title]
-description = "Two-factor authentication setup (enrollment) page title (title tag)"
+description = "2段階認証の設定 (登録) ページのタイトル (titleタグ)"
 other = "Set up two-factor authentication"
 
 [settings_two_factor_auth_new_description]
-description = "Two-factor authentication setup (enrollment) page meta description"
+description = "2段階認証の設定 (登録) ページのmeta description"
 other = "Register an authenticator app to enable two-factor authentication."
 
 [settings_two_factor_auth_new_heading]
-description = "Two-factor authentication setup (enrollment) page heading"
+description = "2段階認証の設定 (登録) ページの見出し"
 other = "Set up two-factor authentication"
 
 [settings_two_factor_auth_new_lead]
-description = "Two-factor authentication setup (enrollment) page lead text (scan QR / manual entry and enter the code)"
+description = "2段階認証の設定 (登録) ページの説明文 (QR読み取り / 手動入力とコード入力の案内)"
 other = "Scan the QR code with your authenticator app, or enter the key below manually, then enter the 6-digit code the app shows."
 
 [settings_two_factor_auth_new_qr_alt]
-description = "Alt text for the QR code image on the two-factor authentication setup (enrollment) page"
+description = "2段階認証の設定 (登録) ページのQRコード画像の代替テキスト"
 other = "QR code for registering an authenticator app"
 
 [settings_two_factor_auth_new_secret_label]
-description = "Label for the key to enter manually when the QR code cannot be scanned, on the two-factor authentication setup (enrollment) page"
+description = "2段階認証の設定 (登録) ページで、QRを読み取れない場合に手動入力するキーのラベル"
 other = "Key for manual entry"
 
 [settings_two_factor_auth_new_code_label]
-description = "Two-factor authentication setup (enrollment) page authentication code label"
+description = "2段階認証の設定 (登録) ページの認証コードのラベル"
 other = "Authentication code"
 
 [settings_two_factor_auth_new_submit]
-description = "Two-factor authentication setup (enrollment) page submit button (enable)"
+description = "2段階認証の設定 (登録) ページの送信ボタン (有効化する)"
 other = "Enable"
 
 [settings_two_factor_auth_create_title]
-description = "Two-factor authentication enabled (recovery codes) page title (title tag)"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページのタイトル (titleタグ)"
 other = "Recovery codes"
 
 [settings_two_factor_auth_create_description]
-description = "Two-factor authentication enabled (recovery codes) page meta description"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページのmeta description"
 other = "Your two-factor authentication recovery codes."
 
 [settings_two_factor_auth_create_heading]
-description = "Two-factor authentication enabled (recovery codes) page heading"
+description = "2段階認証の有効化完了 (リカバリーコード表示) ページの見出し"
 other = "Two-factor authentication is on"
 
 [settings_two_factor_auth_create_lead]
-description = "Two-factor authentication enabled page lead text (what recovery codes are for)"
+description = "2段階認証の有効化完了ページの説明文 (リカバリーコードの用途)"
 other = "If you cannot use your authenticator app, you can sign in with one of the recovery codes below."
 
 [settings_two_factor_auth_create_recovery_codes_warning]
-description = "Warning on the two-factor authentication enabled page prompting the user to save the recovery codes now (they are shown only once)"
+description = "2段階認証の有効化完了ページで、リカバリーコードを今すぐ保存するよう促す警告 (一度しか表示されない)"
 other = "Each code can be used only once. They will not be shown again after you leave this page, so save them somewhere safe now."
 
 [settings_two_factor_auth_create_done]
-description = "Link / button text from the two-factor authentication enabled page back to the settings hub"
+description = "2段階認証の有効化完了ページから設定ハブへ戻るリンク / ボタンのテキスト"
 other = "Back to settings"
 
 [settings_two_factor_auth_delete_title]
-description = "Two-factor authentication disable (confirmation) page title (title tag)"
+description = "2段階認証の無効化 (確認) ページのタイトル (titleタグ)"
 other = "Disable two-factor authentication"
 
 [settings_two_factor_auth_delete_description]
-description = "Two-factor authentication disable (confirmation) page meta description"
+description = "2段階認証の無効化 (確認) ページのmeta description"
 other = "Disable two-factor authentication."
 
 [settings_two_factor_auth_delete_heading]
-description = "Two-factor authentication disable (confirmation) page heading"
+description = "2段階認証の無効化 (確認) ページの見出し"
 other = "Disable two-factor authentication"
 
 [settings_two_factor_auth_delete_lead]
-description = "Two-factor authentication disable (confirmation) page lead text (what disabling does and the re-authentication requirement)"
+description = "2段階認証の無効化 (確認) ページの説明文 (無効化で何が起きるかと再認証の案内)"
 other = "Disabling two-factor authentication means you will no longer be asked for a code when you sign in. To continue, enter either your current password or a code from your authenticator app."
 
 [settings_two_factor_auth_delete_reauth_legend]
-description = "Legend labelling the re-authentication fieldset (current password / authentication code) on the two-factor authentication disable (confirmation) page"
+description = "2段階認証の無効化 (確認) ページの再認証fieldset (現在のパスワード / 認証コード) を示すlegend"
 other = "Confirm your identity"
 
 [settings_two_factor_auth_delete_reauth_hint]
-description = "Hint on the two-factor authentication disable (confirmation) page that only one of the password or code is needed"
+description = "2段階認証の無効化 (確認) ページで、パスワードとコードのどちらか一方を入力すればよいことを伝えるヒント"
 other = "Enter only one of these."
 
 [settings_two_factor_auth_delete_current_password_label]
-description = "Two-factor authentication disable (confirmation) page current password label"
+description = "2段階認証の無効化 (確認) ページの現在のパスワードのラベル"
 other = "Current password"
 
 [settings_two_factor_auth_delete_code_label]
-description = "Two-factor authentication disable (confirmation) page authentication code label"
+description = "2段階認証の無効化 (確認) ページの認証コードのラベル"
 other = "Authentication code"
 
 [settings_two_factor_auth_delete_confirm]
-description = "Final confirmation text shown by the browser confirm() dialog before disabling two-factor authentication"
+description = "2段階認証を無効化する前にブラウザのconfirm() で表示する最終確認の文言"
 other = "Disable two-factor authentication?"
 
 [settings_two_factor_auth_delete_submit]
-description = "Two-factor authentication disable (confirmation) page submit button"
+description = "2段階認証の無効化 (確認) ページの送信ボタン"
 other = "Disable"
 
 [admin_show_title]
-description = "Admin hub page title (title tag)"
+description = "管理ハブページのタイトル (titleタグ)"
 other = "Admin"
 
 [admin_show_heading]
-description = "Admin hub page heading"
+description = "管理ハブページの見出し"
 other = "Admin"
 
 [admin_show_users_link]
-description = "Link text on the admin hub page that leads to the user list page"
+description = "管理ハブページから利用者一覧ページへ誘導するリンクのテキスト"
 other = "User list"
 
 [admin_user_index_title]
-description = "User list page title (title tag)"
+description = "利用者一覧ページのタイトル (titleタグ)"
 other = "User list"
 
 [admin_user_index_title_filtered]
-description = "User list page title when narrowed by an atname prefix, with the prefix interpolated (title tag)"
+description = "atnameの先頭部分で絞り込んだ利用者一覧ページのタイトル (絞り込み文字列を差し込むtitleタグ)"
 other = "User list filtered by \"{{.Query}}\""
 
 [admin_user_index_title_paginated]
-description = "User list page title on the second or a later page, with the page number interpolated (title tag)"
+description = "2ページ目以降の利用者一覧ページのタイトル (ページ番号を差し込むtitleタグ)"
 other = "User list (Page {{.Page}})"
 
 [admin_user_index_title_filtered_paginated]
-description = "User list page title when narrowed by an atname prefix and on the second or a later page, with both interpolated (title tag)"
+description = "atnameの先頭部分で絞り込んだ2ページ目以降の利用者一覧ページのタイトル (絞り込み文字列とページ番号を差し込むtitleタグ)"
 other = "User list filtered by \"{{.Query}}\" (Page {{.Page}})"
 
 [admin_user_index_heading]
-description = "User list page heading"
+description = "利用者一覧ページの見出し"
 other = "User list"
 
 [admin_user_index_search_label]
-description = "Label of the search field on the user list page, which narrows the listing by the beginning of an atname"
+description = "利用者一覧ページの絞り込み入力欄のラベル (atnameの前方一致で絞り込む)"
 other = "Filter by atname"
 
 [admin_user_index_search_submit_button]
-description = "Submit button of the search form on the user list page"
+description = "利用者一覧ページの絞り込みフォームの送信ボタン"
 other = "Filter"
 
 [admin_user_index_table_caption]
-description = "Caption of the table on the user list page, saying what the table lists"
+description = "利用者一覧ページの表のキャプション (表が何を並べているか)"
 other = "The community's users and the roles they hold"
 
 [admin_user_index_atname_column]
-description = "Header of the atname column in the table on the user list page"
+description = "利用者一覧ページの表で、利用者のatnameの列の見出し"
 other = "Atname"
 
 [admin_user_index_joined_at_column]
-description = "Header of the column in the table on the user list page that says when the account was created"
+description = "利用者一覧ページの表で、アカウントの登録時期の列の見出し"
 other = "Joined"
 
 [admin_user_index_roles_column]
-description = "Header of the roles column in the table on the user list page"
+description = "利用者一覧ページの表で、利用者が持つロールの列の見出し"
 other = "Roles"
 
 [admin_user_index_actions_column]
-description = "Header of the per-row actions column in the table on the user list page"
+description = "利用者一覧ページの表で、行ごとの操作の列の見出し"
 other = "Actions"
 
 [admin_user_index_no_roles]
-description = "Text shown in a row of the user list page for a user holding no role"
+description = "利用者一覧ページの表で、ロールを1つも持たない利用者の行に表示する文言"
 other = "None"
 
 [admin_user_index_grant_admin_button]
-description = "Button in a row of the user list page that gives the administrator role to a user who does not hold it"
+description = "利用者一覧ページの表で、管理者ロールを持たない利用者にそれを付与するボタン"
 other = "Make administrator"
 
 [admin_user_index_revoke_admin_button]
-description = "Button in a row of the user list page that takes the administrator role from a user who holds it"
+description = "利用者一覧ページの表で、管理者ロールを持つ利用者からそれを剥奪するボタン"
 other = "Remove administrator"
 
 [admin_user_index_revoke_admin_confirm]
-description = "Confirmation asked before the administrator role is taken from another user on the user list page, with the user's atname interpolated"
+description = "利用者一覧ページで他の利用者から管理者ロールを剥奪する前に求める確認 (対象のatnameを差し込む)"
 other = "Remove the administrator role from @{{.Atname}}?"
 
 [admin_user_index_revoke_admin_self_confirm]
-description = "Confirmation asked before visitors take the administrator role from themselves on the user list page"
+description = "利用者一覧ページで自分自身から管理者ロールを剥奪する前に求める確認"
 other = "Removing your own administrator role will close these admin screens to you. Remove it?"
 
 [admin_user_index_empty]
-description = "Text shown on the user list page when nothing is being searched for and there is no user to list"
+description = "利用者一覧ページで、絞り込みが無く、表示する利用者が1人もいないときの文言"
 other = "There are no users."
 
 [admin_user_index_no_results]
-description = "Text shown on the user list page when no user matches the search, with the searched-for text interpolated"
+description = "利用者一覧ページで、絞り込みに一致する利用者がいないときの文言 (絞り込みの文字列を差し込む)"
 other = "No user has an atname beginning with \"{{.Query}}\"."
 
 [admin_user_index_past_last_page]
-description = "Text shown on a user list page past the last page when the listing has users on an earlier page"
+description = "利用者一覧の最後を越えたページで、前のページには利用者がいるときの文言"
 other = "There are no users on this page. Go to the previous page."
 
 [admin_user_index_pagination_label]
-description = "Accessible label for the paging navigation landmark on the user list page"
+description = "利用者一覧ページのページ送りのナビゲーションランドマークに付けるアクセシブルラベル"
 other = "Pagination"
 
 [admin_user_index_previous_page_link]
-description = "Link text on the user list page that leads to the previous page"
+description = "利用者一覧ページから1つ前のページへ移動するリンクのテキスト"
 other = "Previous page"
 
 [admin_user_index_next_page_link]
-description = "Link text on the user list page that leads to the next page"
+description = "利用者一覧ページから1つ次のページへ移動するリンクのテキスト"
 other = "Next page"
 
 [admin_user_index_page_position]
-description = "Text on the user list page saying where the page being read sits, with the current page number and the number of pages interpolated"
+description = "利用者一覧ページで、読んでいるページが全体のどこかを示す文言 (現在のページ数と総ページ数を差し込む)"
 other = "Page {{.Page}} of {{.TotalPages}}"
 
 [role_name_admin]
-description = "Display name of the built-in admin role, used wherever a screen shows a role name"
+description = "組み込みのadminロールの表示名 (画面がロール名を表示するときに使う)"
 other = "Administrator"
 
 [validation_required]
-description = "Required field validation error"
+description = "必須フィールドのバリデーションエラー"
 other = "is required"
 
 [validation_email_invalid]
-description = "Invalid email format validation error"
+description = "メールアドレス形式のバリデーションエラー"
 other = "is not a valid email address"
 
 [validation_email_already_taken]
-description = "Duplicate email validation error"
+description = "メールアドレス重複のバリデーションエラー"
 other = "is already taken"
 
 [validation_email_unchanged]
-description = "Validation error when the new email address is the same as the current one"
+description = "新しいメールアドレスが現在のアドレスと同一のときのバリデーションエラー"
 other = "is the same as your current email address"
 
 [validation_atname_too_long]
-description = "Validation error when the atname is too long"
+description = "atnameが長すぎるときのバリデーションエラー"
 other = "must be at most 20 characters"
 
 [validation_atname_invalid_format]
-description = "Validation error when the atname contains disallowed characters"
+description = "atnameに使えない文字が含まれるときのバリデーションエラー"
 other = "may only contain letters, numbers, and underscores"
 
 [validation_atname_already_taken]
-description = "Duplicate atname validation error"
+description = "atname重複のバリデーションエラー"
 other = "is already taken"
 
 [validation_code_invalid_format]
-description = "Validation error when the confirmation code format is invalid"
+description = "確認コードの形式が不正なときのバリデーションエラー"
 other = "must be a 6-digit number"
 
 [validation_code_incorrect_or_expired]
-description = "Form-wide error when the confirmation code is incorrect or expired"
+description = "確認コードが一致しない、または有効期限切れのときのフォーム全体のエラー"
 other = "The confirmation code is incorrect or has expired"
 
 [validation_email_delivery_failed]
-description = "Form-wide error when the confirmation mail could not be enqueued (prompts a retry)"
+description = "確認メールの投入に失敗したときのフォーム全体のエラー (再申請を促す)"
 other = "Failed to send the confirmation code. Please try again in a moment."
 
 [validation_email_change_conflict]
-description = "Form-wide error when the new address was taken by another account just before applying the email change (prompts retrying with a different address)"
+description = "メールアドレス変更の確認時、適用直前に新しいアドレスが他アカウントに取得されていたときのフォーム全体のエラー (別アドレスでの再試行を促す)"
 other = "That email address is already taken. Please try again with a different address."
 
 [validation_password_too_short]
-description = "Validation error when the password is too short"
+description = "パスワードが短すぎるときのバリデーションエラー"
 other = "must be at least 8 characters"
 
 [validation_password_too_long]
-description = "Validation error when the password is too long"
+description = "パスワードが長すぎるときのバリデーションエラー"
 other = "is too long"
 
 [validation_password_mismatch]
-description = "Validation error when the password and its confirmation do not match"
+description = "パスワードと確認用パスワードが一致しないときのバリデーションエラー"
 other = "does not match the password"
 
 [validation_credentials_invalid]
-description = "Form-wide error on sign-in when the email and password do not match (without revealing which is wrong)"
+description = "サインイン時にemailとパスワードの組み合わせが正しくないときのフォーム全体のエラー (どちらが誤りかは明かさない)"
 other = "The email or password is incorrect"
 
 [validation_current_password_incorrect]
-description = "Validation error when the current password does not match"
+description = "現在のパスワードの照合に失敗したときのバリデーションエラー"
 other = "is incorrect"
 
 [validation_totp_code_invalid_format]
-description = "Validation error when the two-factor authentication code has an invalid format"
+description = "2段階認証の認証コードの形式が不正なときのバリデーションエラー"
 other = "The code must be 6 digits."
 
 [validation_totp_code_incorrect]
-description = "Validation error when the two-factor authentication code does not match the authenticator app's value"
+description = "2段階認証の認証コードが認証アプリの生成値と一致しないときのバリデーションエラー"
 other = "The code is incorrect."
 
 [validation_totp_setup_invalid]
-description = "Form-wide error when enabling two-factor authentication but no in-progress setup exists (not started, or already enabled)"
+description = "2段階認証の有効化時に登録中の設定が見つからない (未開始・既に有効) ときのフォーム全体のエラー"
 other = "We couldn't find your two-factor authentication setup. Please start again."
 
 [validation_two_factor_disable_reauth_required]
-description = "Form-wide error when disabling two-factor authentication but neither the current password nor an authentication code was entered"
+description = "2段階認証の無効化で、現在のパスワードも認証コードも入力されていないときのフォーム全体のエラー"
 other = "Enter your current password or an authentication code"
 
 [validation_two_factor_disable_reauth_incorrect]
-description = "Form-wide error when disabling two-factor authentication but the entered current password / authentication code is incorrect"
+description = "2段階認証の無効化で、入力された現在のパスワード / 認証コードが正しくないときのフォーム全体のエラー"
 other = "Your current password or authentication code is incorrect"
 
 [validation_two_factor_challenge_invalid]
-description = "Form-wide error on the sign-in two-factor challenge when the pending user has no enabled 2FA setting (a stale or forged cookie, or 2FA disabled mid-flight); prompts signing in again"
+description = "サインイン時の2段階認証チャレンジで、保留中ユーザーの有効な2FA設定が見つからない (Cookieが失効・不正、または途中で無効化) ときのフォーム全体のエラー (再サインインを促す)"
 other = "Two-factor authentication could not be completed. Please sign in again."
 
 [validation_recovery_code_invalid_format]
-description = "Validation error when the recovery code has an invalid format"
+description = "リカバリーコードの形式が不正なときのバリデーションエラー"
 other = "The code must be 8 characters (letters and digits)."
 
 [validation_recovery_code_incorrect]
-description = "Validation error when the recovery code matches none of the stored codes"
+description = "リカバリーコードが保存済みのいずれのコードとも一致しないときのバリデーションエラー"
 other = "The recovery code is incorrect."
 
 [validation_token_invalid]
-description = "Form-wide error when the password reset token is invalid (unknown or missing)"
+description = "パスワードリセットのトークンが無効 (未知・未入力) なときのフォーム全体のエラー"
 other = "This password reset link is invalid. Please request a new one."
 
 [validation_token_used]
-description = "Form-wide error when the password reset token has already been used"
+description = "パスワードリセットのトークンが使用済みのときのフォーム全体のエラー"
 other = "This password reset link has already been used. Please request a new one."
 
 [validation_token_expired]
-description = "Form-wide error when the password reset token has expired"
+description = "パスワードリセットのトークンが期限切れのときのフォーム全体のエラー"
 other = "This password reset link has expired. Please request a new one."
 
 [validation_turnstile_failed]
-description = "Form-wide error when the Turnstile bot check fails (prompts a retry)"
+description = "TurnstileのBot検証に失敗したときのフォーム全体のエラー (再試行を促す)"
 other = "We couldn't verify that you're not a robot. Please try again."
 
 [validation_text_invalid_characters]
-description = "Validation error when the input breaks the text input rules (invalid UTF-8 or NUL)"
+description = "入力がテキストの入力規則 (妥当なUTF-8でNULを含まないこと) に反するときのバリデーションエラー"
 other = "contains characters that cannot be used"
 
 [validation_thread_title_single_line]
-description = "Validation error when a thread title holds a line break"
+description = "スレッドのタイトルに改行が含まれるときのバリデーションエラー"
 other = "must be a single line, with no line breaks"
 
 [validation_thread_title_too_long]
-description = "Validation error when a thread title is too long"
+description = "スレッドのタイトルが長すぎるときのバリデーションエラー"
 other = "must be at most 100 characters"
 
 [validation_thread_language_invalid]
-description = "Validation error when the thread's primary language is not one of the languages a thread may be written in"
+description = "スレッドの主言語が、選べる言語のいずれでもないときのバリデーションエラー"
 other = "must be chosen from the list"
 
 [validation_post_body_too_long]
-description = "Validation error when a post body is too long"
+description = "投稿の本文が長すぎるときのバリデーションエラー"
 other = "must be at most 10,000 characters"
 
 [validation_post_interval_too_short]
-description = "Form-wide error when a post arrives before the interval since the previous one has passed (tells the wait)"
+description = "前の投稿から間隔を空けずに投稿したときのフォーム全体のエラー (待ち時間を伝える)"
 one = "Your posts are too close together. Please try again in {{.Count}} second."
 other = "Your posts are too close together. Please try again in {{.Count}} seconds."
 
 [validation_post_save_failed]
-description = "Form-wide error shown when saving a post fails unexpectedly, inviting a retry"
+description = "投稿の保存が予期せず失敗したときのフォーム全体のエラー (再試行を促す)"
 other = "The post could not be saved. Please try again in a moment."
 
 [validation_post_account_unavailable]
-description = "Form-wide error when the account can no longer post (it has withdrawn)"
+description = "退会などにより投稿できなくなったアカウントから投稿したときのフォーム全体のエラー"
 other = "This account can no longer post."
 
 [validation_post_thread_locked]
-description = "Form-wide error when a post is written to a thread that takes no further post"
+description = "投稿を受け付けなくなったスレッドへ投稿したときのフォーム全体のエラー"
 other = "This thread is no longer accepting posts."
 
 [validation_user_role_last_admin]
-description = "Message shown when revoking the administrator role was refused because it would leave no administrator"
+description = "最後の管理者から管理者ロールを剥奪しようとして拒否したときのメッセージ"
 other = "The administrator role cannot be taken from the last administrator. Make someone else an administrator first."
 
 [validation_withdrawal_last_admin]
-description = "Form-wide message shown when withdrawal was refused because the account is the last administrator"
+description = "最後の管理者が退会しようとして拒否したときの、退会フォーム全体のメッセージ"
 other = "The last administrator cannot withdraw. Make someone else an administrator first."
 
 [validation_moderation_reason_too_long]
-description = "Validation error when the reason recorded with a moderation operation is too long"
+description = "モデレーションの操作に記録する理由が長すぎるときのバリデーションエラー"
 other = "must be at most 500 characters"
 
 [thread_new_title]
-description = "Thread creation page title (title tag)"
+description = "スレッド作成ページのタイトル (titleタグ)"
 other = "Start a thread"
 
 [thread_new_heading]
-description = "Thread creation page heading, also used as the current step of the breadcrumb"
+description = "スレッド作成ページの見出し。パンくずの現在地の段にも使う"
 other = "Start a thread"
 
 [thread_new_lead]
-description = "Thread creation page lead, naming the board the thread is started in, with the board name interpolated"
+description = "スレッド作成ページの説明文。どの掲示板に立てるのかを伝える。掲示板名を差し込む"
 other = "Starting a new thread in {{.Board}}."
 
 [thread_new_title_label]
-description = "Thread creation page title label"
+description = "スレッド作成ページのタイトルのラベル"
 other = "Title"
 
 [thread_new_title_hint]
-description = "Thread creation page title hint (length limit)"
+description = "スレッド作成ページのタイトルのヒント (文字数の上限)"
 other = "Up to 100 characters"
 
 [thread_new_language_label]
-description = "Thread creation page primary-language label"
+description = "スレッド作成ページの主言語のラベル"
 other = "Primary language"
 
 [thread_new_language_hint]
-description = "Thread creation page primary-language hint (what the field is choosing)"
+description = "スレッド作成ページの主言語のヒント (何を選ぶ欄なのかを伝える)"
 other = "Choose the language this thread is mainly written in"
 
 [thread_new_body_label]
-description = "Thread creation page body label, saying it becomes the thread's first post"
+description = "スレッド作成ページの本文のラベル。スレッドの最初の投稿になることを示す"
 other = "First post"
 
 [thread_new_errors_heading]
-description = "Heading for the field error summary in the thread creation form"
+description = "スレッド作成フォームの入力エラー要約の見出し"
 other = "Check your entries"
 
 [thread_new_submit]
-description = "Thread creation page submit button"
+description = "スレッド作成ページの送信ボタン"
 other = "Start thread"
 
 [post_body_label]
-description = "Post form body label"
+description = "投稿フォームの本文のラベル"
 other = "Message"
 
 [post_body_hint]
-description = "Post form body hint (length limit)"
+description = "投稿フォームの本文のヒント (文字数の上限)"
 other = "Up to 10,000 characters"
 
 [post_reference_hint]
-description = "Reply form body hint, stating how a post in the same thread is quoted"
+description = "返信フォームの本文のヒント。同じスレッドの投稿を引用する書き方を伝える"
 other = "Quote a post in this thread by its reply number, as in >>1"
 
 [post_interval_hint]
-description = "Post form notice stating the interval between one person's posts, with the seconds interpolated"
+description = "投稿フォームで、投稿と投稿の間に空ける間隔を伝える案内。秒数を差し込む"
 one = "Posting again takes an interval of {{.Count}} second."
 other = "Posting again takes an interval of {{.Count}} seconds."
 
 [post_errors_heading]
-description = "Heading for the field error summary in the post form"
+description = "投稿フォームの入力エラー要約の見出し"
 other = "Check your entries"
 
 [post_reply_submit]
-description = "Reply form submit button"
+description = "返信フォームの送信ボタン"
 other = "Post a reply"
 
 [post_create_title]
-description = "Title (title tag) of the page shown when a reply was not saved"
+description = "返信が保存されなかったときに表示するページのタイトル (titleタグ)"
 other = "Your reply was not posted"
 
 [post_create_heading]
-description = "Heading of the page shown when a reply was not saved"
+description = "返信が保存されなかったときに表示するページの見出し"
 other = "Your reply was not posted"
 
 [post_create_lead]
-description = "Lead of the page shown when a reply was not saved, followed by the link to the thread it was written in"
+description = "返信が保存されなかったときに表示するページの説明文。投稿先のスレッドへのリンクがこの直後に続く"
 other = "This reply was written in the thread below."
 
 [post_create_kept_body_label]
-description = "Label of the read-only field holding what was written, shown when a reply to a thread that takes no post was refused"
+description = "投稿を受け付けないスレッドへの返信が拒否されたときに、入力された本文を読み取り専用で示す欄のラベル"
 other = "What you wrote"
 
 [post_create_kept_body_hint]
-description = "Hint saying the text can be kept, shown when a reply to a thread that takes no post was refused"
+description = "投稿を受け付けないスレッドへの返信が拒否されたときに、本文を控えられることを伝えるヒント"
 other = "You can copy this text and keep it."

@@ -10,22 +10,13 @@ import (
 	templruntime "github.com/a-h/templ/runtime"
 )
 
-// Default is the shared HTML email layout. It provides the document scaffold
-// (<!DOCTYPE>, a <head> with charset/viewport/title, and a styled <body>) plus a
-// minimal footer, and wraps the per-email body passed as children. All styling
-// is inlined because email clients ignore external and most <head> stylesheets.
-//
-// The lang attribute is passed explicitly by the per-locale template (e.g. "ja"
-// or "en") rather than read from context: emails render from a stored account
-// locale, outside the request lifecycle that the i18n middleware populates.
-//
-// [Ja] Default は共有の HTML メールレイアウト。ドキュメントの外枠 (<!DOCTYPE>、
-// charset/viewport/title を含む <head>、スタイル付きの <body>) と最小限のフッターを
-// 提供し、children として渡される各メールの本文を包む。メールクライアントは外部
+// Defaultは共有のHTMLメールレイアウト。ドキュメントの外枠 (<!DOCTYPE>、
+// charset/viewport/titleを含む <head>、スタイル付きの <body>) と最小限のフッターを
+// 提供し、childrenとして渡される各メールの本文を包む。メールクライアントは外部
 // および大半の <head> スタイルシートを無視するため、スタイルはすべてインライン化する。
 //
-// lang 属性は context から読まず、各ロケール別テンプレート (例: "ja" / "en") が
-// 明示的に渡す。メールは i18n ミドルウェアが設定するリクエストのライフサイクルの外で、
+// lang属性はcontextから読まず、各ロケール別テンプレート (例: "ja" / "en") が
+// 明示的に渡す。メールはi18nミドルウェアが設定するリクエストのライフサイクルの外で、
 // 永続化されたアカウントのロケールから描画されるためである。
 func Default(lang, title string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -55,7 +46,7 @@ func Default(lang, title string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(lang)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/layouts/default.templ`, Line: 22, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/layouts/default.templ`, Line: 13, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -68,7 +59,7 @@ func Default(lang, title string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/layouts/default.templ`, Line: 26, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/layouts/default.templ`, Line: 17, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {

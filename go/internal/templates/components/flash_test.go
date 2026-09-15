@@ -10,15 +10,10 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// TestFlash verifies that Flash renders a Basecoat toast for a flash message,
-// carrying the message text, the category matching its type, the dismiss button
-// (localized), and role="alert" for errors versus role="status" otherwise, and
-// that it renders nothing at all when the message is nil.
-//
-// [Ja] TestFlash は Flash がフラッシュメッセージを Basecoat の toast として描画し、
-// メッセージ本文・種別に対応する category・(ローカライズされた) 閉じるボタンを持ち、
-// エラーのとき role="alert"、それ以外は role="status" になることを検証します。
-// また、メッセージが nil のときは何も描画しないことも検証します。
+// TestFlashはFlashがフラッシュメッセージをBasecoatのtoastとして描画し、
+// メッセージ本文・種別に対応するcategory・(ローカライズされた) 閉じるボタンを持ち、
+// エラーのときrole="alert"、それ以外はrole="status" になることを検証します。
+// また、メッセージがnilのときは何も描画しないことも検証します。
 func TestFlash(t *testing.T) {
 	t.Parallel()
 
@@ -30,7 +25,7 @@ func TestFlash(t *testing.T) {
 		wantEmpty       bool
 	}{
 		{
-			name:  "success message renders a success toast",
+			name:  "成功のメッセージは成功のトーストを描画する",
 			flash: &session.FlashMessage{Type: session.FlashSuccess, Message: "ログアウトしました"},
 			wantContains: []string{
 				`id="toaster"`,
@@ -48,7 +43,7 @@ func TestFlash(t *testing.T) {
 			},
 		},
 		{
-			name:  "error message renders an assertive error toast",
+			name:  "エラーのメッセージはassertiveなエラーのトーストを描画する",
 			flash: &session.FlashMessage{Type: session.FlashError, Message: "エラーが発生しました"},
 			wantContains: []string{
 				`role="alert"`,
@@ -62,7 +57,7 @@ func TestFlash(t *testing.T) {
 			},
 		},
 		{
-			name:  "warning message renders a warning toast",
+			name:  "警告のメッセージは警告のトーストを描画する",
 			flash: &session.FlashMessage{Type: session.FlashWarning, Message: "注意メッセージ"},
 			wantContains: []string{
 				`role="status"`,
@@ -76,7 +71,7 @@ func TestFlash(t *testing.T) {
 			},
 		},
 		{
-			name:  "info message renders an info toast",
+			name:  "お知らせのメッセージはお知らせのトーストを描画する",
 			flash: &session.FlashMessage{Type: session.FlashInfo, Message: "お知らせ"},
 			wantContains: []string{
 				`role="status"`,
@@ -90,7 +85,7 @@ func TestFlash(t *testing.T) {
 			},
 		},
 		{
-			name:      "nil message renders nothing",
+			name:      "メッセージがnilなら何も描画しない",
 			flash:     nil,
 			wantEmpty: true,
 		},
@@ -104,34 +99,30 @@ func TestFlash(t *testing.T) {
 
 			var buf strings.Builder
 			if err := components.Flash(tt.flash).Render(ctx, &buf); err != nil {
-				t.Fatalf("render failed: %v", err)
+				t.Fatalf("描画に失敗: %v", err)
 			}
 
 			got := buf.String()
 			if tt.wantEmpty {
 				if strings.TrimSpace(got) != "" {
-					t.Errorf("expected no output, got %q", got)
+					t.Errorf("出力 = %q、空を期待", got)
 				}
 				return
 			}
 
-			// An else-if chain in an attribute context miscompiles into a stray
-			// literal " else" leaking into the toast tag; guard against that
-			// regression across every category.
-			//
-			// [Ja] 属性コンテキストでの else-if 連鎖は toast タグにリテラルの " else" を
+			// 属性コンテキストでのelse-if連鎖はtoastタグにリテラルの " else" を
 			// 混入させる形で壊れるため、その回帰を全種別で防ぐ。
 			if strings.Contains(got, " else") {
-				t.Errorf("output contains a stray %q attribute\noutput: %s", " else", got)
+				t.Errorf("出力に余計な %q 属性が含まれている\n出力: %s", " else", got)
 			}
 			for _, want := range tt.wantContains {
 				if !strings.Contains(got, want) {
-					t.Errorf("output does not contain %q\noutput: %s", want, got)
+					t.Errorf("出力に %q が含まれていない\n出力: %s", want, got)
 				}
 			}
 			for _, notWant := range tt.wantNotContains {
 				if strings.Contains(got, notWant) {
-					t.Errorf("output should not contain %q\noutput: %s", notWant, got)
+					t.Errorf("出力に %q が含まれている\n出力: %s", notWant, got)
 				}
 			}
 		})

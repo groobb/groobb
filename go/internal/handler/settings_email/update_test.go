@@ -23,12 +23,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSettingsEmailHandler wires a settings_email Handler over the test database's
-// repositories with a fake job inserter, returning the inserter too so a test can
-// assert what was enqueued or force an enqueue failure.
-//
-// [Ja] newSettingsEmailHandler はテスト用データベースのリポジトリで settings_email
-// Handler をフェイクのジョブインサーターで組み立て、投入内容を検証したり enqueue 失敗を
+// newSettingsEmailHandlerはテスト用データベースのリポジトリでsettings_email
+// Handlerをフェイクのジョブインサーターで組み立て、投入内容を検証したりenqueue失敗を
 // 強制したりできるようインサーターも返します。
 func newSettingsEmailHandler(t *testing.T, db *database.DB) (*settings_email.Handler, *testutil.FakeJobInserter) {
 	t.Helper()
@@ -48,13 +44,9 @@ func newSettingsEmailHandler(t *testing.T, db *database.DB) (*settings_email.Han
 	return settings_email.NewHandler(cfg, uc), inserter
 }
 
-// seedUserWithPassword creates a committed user with the given email and the
-// password "password123", returning the user model so an Update test can place it
-// in the request context (as RequireAuth would) and authenticate against it.
-//
-// [Ja] seedUserWithPassword は指定 email とパスワード "password123" を持つコミット済み
-// ユーザーを作成し、ユーザーモデルを返す。Update テストが (RequireAuth がするように) それを
-// リクエスト context に載せ、それに対して認証できるようにする。
+// seedUserWithPasswordは指定emailとパスワード "password123" を持つコミット済み
+// ユーザーを作成し、ユーザーモデルを返す。Updateテストが (RequireAuthがするように) それを
+// リクエストcontextに載せ、それに対して認証できるようにする。
 func seedUserWithPassword(t *testing.T, db *database.DB, email string) *model.User {
 	t.Helper()
 
@@ -84,12 +76,8 @@ func seedUserWithPassword(t *testing.T, db *database.DB, email string) *model.Us
 	return user
 }
 
-// patchSettingsEmail builds a PATCH /settings/email request carrying the new email
-// and current password as form data, with the user in the context (as RequireAuth
-// would place it) and the locale set.
-//
-// [Ja] patchSettingsEmail は新しい email と現在のパスワードをフォームデータとして運ぶ
-// PATCH /settings/email リクエストを組み立て、(RequireAuth が置くように) ユーザーを context に
+// patchSettingsEmailは新しいemailと現在のパスワードをフォームデータとして運ぶ
+// PATCH /settings/emailリクエストを組み立て、(RequireAuthが置くように) ユーザーをcontextに
 // 載せ、ロケールを設定する。
 func patchSettingsEmail(user *model.User, newEmail, currentPassword string, locale model.Locale) *http.Request {
 	form := url.Values{
@@ -103,11 +91,7 @@ func patchSettingsEmail(user *model.User, newEmail, currentPassword string, loca
 	return req.WithContext(ctx)
 }
 
-// TestUpdate_Success verifies that a valid new email plus the correct current
-// password issues a confirmation for the new address, enqueues the mail, and
-// redirects to the code-entry step.
-//
-// [Ja] TestUpdate_Success は、有効な新しい email と正しい現在のパスワードが、新しい
+// TestUpdate_Successは、有効な新しいemailと正しい現在のパスワードが、新しい
 // アドレスの確認を発行し、メールを投入し、コード入力ステップへリダイレクトすることを
 // 検証する。
 func TestUpdate_Success(t *testing.T) {
@@ -123,10 +107,10 @@ func TestUpdate_Success(t *testing.T) {
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/settings/email/confirmation/new" {
-		t.Errorf("Location = %q, want %q", loc, "/settings/email/confirmation/new")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/settings/email/confirmation/new")
 	}
 	if !inserter.Called {
 		t.Error("確認メールが投入されていない")
@@ -134,18 +118,14 @@ func TestUpdate_Success(t *testing.T) {
 
 	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(context.Background(), user.ID)
 	if err != nil {
-		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
+		t.Fatalf("FindActiveEmailChangeByUserID()のエラー = %v", err)
 	}
 	if active == nil || active.Email != newEmail {
-		t.Errorf("保留中のメール変更確認 = %v, want アドレス %q", active, newEmail)
+		t.Errorf("保留中のメール変更確認 = %v、期待値 = アドレス %q", active, newEmail)
 	}
 }
 
-// TestUpdate_ValidationError verifies that a wrong current password re-renders the
-// form with 422 and the incorrect-password message, does not enqueue the mail, and
-// creates no confirmation.
-//
-// [Ja] TestUpdate_ValidationError は、誤った現在のパスワードがフォームを 422 と
+// TestUpdate_ValidationErrorは、誤った現在のパスワードがフォームを422と
 // パスワード誤りのメッセージで再描画し、メールを投入せず、確認を作成しないことを
 // 検証する。
 func TestUpdate_ValidationError(t *testing.T) {
@@ -161,25 +141,20 @@ func TestUpdate_ValidationError(t *testing.T) {
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "wrongpassword", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusUnprocessableEntity)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "現在のパスワードが正しくありません") {
 		t.Error("現在パスワード誤りのエラーメッセージが描画されていない")
 	}
-	// The accessible-error markup must accompany the message so screen readers
-	// announce it and associate it with the input.
-	//
-	// [Ja] スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
+	// スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
 	// アクセシブルなエラーマークアップがメッセージに伴っていること。
 	if !strings.Contains(body, `aria-invalid="true"`) {
-		t.Error("エラー時の入力欄に aria-invalid='true' が無い")
+		t.Error("エラー時の入力欄にaria-invalid='true' が無い")
 	}
-	// The attempted new email is echoed back so the user does not retype it.
-	//
-	// [Ja] 試した新しい email はエコーバックされること。
+	// 試した新しいemailはエコーバックされること。
 	if !strings.Contains(body, `value="`+newEmail+`"`) {
-		t.Error("入力した新しい email がエコーバックされていない")
+		t.Error("入力した新しいemailがエコーバックされていない")
 	}
 	if inserter.Called {
 		t.Error("バリデーション失敗時に確認メールが投入された")
@@ -187,19 +162,15 @@ func TestUpdate_ValidationError(t *testing.T) {
 
 	active, err := repository.NewEmailConfirmationRepository(db).FindActiveEmailChangeByUserID(context.Background(), user.ID)
 	if err != nil {
-		t.Fatalf("FindActiveEmailChangeByUserID() error = %v", err)
+		t.Fatalf("FindActiveEmailChangeByUserID()のエラー = %v", err)
 	}
 	if active != nil {
 		t.Error("バリデーション失敗時にメール変更確認が作成された")
 	}
 }
 
-// TestUpdate_EnqueueFailure verifies that when the confirmation mail cannot be
-// enqueued, Update re-renders the form with 500 and a form-wide error (the retry
-// path) and echoes the attempted new email back.
-//
-// [Ja] TestUpdate_EnqueueFailure は、確認メールを投入できないとき、Update がフォームを
-// 500 とフォーム全体のエラー (再申請導線) で再描画し、試した新しい email をエコーバック
+// TestUpdate_EnqueueFailureは、確認メールを投入できないとき、Updateがフォームを
+// 500とフォーム全体のエラー (再申請導線) で再描画し、試した新しいemailをエコーバック
 // することを検証する。
 func TestUpdate_EnqueueFailure(t *testing.T) {
 	t.Parallel()
@@ -215,19 +186,19 @@ func TestUpdate_EnqueueFailure(t *testing.T) {
 	handler.Update(rec, patchSettingsEmail(user, newEmail, "password123", model.LocaleJa))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, `action="/settings/email"`) {
 		t.Error("再申請フォームが再描画されていない")
 	}
 	if !strings.Contains(body, `role="alert"`) {
-		t.Error("フォーム全体のエラーに role='alert' が無い")
+		t.Error("フォーム全体のエラーにrole='alert' が無い")
 	}
 	if !strings.Contains(body, "確認コードの送信に失敗しました") {
 		t.Error("フォーム全体のエラーメッセージが描画されていない")
 	}
 	if !strings.Contains(body, `value="`+newEmail+`"`) {
-		t.Error("入力した新しい email がエコーバックされていない")
+		t.Error("入力した新しいemailがエコーバックされていない")
 	}
 }

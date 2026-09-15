@@ -10,12 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// RevokeUserRoleUsecase takes a role away from someone. Taking one's own admin
-// role away is admitted like any other, so an administrator stepping down does
-// not need a second administrator to do it for them; what is refused is leaving
-// the community with no administrator at all.
-//
-// [Ja] RevokeUserRoleUsecase は誰かからロールを取り上げます。自分自身の admin ロールを
+// RevokeUserRoleUsecaseは誰かからロールを取り上げます。自分自身のadminロールを
 // 外すことも他と同じく許されるため、管理者を降りる人がそのために別の管理者を必要とする
 // ことはありません。拒否されるのは、コミュニティを管理者のいない状態にすることです。
 type RevokeUserRoleUsecase struct {
@@ -25,11 +20,8 @@ type RevokeUserRoleUsecase struct {
 	userRoleRepo *repository.UserRoleRepository
 }
 
-// NewRevokeUserRoleUsecase builds a RevokeUserRoleUsecase from the write pool
-// and the repositories it reads and persists through.
-//
-// [Ja] NewRevokeUserRoleUsecase は書き込み用プールと、読み書きに使うリポジトリから
-// RevokeUserRoleUsecase を構築します。
+// NewRevokeUserRoleUsecaseは書き込み用プールと、読み書きに使うリポジトリから
+// RevokeUserRoleUsecaseを構築します。
 func NewRevokeUserRoleUsecase(
 	writer *sql.DB,
 	roleRepo *repository.RoleRepository,
@@ -44,12 +36,8 @@ func NewRevokeUserRoleUsecase(
 	}
 }
 
-// RevokeUserRoleInput is the input to Execute. Actor is who is taking the role
-// away, TargetUserID the account losing it, and RoleName the role by the name
-// every instance addresses it with.
-//
-// [Ja] RevokeUserRoleInput は Execute の入力です。Actor はロールを取り上げる側、
-// TargetUserID はそれを失うアカウント、RoleName はどのインスタンスでも同じ名前で指される
+// RevokeUserRoleInputはExecuteの入力です。Actorはロールを取り上げる側、
+// TargetUserIDはそれを失うアカウント、RoleNameはどのインスタンスでも同じ名前で指される
 // ロールです。
 type RevokeUserRoleInput struct {
 	Actor        Actor
@@ -57,24 +45,13 @@ type RevokeUserRoleInput struct {
 	RoleName     model.RoleName
 }
 
-// RevokeUserRoleOutput names the account the role was taken from, as the account
-// itself spells its name, for the reason GrantUserRoleOutput carries it.
-//
-// [Ja] RevokeUserRoleOutput は、ロールを取り上げた相手のアカウントを、そのアカウント
-// 自身が綴る名前で名指します。理由は GrantUserRoleOutput がそれを運ぶ理由と同じです。
+// RevokeUserRoleOutputは、ロールを取り上げた相手のアカウントを、そのアカウント
+// 自身が綴る名前で名指します。理由はGrantUserRoleOutputがそれを運ぶ理由と同じです。
 type RevokeUserRoleOutput struct {
 	TargetAtname string
 }
 
-// Execute takes the role away from the target user.
-//
-// Permission, the role and the target are resolved before the transaction, so a
-// request that is refused or names nothing costs no write lock. What the
-// transaction reads is the assignment and, for the admin role, the target's
-// current state and the active holder count: these decide whether removal would
-// leave the community without an active administrator.
-//
-// [Ja] Execute は対象の利用者からロールを取り上げます。
+// Executeは対象の利用者からロールを取り上げます。
 //
 // 権限・ロール・対象はトランザクションの前で解決するため、拒否される要求も、何も名指して
 // いない要求も、書き込みロックを消費しません。トランザクションが読むのは割当と、admin
@@ -106,21 +83,12 @@ func (uc *RevokeUserRoleUsecase) Execute(ctx context.Context, input RevokeUserRo
 	return &RevokeUserRoleOutput{TargetAtname: target.Atname}, nil
 }
 
-// revoke removes the assignment, having first confirmed inside the same
-// transaction that the user holds the role and that removing it leaves the
-// community an administrator.
-//
-// Not holding it is success rather than a missing resource: what the request
-// asked for is that the person not hold the role, and they do not. A revoke
-// arriving twice therefore says the same thing twice, as does one racing another
-// for the same assignment.
-//
-// [Ja] revoke は、ユーザーがそのロールを持つこと、そしてそれを外してもコミュニティに管理者
+// revokeは、ユーザーがそのロールを持つこと、そしてそれを外してもコミュニティに管理者
 // が残ることを同じトランザクションの中で確かめてから、割当を削除します。
 //
 // 持っていないことは、リソースの不在ではなく成功です。要求が求めたのはその人がロールを
-// 持っていないことであり、実際に持っていないためです。したがって 2 度届いた剥奪は同じことを
-// 2 度述べ、同じ割当を奪い合った 2 つの剥奪も同じく述べます。
+// 持っていないことであり、実際に持っていないためです。したがって2度届いた剥奪は同じことを
+// 2度述べ、同じ割当を奪い合った2つの剥奪も同じく述べます。
 func (uc *RevokeUserRoleUsecase) revoke(ctx context.Context, userID model.UserID, role *model.Role) error {
 	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {
@@ -139,11 +107,7 @@ func (uc *RevokeUserRoleUsecase) revoke(ctx context.Context, userID model.UserID
 	}
 
 	if role.Name == model.RoleNameAdmin {
-		// A suspended or withdrawn target is not in the active holder count.
-		// Read the target inside this transaction so a concurrent suspension or
-		// unsuspension cannot change whether revoking reduces that count.
-		//
-		// [Ja] 停止中・退会済みの対象は有効な保持者数に含まれません。停止・解除が同時に
+		// 停止中・退会済みの対象は有効な保持者数に含まれません。停止・解除が同時に
 		// 届いても、剥奪が人数を減らすかどうかの判断が変わらないよう、対象はこの
 		// トランザクションの中で読みます。
 		target, err := uc.userRepo.WithTx(tx).FindByID(ctx, userID)

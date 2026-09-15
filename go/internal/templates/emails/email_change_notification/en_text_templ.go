@@ -12,11 +12,8 @@ import (
 	templruntime "github.com/a-h/templ/runtime"
 )
 
-// EnText renders the English plain-text body. Like JaText it is built with
-// templ.Raw from a formatted string so the line breaks survive verbatim.
-//
-// [Ja] EnText は英語のプレーンテキスト本文を描画します。JaText と同様、整形済み
-// 文字列から templ.Raw で組み立て、改行をそのまま保ちます。
+// EnTextは英語のプレーンテキスト本文を描画します。JaTextと同様、整形済み
+// 文字列からtempl.Rawで組み立て、改行をそのまま保ちます。
 func EnText(data Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

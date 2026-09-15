@@ -6,19 +6,11 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the sign-in TOTP challenge page. Code is echoed back
-// so a re-rendered form (after a validation error) keeps what the user typed, and
-// FormErrors carries the validation messages: a form-wide message (a gone challenge
-// that asks the user to sign in again) shown at the top, and a per-field message (a
-// malformed or incorrect code) shown beneath the input. ReturnTo carries where
-// the visitor was headed when a guarded route turned them away, handed over by
-// the password step, and travels on through this form and the recovery link.
-//
-// [Ja] NewPageData はサインイン時の TOTP チャレンジページのデータです。Code は再描画
-// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// NewPageDataはサインイン時のTOTPチャレンジページのデータです。Codeは再描画
+// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrorsは
 // バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (失われたチャレンジ
 // で再サインインを促すもの) と、入力欄の下に出すフィールド別のメッセージ (コードの形式エラー・
-// 不一致) です。ReturnTo は保護されたルートに追い返されたとき訪問者が向かっていた先を運び、
+// 不一致) です。ReturnToは保護されたルートに追い返されたとき訪問者が向かっていた先を運び、
 // パスワードのステップから引き渡され、このフォームとリカバリーコードへのリンクを通じてさらに
 // 引き継がれます。
 type NewPageData struct {
@@ -28,14 +20,9 @@ type NewPageData struct {
 	ReturnTo   string
 }
 
-// New renders the sign-in TOTP challenge form: a single six-digit code field that,
-// on submit, verifies the authenticator code for the pending user and completes
-// sign-in. The form posts to /sign_in/two_factor, and the CSRF token is embedded as
-// a hidden field for the double-submit-cookie check.
-//
-// [Ja] New はサインイン時の TOTP チャレンジフォームを描画します。送信すると保留中ユーザーの
-// 認証アプリのコードを検証しサインインを完了させる単一の 6 桁 code フィールドです。フォームは
-// /sign_in/two_factor へ POST し、CSRF トークンは double-submit cookie 検証のため hidden
+// Newはサインイン時のTOTPチャレンジフォームを描画します。送信すると保留中ユーザーの
+// 認証アプリのコードを検証しサインインを完了させる単一の6桁codeフィールドです。フォームは
+// /sign_in/two_factorへPOSTし、CSRFトークンはdouble-submit cookie検証のためhidden
 // フィールドとして埋め込みます。
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">

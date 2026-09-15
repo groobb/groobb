@@ -31,16 +31,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      # Run the non-destructive checks before any step that rewrites the tree.
-      # `make templ-generate` runs `goimports -w .` over the whole tree, so a
-      # goimports check placed after it would only ever see the freshly
-      # formatted tree and could never report a hand-written file whose imports
-      # are wrong.
-      #
-      # [Ja] 作業ツリーを書き換えない検査は、書き換えるステップより前に実行する。
+      # 作業ツリーを書き換えない検査は、書き換えるステップより前に実行する。
       # `make templ-generate` は `goimports -w .` でツリー全体を整形するため、
-      # その後ろに goimports のチェックを置くと整形済みのツリーしか見ず、
-      # 手書きファイルの import の崩れを報告できない。
+      # その後ろにgoimportsのチェックを置くと整形済みのツリーしか見ず、
+      # 手書きファイルのimportの崩れを報告できない。
       - name: Check goimports
         run: make goimports-check
 
@@ -108,23 +102,9 @@ jobs:
             exit 1
           fi
 
-  # Lint code-comment [Ja] markers with koryluslint's `comment` subcommand.
-  # koryluslint is pinned via the `tool` directive in go.mod and fetched from the
-  # public module github.com/korylus/tools.
-  #
-  # Two steps mirror the subcommand's two modes (following Annict's commentlint
-  # CI): the whole-tree scan runs always (the [Ja]-on-non-Japanese misuse), and
-  # the marker-placement rules run on pull requests only, limited to the lines
-  # added against the PR base (`-base`). fetch-depth: 0 makes the base available.
-  #
-  # [Ja] koryluslint の `comment` サブコマンドでコードコメントの [Ja] マーカーを
-  # 検査する。koryluslint は go.mod の tool ディレクティブで固定し、公開モジュール
-  # github.com/korylus/tools から取得する。
-  #
-  # 2 ステップはサブコマンドの 2 モードに対応する (Annict の commentlint CI に倣う)。
-  # 全体走査 ([Ja] が日本語を含まない行に付く誤用) は常時実行し、マーカー配置の規則は
-  # pull request 時のみ PR のベースに対する追加行 (`-base`) に限定して実行する。
-  # fetch-depth: 0 で差分に必要なベースを取得する。
+  # koryluslintの `comment` サブコマンドで、日本語テキストがkorylus-lang.md §3のスタイルに沿っているかを検査する。
+  # koryluslintはgo.modのtoolディレクティブで固定し、公開モジュールgithub.com/korylus/toolsから取得する。
+  # pushとpull requestのどちらでも、差分に限らずツリー全体を検査する。
   comment-lint:
     name: Comment lint (koryluslint comment)
     runs-on: ubuntu-latest
@@ -133,17 +113,11 @@ jobs:
         working-directory: go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Check bilingual comments (whole tree)
-        run: go tool koryluslint comment
-
-      - name: Check bilingual comments (added lines)
-        if: github.event_name == 'pull_request'
-        run: go tool koryluslint comment -base=origin/${{ github.base_ref }}
+      - name: Check Japanese text style
+        run: make lint-style

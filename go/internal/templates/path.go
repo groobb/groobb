@@ -9,60 +9,35 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// ReturnToParam is the query and form parameter that carries where to send a
-// visitor once they finish signing in. RequireAuth writes it when it turns an
-// anonymous request away, and the sign-in forms hand it along until a session is
-// issued. Its value is only ever trusted after middleware.SanitizeReturnTo has
-// accepted it.
-//
-// [Ja] ReturnToParam はサインインを終えた訪問者をどこへ送るかを運ぶクエリ / フォーム
-// パラメータです。RequireAuth が匿名リクエストを追い返すときに書き込み、サインイン系の
-// フォームがセッション発行まで引き継ぎます。値は middleware.SanitizeReturnTo を通った
+// ReturnToParamはサインインを終えた訪問者をどこへ送るかを運ぶクエリ / フォーム
+// パラメータです。RequireAuthが匿名リクエストを追い返すときに書き込み、サインイン系の
+// フォームがセッション発行まで引き継ぎます。値はmiddleware.SanitizeReturnToを通った
 // ものだけを信頼します。
 const ReturnToParam = "return_to"
 
-// Path represents a URL path within the application. Centralizing path strings
-// here lets templates link to routes without hard-coding literals, so a route
-// change is made in one place instead of across every template.
-//
-// [Ja] Path はアプリケーション内の URL パスを表す型です。パス文字列をここに集約
+// Pathはアプリケーション内のURLパスを表す型です。パス文字列をここに集約
 // することで、テンプレートはリテラルをハードコードせずにルートへリンクでき、ルート
-// 変更を各テンプレートではなく 1 箇所で行えます。
+// 変更を各テンプレートではなく1箇所で行えます。
 type Path string
 
-// String returns the path as a string.
-//
-// [Ja] String はパスを文字列として返します。
+// Stringはパスを文字列として返します。
 func (p Path) String() string {
 	return string(p)
 }
 
-// SafeURL returns the path as a templ.SafeURL for use in href / action attributes.
-//
-// [Ja] SafeURL はパスを href / action 属性で使うための templ.SafeURL として返します。
+// SafeURLはパスをhref / action属性で使うためのtempl.SafeURLとして返します。
 func (p Path) SafeURL() templ.SafeURL {
 	return templ.SafeURL(p)
 }
 
-// AbsoluteURL returns p as an absolute URL under baseURL: the form a page
-// declares its own canonical address in, and the form it names the steps of its
-// breadcrumb to a crawler in. Both are read away from the document they were
-// found on, so a host-relative path there leaves it to the reader to decide
-// which host was meant.
-//
-// An empty baseURL yields an empty string. The instance's public base URL is
-// optional configuration, and one that has not been told its own address cannot
-// name it; the callers then render nothing rather than publish a relative URL
-// where an absolute one is expected.
-//
-// [Ja] AbsoluteURL は p を baseURL の下の絶対 URL として返します。ページが自身の正規
+// AbsoluteURLはpをbaseURLの下の絶対URLとして返します。ページが自身の正規
 // アドレスを宣言する形であり、パンくずの各段をクローラーへ名指す形でもあります。どちらも
 // それが書かれた文書から離れて読まれるため、ホスト相対のパスでは、どのホストのことなのか
 // の判断が読み手に委ねられます。
 //
-// baseURL が空のときは空文字列を返します。インスタンスの公開ベース URL は任意の設定で
+// baseURLが空のときは空文字列を返します。インスタンスの公開ベースURLは任意の設定で
 // あり、自身のアドレスを教えられていないインスタンスはそれを名指せません。その場合
-// 呼び出し側は、絶対 URL が期待される場所へ相対 URL を出すのではなく、何も描画しません。
+// 呼び出し側は、絶対URLが期待される場所へ相対URLを出すのではなく、何も描画しません。
 func (p Path) AbsoluteURL(baseURL string) string {
 	if baseURL == "" {
 		return ""
@@ -71,32 +46,17 @@ func (p Path) AbsoluteURL(baseURL string) string {
 	return baseURL + string(p)
 }
 
-// WithReturnTo returns the path carrying returnTo in the return_to query
-// parameter. RequireAuth builds the first such URL when it turns an anonymous
-// request away, and each later hop rebuilds it — the password step on to the TOTP
-// challenge, the links between the TOTP and recovery-code challenges, and the
-// restart back to sign-in when a challenge is gone — so the destination the
-// visitor was originally headed for survives to the step that issues the session.
-// An empty returnTo leaves the path untouched, which is how a flow that carries
-// no destination stays on the bare path. The caller passes a value that
-// middleware.SanitizeReturnTo has already accepted; this method builds the URL
-// and does not re-check it. The receiver must be a path without a query string,
-// as the route helpers in this file return: the parameter is appended after a
-// literal "?", so a receiver that already carries a query would produce two.
-// AfterSignInPath is the one helper here that does not qualify, since it hands
-// back the caller's destination unchanged and that may carry a query.
-//
-// [Ja] WithReturnTo は returnTo を return_to クエリパラメータに載せたパスを返します。
-// 最初のこの URL は RequireAuth が匿名リクエストを追い返すときに組み立て、以降の各ホップ
-// (パスワードのステップから TOTP チャレンジへ、TOTP とリカバリーコードのチャレンジを
+// WithReturnToはreturnToをreturn_toクエリパラメータに載せたパスを返します。
+// 最初のこのURLはRequireAuthが匿名リクエストを追い返すときに組み立て、以降の各ホップ
+// (パスワードのステップからTOTPチャレンジへ、TOTPとリカバリーコードのチャレンジを
 // 行き来するリンク、チャレンジが失われたときのサインインへのやり直し) が組み立て直します。
 // これにより、訪問者が本来向かっていた遷移先はセッションを発行するステップまで残ります。
-// returnTo が空のときはパスをそのまま返し、遷移先を持たないフローは素のパスのままになり
-// ます。呼び出し側は middleware.SanitizeReturnTo が受け付け済みの値を渡します。本メソッド
-// は URL を組み立てるだけで、値の再検証は行いません。レシーバーは、本ファイルのルート
+// returnToが空のときはパスをそのまま返し、遷移先を持たないフローは素のパスのままになり
+// ます。呼び出し側はmiddleware.SanitizeReturnToが受け付け済みの値を渡します。本メソッド
+// はURLを組み立てるだけで、値の再検証は行いません。レシーバーは、本ファイルのルート
 // ヘルパーが返すとおりクエリを持たないパスであることを前提とします。パラメータはリテラルの
-// "?" の後ろに連結するため、既にクエリを持つレシーバーでは "?" が 2 つ並んでしまいます。
-// 本ファイルで唯一これに当てはまらないのが AfterSignInPath で、呼び出し側の遷移先を
+// "?" の後ろに連結するため、既にクエリを持つレシーバーでは "?" が2つ並んでしまいます。
+// 本ファイルで唯一これに当てはまらないのがAfterSignInPathで、呼び出し側の遷移先を
 // そのまま返すためクエリを含みうります。
 func (p Path) WithReturnTo(returnTo string) Path {
 	if returnTo == "" {
@@ -106,27 +66,17 @@ func (p Path) WithReturnTo(returnTo string) Path {
 	return Path(string(p) + "?" + url.Values{ReturnToParam: {returnTo}}.Encode())
 }
 
-// RootPath returns the path to the top page.
-//
-// [Ja] RootPath はトップページのパスを返します。
+// RootPathはトップページのパスを返します。
 func RootPath() Path {
 	return Path("/")
 }
 
-// AfterSignInPath returns where to send a visitor once their session is issued:
-// the destination the sign-in flow carried in returnTo, or the home page when the
-// flow carried none. The three routes that issue a session (password, TOTP, and
-// recovery code) share it so they land the visitor in the same place. Home rather
-// than the top page, because the top page turns a signed-in visitor away to home
-// anyway; sending them there directly saves that extra redirect hop. returnTo is
-// a value middleware.SanitizeReturnTo has already accepted.
-//
-// [Ja] AfterSignInPath はセッション発行後に訪問者を送る先を返します。サインインフローが
-// returnTo で運んできた遷移先、運んでこなかったときはホームです。セッションを発行する
-// 3 つのルート (パスワード・TOTP・リカバリーコード) がこれを共有し、訪問者を同じ場所へ
+// AfterSignInPathはセッション発行後に訪問者を送る先を返します。サインインフローが
+// returnToで運んできた遷移先、運んでこなかったときはホームです。セッションを発行する
+// 3つのルート (パスワード・TOTP・リカバリーコード) がこれを共有し、訪問者を同じ場所へ
 // 着地させます。トップページではなくホームなのは、トップページがサインイン済みの訪問者を
-// 結局ホームへ送るためです。直接ホームへ送ればその 1 段分のリダイレクトを省けます。
-// returnTo は middleware.SanitizeReturnTo が受け付け済みの値です。
+// 結局ホームへ送るためです。直接ホームへ送ればその1段分のリダイレクトを省けます。
+// returnToはmiddleware.SanitizeReturnToが受け付け済みの値です。
 func AfterSignInPath(returnTo string) Path {
 	if returnTo == "" {
 		return HomePath()
@@ -135,256 +85,158 @@ func AfterSignInPath(returnTo string) Path {
 	return Path(returnTo)
 }
 
-// SignUpPath returns the path to the sign-up form.
-//
-// [Ja] SignUpPath はサインアップフォームのパスを返します。
+// SignUpPathはサインアップフォームのパスを返します。
 func SignUpPath() Path {
 	return Path("/sign_up")
 }
 
-// SignInPath returns the path to the sign-in form.
-//
-// [Ja] SignInPath はサインインフォームのパスを返します。
+// SignInPathはサインインフォームのパスを返します。
 func SignInPath() Path {
 	return Path("/sign_in")
 }
 
-// SignInTwoFactorNewPath returns the path to the sign-in TOTP challenge form,
-// where a 2FA-enabled account enters an authenticator code to finish signing in
-// after the password step.
-//
-// [Ja] SignInTwoFactorNewPath はサインイン時の TOTP チャレンジフォーム (2FA 有効な
+// SignInTwoFactorNewPathはサインイン時のTOTPチャレンジフォーム (2FA有効な
 // アカウントがパスワードのステップの後に認証アプリのコードを入力してサインインを完了する)
 // のパスを返します。
 func SignInTwoFactorNewPath() Path {
 	return Path("/sign_in/two_factor/new")
 }
 
-// SignInTwoFactorPath returns the path to the sign-in two-factor challenge
-// resource. Submitting the code targets it with POST /sign_in/two_factor.
-//
-// [Ja] SignInTwoFactorPath はサインイン 2 段階認証チャレンジのリソースのパスを返します。
-// コードの送信は POST /sign_in/two_factor でこれを対象とします。
+// SignInTwoFactorPathはサインイン2段階認証チャレンジのリソースのパスを返します。
+// コードの送信はPOST /sign_in/two_factorでこれを対象とします。
 func SignInTwoFactorPath() Path {
 	return Path("/sign_in/two_factor")
 }
 
-// SignInTwoFactorRecoveryNewPath returns the path to the sign-in recovery-code
-// challenge form, the fallback where a 2FA-enabled account enters a saved recovery
-// code to finish signing in when the authenticator app is unavailable.
-//
-// [Ja] SignInTwoFactorRecoveryNewPath はサインイン時のリカバリーコードチャレンジフォーム
-// (認証アプリを使えないとき、2FA 有効なアカウントが保存済みのリカバリーコードを入力して
+// SignInTwoFactorRecoveryNewPathはサインイン時のリカバリーコードチャレンジフォーム
+// (認証アプリを使えないとき、2FA有効なアカウントが保存済みのリカバリーコードを入力して
 // サインインを完了する) のパスを返します。
 func SignInTwoFactorRecoveryNewPath() Path {
 	return Path("/sign_in/two_factor/recovery/new")
 }
 
-// SignInTwoFactorRecoveryPath returns the path to the sign-in recovery-code
-// challenge resource. Submitting the code targets it with POST
-// /sign_in/two_factor/recovery.
-//
-// [Ja] SignInTwoFactorRecoveryPath はサインイン時のリカバリーコードチャレンジのリソースの
-// パスを返します。コードの送信は POST /sign_in/two_factor/recovery でこれを対象とします。
+// SignInTwoFactorRecoveryPathはサインイン時のリカバリーコードチャレンジのリソースの
+// パスを返します。コードの送信はPOST /sign_in/two_factor/recoveryでこれを対象とします。
 func SignInTwoFactorRecoveryPath() Path {
 	return Path("/sign_in/two_factor/recovery")
 }
 
-// HomePath returns the path to the signed-in home page.
-//
-// [Ja] HomePath はサインイン済みユーザーのホームページのパスを返します。
+// HomePathはサインイン済みユーザーのホームページのパスを返します。
 func HomePath() Path {
 	return Path("/home")
 }
 
-// UserSessionPath returns the path to the user session resource. Signing out
-// targets it with DELETE /user_session (forms reach it via the _method override).
-//
-// [Ja] UserSessionPath はユーザーセッションリソースのパスを返します。サインアウトは
-// DELETE /user_session でこれを対象とします (フォームは _method オーバーライドで到達します)。
+// UserSessionPathはユーザーセッションリソースのパスを返します。サインアウトは
+// DELETE /user_sessionでこれを対象とします (フォームは _methodオーバーライドで到達します)。
 func UserSessionPath() Path {
 	return Path("/user_session")
 }
 
-// SettingsPath returns the path to the settings hub.
-//
-// [Ja] SettingsPath は設定ハブのパスを返します。
+// SettingsPathは設定ハブのパスを返します。
 func SettingsPath() Path {
 	return Path("/settings")
 }
 
-// SettingsEmailEditPath returns the path to the email-change form.
-//
-// [Ja] SettingsEmailEditPath はメールアドレス変更フォームのパスを返します。
+// SettingsEmailEditPathはメールアドレス変更フォームのパスを返します。
 func SettingsEmailEditPath() Path {
 	return Path("/settings/email/edit")
 }
 
-// SettingsEmailPath returns the path to the email resource under settings. The
-// change request targets it with PATCH /settings/email (the form reaches it via
-// the _method override).
-//
-// [Ja] SettingsEmailPath は設定配下の email リソースのパスを返します。変更申請は
-// PATCH /settings/email でこれを対象とします (フォームは _method オーバーライドで到達します)。
+// SettingsEmailPathは設定配下のemailリソースのパスを返します。変更申請は
+// PATCH /settings/emailでこれを対象とします (フォームは _methodオーバーライドで到達します)。
 func SettingsEmailPath() Path {
 	return Path("/settings/email")
 }
 
-// SettingsEmailConfirmationNewPath returns the path to the email-change
-// confirmation-code entry form.
-//
-// [Ja] SettingsEmailConfirmationNewPath はメールアドレス変更の確認コード入力フォームの
+// SettingsEmailConfirmationNewPathはメールアドレス変更の確認コード入力フォームの
 // パスを返します。
 func SettingsEmailConfirmationNewPath() Path {
 	return Path("/settings/email/confirmation/new")
 }
 
-// SettingsEmailConfirmationPath returns the path to the email-change confirmation
-// resource. Submitting the code targets it with POST /settings/email/confirmation.
-//
-// [Ja] SettingsEmailConfirmationPath はメールアドレス変更の確認リソースのパスを返します。
-// コードの送信は POST /settings/email/confirmation でこれを対象とします。
+// SettingsEmailConfirmationPathはメールアドレス変更の確認リソースのパスを返します。
+// コードの送信はPOST /settings/email/confirmationでこれを対象とします。
 func SettingsEmailConfirmationPath() Path {
 	return Path("/settings/email/confirmation")
 }
 
-// SettingsTwoFactorAuthNewPath returns the path to the two-factor authentication
-// setup form (which issues the enrollment secret and shows the QR code).
-//
-// [Ja] SettingsTwoFactorAuthNewPath は 2 段階認証の設定フォーム (登録用 secret を発行し
-// QR コードを表示する) のパスを返します。
+// SettingsTwoFactorAuthNewPathは2段階認証の設定フォーム (登録用secretを発行し
+// QRコードを表示する) のパスを返します。
 func SettingsTwoFactorAuthNewPath() Path {
 	return Path("/settings/two_factor_auth/new")
 }
 
-// SettingsTwoFactorAuthPath returns the path to the two-factor authentication
-// resource under settings. Enabling it targets this with POST
-// /settings/two_factor_auth.
-//
-// [Ja] SettingsTwoFactorAuthPath は設定配下の 2 段階認証リソースのパスを返します。
-// 有効化は POST /settings/two_factor_auth でこれを対象とします。
+// SettingsTwoFactorAuthPathは設定配下の2段階認証リソースのパスを返します。
+// 有効化はPOST /settings/two_factor_authでこれを対象とします。
 func SettingsTwoFactorAuthPath() Path {
 	return Path("/settings/two_factor_auth")
 }
 
-// SettingsWithdrawalNewPath returns the path to the account-withdrawal
-// confirmation form.
-//
-// [Ja] SettingsWithdrawalNewPath は退会確認フォームのパスを返します。
+// SettingsWithdrawalNewPathは退会確認フォームのパスを返します。
 func SettingsWithdrawalNewPath() Path {
 	return Path("/settings/withdrawal/new")
 }
 
-// SettingsWithdrawalPath returns the path to the withdrawal resource under
-// settings. Executing the withdrawal targets it with DELETE /settings/withdrawal
-// (the form reaches it via the _method override).
-//
-// [Ja] SettingsWithdrawalPath は設定配下の退会リソースのパスを返します。退会の実行は
-// DELETE /settings/withdrawal でこれを対象とします (フォームは _method オーバーライドで
+// SettingsWithdrawalPathは設定配下の退会リソースのパスを返します。退会の実行は
+// DELETE /settings/withdrawalでこれを対象とします (フォームは _methodオーバーライドで
 // 到達します)。
 func SettingsWithdrawalPath() Path {
 	return Path("/settings/withdrawal")
 }
 
-// CategoryPath returns the path to the category with the given slug. A category
-// groups boards in the sidebar rather than forming part of a board's address, so
-// it has an address of its own instead of a prefix the board paths sit under.
-//
-// The slug is placed into the path as written, under the same expectation
-// BoardPath documents: it is one model.IsValidSlug accepts, so every
-// character that rule admits stands for itself in a URL path.
-//
-// [Ja] CategoryPath は指定 slug のカテゴリーのパスを返します。カテゴリーは掲示板の
+// CategoryPathは指定slugのカテゴリーのパスを返します。カテゴリーは掲示板の
 // アドレスの一部ではなく、サイドバーで掲示板をまとめるものであるため、掲示板のパスが
 // その下に並ぶ接頭辞ではなく自身のアドレスを持ちます。
 //
-// slug はそのままパスへ置きます。前提は BoardPath が記すものと同じで、
-// model.IsValidSlug が受理する値であり、その規則が許す文字はいずれも URL の
+// slugはそのままパスへ置きます。前提はBoardPathが記すものと同じで、
+// model.IsValidSlugが受理する値であり、その規則が許す文字はいずれもURLの
 // パスの中でそれ自身を表します。
 func CategoryPath(slug string) Path {
 	return Path("/c/" + slug)
 }
 
-// BoardPath returns the path to the board with the given slug. The slug is the
-// board's own identifier rather than a path under its category, so the address
-// survives the board being moved between categories.
-//
-// The slug is placed into the path as written, so it is expected to be one
-// model.IsValidSlug accepts: every character that rule admits stands for
-// itself in a URL path. A slug carrying a path or query character would produce
-// a link pointing somewhere other than the board, which is why the rule is
-// applied where boards are created rather than escaped here.
-//
-// [Ja] BoardPath は指定 slug の掲示板のパスを返します。slug はカテゴリー配下のパスでは
+// BoardPathは指定slugの掲示板のパスを返します。slugはカテゴリー配下のパスでは
 // なく掲示板自身の識別子であるため、掲示板がカテゴリー間で移されてもアドレスは
 // 保たれます。
 //
-// slug はそのままパスへ置くため、model.IsValidSlug が受理する値であることを前提と
-// します。その規則が許す文字はいずれも URL のパスの中でそれ自身を表すためです。パスや
-// クエリの文字を含む slug は掲示板ではないどこかを指すリンクを作ってしまいます。ここで
+// slugはそのままパスへ置くため、model.IsValidSlugが受理する値であることを前提と
+// します。その規則が許す文字はいずれもURLのパスの中でそれ自身を表すためです。パスや
+// クエリの文字を含むslugは掲示板ではないどこかを指すリンクを作ってしまいます。ここで
 // エスケープするのではなく掲示板を作る側で規則を適用しているのはそのためです。
 func BoardPath(slug string) Path {
 	return Path("/b/" + slug)
 }
 
-// PostElementID returns the id of the element that renders the post with the
-// given reply number. A reply number is a post's permanent address within its
-// thread — the thread answers under one URL with every post on it (ADR 0009) —
-// so this is what a >>N in a body, a shared link ending in #p12, and the element
-// a browser scrolls to all resolve to.
-//
-// It sits beside PostAnchor, which builds the link to it, so that the id and the
-// links pointing at it are derived from one rule. Written in two places they
-// could drift, and a page whose anchors were built by the other rule would look
-// right and scroll nowhere.
-//
-// [Ja] PostElementID は、指定されたレス番号の投稿を描画する要素の id を返します。レス
-// 番号はスレッドの中でのその投稿の永久アドレス (スレッドは全投稿を載せた 1 つの URL で
-// 応答します。ADR 0009) であるため、本文の中の >>N も、#p12 で終わる共有されたリンクも、
+// PostElementIDは、指定されたレス番号の投稿を描画する要素のidを返します。レス
+// 番号はスレッドの中でのその投稿の永久アドレス (スレッドは全投稿を載せた1つのURLで
+// 応答します。ADR 0009) であるため、本文の中の >>Nも、#p12で終わる共有されたリンクも、
 // ブラウザがスクロールする先の要素も、これに解決します。
 //
-// これへのリンクを組み立てる PostAnchor の隣に置き、id とそれを指すリンクが 1 つの規則
-// から導かれるようにしています。2 箇所に書けば離れていくことがあり、もう一方の規則で
+// これへのリンクを組み立てるPostAnchorの隣に置き、idとそれを指すリンクが1つの規則
+// から導かれるようにしています。2箇所に書けば離れていくことがあり、もう一方の規則で
 // アンカーを組み立てたページは、正しく見えてどこへもスクロールしません。
 func PostElementID(number int) string {
 	return "p" + strconv.Itoa(number)
 }
 
-// PostAnchor returns the link to the post with the given reply number, as a
-// same-document reference. A post has no address of its own: a thread is served
-// whole, so the post is already on the page every link to it is written on.
-//
-// [Ja] PostAnchor は、指定されたレス番号の投稿へのリンクを、同一文書内の参照として
+// PostAnchorは、指定されたレス番号の投稿へのリンクを、同一文書内の参照として
 // 返します。投稿は自身のアドレスを持ちません。スレッドは丸ごと配信されるため、投稿は
 // それへのリンクが書かれるページの上に既にあります。
 func PostAnchor(number int) Path {
 	return Path("#" + PostElementID(number))
 }
 
-// ThreadPath returns the path to the thread with the given id. A thread is
-// addressed by id rather than by a slug because its title can be edited, and by
-// its own id rather than by a path under its board, so the address survives a
-// moderator moving the thread to another board.
-//
-// It takes the Presentation layer's id type, so that a caller cannot hand it
-// some other entity's id and get a path that leads to a different thread.
-//
-// [Ja] ThreadPath は指定 id のスレッドのパスを返します。slug ではなく id で指すのは
-// タイトルが編集されうるためで、掲示板配下のパスではなく自身の id で指すのは、
+// ThreadPathは指定idのスレッドのパスを返します。slugではなくidで指すのは
+// タイトルが編集されうるためで、掲示板配下のパスではなく自身のidで指すのは、
 // モデレーターがスレッドを別の掲示板へ移してもアドレスが保たれるようにするためです。
 //
-// Presentation 層の id 型を受け取るため、呼び出し側が別のエンティティの id を渡して
+// Presentation層のid型を受け取るため、呼び出し側が別のエンティティのidを渡して
 // 別のスレッドへ繋がるパスを得ることはできません。
 func ThreadPath(id viewmodel.ThreadID) Path {
 	return Path("/t/" + id.String())
 }
 
-// ThreadPostAnchorPath returns the link to one post of a thread from a page
-// that is not that thread. PostAnchor writes the same link for a page that is,
-// where the fragment alone reaches it; a page standing elsewhere has to name
-// the thread the post is served with before the fragment means anything.
-//
-// [Ja] ThreadPostAnchorPathは、スレッドの投稿1件への、そのスレッドではないページからの
+// ThreadPostAnchorPathは、スレッドの投稿1件への、そのスレッドではないページからの
 // リンクを返します。そのスレッドであるページのための同じリンクはPostAnchorが書き、そこでは
 // フラグメントだけでその投稿へ届きます。別の場所に立つページは、フラグメントが意味を持つ前に、
 // 投稿が一緒に配信されるスレッドを名指さなければなりません。
@@ -392,49 +244,28 @@ func ThreadPostAnchorPath(id viewmodel.ThreadID, number int) Path {
 	return ThreadPath(id) + PostAnchor(number)
 }
 
-// BoardThreadsPath returns the path to the threads of the board with the given
-// slug: the collection a new thread is added to. A thread is only ever written
-// to this address — once created it is read at the ThreadPath of its own id, so
-// that moving it to another board leaves the links to it intact.
-//
-// [Ja] BoardThreadsPath は指定 slug の掲示板のスレッドのパス、すなわち新しいスレッドが
+// BoardThreadsPathは指定slugの掲示板のスレッドのパス、すなわち新しいスレッドが
 // 加えられるコレクションを返します。このアドレスへは書き込むだけです。作られたスレッドは
-// 自身の id の ThreadPath で読まれ、別の掲示板へ移してもそこへのリンクが保たれます。
+// 自身のidのThreadPathで読まれ、別の掲示板へ移してもそこへのリンクが保たれます。
 func BoardThreadsPath(slug string) Path {
 	return BoardPath(slug) + "/threads"
 }
 
-// BoardThreadsNewPath returns the path to the form for starting a thread in the
-// board with the given slug. The board is named by the address rather than
-// chosen in the form, so the form is opened from the board it posts to and
-// cannot start a thread anywhere else.
-//
-// [Ja] BoardThreadsNewPath は指定 slug の掲示板でスレッドを立てるフォームのパスを
+// BoardThreadsNewPathは指定slugの掲示板でスレッドを立てるフォームのパスを
 // 返します。掲示板はフォームで選ぶのではなくアドレスが名指すため、フォームは投稿先の
 // 掲示板から開かれ、それ以外の場所にスレッドを立てることはできません。
 func BoardThreadsNewPath(slug string) Path {
 	return BoardThreadsPath(slug) + "/new"
 }
 
-// ThreadPostsPath returns the path to the posts of the thread with the given
-// id: the collection a reply is added to. A post is only ever written to this
-// address — once saved it is read at the thread's own page, where it is
-// addressed by the reply number it was given (ADR 0009).
-//
-// [Ja] ThreadPostsPath は指定 id のスレッドの投稿のパス、すなわち返信が加えられる
+// ThreadPostsPathは指定idのスレッドの投稿のパス、すなわち返信が加えられる
 // コレクションを返します。このアドレスへは書き込むだけです。保存された投稿はスレッド
 // 自身のページで読まれ、そこでは与えられたレス番号で名指されます (ADR 0009)。
 func ThreadPostsPath(id viewmodel.ThreadID) Path {
 	return ThreadPath(id) + "/posts"
 }
 
-// ThreadLockPath returns the path to the lock of the thread with the given id:
-// the thing a moderator puts on the thread and takes back off. Placing and
-// lifting are the same address because what they act on is the one lock, so a
-// thread carries one place a lock is made and unmade rather than two verbs of
-// its own.
-//
-// [Ja] ThreadLockPathは指定idのスレッドのロック、すなわちモデレーターがそのスレッドに
+// ThreadLockPathは指定idのスレッドのロック、すなわちモデレーターがそのスレッドに
 // 掛け、また外すもののパスを返します。掛けることと外すことが同じアドレスであるのは、どちらも
 // 1つの同じロックに対して行われるためです。スレッドが持つのは、ロックが作られまた取り払われる
 // 1つの場所であって、それ自身の2つの動詞ではありません。
@@ -442,47 +273,28 @@ func ThreadLockPath(id viewmodel.ThreadID) Path {
 	return ThreadPath(id) + "/lock"
 }
 
-// ThreadLockNewPath returns the path to the page a thread's lock is confirmed
-// on. The thread is named by the address rather than chosen on the page, so the
-// page is opened from the thread it closes and can close no other.
-//
-// [Ja] ThreadLockNewPathは、スレッドのロックを確認するページのパスを返します。スレッドは
+// ThreadLockNewPathは、スレッドのロックを確認するページのパスを返します。スレッドは
 // ページ上で選ぶのではなくアドレスが名指すため、このページは自身が閉じるスレッドから開かれ、
 // それ以外のスレッドを閉じることはできません。
 func ThreadLockNewPath(id viewmodel.ThreadID) Path {
 	return ThreadLockPath(id) + "/new"
 }
 
-// ThreadUnpublicationPath returns the path to the unpublication of the thread
-// with the given id: the mark that takes the thread out of the community's
-// view. The thread keeps its title and its posts under the mark, so what this
-// addresses is the mark rather than the thread's removal.
-//
-// [Ja] ThreadUnpublicationPathは、指定idのスレッドの非公開、すなわちスレッドをコミュニティ
+// ThreadUnpublicationPathは、指定idのスレッドの非公開、すなわちスレッドをコミュニティ
 // の視界から外す印のパスを返します。印の下でもスレッドはタイトルと投稿を保つため、これが
 // 名指すのはスレッドの削除ではなく印です。
 func ThreadUnpublicationPath(id viewmodel.ThreadID) Path {
 	return ThreadPath(id) + "/unpublication"
 }
 
-// ThreadUnpublicationNewPath returns the path to the page a thread's
-// unpublication is confirmed on. The thread is named by the address rather than
-// chosen on the page, so the page is opened from the thread it takes out of
-// view and can take no other.
-//
-// [Ja] ThreadUnpublicationNewPathは、スレッドの非公開を確認するページのパスを返します。
+// ThreadUnpublicationNewPathは、スレッドの非公開を確認するページのパスを返します。
 // スレッドはページ上で選ぶのではなくアドレスが名指すため、このページは自身が視界から外す
 // スレッドから開かれ、それ以外のスレッドを外すことはできません。
 func ThreadUnpublicationNewPath(id viewmodel.ThreadID) Path {
 	return ThreadUnpublicationPath(id) + "/new"
 }
 
-// PostUnpublicationPath returns the path to the unpublication of one post of a
-// thread. The post is named by its thread and its reply number, which is how it
-// is addressed everywhere it is referred to (ADR 0009): it has no id of its own
-// in any address, so the pair that names it in a >>N names it here too.
-//
-// [Ja] PostUnpublicationPathは、スレッドの投稿1件の非公開のパスを返します。投稿はスレッド
+// PostUnpublicationPathは、スレッドの投稿1件の非公開のパスを返します。投稿はスレッド
 // とレス番号で名指されます。それが、投稿が参照されるあらゆる場所でのその投稿の指し方である
 // ためです (ADR 0009)。投稿はどのアドレスにも自身のidを持たないため、>>Nの中でそれを名指す
 // 組が、ここでもそれを名指します。
@@ -490,25 +302,14 @@ func PostUnpublicationPath(id viewmodel.ThreadID, number int) Path {
 	return ThreadPostsPath(id) + Path("/"+strconv.Itoa(number)) + "/unpublication"
 }
 
-// PostUnpublicationNewPath returns the path to the page a post's unpublication
-// is confirmed on. The post is named by the address for the reason the thread
-// is on the page above it: the page is opened from the post it takes out of
-// view and can take no other.
-//
-// [Ja] PostUnpublicationNewPathは、投稿の非公開を確認するページのパスを返します。投稿を
+// PostUnpublicationNewPathは、投稿の非公開を確認するページのパスを返します。投稿を
 // アドレスが名指すのは、その上のページでスレッドがそうされるのと同じ理由です。このページは
 // 自身が視界から外す投稿から開かれ、それ以外の投稿を外すことはできません。
 func PostUnpublicationNewPath(id viewmodel.ThreadID, number int) Path {
 	return PostUnpublicationPath(id, number) + "/new"
 }
 
-// AdminPath returns the path to the admin hub: the page the community's
-// administration screens are listed on. The admin screens sit under one prefix
-// of their own rather than beside the community's pages, so that what is
-// reserved to an administrator is told from what anyone may open by the address
-// alone.
-//
-// [Ja] AdminPath は管理ハブ、すなわちコミュニティの管理画面を並べるページのパスを
+// AdminPathは管理ハブ、すなわちコミュニティの管理画面を並べるページのパスを
 // 返します。管理画面をコミュニティのページの隣ではなく専用の接頭辞の下に置くのは、
 // 管理者にだけ許されるものと誰でも開けるものを、アドレスだけで見分けられるようにする
 // ためです。
@@ -516,44 +317,24 @@ func AdminPath() Path {
 	return Path("/admin")
 }
 
-// AdminUsersPath returns the path to the user list in the admin screens, where
-// the community's people are read and their roles are handed out.
-//
-// [Ja] AdminUsersPath は管理画面の利用者一覧、すなわちコミュニティの利用者を読み、
+// AdminUsersPathは管理画面の利用者一覧、すなわちコミュニティの利用者を読み、
 // その人たちにロールを渡す場所のパスを返します。
 func AdminUsersPath() Path {
 	return AdminPath() + "/users"
 }
 
-// AdminUsersQueryParam is the query parameter the user list is narrowed by: the
-// beginning of an atname. It sits beside the path helpers because the search
-// form names it as a field and the handler reads it back from the address, and
-// the two have to spell it the same way.
-//
-// [Ja] AdminUsersQueryParam は利用者一覧を絞り込むクエリパラメータで、atname の先頭
+// AdminUsersQueryParamは利用者一覧を絞り込むクエリパラメータで、atnameの先頭
 // 部分を運びます。パスヘルパーの傍らに置くのは、検索フォームがこれをフィールドとして
 // 名指し、ハンドラーがアドレスから読み戻すためで、両者は同じ綴りである必要があります。
 const AdminUsersQueryParam = "q"
 
-// PageParam is the query parameter naming which page of a listing is being
-// read, counted from 1. It is not scoped to one listing, because a later listing
-// paged the same way carries its page number under the same name.
-//
-// [Ja] PageParam は一覧のどのページを読んでいるかを名指すクエリパラメータで、1 から
-// 数えます。1 つの一覧に閉じないのは、同じ形でページを送る後続の一覧も、同じ名前で
+// PageParamは一覧のどのページを読んでいるかを名指すクエリパラメータで、1から
+// 数えます。1つの一覧に閉じないのは、同じ形でページを送る後続の一覧も、同じ名前で
 // ページ番号を運ぶためです。
 const PageParam = "page"
 
-// AdminUserRoleNameParam is the form field naming the role a grant hands out.
-// It sits beside the path helpers for the reason AdminUsersQueryParam does: the
-// row's grant form names it as a field and the handler reads it back from the
-// submission, and the two have to spell it the same way.
-//
-// A revoke carries no such field, since the assignment it removes is named by
-// the address rather than by the submission.
-//
-// [Ja] AdminUserRoleNameParam は、付与が渡すロールを名指すフォームのフィールドです。
-// パスヘルパーの傍らに置く理由は AdminUsersQueryParam と同じで、行の付与フォームが
+// AdminUserRoleNameParamは、付与が渡すロールを名指すフォームのフィールドです。
+// パスヘルパーの傍らに置く理由はAdminUsersQueryParamと同じで、行の付与フォームが
 // これをフィールドとして名指し、ハンドラーが送信から読み戻すためです。両者は同じ綴りで
 // ある必要があります。
 //
@@ -561,24 +342,14 @@ const PageParam = "page"
 // あるためです。
 const AdminUserRoleNameParam = "role_name"
 
-// AdminUsersPagePath returns the path to one page of the admin user listing,
-// narrowed to the accounts whose atname begins with atnamePrefix. The paging
-// links are built with it, so moving to the next page keeps what the listing is
-// narrowed to rather than starting over from every account.
-//
-// The first page is spelled without a page number, since that is the address the
-// listing is opened at and the one the search form submits to. An empty prefix
-// likewise leaves the parameter out: it does not narrow the listing at all, and
-// carrying an empty value would give the same listing two addresses.
-//
-// [Ja] AdminUsersPagePath は管理画面の利用者一覧の 1 ページ、すなわち atname が
-// atnamePrefix で始まるアカウントに絞り込んだ一覧のパスを返します。ページ送りのリンクが
+// AdminUsersPagePathは管理画面の利用者一覧の1ページ、すなわちatnameが
+// atnamePrefixで始まるアカウントに絞り込んだ一覧のパスを返します。ページ送りのリンクが
 // これで組み立てられるため、次のページへ移っても、全アカウントから始め直すのではなく
 // 一覧の絞り込みが保たれます。
 //
 // 最初のページはページ番号を綴らずに表します。それが一覧を開くアドレスであり、検索
-// フォームの送信先でもあるためです。空の prefix も同様にパラメータを落とします。それは
-// 一覧を何も絞り込んでおらず、空の値を運べば同じ一覧が 2 つのアドレスを持つことになる
+// フォームの送信先でもあるためです。空のprefixも同様にパラメータを落とします。それは
+// 一覧を何も絞り込んでおらず、空の値を運べば同じ一覧が2つのアドレスを持つことになる
 // ためです。
 func AdminUsersPagePath(atnamePrefix string, page int) Path {
 	query := url.Values{}
@@ -595,12 +366,7 @@ func AdminUsersPagePath(atnamePrefix string, page int) Path {
 	return AdminUsersPath() + Path("?"+query.Encode())
 }
 
-// AdminUserRolesPath returns the path to the roles of the user with the given
-// id: the collection a role is added to. A role is only ever granted to this
-// address, and the role being granted is named by the submission rather than by
-// the address, since the collection is the same one whichever role is added.
-//
-// [Ja] AdminUserRolesPath は指定 id の利用者のロール、すなわちロールが加えられる
+// AdminUserRolesPathは指定idの利用者のロール、すなわちロールが加えられる
 // コレクションのパスを返します。ロールの付与はこのアドレスへ書き込むだけで、付与される
 // ロールはアドレスではなく送信が名指します。どのロールを加えてもコレクションは同じで
 // あるためです。
@@ -608,17 +374,8 @@ func AdminUserRolesPath(id viewmodel.UserID) Path {
 	return AdminUsersPath() + Path("/"+id.String()) + "/roles"
 }
 
-// AdminUserRolePath returns the path to one role held by the user with the
-// given id: the assignment a revocation removes. The role is named in the
-// address because what is removed is that one assignment, and the address is
-// about it rather than about the account's roles as a whole.
-//
-// The name is written into the path as it is, as the board and category paths
-// write their slugs. A role is named by a migration this instance shipped, so
-// the names an address carries here are the ones the code already spells.
-//
-// [Ja] AdminUserRolePath は指定 id の利用者が持つ 1 つのロール、すなわち剥奪が取り除く
-// 割当のパスを返します。ロールをアドレスで名指すのは、取り除かれるのがその 1 つの割当で
+// AdminUserRolePathは指定idの利用者が持つ1つのロール、すなわち剥奪が取り除く
+// 割当のパスを返します。ロールをアドレスで名指すのは、取り除かれるのがその1つの割当で
 // あり、アドレスが表すのがアカウントのロール全体ではなくそれであるためです。
 //
 // 名前は、掲示板やカテゴリのパスがスラッグをそうするのと同じく、そのままパスへ書きます。

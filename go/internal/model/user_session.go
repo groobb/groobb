@@ -2,19 +2,12 @@ package model
 
 import "time"
 
-// UserSession is one signed-in, Cookie-backed database session for a user. The
-// opaque Token is what the session cookie stores; resolving a request to a user
-// means looking the session up by Token and then loading its UserID.
+// UserSessionはユーザーの1つのサインイン済み、CookieベースのDBセッション
+// です。不透明なTokenがセッションCookieに保存される値で、リクエストをユーザーに
+// 解決するにはTokenでセッションを引き、そのUserIDを読み出します。
 //
-// IPAddress and UserAgent record where the session was established. SignedInAt
-// is the sign-in moment; for a freshly created session it equals CreatedAt.
-//
-// [Ja] UserSession はユーザーの 1 つのサインイン済み、Cookie ベースの DB セッション
-// です。不透明な Token がセッション Cookie に保存される値で、リクエストをユーザーに
-// 解決するには Token でセッションを引き、その UserID を読み出します。
-//
-// IPAddress / UserAgent はセッションを確立した場所を記録します。SignedInAt は
-// サインインの時刻で、新規作成されたセッションでは CreatedAt と一致します。
+// IPAddress / UserAgentはセッションを確立した場所を記録します。SignedInAtは
+// サインインの時刻で、新規作成されたセッションではCreatedAtと一致します。
 type UserSession struct {
 	ID         UserSessionID
 	UserID     UserID

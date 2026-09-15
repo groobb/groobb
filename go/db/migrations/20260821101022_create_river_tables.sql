@@ -1,66 +1,34 @@
 -- +goose Up
 
--- Create the tables River (the background job queue) needs to operate. River
--- ships its own migrator, but Groobb applies every schema change through goose
--- so that one mechanism owns the database file; the River DDL is therefore
--- vendored here as a single migration. The statements are the schema River
--- v0.40.0's SQLite driver reaches at migration version 7 (the version the
--- linked client library expects), and the closing INSERT records all seven line
--- migrations as applied so the library does not migrate again at runtime. River
--- owns these tables at runtime through riversqlite; the application never
--- queries them itself.
---
--- What has to match River is the set of columns and their types, not the order
--- they are declared in: River's queries are generated from `SELECT *`, and sqlc
--- expands that into a fixed list of column names at build time, so SQLite
--- returns them in the order the query names rather than the order the table
--- declares. A column River names that this table lacks, or spells differently,
--- fails its queries instead. TestRiverSchemaRoundTripsAJob in internal/worker
--- covers that by carrying a job from insertion to a worker, which is where such
--- a mismatch surfaces: applying this migration on its own does not.
---
--- The statements are nevertheless taken from the migrator verbatim rather than
--- tidied up, because reading its output is what keeps details like river_job's
--- max_attempts sitting last (version 7 re-adds it as a new column to give it a
--- default, and SQLite appends an added column) from being lost to a rewrite that
--- looks more natural.
---
--- When River is bumped and a new migration version N appears, generate the SQL
--- the same way rather than by hand: run River's migrator against a scratch
--- SQLite database with the new library version, read back the DDL SQLite stores
--- in sqlite_master, add it as a new goose migration that appends
--- `INSERT INTO river_migration (line, version) VALUES ('main', N);` (DELETE on
--- down), and bump appliedRiverMigrationVersion in internal/worker to N.
---
--- [Ja] バックグラウンドジョブキュー River が動作するために必要なテーブルを作成する。
--- River は自前のマイグレータを持つが、Groobb はすべてのスキーマ変更を goose 経由で
--- 適用し、データベースファイルを 1 つの仕組みが所有する形にしているため、River の DDL は
--- 1 本のマイグレーションとしてここに取り込む。各文は River v0.40.0 の SQLite ドライバが
--- マイグレーションバージョン 7 (リンク済みのクライアントライブラリが期待するバージョン) で
--- 到達するスキーマであり、末尾の INSERT で 7 つのラインマイグレーションがすべて適用済みで
+-- バックグラウンドジョブキューRiverが動作するために必要なテーブルを作成する。
+-- Riverは自前のマイグレータを持つが、Groobbはすべてのスキーマ変更をgoose経由で
+-- 適用し、データベースファイルを1つの仕組みが所有する形にしているため、RiverのDDLは
+-- 1本のマイグレーションとしてここに取り込む。各文はRiver v0.40.0のSQLiteドライバが
+-- マイグレーションバージョン7 (リンク済みのクライアントライブラリが期待するバージョン) で
+-- 到達するスキーマであり、末尾のINSERTで7つのラインマイグレーションがすべて適用済みで
 -- あることを記録して、ライブラリが実行時に再度マイグレーションを試みないようにする。
--- これらのテーブルは実行時に riversqlite 経由で River が所有し、アプリケーション自身が
+-- これらのテーブルは実行時にriversqlite経由でRiverが所有し、アプリケーション自身が
 -- クエリすることはない。
 --
--- River に合っていなければならないのはカラムの集合と型であって、宣言の並び順ではない。
--- River 自身のクエリは `SELECT *` から生成されるが、sqlc がビルド時にこれをカラム名の
--- 固定リストへ展開するため、SQLite はテーブルの宣言順ではなくクエリが名指しした順で値を
--- 返す。代わりに、River が名指しするカラムがこのテーブルに無い、または綴りが違う場合に
--- クエリが失敗する。internal/worker の TestRiverSchemaRoundTripsAJob がジョブを投入から
+-- Riverに合っていなければならないのはカラムの集合と型であって、宣言の並び順ではない。
+-- River自身のクエリは `SELECT *` から生成されるが、sqlcがビルド時にこれをカラム名の
+-- 固定リストへ展開するため、SQLiteはテーブルの宣言順ではなくクエリが名指しした順で値を
+-- 返す。代わりに、Riverが名指しするカラムがこのテーブルに無い、または綴りが違う場合に
+-- クエリが失敗する。internal/workerのTestRiverSchemaRoundTripsAJobがジョブを投入から
 -- ワーカーまで運ぶことでこれを検査する。そこがこの食い違いの現れる場所であり、本
 -- マイグレーションを適用するだけでは現れない。
 --
 -- それでも各文を整形せずマイグレータの出力のまま取り込むのは、その出力を読むことが、
--- river_job の max_attempts が末尾にある (バージョン 7 が既定値を与えるためにこの列を
--- 新しいカラムとして追加し直し、SQLite は追加されたカラムを末尾に置く) といった細部を、
+-- river_jobのmax_attemptsが末尾にある (バージョン7が既定値を与えるためにこの列を
+-- 新しいカラムとして追加し直し、SQLiteは追加されたカラムを末尾に置く) といった細部を、
 -- 自然に見える書き直しで失わずに済む方法だからである。
 --
--- River を bump して新しいマイグレーションバージョン N が増えたときは、手書きではなく
--- 同じ手順で SQL を生成する。新しいライブラリバージョンで River のマイグレータを使い捨ての
--- SQLite データベースに対して実行し、SQLite が sqlite_master に保持している DDL を読み出し、
+-- Riverをbumpして新しいマイグレーションバージョンNが増えたときは、手書きではなく
+-- 同じ手順でSQLを生成する。新しいライブラリバージョンでRiverのマイグレータを使い捨ての
+-- SQLiteデータベースに対して実行し、SQLiteがsqlite_masterに保持しているDDLを読み出し、
 -- 末尾に `INSERT INTO river_migration (line, version) VALUES ('main', N);` を追記する
--- 新しい goose マイグレーションとして追加し (down では DELETE)、internal/worker の
--- appliedRiverMigrationVersion を N に更新する。
+-- 新しいgooseマイグレーションとして追加し (downではDELETE)、internal/workerの
+-- appliedRiverMigrationVersionをNに更新する。
 
 CREATE TABLE river_migration (
     line text NOT NULL,

@@ -21,25 +21,25 @@ func TestT(t *testing.T) {
 		want      string
 	}{
 		{
-			name:      "default title in Japanese",
+			name:      "日本語の既定のタイトル",
 			locale:    model.LocaleJa,
 			messageID: "default_title",
 			want:      "Groobb",
 		},
 		{
-			name:      "default title in English",
+			name:      "英語の既定のタイトル",
 			locale:    model.LocaleEn,
 			messageID: "default_title",
 			want:      "Groobb",
 		},
 		{
-			name:      "default description in Japanese",
+			name:      "日本語の既定の説明文",
 			locale:    model.LocaleJa,
 			messageID: "default_description",
-			want:      "Groobb は掲示板サービスです。",
+			want:      "Groobbは掲示板サービスです。",
 		},
 		{
-			name:      "default description in English",
+			name:      "英語の既定の説明文",
 			locale:    model.LocaleEn,
 			messageID: "default_description",
 			want:      "Groobb is a bulletin board service.",
@@ -53,16 +53,13 @@ func TestT(t *testing.T) {
 			ctx := i18n.SetLocale(context.Background(), tt.locale)
 
 			if got := i18n.T(ctx, tt.messageID); got != tt.want {
-				t.Errorf("T(%q) = %q, want %q", tt.messageID, got, tt.want)
+				t.Errorf("T(%q) = %q、期待値 = %q", tt.messageID, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestTMissingMessage verifies that an unknown message ID falls back to the ID
-// itself instead of panicking, so a typo is visible in the rendered output.
-//
-// [Ja] TestTMissingMessage は未知のメッセージ ID が panic ではなく ID 自身に
+// TestTMissingMessageは未知のメッセージIDがpanicではなくID自身に
 // フォールバックすることを検証する。タイプミスが描画結果に現れるようにするため。
 func TestTMissingMessage(t *testing.T) {
 	t.Parallel()
@@ -71,19 +68,13 @@ func TestTMissingMessage(t *testing.T) {
 
 	const messageID = "nonexistent_message_id"
 	if got := i18n.T(ctx, messageID); got != messageID {
-		t.Errorf("T(%q) = %q, want the message ID itself", messageID, got)
+		t.Errorf("T(%q) = %q、期待値はメッセージIDそのもの", messageID, got)
 	}
 }
 
-// TestTWithTemplateData verifies that T expands placeholder data and selects the
-// plural form based on the Count value. It covers the signed and unsigned integer
-// inputs the Count branch accepts (including a uint64 large enough to exercise the
-// clamp in clampUint64ToInt), and confirms Japanese (which has no plural) renders
-// the same form for any count.
-//
-// [Ja] TestTWithTemplateData は T がプレースホルダーデータを展開し、Count の値に
-// 応じて複数形を選ぶことを検証する。Count 分岐が受け付ける符号付き / 符号なしの
-// 整数入力 (clampUint64ToInt のクランプを発動させる十分に大きい uint64 を含む) を
+// TestTWithTemplateDataはTがプレースホルダーデータを展開し、Countの値に
+// 応じて複数形を選ぶことを検証する。Count分岐が受け付ける符号付き / 符号なしの
+// 整数入力 (clampUint64ToIntのクランプを発動させる十分に大きいuint64を含む) を
 // カバーし、複数形を持たない日本語がどの件数でも同じ形で描画されることも確認する。
 func TestTWithTemplateData(t *testing.T) {
 	t.Parallel()
@@ -94,21 +85,17 @@ func TestTWithTemplateData(t *testing.T) {
 		count  any
 		want   string
 	}{
-		{name: "English singular", locale: model.LocaleEn, count: 1, want: "1 post"},
-		{name: "English plural", locale: model.LocaleEn, count: 5, want: "5 posts"},
-		{name: "English plural with int32 count", locale: model.LocaleEn, count: int32(3), want: "3 posts"},
-		{name: "English singular with int64 count", locale: model.LocaleEn, count: int64(1), want: "1 post"},
-		{name: "English plural with uint count", locale: model.LocaleEn, count: uint(2), want: "2 posts"},
-		{name: "English plural with uint64 count", locale: model.LocaleEn, count: uint64(7), want: "7 posts"},
-		// A uint64 above math.MaxInt is clamped to math.MaxInt by clampUint64ToInt,
-		// so plural selection still resolves to "other" while the rendered Count
-		// keeps the original value.
-		//
-		// [Ja] math.MaxInt を超える uint64 は clampUint64ToInt によって math.MaxInt
-		// にクランプされるため、複数形選択は "other" 形に解決され、描画される Count は
+		{name: "英語の単数形", locale: model.LocaleEn, count: 1, want: "1 post"},
+		{name: "英語の複数形", locale: model.LocaleEn, count: 5, want: "5 posts"},
+		{name: "int32の件数による英語の複数形", locale: model.LocaleEn, count: int32(3), want: "3 posts"},
+		{name: "int64の件数による英語の単数形", locale: model.LocaleEn, count: int64(1), want: "1 post"},
+		{name: "uintの件数による英語の複数形", locale: model.LocaleEn, count: uint(2), want: "2 posts"},
+		{name: "uint64の件数による英語の複数形", locale: model.LocaleEn, count: uint64(7), want: "7 posts"},
+		// math.MaxIntを超えるuint64はclampUint64ToIntによってmath.MaxInt
+		// にクランプされるため、複数形選択は "other" 形に解決され、描画されるCountは
 		// 元の値のまま残る。
-		{name: "English clamps oversized uint64 count to the plural form", locale: model.LocaleEn, count: uint64(math.MaxUint64), want: "18446744073709551615 posts"},
-		{name: "Japanese has no plural", locale: model.LocaleJa, count: 5, want: "5 件の投稿"},
+		{name: "英語では大きすぎるuint64の件数を複数形にクランプする", locale: model.LocaleEn, count: uint64(math.MaxUint64), want: "18446744073709551615 posts"},
+		{name: "日本語には複数形が無い", locale: model.LocaleJa, count: 5, want: "5 件の投稿"},
 	}
 
 	for _, tt := range tests {
@@ -119,7 +106,7 @@ func TestTWithTemplateData(t *testing.T) {
 
 			got := i18n.T(ctx, "posts_count", map[string]any{"Count": tt.count})
 			if got != tt.want {
-				t.Errorf("T(posts_count, Count=%v) = %q, want %q", tt.count, got, tt.want)
+				t.Errorf("T(posts_count, Count=%v) = %q、期待値 = %q", tt.count, got, tt.want)
 			}
 		})
 	}
@@ -134,17 +121,17 @@ func TestGetLocale(t *testing.T) {
 		want  model.Locale
 	}{
 		{
-			name:  "Japanese is set",
+			name:  "日本語が設定されている",
 			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleJa) },
 			want:  model.LocaleJa,
 		},
 		{
-			name:  "English is set",
+			name:  "英語が設定されている",
 			setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleEn) },
 			want:  model.LocaleEn,
 		},
 		{
-			name:  "nothing is set falls back to the default",
+			name:  "何も設定されていなければ既定値にフォールバックする",
 			setup: func(ctx context.Context) context.Context { return ctx },
 			want:  model.DefaultLocale,
 		},
@@ -156,7 +143,7 @@ func TestGetLocale(t *testing.T) {
 
 			ctx := tt.setup(context.Background())
 			if got := i18n.GetLocale(ctx); got != tt.want {
-				t.Errorf("GetLocale() = %q, want %q", got, tt.want)
+				t.Errorf("GetLocale() = %q、期待値 = %q", got, tt.want)
 			}
 		})
 	}
@@ -170,14 +157,14 @@ func TestDetectLanguage(t *testing.T) {
 		acceptLanguage string
 		want           model.Locale
 	}{
-		{name: "Japanese only", acceptLanguage: "ja", want: model.LocaleJa},
-		{name: "Japanese preferred", acceptLanguage: "ja,en;q=0.9", want: model.LocaleJa},
-		{name: "English preferred by quality value", acceptLanguage: "en,ja;q=0.5", want: model.LocaleEn},
-		{name: "English only", acceptLanguage: "en", want: model.LocaleEn},
-		{name: "English with region", acceptLanguage: "en-US,en;q=0.9", want: model.LocaleEn},
-		{name: "Japanese with region", acceptLanguage: "ja-JP", want: model.LocaleJa},
-		{name: "unsupported language", acceptLanguage: "fr,de", want: model.DefaultLocale},
-		{name: "empty header", acceptLanguage: "", want: model.DefaultLocale},
+		{name: "日本語のみ", acceptLanguage: "ja", want: model.LocaleJa},
+		{name: "日本語を優先", acceptLanguage: "ja,en;q=0.9", want: model.LocaleJa},
+		{name: "品質値により英語を優先", acceptLanguage: "en,ja;q=0.5", want: model.LocaleEn},
+		{name: "英語のみ", acceptLanguage: "en", want: model.LocaleEn},
+		{name: "地域付きの英語", acceptLanguage: "en-US,en;q=0.9", want: model.LocaleEn},
+		{name: "地域付きの日本語", acceptLanguage: "ja-JP", want: model.LocaleJa},
+		{name: "未対応の言語", acceptLanguage: "fr,de", want: model.DefaultLocale},
+		{name: "空のヘッダー", acceptLanguage: "", want: model.DefaultLocale},
 	}
 
 	for _, tt := range tests {
@@ -190,17 +177,14 @@ func TestDetectLanguage(t *testing.T) {
 			}
 
 			if got := i18n.DetectLanguage(req); got != tt.want {
-				t.Errorf("DetectLanguage() = %q, want %q", got, tt.want)
+				t.Errorf("DetectLanguage() = %q、期待値 = %q", got, tt.want)
 			}
 		})
 	}
 }
 
-// TestMiddleware verifies that the middleware stores the locale detected from
-// the Accept-Language header in the context and that T uses it.
-//
-// [Ja] TestMiddleware はミドルウェアが Accept-Language ヘッダーから判定した
-// ロケールを context に格納し、T がそれを用いることを検証する。
+// TestMiddlewareはミドルウェアがAccept-Languageヘッダーから判定した
+// ロケールをcontextに格納し、Tがそれを用いることを検証する。
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
@@ -211,22 +195,22 @@ func TestMiddleware(t *testing.T) {
 		wantDesc       string
 	}{
 		{
-			name:           "Japanese header",
+			name:           "日本語のヘッダー",
 			acceptLanguage: "ja",
 			wantLocale:     model.LocaleJa,
-			wantDesc:       "Groobb は掲示板サービスです。",
+			wantDesc:       "Groobbは掲示板サービスです。",
 		},
 		{
-			name:           "English header",
+			name:           "英語のヘッダー",
 			acceptLanguage: "en",
 			wantLocale:     model.LocaleEn,
 			wantDesc:       "Groobb is a bulletin board service.",
 		},
 		{
-			name:           "no header falls back to the default",
+			name:           "ヘッダーが無ければ既定値にフォールバックする",
 			acceptLanguage: "",
 			wantLocale:     model.DefaultLocale,
-			wantDesc:       "Groobb は掲示板サービスです。",
+			wantDesc:       "Groobbは掲示板サービスです。",
 		},
 	}
 
@@ -250,10 +234,10 @@ func TestMiddleware(t *testing.T) {
 			i18n.Middleware(next).ServeHTTP(rec, req)
 
 			if gotLocale != tt.wantLocale {
-				t.Errorf("locale = %q, want %q", gotLocale, tt.wantLocale)
+				t.Errorf("locale = %q、期待値 = %q", gotLocale, tt.wantLocale)
 			}
 			if gotDesc != tt.wantDesc {
-				t.Errorf("default_description = %q, want %q", gotDesc, tt.wantDesc)
+				t.Errorf("default_description = %q、期待値 = %q", gotDesc, tt.wantDesc)
 			}
 		})
 	}

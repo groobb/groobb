@@ -6,13 +6,8 @@ import (
 	"github.com/groobb/groobb/go/internal/middleware"
 )
 
-// TestSanitizeReturnTo verifies that only a same-origin relative path survives:
-// a value naming another origin outright, or one a browser would read as naming
-// another origin, is dropped so it can never reach a Location header. It also
-// pins the normalization of an accepted value (fragment dropped, path escaped).
-//
-// [Ja] TestSanitizeReturnTo は同一オリジンの相対パスだけが通ることを検証する。別オリジンを
-// 明示的に指す値も、ブラウザが別オリジン指定として解釈する値も破棄され、Location ヘッダーに
+// TestSanitizeReturnToは同一オリジンの相対パスだけが通ることを検証する。別オリジンを
+// 明示的に指す値も、ブラウザが別オリジン指定として解釈する値も破棄され、Locationヘッダーに
 // 到達しないことを確認する。併せて、受け付けた値の正規化 (フラグメントの除去・パスの
 // エスケープ) も固定する。
 func TestSanitizeReturnTo(t *testing.T) {
@@ -30,10 +25,10 @@ func TestSanitizeReturnTo(t *testing.T) {
 		{name: "エスケープが必要な文字はエスケープする", raw: "/settings/email edit", want: "/settings/email%20edit"},
 		{name: "空文字", raw: "", want: ""},
 		{name: "スラッシュ始まりでない", raw: "settings", want: ""},
-		{name: "プロトコル相対 URL", raw: "//evil.example.com/settings", want: ""},
+		{name: "プロトコル相対URL", raw: "//evil.example.com/settings", want: ""},
 		{name: "バックスラッシュ始まり (ブラウザはプロトコル相対として解釈する)", raw: `/\evil.example.com`, want: ""},
-		{name: "スキーム付き絶対 URL", raw: "https://evil.example.com/settings", want: ""},
-		{name: "javascript スキーム", raw: "javascript:alert(1)", want: ""},
+		{name: "スキーム付き絶対URL", raw: "https://evil.example.com/settings", want: ""},
+		{name: "javascriptスキーム", raw: "javascript:alert(1)", want: ""},
 		{name: "制御文字を含む", raw: "/settings\nLocation: https://evil.example.com", want: ""},
 	}
 
@@ -42,7 +37,7 @@ func TestSanitizeReturnTo(t *testing.T) {
 			t.Parallel()
 
 			if got := middleware.SanitizeReturnTo(tt.raw); got != tt.want {
-				t.Errorf("SanitizeReturnTo(%q) = %q, want %q", tt.raw, got, tt.want)
+				t.Errorf("SanitizeReturnTo(%q) = %q、期待値 = %q", tt.raw, got, tt.want)
 			}
 		})
 	}

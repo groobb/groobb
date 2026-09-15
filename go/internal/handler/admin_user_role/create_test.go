@@ -30,20 +30,12 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// csrfToken is the token every request in this file carries in both the cookie
-// and the submission, which is what the CSRF check compares. Its value says
-// nothing; that the two sides agree is the whole of it.
-//
-// [Ja] csrfToken は、本ファイルのどのリクエストも Cookie と送信の両方で運ぶトークンで、
-// CSRF の検証が突き合わせる相手です。値そのものに意味は無く、両者が一致していることが
+// csrfTokenは、本ファイルのどのリクエストもCookieと送信の両方で運ぶトークンで、
+// CSRFの検証が突き合わせる相手です。値そのものに意味は無く、両者が一致していることが
 // すべてです。
 const csrfToken = "test-csrf-token"
 
-// fixture is a test database with the two role handlers wired over its
-// repositories, so a test drives the grant and the revoke against roles that are
-// really stored.
-//
-// [Ja] fixture は、そのリポジトリでロールの 2 つのハンドラーを組み立てたテスト用
+// fixtureは、そのリポジトリでロールの2つのハンドラーを組み立てたテスト用
 // データベースです。テストが、実際に保存されたロールに対して付与と剥奪を駆動できる
 // ようにするためです。
 type fixture struct {
@@ -52,9 +44,7 @@ type fixture struct {
 	handler *admin_user_role.Handler
 }
 
-// newFixture builds the fixture for one test.
-//
-// [Ja] newFixture は 1 つのテストのための fixture を組み立てます。
+// newFixtureは1つのテストのためのfixtureを組み立てます。
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 
@@ -73,24 +63,14 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{db: db, cfg: cfg, handler: handler}
 }
 
-// newRouter mounts the way serve.go does — behind the CSRF check and the method
-// override — the two role routes and the listing whose buttons submit to them,
-// with actor standing in for the account RequireAuth resolves from a session.
-// Going through a router is what lets a test submit the revoke as a form does,
-// and what makes the id and the role name in the address reach the handler.
-//
-// The listing is served from the same chain rather than from a handler of its
-// own, because the token it writes into a form and the token a submission is
-// checked against are only the same value if one chain issued both.
-//
-// [Ja] newRouter は、serve.go と同じ形で、ロールの 2 つのルートと、そのボタンが送信する
-// 先である一覧とを、CSRF の検証とメソッドオーバーライドの背後に置きます。actor は
-// RequireAuth がセッションから解決するアカウントの代わりです。ルーターを通すことで、
-// テストはフォームと同じ形で剥奪を送信でき、アドレスが運ぶ id とロール名がハンドラーへ
+// newRouterは、serve.goと同じ形で、ロールの2つのルートと、そのボタンが送信する
+// 先である一覧とを、CSRFの検証とメソッドオーバーライドの背後に置きます。actorは
+// RequireAuthがセッションから解決するアカウントの代わりです。ルーターを通すことで、
+// テストはフォームと同じ形で剥奪を送信でき、アドレスが運ぶidとロール名がハンドラーへ
 // 届きます。
 //
 // 一覧を専用のハンドラーからではなく同じチェーンから応答させるのは、一覧がフォームへ
-// 書き込むトークンと、送信が突き合わされるトークンとが同じ値になるのは、1 つのチェーンが
+// 書き込むトークンと、送信が突き合わされるトークンとが同じ値になるのは、1つのチェーンが
 // 両方を発行した場合だけであるためです。
 func newRouter(f *fixture, actor model.UserID) http.Handler {
 	router := chi.NewRouter()
@@ -117,14 +97,9 @@ func newRouter(f *fixture, actor model.UserID) http.Handler {
 	return router
 }
 
-// submit sends form to path as a browser's form does: a POST carrying the
-// urlencoded body, with the CSRF cookie alongside it when withCSRFCookie is set.
-// The method override in the chain turns it into the DELETE when the form says
-// so, which is the only way the revoke route is reached.
-//
-// [Ja] submit は、ブラウザのフォームと同じ形で form を path へ送ります。すなわち
-// urlencoded のボディを運ぶ POST で、withCSRFCookie のときは CSRF Cookie を添えます。
-// チェーンのメソッドオーバーライドは、フォームがそう述べていればこれを DELETE へ変えます。
+// submitは、ブラウザのフォームと同じ形でformをpathへ送ります。すなわち
+// urlencodedのボディを運ぶPOSTで、withCSRFCookieのときはCSRF Cookieを添えます。
+// チェーンのメソッドオーバーライドは、フォームがそう述べていればこれをDELETEへ変えます。
 // 剥奪のルートへ到達する手立てはそれだけです。
 func submit(router http.Handler, path string, form url.Values, withCSRFCookie bool) *httptest.ResponseRecorder {
 	var csrf *http.Cookie
@@ -134,12 +109,8 @@ func submit(router http.Handler, path string, form url.Values, withCSRFCookie bo
 	return submitWith(router, path, form, csrf)
 }
 
-// submitWith sends form to path carrying the given CSRF cookie, which is how a
-// submission whose token came from a page the test read is sent: the cookie that
-// response set is the one the check compares against.
-//
-// [Ja] submitWith は、指定した CSRF Cookie を添えて form を path へ送ります。テストが
-// 読んだページからトークンを得た送信は、この形で送ります。その応答が設定した Cookie が、
+// submitWithは、指定したCSRF Cookieを添えてformをpathへ送ります。テストが
+// 読んだページからトークンを得た送信は、この形で送ります。その応答が設定したCookieが、
 // 検証が突き合わせる相手であるためです。
 func submitWith(router http.Handler, path string, form url.Values, csrf *http.Cookie) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
@@ -154,12 +125,8 @@ func submitWith(router http.Handler, path string, form url.Values, csrf *http.Co
 	return rec
 }
 
-// readListing reads the first page of the listing through the same chain the
-// buttons submit through, and hands back what was drawn together with the CSRF
-// cookie the response set.
-//
-// [Ja] readListing は、ボタンが送信するのと同じチェーンを通して一覧の 1 ページ目を読み、
-// 描かれたものを、その応答が設定した CSRF Cookie と共に返します。
+// readListingは、ボタンが送信するのと同じチェーンを通して一覧の1ページ目を読み、
+// 描かれたものを、その応答が設定したCSRF Cookieと共に返します。
 func readListing(t *testing.T, router http.Handler) (string, *http.Cookie) {
 	t.Helper()
 
@@ -169,7 +136,7 @@ func readListing(t *testing.T, router http.Handler) (string, *http.Cookie) {
 	router.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("一覧の status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("一覧のステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	for _, cookie := range rec.Result().Cookies() {
 		if cookie.Name == middleware.CSRFCookieName {
@@ -177,21 +144,15 @@ func readListing(t *testing.T, router http.Handler) (string, *http.Cookie) {
 		}
 	}
 
-	t.Fatal("一覧の応答が CSRF Cookie を設定していない")
+	t.Fatal("一覧の応答がCSRF Cookieを設定していない")
 	return "", nil
 }
 
-// formCSRFTokenPattern reads the value of the token field the row forms carry.
-// The listing writes the same one into every row, so the first is the page's.
-//
-// [Ja] formCSRFTokenPattern は、行のフォームが運ぶトークンのフィールドの値を読み取ります。
-// 一覧はどの行にも同じものを書き込むため、最初の 1 つがそのページのものです。
+// formCSRFTokenPatternは、行のフォームが運ぶトークンのフィールドの値を読み取ります。
+// 一覧はどの行にも同じものを書き込むため、最初の1つがそのページのものです。
 var formCSRFTokenPattern = regexp.MustCompile(`name="csrf_token" value="([^"]*)"`)
 
-// grantForm is the submission the listing's grant button sends: the role being
-// handed out, the CSRF token, and the address of the listing it was pressed on.
-//
-// [Ja] grantForm は一覧の付与のボタンが送る送信です。渡されるロール、CSRF トークン、
+// grantFormは一覧の付与のボタンが送る送信です。渡されるロール、CSRFトークン、
 // そしてそれが押された一覧のアドレスです。
 func grantForm(roleName model.RoleName, atnamePrefix, page string) url.Values {
 	return url.Values{
@@ -202,12 +163,8 @@ func grantForm(roleName model.RoleName, atnamePrefix, page string) url.Values {
 	}
 }
 
-// revokeForm is the submission the listing's revoke button sends. It names no
-// role, since the address does, and it carries the method override that turns
-// the POST a form can send into the DELETE the route answers.
-//
-// [Ja] revokeForm は一覧の剥奪のボタンが送る送信です。ロールを名指さないのはアドレスが
-// 名指すためで、フォームが送れる POST を、ルートが応答する DELETE に変えるメソッド
+// revokeFormは一覧の剥奪のボタンが送る送信です。ロールを名指さないのはアドレスが
+// 名指すためで、フォームが送れるPOSTを、ルートが応答するDELETEに変えるメソッド
 // オーバーライドを運びます。
 func revokeForm(atnamePrefix, page string) url.Values {
 	return url.Values{
@@ -218,9 +175,7 @@ func revokeForm(atnamePrefix, page string) url.Values {
 	}
 }
 
-// buildAdministrator creates an account holding the built-in admin role.
-//
-// [Ja] buildAdministrator は組み込みの admin ロールを持つアカウントを作成します。
+// buildAdministratorは組み込みのadminロールを持つアカウントを作成します。
 func buildAdministrator(t *testing.T, db *database.DB, atname string) model.UserID {
 	t.Helper()
 
@@ -229,10 +184,7 @@ func buildAdministrator(t *testing.T, db *database.DB, atname string) model.User
 	return userID
 }
 
-// holdsAdmin reports whether the account holds the built-in admin role, read
-// back through the repository the screens read it through.
-//
-// [Ja] holdsAdmin は、そのアカウントが組み込みの admin ロールを持っているかどうかを、
+// holdsAdminは、そのアカウントが組み込みのadminロールを持っているかどうかを、
 // 画面が読むのと同じリポジトリを通して読み戻して返します。
 func holdsAdmin(t *testing.T, db *database.DB, userID model.UserID) bool {
 	t.Helper()
@@ -249,10 +201,7 @@ func holdsAdmin(t *testing.T, db *database.DB, userID model.UserID) bool {
 	return false
 }
 
-// decodeFlash reads the flash message the response carries across the redirect,
-// which is how both handlers say what happened.
-//
-// [Ja] decodeFlash は、レスポンスがリダイレクトをまたいで運ぶフラッシュメッセージを
+// decodeFlashは、レスポンスがリダイレクトをまたいで運ぶフラッシュメッセージを
 // 読み取ります。どちらのハンドラーも、何が起きたのかをこれで述べるためです。
 func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMessage {
 	t.Helper()
@@ -263,31 +212,25 @@ func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMes
 		}
 		data, err := base64.StdEncoding.DecodeString(cookie.Value)
 		if err != nil {
-			t.Fatalf("フラッシュ Cookie の base64 デコードに失敗: %v", err)
+			t.Fatalf("フラッシュCookieのbase64デコードに失敗: %v", err)
 		}
 		var flash session.FlashMessage
 		if err := json.Unmarshal(data, &flash); err != nil {
-			t.Fatalf("フラッシュ Cookie の JSON デコードに失敗: %v", err)
+			t.Fatalf("フラッシュCookieのJSONデコードに失敗: %v", err)
 		}
 		return &flash
 	}
 
-	t.Fatal("フラッシュ Cookie が設定されていない")
+	t.Fatal("フラッシュCookieが設定されていない")
 	return nil
 }
 
-// rolesPath is the address of one account's roles, which the grant submits to.
-//
-// [Ja] rolesPath は 1 つのアカウントのロールのアドレスで、付与の送信先です。
+// rolesPathは1つのアカウントのロールのアドレスで、付与の送信先です。
 func rolesPath(id model.UserID) string {
 	return templates.AdminUserRolesPath(viewmodel.UserID(id)).String()
 }
 
-// TestCreate_GrantsTheRole verifies that an administrator pressing the grant
-// button gives the account the role, is told so, and is answered with the page
-// of the listing the button was pressed on rather than its first page.
-//
-// [Ja] TestCreate_GrantsTheRole は、管理者が付与のボタンを押すとアカウントがロールを
+// TestCreate_GrantsTheRoleは、管理者が付与のボタンを押すとアカウントがロールを
 // 得ること、そのことが伝えられること、そして応答が、一覧の最初のページではなく、ボタンが
 // 押されたページであることを検証します。
 func TestCreate_GrantsTheRole(t *testing.T) {
@@ -300,26 +243,22 @@ func TestCreate_GrantsTheRole(t *testing.T) {
 	rec := submit(newRouter(f, adminID), rolesPath(targetID), grantForm(model.RoleNameAdmin, "plain", "2"), true)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	want := templates.AdminUsersPagePath("plain", 2).String()
 	if got := rec.Header().Get("Location"); got != want {
-		t.Errorf("Location = %q, want %q", got, want)
+		t.Errorf("Location = %q、期待値 = %q", got, want)
 	}
 	if flash := decodeFlash(t, rec); flash.Type != session.FlashSuccess || flash.Message != "@plainuserに管理者ロールを付与しました" {
-		t.Errorf("フラッシュ = %+v, want 成功の「@plainuserに管理者ロールを付与しました」", flash)
+		t.Errorf("フラッシュ = %+v、期待値は成功の「@plainuserに管理者ロールを付与しました」", flash)
 	}
 	if !holdsAdmin(t, f.db, targetID) {
-		t.Error("付与した相手が admin ロールを持っていない")
+		t.Error("付与した相手がadminロールを持っていない")
 	}
 }
 
-// TestCreate_NormalizesTheReturnListingPage verifies that a submission carrying
-// no valid page number is answered at the first page of the listing it came
-// from. An unfiltered first page keeps its canonical address.
-//
-// [Ja] TestCreate_NormalizesTheReturnListingPage は、有効なページ番号を運ばない送信が、
-// 送信元の一覧の 1 ページ目で応答されることを検証します。絞り込みの無い 1 ページ目は、
+// TestCreate_NormalizesTheReturnListingPageは、有効なページ番号を運ばない送信が、
+// 送信元の一覧の1ページ目で応答されることを検証します。絞り込みの無い1ページ目は、
 // 正規のアドレスを保ちます。
 func TestCreate_NormalizesTheReturnListingPage(t *testing.T) {
 	t.Parallel()
@@ -352,19 +291,16 @@ func TestCreate_NormalizesTheReturnListingPage(t *testing.T) {
 			)
 
 			if rec.Code != http.StatusSeeOther {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 			}
 			if got, want := rec.Header().Get("Location"), tt.want.String(); got != want {
-				t.Errorf("Location = %q, want %q", got, want)
+				t.Errorf("Location = %q、期待値 = %q", got, want)
 			}
 		})
 	}
 }
 
-// TestCreate_WithoutPermission verifies that an account that may not hand roles
-// out is answered with the 403 page, and that nothing was given away.
-//
-// [Ja] TestCreate_WithoutPermission は、ロールを配ってはならないアカウントが 403 ページで
+// TestCreate_WithoutPermissionは、ロールを配ってはならないアカウントが403ページで
 // 応答されること、そして何も渡されていないことを検証します。
 func TestCreate_WithoutPermission(t *testing.T) {
 	t.Parallel()
@@ -376,19 +312,15 @@ func TestCreate_WithoutPermission(t *testing.T) {
 	rec := submit(newRouter(f, actorID), rolesPath(targetID), grantForm(model.RoleNameAdmin, "", ""), true)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 	}
 	if holdsAdmin(t, f.db, targetID) {
-		t.Error("権限の無い操作者の送信で admin ロールが渡っている")
+		t.Error("権限の無い操作者の送信でadminロールが渡っている")
 	}
 }
 
-// TestCreate_NamesNothing verifies that an address or a submission naming no
-// account and no role is answered with the 404 page: an id that is not a whole
-// number, an account that is not there, and a role this instance does not have.
-//
-// [Ja] TestCreate_NamesNothing は、どのアカウントもどのロールも名指していないアドレスや
-// 送信が 404 ページで応答されることを検証します。整数でない id、存在しないアカウント、
+// TestCreate_NamesNothingは、どのアカウントもどのロールも名指していないアドレスや
+// 送信が404ページで応答されることを検証します。整数でないid、存在しないアカウント、
 // そしてこのインスタンスが持たないロールです。
 func TestCreate_NamesNothing(t *testing.T) {
 	t.Parallel()
@@ -399,7 +331,7 @@ func TestCreate_NamesNothing(t *testing.T) {
 		roleName model.RoleName
 	}{
 		{
-			name:     "id が整数ではない",
+			name:     "idが整数ではない",
 			path:     func(model.UserID) string { return "/admin/users/abc/roles" },
 			roleName: model.RoleNameAdmin,
 		},
@@ -421,11 +353,7 @@ func TestCreate_NamesNothing(t *testing.T) {
 
 			f := newFixture(t)
 			adminID := buildAdministrator(t, f.db, "adminuser")
-			// The account one past the administrator's id is not there, and the id
-			// before it is the administrator: one path names nobody, the other names
-			// somebody so that only the role is missing.
-			//
-			// [Ja] 管理者の id の 1 つ先のアカウントは存在せず、その 1 つ手前は管理者自身で
+			// 管理者のidの1つ先のアカウントは存在せず、その1つ手前は管理者自身で
 			// ある。一方のパスは誰も名指さず、もう一方は誰かを名指すため、欠けているのが
 			// ロールだけになる。
 			missing := adminID + 1
@@ -433,18 +361,13 @@ func TestCreate_NamesNothing(t *testing.T) {
 			rec := submit(newRouter(f, adminID), tt.path(missing), grantForm(tt.roleName, "", ""), true)
 
 			if rec.Code != http.StatusNotFound {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 			}
 		})
 	}
 }
 
-// TestCreate_WithoutCSRFToken verifies that a submission arriving without the
-// token the form embeds is refused before the handler, and that no role was
-// handed out. A grant that a link on another site could trigger would let anyone
-// make themselves an administrator.
-//
-// [Ja] TestCreate_WithoutCSRFToken は、フォームが埋め込むトークンを伴わずに届いた送信が
+// TestCreate_WithoutCSRFTokenは、フォームが埋め込むトークンを伴わずに届いた送信が
 // ハンドラーの手前で拒否されること、そしてロールが渡っていないことを検証します。他サイトの
 // リンクが起こせる付与は、誰もが自分を管理者にできることを意味するためです。
 func TestCreate_WithoutCSRFToken(t *testing.T) {
@@ -459,19 +382,14 @@ func TestCreate_WithoutCSRFToken(t *testing.T) {
 	rec := submit(newRouter(f, adminID), rolesPath(targetID), form, false)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 	}
 	if holdsAdmin(t, f.db, targetID) {
-		t.Error("CSRF トークンの無い送信で admin ロールが渡っている")
+		t.Error("CSRFトークンの無い送信でadminロールが渡っている")
 	}
 }
 
-// TestCreate_TheListingShowsTheGrant verifies the round trip the visitor makes:
-// the grant is submitted, and the listing it returns to draws the account with
-// the role it now holds and offers to take it back, rather than to give it
-// again.
-//
-// [Ja] TestCreate_TheListingShowsTheGrant は、訪問者が辿る往復を検証します。付与が
+// TestCreate_TheListingShowsTheGrantは、訪問者が辿る往復を検証します。付与が
 // 送信され、戻った先の一覧が、そのアカウントを今持っているロールと共に描き、もう一度
 // 与えるのではなく取り上げることを差し出します。
 func TestCreate_TheListingShowsTheGrant(t *testing.T) {
@@ -483,7 +401,7 @@ func TestCreate_TheListingShowsTheGrant(t *testing.T) {
 
 	router := newRouter(f, adminID)
 	if rec := submit(router, rolesPath(targetID), grantForm(model.RoleNameAdmin, "", ""), true); rec.Code != http.StatusSeeOther {
-		t.Fatalf("付与の status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("付与のステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 
 	body, _ := readListing(t, router)
@@ -496,20 +414,9 @@ func TestCreate_TheListingShowsTheGrant(t *testing.T) {
 	}
 }
 
-// TestCreate_TheListingCarriesTheTokenTheCheckCompares verifies that the token
-// the listing writes into its role forms is the one a submission is checked
-// against: it is the value of the cookie the same response set, and pressing the
-// button with it goes through.
-//
-// The role forms are the first this page has, and the token reaches them from
-// the request. A page that drew an empty value would still carry the field and
-// still name the right address, so what says the value is the real one is the
-// round trip: read the page, submit what it wrote, and be answered with the
-// redirect rather than with the refusal an unchecked token earns.
-//
-// [Ja] TestCreate_TheListingCarriesTheTokenTheCheckCompares は、一覧がロールの
+// TestCreate_TheListingCarriesTheTokenTheCheckComparesは、一覧がロールの
 // フォームへ書き込むトークンが、送信の検証に使われるものであることを検証します。すなわち
-// 同じ応答が設定した Cookie の値であり、それを添えてボタンを押せば通る、ということです。
+// 同じ応答が設定したCookieの値であり、それを添えてボタンを押せば通る、ということです。
 //
 // ロールのフォームはこのページが初めて持つフォームであり、トークンはリクエストから届き
 // ます。空の値を描いたページであってもフィールドは運び、正しいアドレスも名指すため、値が
@@ -527,11 +434,11 @@ func TestCreate_TheListingCarriesTheTokenTheCheckCompares(t *testing.T) {
 
 	matches := formCSRFTokenPattern.FindStringSubmatch(body)
 	if matches == nil {
-		t.Fatal("一覧のフォームに csrf_token のフィールドが無い")
+		t.Fatal("一覧のフォームにcsrf_tokenのフィールドが無い")
 	}
 	token := html.UnescapeString(matches[1])
 	if token == "" || token != cookie.Value {
-		t.Fatalf("一覧が書き出したトークン = %q, want CSRF Cookie の %q", token, cookie.Value)
+		t.Fatalf("一覧が書き出したトークン = %q、期待値はCSRF Cookieの %q", token, cookie.Value)
 	}
 
 	form := grantForm(model.RoleNameAdmin, "", "")
@@ -539,9 +446,9 @@ func TestCreate_TheListingCarriesTheTokenTheCheckCompares(t *testing.T) {
 	rec := submitWith(router, rolesPath(targetID), form, cookie)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if !holdsAdmin(t, f.db, targetID) {
-		t.Error("一覧が描いたフォームのトークンでの送信で admin ロールが渡っていない")
+		t.Error("一覧が描いたフォームのトークンでの送信でadminロールが渡っていない")
 	}
 }

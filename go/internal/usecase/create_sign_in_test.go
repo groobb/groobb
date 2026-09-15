@@ -12,11 +12,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// TestCreateSignInUsecase_Execute_Success verifies that Execute returns the
-// authenticated user when the email and password match.
-//
-// [Ja] TestCreateSignInUsecase_Execute_Success は、email とパスワードが一致するとき
-// Execute が認証されたユーザーを返すことを検証します。
+// TestCreateSignInUsecase_Execute_Successは、emailとパスワードが一致するとき
+// Executeが認証されたユーザーを返すことを検証します。
 func TestCreateSignInUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
 
@@ -35,24 +32,18 @@ func TestCreateSignInUsecase_Execute_Success(t *testing.T) {
 		Password: "password123",
 	})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 	if out == nil || out.User == nil || out.User.ID != userID {
-		t.Fatalf("Execute() user = %v, want id %v", out, userID)
+		t.Fatalf("Execute()のoutput = %v、期待値 = IDが %v のUserを持つoutput", out, userID)
 	}
-	// A user without 2FA carries no setting, so the handler signs them in directly.
-	//
-	// [Ja] 2FA 無しのユーザーは設定を持たないため、ハンドラーはそのままサインインさせる。
+	// 2FA無しのユーザーは設定を持たないため、ハンドラーはそのままサインインさせる。
 	if out.UserTwoFactorAuth != nil {
-		t.Errorf("Execute() UserTwoFactorAuth = %v, want nil (2FA 未設定のため)", out.UserTwoFactorAuth)
+		t.Errorf("Execute()のUserTwoFactorAuth = %v、期待値 = nil (2FA未設定のため)", out.UserTwoFactorAuth)
 	}
 }
 
-// TestCreateSignInUsecase_Execute_TwoFactorEnabled verifies that Execute carries
-// the enabled two-factor setting alongside the user, so the handler diverts to
-// the challenge instead of issuing a session.
-//
-// [Ja] TestCreateSignInUsecase_Execute_TwoFactorEnabled は、Execute が有効な 2 段階認証
+// TestCreateSignInUsecase_Execute_TwoFactorEnabledは、Executeが有効な2段階認証
 // 設定をユーザーと併せて運び、ハンドラーがセッション発行の代わりにチャレンジへ迂回できる
 // ことを検証します。
 func TestCreateSignInUsecase_Execute_TwoFactorEnabled(t *testing.T) {
@@ -74,22 +65,18 @@ func TestCreateSignInUsecase_Execute_TwoFactorEnabled(t *testing.T) {
 		Password: "password123",
 	})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 	if out == nil || out.User == nil || out.User.ID != userID {
-		t.Fatalf("Execute() user = %v, want id %v", out, userID)
+		t.Fatalf("Execute()のoutput = %v、期待値 = IDが %v のUserを持つoutput", out, userID)
 	}
 	if out.UserTwoFactorAuth == nil {
-		t.Fatal("Execute() UserTwoFactorAuth = nil, want 有効な 2FA 設定")
+		t.Fatal("Execute()のUserTwoFactorAuth = nil、期待値 = 有効な2FA設定")
 	}
 }
 
-// TestCreateSignInUsecase_Execute_InvalidCredentials verifies that a wrong
-// password surfaces the validator's *model.ValidationError unchanged, so the
-// handler re-renders the form.
-//
-// [Ja] TestCreateSignInUsecase_Execute_InvalidCredentials は、誤ったパスワードが
-// バリデーターの *model.ValidationError をそのまま表面化し、ハンドラーがフォームを
+// TestCreateSignInUsecase_Execute_InvalidCredentialsは、誤ったパスワードが
+// バリデーターの *model.ValidationErrorをそのまま表面化し、ハンドラーがフォームを
 // 再描画できることを検証します。
 func TestCreateSignInUsecase_Execute_InvalidCredentials(t *testing.T) {
 	t.Parallel()
@@ -109,9 +96,9 @@ func TestCreateSignInUsecase_Execute_InvalidCredentials(t *testing.T) {
 		Password: "wrongpassword",
 	})
 	if out != nil {
-		t.Errorf("Execute() output = %v, want nil", out)
+		t.Errorf("Execute()のoutput = %v、期待値 = nil", out)
 	}
 	if ve := model.AsValidationError(err); ve == nil || !ve.HasGlobalError() {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError with a global error", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = フォーム全体のエラーを持つ*model.ValidationError", err)
 	}
 }

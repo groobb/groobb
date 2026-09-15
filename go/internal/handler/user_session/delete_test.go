@@ -19,11 +19,8 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newUserSessionHandler wires a user session Handler over the test database's
-// repositories, so a sign-out test deletes a real session row.
-//
-// [Ja] newUserSessionHandler はテスト用データベースのリポジトリでユーザーセッション
-// Handler を組み立てます。サインアウトのテストが実在のセッション行を削除できるように
+// newUserSessionHandlerはテスト用データベースのリポジトリでユーザーセッション
+// Handlerを組み立てます。サインアウトのテストが実在のセッション行を削除できるように
 // するためです。
 func newUserSessionHandler(t *testing.T, db *database.DB) (*user_session.Handler, *repository.UserSessionRepository) {
 	t.Helper()
@@ -38,10 +35,7 @@ func newUserSessionHandler(t *testing.T, db *database.DB) (*user_session.Handler
 	return user_session.NewHandler(sessionMgr, flashMgr, deleteSessionUC), userSessionRepo
 }
 
-// seedSession creates a committed user and session, returning the session token
-// so a handler test can sign out with it.
-//
-// [Ja] seedSession はコミットされたユーザーとセッションを作成し、ハンドラーテストが
+// seedSessionはコミットされたユーザーとセッションを作成し、ハンドラーテストが
 // それでサインアウトできるようセッショントークンを返す。
 func seedSession(t *testing.T, db *database.DB, userSessionRepo *repository.UserSessionRepository) string {
 	t.Helper()
@@ -69,9 +63,7 @@ func seedSession(t *testing.T, db *database.DB, userSessionRepo *repository.User
 	return token
 }
 
-// findCookie returns the cookie with the given name from the response, or nil.
-//
-// [Ja] findCookie はレスポンスから指定名の Cookie を返す。無ければ nil。
+// findCookieはレスポンスから指定名のCookieを返す。無ければnil。
 func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == name {
@@ -81,36 +73,29 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
-// decodeFlash reads and decodes the flash cookie from the response, mirroring the
-// base64-encoded JSON that FlashManager writes. It fails the test if the cookie is
-// missing or malformed.
-//
-// [Ja] decodeFlash はレスポンスのフラッシュ Cookie を読み取ってデコードする。
-// FlashManager が書き込む base64 エンコードされた JSON と対になる。Cookie が無い、
+// decodeFlashはレスポンスのフラッシュCookieを読み取ってデコードする。
+// FlashManagerが書き込むbase64エンコードされたJSONと対になる。Cookieが無い、
 // または壊れている場合はテストを失敗させる。
 func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMessage {
 	t.Helper()
 
 	c := findCookie(rec, session.FlashCookieName)
 	if c == nil {
-		t.Fatal("フラッシュ Cookie が設定されていない")
+		t.Fatal("フラッシュCookieが設定されていない")
 	}
 	data, err := base64.StdEncoding.DecodeString(c.Value)
 	if err != nil {
-		t.Fatalf("フラッシュ Cookie の base64 デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのbase64デコードに失敗: %v", err)
 	}
 	var flash session.FlashMessage
 	if err := json.Unmarshal(data, &flash); err != nil {
-		t.Fatalf("フラッシュ Cookie の JSON デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのJSONデコードに失敗: %v", err)
 	}
 	return &flash
 }
 
-// TestDelete_Success verifies that DELETE /user_session deletes the session row,
-// clears the session cookie, and redirects to the top page.
-//
-// [Ja] TestDelete_Success は、DELETE /user_session がセッション行を削除し、セッション
-// Cookie を消去し、トップページへリダイレクトすることを検証する。
+// TestDelete_Successは、DELETE /user_sessionがセッション行を削除し、セッション
+// Cookieを消去し、トップページへリダイレクトすることを検証する。
 func TestDelete_Success(t *testing.T) {
 	t.Parallel()
 
@@ -127,47 +112,38 @@ func TestDelete_Success(t *testing.T) {
 	handler.Delete(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/" {
-		t.Errorf("Location = %q, want %q", loc, "/")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/")
 	}
 
-	// The session cookie is cleared (a matching cookie with MaxAge < 0).
-	//
-	// [Ja] セッション Cookie が消去される (MaxAge < 0 の同名 Cookie)。
+	// セッションCookieが消去される (MaxAge < 0の同名Cookie)。
 	if c := findCookie(rec, session.CookieName); c == nil || c.MaxAge >= 0 {
-		t.Error("セッション Cookie が消去されていない")
+		t.Error("セッションCookieが消去されていない")
 	}
 
-	// A success flash is set so the redirect target renders the "signed out" toast.
-	//
-	// [Ja] リダイレクト先が「ログアウトしました」toast を描画するよう成功フラッシュが設定される。
+	// リダイレクト先が「ログアウトしました」toastを描画するよう成功フラッシュが設定される。
 	flash := decodeFlash(t, rec)
 	if flash.Type != session.FlashSuccess {
-		t.Errorf("flash type = %q, want %q", flash.Type, session.FlashSuccess)
+		t.Errorf("フラッシュの種類 = %q、期待値 = %q", flash.Type, session.FlashSuccess)
 	}
 	if want := i18n.T(req.Context(), "flash_sign_out_success"); flash.Message != want {
-		t.Errorf("flash message = %q, want %q", flash.Message, want)
+		t.Errorf("フラッシュのメッセージ = %q、期待値 = %q", flash.Message, want)
 	}
 
-	// The session row is gone, so the token no longer resolves.
-	//
-	// [Ja] セッション行が消え、token がもう解決しない。
+	// セッション行が消え、tokenがもう解決しない。
 	s, err := userSessionRepo.FindByToken(context.Background(), token)
 	if err != nil {
-		t.Fatalf("FindByToken() error = %v", err)
+		t.Fatalf("FindByToken()のエラー = %v", err)
 	}
 	if s != nil {
 		t.Error("サインアウト後もセッション行が残っている")
 	}
 }
 
-// TestDelete_NotSignedIn verifies that DELETE /user_session without a session
-// cookie still clears the cookie and redirects, treating sign-out as idempotent.
-//
-// [Ja] TestDelete_NotSignedIn は、セッション Cookie の無い DELETE /user_session でも
-// Cookie を消去してリダイレクトし、サインアウトを冪等に扱うことを検証する。
+// TestDelete_NotSignedInは、セッションCookieの無いDELETE /user_sessionでも
+// Cookieを消去してリダイレクトし、サインアウトを冪等に扱うことを検証する。
 func TestDelete_NotSignedIn(t *testing.T) {
 	t.Parallel()
 
@@ -181,9 +157,9 @@ func TestDelete_NotSignedIn(t *testing.T) {
 	handler.Delete(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/" {
-		t.Errorf("Location = %q, want %q", loc, "/")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/")
 	}
 }

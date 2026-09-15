@@ -12,13 +12,8 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// FormErrors renders the form-wide (global) validation messages as Basecoat
-// destructive alerts, each with role="alert" so screen readers announce it. It
-// renders nothing when there are no global errors, so callers can place it
-// unconditionally at the top of a form.
-//
-// [Ja] FormErrors はフォーム全体 (グローバル) のバリデーションメッセージを Basecoat の
-// destructive アラートとして描画します。各アラートは role="alert" を持ち、スクリーン
+// FormErrorsはフォーム全体 (グローバル) のバリデーションメッセージをBasecoatの
+// destructiveアラートとして描画します。各アラートはrole="alert" を持ち、スクリーン
 // リーダーが読み上げます。グローバルエラーが無ければ何も描画しないため、呼び出し側は
 // フォーム先頭に無条件で置けます。
 func FormErrors(formErrors *model.ValidationError) templ.Component {
@@ -51,7 +46,7 @@ func FormErrors(formErrors *model.ValidationError) templ.Component {
 				var templ_7745c5c3_Var2 string
 				templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 21, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 16, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 				if templ_7745c5c3_Err != nil {
@@ -67,19 +62,12 @@ func FormErrors(formErrors *model.ValidationError) templ.Component {
 	})
 }
 
-// FieldErrors renders the validation messages for a single field as Basecoat
-// field error text (styled destructive by the enclosing .field). Each message
-// carries id="{field}-error-{i}" so the control can reference every one of them
-// from aria-describedby (built with FieldErrorsDescribedBy), and role="alert" so
-// screen readers announce it. It renders nothing when the field has no errors,
-// so callers can place it unconditionally inside a .field wrapper.
-//
-// [Ja] FieldErrors は単一フィールドのバリデーションメッセージを Basecoat のフィールド
-// エラーテキスト (囲む .field によって destructive 色で描画) として描画します。各
-// メッセージは id="{field}-error-{i}" を持ち、入力欄が (FieldErrorsDescribedBy で
-// 組み立てた) aria-describedby からその全てを参照できるようにし、role="alert" で
+// FieldErrorsは単一フィールドのバリデーションメッセージをBasecoatのフィールド
+// エラーテキスト (囲む .fieldによってdestructive色で描画) として描画します。各
+// メッセージはid="{field}-error-{i}" を持ち、入力欄が (FieldErrorsDescribedByで
+// 組み立てた) aria-describedbyからその全てを参照できるようにし、role="alert" で
 // スクリーンリーダーが読み上げます。フィールドにエラーが無ければ何も描画しないため、
-// 呼び出し側は .field ラッパー内に無条件で置けます。
+// 呼び出し側は .fieldラッパー内に無条件で置けます。
 func FieldErrors(field string, formErrors *model.ValidationError) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -110,7 +98,7 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldErrorID(field, i))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 43, Col: 46}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 31, Col: 46}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -123,7 +111,7 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 43, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 31, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -139,30 +127,16 @@ func FieldErrors(field string, formErrors *model.ValidationError) templ.Componen
 	})
 }
 
-// FormErrorSummary renders what has to be corrected as a list of links, one per
-// message, each leading to the control it belongs to. It renders nothing when
-// none of the listed fields has an error, so callers can place it
-// unconditionally above a form.
-//
-// The summary is drawn because the messages beside the controls are only found
-// by walking the form. A submission that came back refused is read from the top,
-// and this says at once what is wrong and takes the visitor to each control in
-// one activation.
-//
-// The heading is an h2 inside the alert, as FormErrors draws its messages, so a
-// form's summary and its form-wide messages read as one band above the fields
-// rather than two shapes with different weights.
-//
-// [Ja] FormErrorSummary は、直すべきものをメッセージ 1 つにつき 1 つのリンクとして並べ、
+// FormErrorSummaryは、直すべきものをメッセージ1つにつき1つのリンクとして並べ、
 // それぞれをそれが属する入力欄へ導きます。並べる対象のフィールドがいずれもエラーを持たない
 // ときは何も描画しないため、呼び出し側はフォームの上に無条件で置けます。
 //
 // 要約を描くのは、入力欄の傍らのメッセージがフォームを辿らなければ見つからないためです。
-// 拒否されて戻ってきた送信は上から読まれます。これは何が問題なのかを一度に述べ、1 回の
+// 拒否されて戻ってきた送信は上から読まれます。これは何が問題なのかを一度に述べ、1回の
 // 操作で訪問者を各入力欄へ連れて行きます。
 //
-// 見出しは FormErrors がメッセージを描くのと同じく、アラートの中の h2 とします。フォームの
-// 要約とフォーム全体のメッセージが、重みの異なる 2 つの形ではなく、フィールドの上の 1 つの
+// 見出しはFormErrorsがメッセージを描くのと同じく、アラートの中のh2とします。フォームの
+// 要約とフォーム全体のメッセージが、重みの異なる2つの形ではなく、フィールドの上の1つの
 // 帯として読まれるようにするためです。
 func FormErrorSummary(data FormErrorSummaryData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -193,7 +167,7 @@ func FormErrorSummary(data FormErrorSummaryData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, data.HeadingKey))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 76, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 50, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -212,7 +186,7 @@ func FormErrorSummary(data FormErrorSummaryData) templ.Component {
 					var templ_7745c5c3_Var8 templ.SafeURL
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs("#" + field.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 82, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 56, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -225,7 +199,7 @@ func FormErrorSummary(data FormErrorSummaryData) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, field.LabelKey) + ": " + message)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 83, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/form_errors.templ`, Line: 57, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {

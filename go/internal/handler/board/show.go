@@ -20,33 +20,18 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Show GET /b/{slug} - renders a board: the threads posted in it in the list
-// column, and the sidebar the whole community shell carries. The page is
-// readable while signed out, so it is registered behind SetUser rather than
-// RequireAuth and the user from the context may be nil; the sidebar then offers
-// sign-in and sign-up in place of the account controls. It carries no noindex,
-// since a community's boards are what its conversations are reached through.
-//
-// The bounded board-resolution UseCase runs first, reading the board and, when
-// it exists, the category its breadcrumb needs. Its result settles whether the
-// page is going to be rendered at all: a slug naming no board is answered with
-// the 404 page, and a case variant that resolves through the database's NOCASE
-// collation is redirected to the stored lowercase slug, keeping one canonical
-// URL for the board. Neither answer runs the sidebar's queries or the unbounded
-// thread listing, which would be read and thrown away.
-//
-// [Ja] Show GET /b/{slug} - 掲示板を描画します。一覧カラムにそこへ立っているスレッドを、
+// Show GET /b/{slug} - 掲示板を描画します。一覧カラムにそこへ立っているスレッドを、
 // そしてコミュニティのシェルがどこでも運ぶサイドバーを描きます。このページはサインアウト
-// 状態でも読めるため、RequireAuth ではなく SetUser の背後に登録され、context のユーザーは
-// nil でありえます。その場合サイドバーはアカウント操作の代わりにサインインと新規登録を
-// 差し出します。noindex は付けません。コミュニティの掲示板は、その会話へ辿り着く手立て
+// 状態でも読めるため、RequireAuthではなくSetUserの背後に登録され、contextのユーザーは
+// nilでありえます。その場合サイドバーはアカウント操作の代わりにサインインと新規登録を
+// 差し出します。noindexは付けません。コミュニティの掲示板は、その会話へ辿り着く手立て
 // だからです。
 //
-// はじめに件数の決まった掲示板解決 UseCase を走らせ、掲示板と、それが存在するときは
+// はじめに件数の決まった掲示板解決UseCaseを走らせ、掲示板と、それが存在するときは
 // パンくずに必要なカテゴリーを読みます。その結果で、そもそもページを描画するかどうかが
-// 決まります。どの掲示板も指さない slug には 404 ページで応答し、DB の NOCASE 照合で
-// 解決できる大文字小文字違いの slug は保存済みの小文字 slug へリダイレクトして、掲示板の
-// 正規 URL を 1 つに保ちます。どちらの応答も、読んで捨てることになるサイドバーの
+// 決まります。どの掲示板も指さないslugには404ページで応答し、DBのNOCASE照合で
+// 解決できる大文字小文字違いのslugは保存済みの小文字slugへリダイレクトして、掲示板の
+// 正規URLを1つに保ちます。どちらの応答も、読んで捨てることになるサイドバーの
 // クエリと、件数に上限の無いスレッドの一覧を走らせません。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -127,31 +112,17 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// breadcrumb builds the trail naming where the board sits: the category that
-// lists it, then the board itself as the step the visitor is on. /b/{slug} says
-// nothing about the category, so this is the only place the page tells a visitor
-// which part of the community they are in.
-//
-// The trail starts at the category rather than at the community's top page,
-// because /home is behind authentication and this page is not: a signed-out
-// visitor would be handed a first step that turns them away to the sign-in form.
-//
-// A board sitting in no category has no place above it to name (ADR 0011), so
-// the trail is left empty rather than rendered as the board alone: a single step
-// standing for the page being rendered says nothing a visitor cannot already
-// read from its heading.
-//
-// [Ja] breadcrumb は掲示板の在り処を示す経路を組み立てます。それを並べるカテゴリー、
+// breadcrumbは掲示板の在り処を示す経路を組み立てます。それを並べるカテゴリー、
 // 続いて訪問者が今いる段としての掲示板自身です。/b/{slug} はカテゴリーについて何も
 // 述べないため、コミュニティのどの部分にいるのかをこのページが訪問者に伝える場所は
 // ここだけです。
 //
-// 経路をコミュニティのトップページではなくカテゴリーから始めるのは、/home が認証の
+// 経路をコミュニティのトップページではなくカテゴリーから始めるのは、/homeが認証の
 // 背後にある一方このページはそうではないためです。サインアウト状態の訪問者は、辿ると
 // サインインフォームへ追い返される最初の段を渡されることになります。
 //
 // どのカテゴリーにも属さない掲示板には上位として名指す場所がないため (ADR 0011)、経路は
-// 掲示板 1 段として描画せず空のままにします。今描画しているページを表す 1 段だけの経路は、
+// 掲示板1段として描画せず空のままにします。今描画しているページを表す1段だけの経路は、
 // 訪問者がその見出しから既に読み取れること以上を何も述べないためです。
 func breadcrumb(category *model.Category, board *model.Board, baseURL string) components.BreadcrumbData {
 	if category == nil {
@@ -167,16 +138,7 @@ func breadcrumb(category *model.Category, board *model.Board, baseURL string) co
 	}
 }
 
-// metaDescription returns what the page tells a search result about this board:
-// the board's own description when the community wrote one, and a line naming
-// the board otherwise.
-//
-// The community's wording is preferred because it says what the board is for,
-// where the fallback can only say what the page is. The fallback exists because
-// a description is optional on a board, and a page without one would fall back
-// to the site-wide default, which is the same sentence on every board.
-//
-// [Ja] metaDescription は、このページが検索結果に対してこの掲示板について述べることを
+// metaDescriptionは、このページが検索結果に対してこの掲示板について述べることを
 // 返します。コミュニティが説明を書いていればその説明を、書いていなければ掲示板を名指す
 // 一文です。
 //

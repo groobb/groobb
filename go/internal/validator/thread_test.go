@@ -11,10 +11,7 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// validThreadCreateInput returns a thread-creation form every field of which is
-// valid, so that a test case states the one field it is about.
-//
-// [Ja] validThreadCreateInput は全フィールドが妥当なスレッド作成フォームを返す。テスト
+// validThreadCreateInputは全フィールドが妥当なスレッド作成フォームを返す。テスト
 // ケースが、そのケースの対象である1つのフィールドだけを述べられるようにするため。
 func validThreadCreateInput() validator.ThreadCreateValidatorInput {
 	return validator.ThreadCreateValidatorInput{
@@ -24,14 +21,7 @@ func validThreadCreateInput() validator.ThreadCreateValidatorInput {
 	}
 }
 
-// TestThreadCreateValidator_Validate covers the title, the primary language and
-// the first post together: a form valid in every field is accepted, including
-// at the length boundaries and where emoji make the code-point count differ
-// from the byte count, while each invalid field is reported against the field
-// it belongs to, and a form invalid in several is reported for all of them at
-// once.
-//
-// [Ja] TestThreadCreateValidator_Validate はタイトル・主言語・最初の投稿をまとめて
+// TestThreadCreateValidator_Validateはタイトル・主言語・最初の投稿をまとめて
 // 網羅する。全フィールドが妥当なフォームは、長さの境界ちょうどや、絵文字によってコード
 // ポイント数とバイト数が食い違う場合も含めて受け付けられ、不正なフィールドはそれぞれが
 // 属するフィールドに対して報告され、複数が不正なフォームではそのすべてが一度に報告される。
@@ -82,10 +72,7 @@ func TestThreadCreateValidator_Validate(t *testing.T) {
 			},
 		},
 		{
-			// A thread written in a language the application has no locale for
-			// says so rather than claiming one of the display languages.
-			//
-			// [Ja] アプリがロケールを持たない言語で書かれたスレッドは、表示言語のどれかを
+			// アプリがロケールを持たない言語で書かれたスレッドは、表示言語のどれかを
 			// 騙るのではなく、そのことを名乗る。
 			name: "正常系: 主言語がその他",
 			input: validator.ThreadCreateValidatorInput{
@@ -105,11 +92,7 @@ func TestThreadCreateValidator_Validate(t *testing.T) {
 			wantFields: []string{"title"},
 		},
 		{
-			// A zero-width space is not whitespace, so trimming leaves it in place. A
-			// title made of nothing else names nothing, and it would stand in a list of
-			// threads as a row whose title is blank.
-			//
-			// [Ja] ゼロ幅スペースは空白ではないため、前後を切り詰めても残る。それだけで
+			// ゼロ幅スペースは空白ではないため、前後を切り詰めても残る。それだけで
 			// できたタイトルは何も名指さず、スレッドの一覧にタイトルが空白な行として並ぶ。
 			name:       "異常系: タイトルが目に見えない文字だけ",
 			input:      validator.ThreadCreateValidatorInput{Title: "\u200b", Language: string(model.LocaleJa.ThreadLanguage()), Body: "本文"},
@@ -192,40 +175,34 @@ func TestThreadCreateValidator_Validate(t *testing.T) {
 
 			if len(tt.wantFields) == 0 {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("予期しないエラー: %v", err)
 				}
 				if output == nil {
-					t.Fatal("expected an output, got nil")
+					t.Fatal("出力を期待したが、nilだった")
 				}
 				return
 			}
 
 			if output != nil {
-				t.Errorf("expected no output on failure, got %#v", output)
+				t.Errorf("失敗時の出力 = %#v、期待値 = nil", output)
 			}
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("expected a ValidationError, got %v", err)
+				t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 			}
 			for _, field := range tt.wantFields {
 				if !ve.HasFieldError(field) {
-					t.Errorf("expected a field error on %s, got %#v", field, ve.Fields)
+					t.Errorf("%s フィールドのエラーが無い: %#v", field, ve.Fields)
 				}
 			}
 			if len(ve.Fields) != len(tt.wantFields) {
-				t.Errorf("errors on %d fields, want %d: %#v", len(ve.Fields), len(tt.wantFields), ve.Fields)
+				t.Errorf("エラーのあるフィールド数 = %d、期待値 = %d: %#v", len(ve.Fields), len(tt.wantFields), ve.Fields)
 			}
 		})
 	}
 }
 
-// TestThreadCreateValidator_ValidateRejectsTitleLineBreaks verifies that a line
-// break is reported even at the edges of a title, where trimming whitespace
-// would otherwise hide it, and that it is the only thing reported: the checks
-// after it are skipped, so a title that is nothing but a line break, or one that
-// is over the limit as well, comes back with a single thing to fix.
-//
-// [Ja] TestThreadCreateValidator_ValidateRejectsTitleLineBreaks は、空白除去で
+// TestThreadCreateValidator_ValidateRejectsTitleLineBreaksは、空白除去で
 // 見落としやすいタイトルの先頭・末尾でも改行がエラーになること、そしてそれが報告される
 // 唯一のものであることを検証する。改行より後の検査は行われないため、改行だけのタイトルも、
 // 長さも超過しているタイトルも、直すべきこと1つを抱えて戻ってくる。
@@ -263,27 +240,22 @@ func TestThreadCreateValidator_ValidateRejectsTitleLineBreaks(t *testing.T) {
 
 				output, err := v.Validate(ctx, input)
 				if output != nil {
-					t.Errorf("expected no output on failure, got %#v", output)
+					t.Errorf("失敗時の出力 = %#v、期待値 = nil", output)
 				}
 				ve := model.AsValidationError(err)
 				if ve == nil {
-					t.Fatalf("expected a ValidationError, got %v", err)
+					t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 				}
 				want := []string{i18n.T(ctx, "validation_thread_title_single_line")}
 				if messages := ve.GetFieldErrors("title"); !slices.Equal(messages, want) {
-					t.Errorf("title errors = %q, want %q", messages, want)
+					t.Errorf("titleのエラー = %q、期待値 = %q", messages, want)
 				}
 			})
 		}
 	}
 }
 
-// TestThreadCreateValidator_ValidateNormalizes verifies what a valid form is
-// stored as: a title with the whitespace around it removed, a body with its
-// whitespace kept and its line endings unified to LF, and the submitted value
-// resolved to the thread language it names.
-//
-// [Ja] TestThreadCreateValidator_ValidateNormalizes は、妥当なフォームが何として保存
+// TestThreadCreateValidator_ValidateNormalizesは、妥当なフォームが何として保存
 // されるかを検証する。周りの空白を取り除いたタイトル、空白を保ち改行をLFに統一した本文、
 // そして送信された値が名指すスレッド言語である。
 func TestThreadCreateValidator_ValidateNormalizes(t *testing.T) {
@@ -299,27 +271,22 @@ func TestThreadCreateValidator_ValidateNormalizes(t *testing.T) {
 		Body:     "  1行目\r\n2行目  ",
 	})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("予期しないエラー: %v", err)
 	}
 
 	if want := "はじめてのスレッド"; output.Title != want {
-		t.Errorf("Title = %q, want %q", output.Title, want)
+		t.Errorf("Title = %q、期待値 = %q", output.Title, want)
 	}
 	if want := model.ThreadLanguageOther; output.Language != want {
-		t.Errorf("Language = %q, want %q", output.Language, want)
+		t.Errorf("Language = %q、期待値 = %q", output.Language, want)
 	}
 	if want := "  1行目\n2行目  "; output.Body != want {
-		t.Errorf("Body = %q, want %q", output.Body, want)
+		t.Errorf("Body = %q、期待値 = %q", output.Body, want)
 	}
 }
 
-// TestThreadCreateValidator_ValidateTranslatesMessages verifies that every
-// message this form can report is translated in every display language: a
-// message that came back as its own message ID is one whose translation is
-// missing from a locale file.
-//
-// [Ja] TestThreadCreateValidator_ValidateTranslatesMessages は、このフォームが報告
-// しうるメッセージがどの表示言語でも翻訳されていることを検証する。メッセージ ID のまま
+// TestThreadCreateValidator_ValidateTranslatesMessagesは、このフォームが報告
+// しうるメッセージがどの表示言語でも翻訳されていることを検証する。メッセージIDのまま
 // 返ってきたメッセージは、どこかのロケールファイルで翻訳が欠けているものである。
 func TestThreadCreateValidator_ValidateTranslatesMessages(t *testing.T) {
 	t.Parallel()
@@ -346,15 +313,15 @@ func TestThreadCreateValidator_ValidateTranslatesMessages(t *testing.T) {
 
 				ve := model.AsValidationError(err)
 				if ve == nil {
-					t.Fatalf("expected a ValidationError, got %v", err)
+					t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 				}
 				fieldErrors := ve.FieldErrors()
 				if len(fieldErrors) == 0 {
-					t.Fatal("expected at least one field error")
+					t.Fatal("フィールドのエラーを1件以上期待したが、無かった")
 				}
 				for _, fieldError := range fieldErrors {
 					if strings.HasPrefix(fieldError.Message, "validation_") {
-						t.Errorf("%s は翻訳されていない (メッセージ ID のまま): %q", fieldError.Field, fieldError.Message)
+						t.Errorf("%s は翻訳されていない (メッセージIDのまま): %q", fieldError.Field, fieldError.Message)
 					}
 				}
 			})
@@ -362,11 +329,7 @@ func TestThreadCreateValidator_ValidateTranslatesMessages(t *testing.T) {
 	}
 }
 
-// TestThreadCreateValidator_ValidateVisibleText applies the required check to
-// both the title and first-post body without losing text that draws something,
-// whether it is a combining sequence or braille.
-//
-// [Ja] TestThreadCreateValidator_ValidateVisibleText はタイトルと最初の投稿本文の
+// TestThreadCreateValidator_ValidateVisibleTextはタイトルと最初の投稿本文の
 // 両方に必須チェックを適用し、結合文字列でも点字でも、何かを描くテキストは失わない
 // ことを検証する。
 func TestThreadCreateValidator_ValidateVisibleText(t *testing.T) {
@@ -406,29 +369,29 @@ func TestThreadCreateValidator_ValidateVisibleText(t *testing.T) {
 			output, err := v.Validate(ctx, input)
 			if !tt.wantErr {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("予期しないエラー: %v", err)
 				}
 				if output == nil {
-					t.Fatal("expected an output, got nil")
+					t.Fatal("出力を期待したが、nilだった")
 				}
 				if output.Title != tt.text || output.Body != tt.text {
-					t.Errorf("Title = %q, Body = %q, want both %q", output.Title, output.Body, tt.text)
+					t.Errorf("Title = %q、Body = %q、期待値はどちらも %q", output.Title, output.Body, tt.text)
 				}
 				return
 			}
 
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("expected a ValidationError, got %v", err)
+				t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 			}
 			want := []string{i18n.T(ctx, "validation_required")}
 			for _, field := range []string{"title", "body"} {
 				if messages := ve.GetFieldErrors(field); !slices.Equal(messages, want) {
-					t.Errorf("%s errors = %q, want %q", field, messages, want)
+					t.Errorf("%s のエラー = %q、期待値 = %q", field, messages, want)
 				}
 			}
 			if output != nil {
-				t.Errorf("expected no output on failure, got %#v", output)
+				t.Errorf("失敗時の出力 = %#v、期待値 = nil", output)
 			}
 		})
 	}

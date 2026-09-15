@@ -14,18 +14,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// New GET /t/{id}/posts/{number}/unpublication/new - renders the page a post's
-// unpublication is confirmed on: the post about to be taken out of view, shown
-// as the thread shows it, and the note the history will keep. It is registered
-// behind RequireAuth, so someone is signed in; whether that someone may act on a
-// thread at all is settled by the UseCase, and a refusal is answered with the
-// shared 403 page.
-//
-// A post that is already out of view is answered as one the thread never had.
-// What this page would put in front of the administrator is the post's body, and
-// the mark on it took that body away, so there is nothing here to decide about.
-//
-// [Ja] New GET /t/{id}/posts/{number}/unpublication/new - 投稿の非公開を確認するページを
+// New GET /t/{id}/posts/{number}/unpublication/new - 投稿の非公開を確認するページを
 // 描画します。これから視界から外される投稿を、スレッドが示すとおりに示し、履歴が保つことに
 // なる注記を添えます。RequireAuthの背後に登録されるため、誰かがサインインしています。その
 // 誰かがそもそもスレッドに対して働きかけてよいかどうかを決めるのはUseCaseで、拒否には共通の
@@ -66,11 +55,7 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	h.renderNew(w, r, http.StatusOK, newPageData(ctx, resolved, "", nil))
 }
 
-// newPageData builds what the confirmation page is drawn from out of what the
-// UseCase resolved. New and Create's re-render share it, so the page the note
-// comes back on names the post the way the page it was written on did.
-//
-// [Ja] newPageDataは、確認ページが描かれる元を、UseCaseが解決したものから組み立てます。
+// newPageDataは、確認ページが描かれる元を、UseCaseが解決したものから組み立てます。
 // Newと、Createの再描画がこれを共有するため、注記が戻ってくるページは、それが書かれたページと
 // 同じ形で投稿を名指します。
 func newPageData(
@@ -90,11 +75,7 @@ func newPageData(
 	}
 }
 
-// authorAtname returns the name the post's author goes by, and "" when there is
-// no account to name. The page says the author has withdrawn rather than leaving
-// the line empty, so it is the absence that is drawn rather than a blank.
-//
-// [Ja] authorAtnameは投稿の作者が名乗っている名前を返し、名指すアカウントが無いときは""を
+// authorAtnameは投稿の作者が名乗っている名前を返し、名指すアカウントが無いときは""を
 // 返します。ページはその行を空にするのではなく作者が退会した旨を述べるため、描かれるのは空白
 // ではなく不在です。
 func authorAtname(author *model.User) string {
@@ -104,15 +85,7 @@ func authorAtname(author *model.User) string {
 	return author.Atname
 }
 
-// renderNew renders the confirmation page with the given status and data. It is
-// shared by New (200) and Create's re-render after a note that was refused for
-// its length (422). The status is written before rendering, so callers pass the
-// final status here rather than setting it separately.
-//
-// The page is marked noindex: it is behind authentication, admitted to a few
-// people, and what stands on it is a button rather than anything to find.
-//
-// [Ja] renderNewは、指定したステータスとデータで確認ページを描画します。New (200) と、
+// renderNewは、指定したステータスとデータで確認ページを描画します。New (200) と、
 // 長さを理由に拒否された注記の後のCreateの再描画 (422) で共有します。ステータスは描画前に
 // 書き込むため、呼び出し側は別途設定せずここに最終ステータスを渡します。
 //
@@ -130,10 +103,7 @@ func (h *Handler) renderNew(w http.ResponseWriter, r *http.Request, status int, 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := layouts.Default(meta, postunpublicationpage.New(data)).Render(ctx, w); err != nil {
-		// The status and headers are already sent, so this can only be logged,
-		// not turned into a 500.
-		//
-		// [Ja] ステータスとヘッダーは既に送出済みのため、ここでは500に変えられずログに
+		// ステータスとヘッダーは既に送出済みのため、ここでは500に変えられずログに
 		// 記録するのみとする。
 		slog.ErrorContext(ctx, "投稿の非公開の確認ページのレンダリングに失敗", "error", err)
 	}

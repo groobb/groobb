@@ -5,26 +5,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// New renders the page a thread's unpublication is confirmed on: what
-// unpublishing does, the thread it is about to be done to, an optional note,
-// and the button that does it.
-//
-// The lead says both halves of what the mark means, because an administrator
-// standing here is deciding between this and leaving the thread where it is.
-// The thread and its replies stop being shown to anyone, and nothing written in
-// it is destroyed; what it does not say is that the thread can be brought back,
-// because no screen in this instance does that.
-//
-// The thread is not chosen here. It is named by the address the form submits
-// to, so the page can only take out of view the thread it was opened from, and
-// it states which one that is instead of offering a choice that is already
-// made.
-//
-// A cancel link stands beside the button, leading back to the thread as it
-// still stands. It is the way out of a destructive confirmation, so it is not
-// styled as a second thing to press.
-//
-// [Ja] Newは、スレッドの非公開を確認するページを描画します。非公開が何をするのか、これから
+// Newは、スレッドの非公開を確認するページを描画します。非公開が何をするのか、これから
 // それが行われるスレッド、任意の注記、そしてそれを行うボタンです。
 //
 // 説明文が印の意味の両面を述べるのは、ここに立つ管理者が、これを行うことと、スレッドをその

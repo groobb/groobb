@@ -11,24 +11,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Unpublished renders the body of the page answering an address an
-// administrator took out of view: that what stood here was removed, and a link
-// on to the top page so the visitor is not left at a dead end.
-//
-// It says the thread was taken down rather than that the page does not exist,
-// because the address is one the community held and the visitor may have
-// reached it from a link that was shared while it still answered. A bare 404
-// would leave them to wonder whether the link they followed was mistyped.
-//
-// It does not say who removed it or why. The reason travels to the moderation
-// log, which the administrators read; a visitor reading a thread is told what
-// happened to it, not what was decided about somebody's post.
-//
-// The link points at the top page for the reason NotFound's does: the page is
-// rendered without resolving who is asking, and the top page hands a signed-in
-// visitor on to home by itself.
-//
-// [Ja] Unpublishedは、管理者が見えない場所へ移したアドレスに応答するページの本文を
+// Unpublishedは、管理者が見えない場所へ移したアドレスに応答するページの本文を
 // 描画します。ここに立っていたものが取り除かれたことを示し、訪問者を行き止まりに
 // 残さないようトップページへのリンクを置きます。
 //
@@ -71,7 +54,7 @@ func Unpublished() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_unpublished_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 41, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 24, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -84,7 +67,7 @@ func Unpublished() templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_unpublished_message"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 42, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 25, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -97,7 +80,7 @@ func Unpublished() templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.RootPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 45, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 28, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -110,7 +93,7 @@ func Unpublished() templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_unpublished_back_to_home"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 46, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/unpublished.templ`, Line: 29, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

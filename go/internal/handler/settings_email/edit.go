@@ -11,20 +11,12 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Edit GET /settings/email/edit - renders the email-change form, showing the
-// account's current address and offering a new-address and current-password
-// field. It is registered behind RequireAuth, which guarantees a signed-in user,
-// so the user from the context is non-nil and the handler does not nil-check it.
-// The page is per-user and behind authentication, so it is marked noindex to keep
-// it out of search indexes. The CSRF token is read from the context the CSRF
-// middleware populated.
-//
-// [Ja] Edit GET /settings/email/edit - メールアドレス変更フォームを描画し、アカウントの
+// Edit GET /settings/email/edit - メールアドレス変更フォームを描画し、アカウントの
 // 現在のアドレスを表示して、新しいアドレスと現在のパスワードのフィールドを提供します。
-// RequireAuth の背後に登録され、サインイン済みユーザーが保証されるため、context のユーザーは
-// 非 nil であり、ハンドラーは nil チェックを持ちません。このページはユーザー固有かつ認証の
-// 背後にあるため、検索インデックスから除外するよう noindex を付けます。CSRF トークンは CSRF
-// ミドルウェアが格納した context から読みます。
+// RequireAuthの背後に登録され、サインイン済みユーザーが保証されるため、contextのユーザーは
+// 非nilであり、ハンドラーはnilチェックを持ちません。このページはユーザー固有かつ認証の
+// 背後にあるため、検索インデックスから除外するようnoindexを付けます。CSRFトークンはCSRF
+// ミドルウェアが格納したcontextから読みます。
 func (h *Handler) Edit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -36,13 +28,8 @@ func (h *Handler) Edit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// renderEdit renders the email-change form with the given status and data. It is
-// shared by Edit (200) and Update's re-render after a validation error (422) or
-// an enqueue failure (500). The status is written before rendering, so callers
-// pass the final status here rather than setting it separately.
-//
-// [Ja] renderEdit は指定したステータスとデータでメールアドレス変更フォームを描画します。
-// Edit (200) と、Update のバリデーションエラー後 (422) や enqueue 失敗後 (500) の再描画で
+// renderEditは指定したステータスとデータでメールアドレス変更フォームを描画します。
+// Edit (200) と、Updateのバリデーションエラー後 (422) やenqueue失敗後 (500) の再描画で
 // 共有します。ステータスは描画前に書き込むため、呼び出し側は別途設定せずここに最終
 // ステータスを渡します。
 func (h *Handler) renderEdit(w http.ResponseWriter, r *http.Request, status int, data settingsemailpage.EditPageData) {
@@ -57,10 +44,7 @@ func (h *Handler) renderEdit(w http.ResponseWriter, r *http.Request, status int,
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := layouts.Default(meta, settingsemailpage.Edit(data)).Render(ctx, w); err != nil {
-		// The status and headers are already sent, so this can only be logged,
-		// not turned into a 500.
-		//
-		// [Ja] ステータスとヘッダーは既に送出済みのため、ここでは 500 に変えられず
+		// ステータスとヘッダーは既に送出済みのため、ここでは500に変えられず
 		// ログに記録するのみとする。
 		slog.ErrorContext(ctx, "メールアドレス変更ページのレンダリングに失敗", "error", err)
 	}

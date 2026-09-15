@@ -11,23 +11,16 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/emails/layouts"
 )
 
-// Data holds the values rendered into the email confirmation templates: the
-// address being confirmed and the code the user must type back. It is shared by
-// the per-locale HTML and text templates in this package.
-//
-// [Ja] Data はメール確認テンプレートに描画する値を保持します。確認対象のアドレスと、
-// ユーザーが入力し返すコードです。本パッケージのロケール別 HTML / テキストテンプレートで
+// Dataはメール確認テンプレートに描画する値を保持します。確認対象のアドレスと、
+// ユーザーが入力し返すコードです。本パッケージのロケール別HTML / テキストテンプレートで
 // 共有します。
 type Data struct {
 	Email string
 	Code  string
 }
 
-// JaHTML renders the Japanese HTML body, wrapping the content in the shared
-// email layout (which supplies the document scaffold and Groobb footer).
-//
-// [Ja] JaHTML は日本語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
-// Groobb フッターを供給する) で内容を包みます。
+// JaHTMLは日本語のHTML本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobbフッターを供給する) で内容を包みます。
 func JaHTML(data Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -68,7 +61,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Email)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_confirmation/ja_html.templ`, Line: 24, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_confirmation/ja_html.templ`, Line: 17, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -81,13 +74,13 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.Code)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_confirmation/ja_html.templ`, Line: 26, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_confirmation/ja_html.templ`, Line: 19, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p><p>このコードの有効期間は 15 分です。</p><p>このメールに心当たりが無い場合は、破棄してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p><p>このコードの有効期間は15分です。</p><p>このメールに心当たりが無い場合は、破棄してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

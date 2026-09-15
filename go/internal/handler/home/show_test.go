@@ -20,28 +20,15 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newHandler builds the home Handler over a database holding one community with
-// two boards: one that has been posted in and one that has not, which is the
-// smallest arrangement in which the page renders both a section listing threads
-// and a section saying a board has none. The posted-in board is given a category
-// even though neither the sidebar nor this page draws one, so that the listing is
-// exercised on a board that has one.
-//
-// That board's threads are written in three languages, because a board is not
-// divided by language: a section holding only threads in the page's own language
-// would not show whether a row says which language it is in. The one written in
-// a language the application has no locale for is what the row that declares no
-// language at all is checked on.
-//
-// [Ja] newHandler は、1 つのコミュニティと 2 つの掲示板 — 書き込まれたものと、まだ
-// 書き込まれていないもの — を持つデータベース上に home Handler を構築します。スレッドを
+// newHandlerは、1つのコミュニティと2つの掲示板 — 書き込まれたものと、まだ
+// 書き込まれていないもの — を持つデータベース上にhome Handlerを構築します。スレッドを
 // 並べる区画と、スレッドが無いことを伝える区画の両方をページが描画する最小の構成です。
 // サイドバーもこのページもカテゴリーを描かないにもかかわらず、書き込まれた掲示板に
 // カテゴリーを与えているのは、一覧をカテゴリーを持つ掲示板で動かすためです。
 //
-// その掲示板のスレッドは 3 つの言語で書かれています。掲示板は言語で分けないためで、
+// その掲示板のスレッドは3つの言語で書かれています。掲示板は言語で分けないためで、
 // ページ自身の言語のスレッドしか持たない区画では、行が自身の言語を述べているかどうかを
-// 確かめられません。アプリがロケールを持たない言語で書かれた 1 本は、どの言語も宣言
+// 確かめられません。アプリがロケールを持たない言語で書かれた1本は、どの言語も宣言
 // しない行を確かめる先です。
 func newHandler(t *testing.T) *home.Handler {
 	t.Helper()
@@ -50,7 +37,7 @@ func newHandler(t *testing.T) *home.Handler {
 	db := testutil.SetupDB(t)
 
 	if _, err := db.Writer.ExecContext(ctx, "INSERT INTO communities (id, name) VALUES (1, ?)", "ジャズ喫茶"); err != nil {
-		t.Fatalf("communities への INSERT に失敗: %v", err)
+		t.Fatalf("communitiesへのINSERTに失敗: %v", err)
 	}
 
 	categoryRepo := repository.NewCategoryRepository(db)
@@ -58,7 +45,7 @@ func newHandler(t *testing.T) *home.Handler {
 
 	category, err := categoryRepo.Create(ctx, repository.CreateCategoryInput{Slug: "music", Name: "音楽", Position: 1})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	board, err := boardRepo.Create(ctx, repository.CreateBoardInput{
 		CategoryID: &category.ID,
@@ -67,20 +54,17 @@ func newHandler(t *testing.T) *home.Handler {
 		Position:   1,
 	})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := boardRepo.Create(ctx, repository.CreateBoardInput{
 		Slug:     "quiet",
 		Name:     "静かな板",
 		Position: 2,
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
-	// The last-post times are set relative to now, since the page states them as
-	// the distance from now.
-	//
-	// [Ja] 最終投稿の時刻は現在時刻からの相対で与えます。ページがそれを今からの隔たり
+	// 最終投稿の時刻は現在時刻からの相対で与えます。ページがそれを今からの隔たり
 	// として述べるためです。
 	now := time.Now()
 	createThread(t, ctx, db, board.ID, "モードジャズの話", model.LocaleJa.ThreadLanguage(), 7, now.Add(-5*time.Hour))
@@ -91,13 +75,9 @@ func newHandler(t *testing.T) *home.Handler {
 	return newHandlerForDB(db)
 }
 
-// createThread inserts a thread the way one exists in practice: with a first
-// post, and with the denormalized columns describing the thread's posts. The
-// listing reads its order and both of the facts it shows from those columns.
-//
-// [Ja] createThread は、実際にスレッドが存在する形 — 最初の投稿を伴い、非正規化列が
+// createThreadは、実際にスレッドが存在する形 — 最初の投稿を伴い、非正規化列が
 // スレッドの投稿を表している状態 — でスレッドを挿入します。一覧はその並び順も、示す
-// 2 つの事実も、この列から読みます。
+// 2つの事実も、この列から読みます。
 func createThread(t *testing.T, ctx context.Context, db *database.DB, boardID model.BoardID, title string, language model.ThreadLanguage, postsCount int, lastPostedAt time.Time) {
 	t.Helper()
 
@@ -106,36 +86,29 @@ func createThread(t *testing.T, ctx context.Context, db *database.DB, boardID mo
 
 	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: boardID, Title: title, Language: language})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
-	post, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: thread.ID, Number: 1, Body: title + "の 1 つ目の投稿"})
+	post, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: thread.ID, Number: 1, Body: title + "の1つ目の投稿"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if err := threadRepo.UpdateLastPost(ctx, thread.ID, repository.UpdateThreadLastPostInput{
 		PostsCount:   postsCount,
 		LastPostID:   post.ID,
 		LastPostedAt: lastPostedAt,
 	}); err != nil {
-		t.Fatalf("UpdateLastPost() error = %v", err)
+		t.Fatalf("UpdateLastPost()のエラー = %v", err)
 	}
 }
 
-// newHandlerForDB builds the home Handler over the supplied application
-// database.
-//
-// [Ja] newHandlerForDB は、渡されたアプリケーションデータベース上に home Handler を
+// newHandlerForDBは、渡されたアプリケーションデータベース上にhome Handlerを
 // 構築します。
 func newHandlerForDB(db *database.DB) *home.Handler {
 	return newHandlerForDatabases(db, db)
 }
 
-// newHandlerForDatabases builds the navigation and home UseCases over separate
-// application databases, allowing a test to make the second read fail only
-// after the first one has succeeded.
-//
-// [Ja] newHandlerForDatabases はナビゲーションとホームの UseCase を別々の
-// アプリケーションデータベース上に構築し、最初の読み取りが成功した後に 2 番目の
+// newHandlerForDatabasesはナビゲーションとホームのUseCaseを別々の
+// アプリケーションデータベース上に構築し、最初の読み取りが成功した後に2番目の
 // 読み取りだけを失敗させられるようにします。
 func newHandlerForDatabases(navigationDB, homeDB *database.DB) *home.Handler {
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
@@ -151,36 +124,19 @@ func newHandlerForDatabases(navigationDB, homeDB *database.DB) *home.Handler {
 	return home.NewHandler(&config.Config{Env: "dev"}, getCommunityNavigationUC, getCommunityHomeUC)
 }
 
-// TestShow verifies that GET /home returns HTTP 200 with an HTML body that
-// renders, for each supported locale, the community shell: the skip link and the
-// <main> landmark it jumps to (named by the page heading it holds), the sidebar
-// landmark carrying the community name and the board link, the account controls
-// (the settings link and the sign-out form reaching DELETE /user_session through
-// the _method override, with the CSRF hidden field and a confirmation prompt),
-// and the noindex robots meta this behind-auth page carries.
-//
-// It also verifies the listing this page is: a section per board headed by the
-// board's name as the link to it, holding that board's latest threads with the
-// most recently posted-in first, each stating its post count and how long ago
-// the last post arrived, and a board nobody has posted in saying so.
-//
-// The user and the current path are placed in the context directly (as
-// RequireAuth and CurrentPathMiddleware would), so the handler runs without
-// those middlewares.
-//
-// [Ja] TestShow は GET /home が HTTP 200 と、サポートする各ロケールについてコミュニティの
-// シェルを描画した HTML ボディを返すことを検証します。スキップリンクとその飛び先の
+// TestShowはGET /homeがHTTP 200と、サポートする各ロケールについてコミュニティの
+// シェルを描画したHTMLボディを返すことを検証します。スキップリンクとその飛び先の
 // <main> ランドマーク (それが持つページ見出しで名付けられる)、コミュニティ名と掲示板の
-// リンクを運ぶサイドバーのランドマーク、アカウント操作 (設定リンクと、_method オーバー
-// ライドで DELETE /user_session に到達するサインアウトフォーム。CSRF hidden フィールドと
-// 確認文言つき)、そして認証背後のこのページが持つ noindex の robots メタです。
+// リンクを運ぶサイドバーのランドマーク、アカウント操作 (設定リンクと、_methodオーバー
+// ライドでDELETE /user_sessionに到達するサインアウトフォーム。CSRF hiddenフィールドと
+// 確認文言つき)、そして認証背後のこのページが持つnoindexのrobotsメタです。
 //
 // 併せて、このページ自身である一覧も検証します。掲示板ごとの区画が、その掲示板への
 // リンクである掲示板名を見出しに持ち、その掲示板の最新スレッドを最後に投稿されたものから
 // 順に並べ、各スレッドが投稿数と最終投稿からの隔たりを述べること、そして誰も書き込んで
 // いない掲示板がその旨を伝えることです。
 //
-// ユーザーと現在のパスは (RequireAuth と CurrentPathMiddleware がするように) context に
+// ユーザーと現在のパスは (RequireAuthとCurrentPathMiddlewareがするように) contextに
 // 直接載せ、これらのミドルウェアなしでハンドラーを走らせます。
 func TestShow(t *testing.T) {
 	t.Parallel()
@@ -202,7 +158,7 @@ func TestShow(t *testing.T) {
 		wantNoThreads    string
 	}{
 		{
-			name:             "Japanese",
+			name:             "日本語",
 			locale:           model.LocaleJa,
 			wantHeading:      "コミュニティのトップ",
 			wantSignOutBtn:   "ログアウト",
@@ -216,7 +172,7 @@ func TestShow(t *testing.T) {
 			wantNoThreads:    "まだスレッドがありません。",
 		},
 		{
-			name:             "English",
+			name:             "英語",
 			locale:           model.LocaleEn,
 			wantHeading:      "Community home",
 			wantSignOutBtn:   "Sign out",
@@ -245,11 +201,11 @@ func TestShow(t *testing.T) {
 			handler.Show(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -281,19 +237,14 @@ func TestShow(t *testing.T) {
 				`name="csrf_token"`,
 				"data-confirm",
 				`<meta name="robots" content="noindex"`,
-				// The page's own language is asserted on the <html> element
-				// itself. The rows below carry lang attributes of their own, so a
-				// page-wide search for the tag is satisfied by a thread's title or
-				// its badge whatever the document declares.
-				//
-				// [Ja] ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
-				// lang 属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
+				// ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
+				// lang属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
 				// いてもスレッドのタイトルかそのバッジで満たされてしまう。
 				`<html lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 
@@ -302,29 +253,20 @@ func TestShow(t *testing.T) {
 				t.Error("スレッドが最終投稿の新しい順に並んでいない")
 			}
 
-			// The listing's outline is h1 → h2 → h3: a board's name heads its
-			// section and a thread's title heads a row inside it, so a visitor
-			// moving by heading reaches a board and then its conversations. Each
-			// heading is taken by the markup only its own level produces — a
-			// heading opening straight into the link that is its text — because
-			// the page's first h2 is not necessarily a board's: a flash renders an
-			// h2 as well. Both links keep the minimum touch target the page's
-			// other compact links use.
-			//
-			// [Ja] 一覧のアウトラインは h1 → h2 → h3 である。掲示板の名前がその区画を、
-			// スレッドのタイトルがその中の 1 行を見出しとして束ねるため、見出しを辿る
+			// 一覧のアウトラインはh1 → h2 → h3である。掲示板の名前がその区画を、
+			// スレッドのタイトルがその中の1行を見出しとして束ねるため、見出しを辿る
 			// 訪問者は掲示板へ、そしてその会話へ着く。各見出しは、そのレベルだけが生む
 			// マークアップ (見出しが直ちに、その見出しのテキストであるリンクを開く形) で
-			// 取り出す。ページの最初の h2 が掲示板のものであるとは限らないためで、
-			// フラッシュも h2 を描画する。どちらのリンクも、ページ内の他の小さなリンクと
+			// 取り出す。ページの最初のh2が掲示板のものであるとは限らないためで、
+			// フラッシュもh2を描画する。どちらのリンクも、ページ内の他の小さなリンクと
 			// 共通の最小タッチ領域を保つ。
 			boardHeading := testutil.Element(t, main, `<h2 class="text-base font-semibold"><a href="/b/jazz"`, "</h2>")
 			if !strings.Contains(boardHeading, "ジャズ・ファンク") {
-				t.Errorf("掲示板の見出し = %s, want the board name as a link to the board", boardHeading)
+				t.Errorf("掲示板の見出し = %s、期待値は掲示板へのリンクになった掲示板名", boardHeading)
 			}
 			threadHeading := testutil.Element(t, main, `<h3 class="font-medium"><a href="/t/`, "</h3>")
 			if !strings.Contains(threadHeading, "最近買ったレコード") {
-				t.Errorf("スレッドの見出し = %s, want the title as a link to the thread", threadHeading)
+				t.Errorf("スレッドの見出し = %s、期待値はスレッドへのリンクになったタイトル", threadHeading)
 			}
 			for _, heading := range []string{boardHeading, threadHeading} {
 				link := testutil.OpeningTag(t, heading, "href=")
@@ -337,46 +279,38 @@ func TestShow(t *testing.T) {
 
 			nav := testutil.OpeningTag(t, body, `aria-labelledby="sidebar-boards-label"`)
 			if !strings.HasPrefix(nav, "<nav ") {
-				t.Errorf("掲示板一覧のラベルを持つ要素 = %s, want nav", nav)
+				t.Errorf("掲示板一覧のラベルを持つ要素 = %s、期待値 = nav", nav)
 			}
 			if strings.Contains(body, `href="/c/music"`) {
 				t.Error("サイドバーにカテゴリーへのリンクが含まれている (掲示板はフラットに並べる)")
 			}
 			sidebar := testutil.OpeningTag(t, body, `aria-label="`+tt.wantSidebarLabel+`"`)
 			if !strings.HasPrefix(sidebar, "<aside ") {
-				t.Errorf("サイドバーの要素 = %s, want aside", sidebar)
+				t.Errorf("サイドバーの要素 = %s、期待値 = aside", sidebar)
 			}
 			mainTag := testutil.OpeningTag(t, body, `id="main"`)
 			if !strings.HasPrefix(mainTag, "<main ") || !strings.Contains(mainTag, `aria-labelledby="home-show-heading"`) {
-				t.Errorf("main landmark = %s, want the page heading as its accessible name", mainTag)
+				t.Errorf("main landmark = %s、ページの見出しをアクセシブルネームに持つことを期待", mainTag)
 			}
 			heading := testutil.OpeningTag(t, body, `id="home-show-heading"`)
 			if !strings.HasPrefix(heading, "<h1 ") {
-				t.Errorf("main landmark を名付ける要素 = %s, want h1", heading)
+				t.Errorf("main landmarkを名付ける要素 = %s、期待値 = h1", heading)
 			}
 			if got := strings.Count(body, "<aside"); got != 1 {
-				t.Errorf("aside の数 = %d, want %d (このページは補足のカラムを持たない)", got, 1)
+				t.Errorf("asideの数 = %d、期待値 = %d (このページは補足のカラムを持たない)", got, 1)
 			}
 			if got := strings.Count(body, "<h1"); got != 1 {
-				t.Errorf("h1 の数 = %d, want 1", got)
+				t.Errorf("h1の数 = %d、期待値 = 1", got)
 			}
 			beforeMain := body[:strings.Index(body, `id="main"`)]
 			if strings.Contains(beforeMain, "<h2") || strings.Contains(beforeMain, "<h3") {
-				t.Error("サイドバーに本文の見出し階層へ入る h2 または h3 が含まれている")
+				t.Error("サイドバーに本文の見出し階層へ入るh2またはh3が含まれている")
 			}
 		})
 	}
 }
 
-// TestShow_EmptyInstance verifies that an instance without community content
-// still renders the board navigation shell without inventing a home link, and
-// says both in the listing and in the sidebar that the community holds no board
-// yet rather than rendering an empty page beside an empty list.
-//
-// The sidebar is asserted within its own navigation landmark, because the
-// listing's own empty state says the same thing further down the document.
-//
-// [Ja] TestShow_EmptyInstance は、コミュニティの内容がないインスタンスでも板の
+// TestShow_EmptyInstanceは、コミュニティの内容がないインスタンスでも板の
 // ナビゲーション枠を描画し、存在しないホームリンクを作らないこと、そして空の一覧の傍らの
 // 空のページではなく、一覧とサイドバーの双方がコミュニティのまだ掲示板を持たないことを
 // 伝えることを検証します。
@@ -397,17 +331,17 @@ func TestShow_EmptyInstance(t *testing.T) {
 	handler.Show(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "<nav ") {
-		t.Error("空のインスタンスのレスポンスに nav が含まれていない")
+		t.Error("空のインスタンスのレスポンスにnavが含まれていない")
 	}
 	if strings.Contains(body, `href="/home"`) {
 		t.Error("空のインスタンスのレスポンスにホームリンクが含まれている")
 	}
 	if !strings.Contains(body, "このコミュニティにはまだ掲示板がありません。") {
-		t.Error("掲示板を 1 つも持たないコミュニティの空状態が表示されていない")
+		t.Error("掲示板を1つも持たないコミュニティの空状態が表示されていない")
 	}
 	boards := testutil.Element(t, body, `id="sidebar-boards-label"`, "</nav>")
 	if !strings.Contains(boards, "まだ掲示板がありません。") {
@@ -415,11 +349,8 @@ func TestShow_EmptyInstance(t *testing.T) {
 	}
 }
 
-// TestShow_NavigationFailure verifies that failure to load community navigation
-// is returned as an internal server error rather than a partial page.
-//
-// [Ja] TestShow_NavigationFailure は、コミュニティナビゲーションの取得失敗が部分的な
-// ページではなく Internal Server Error として返ることを検証します。
+// TestShow_NavigationFailureは、コミュニティナビゲーションの取得失敗が部分的な
+// ページではなくInternal Server Errorとして返ることを検証します。
 func TestShow_NavigationFailure(t *testing.T) {
 	t.Parallel()
 
@@ -434,19 +365,15 @@ func TestShow_NavigationFailure(t *testing.T) {
 	handler.Show(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// TestShow_CommunityHomeFailure verifies that failure to load the community
-// home after its navigation was loaded is returned as an internal server error
-// rather than as a page containing only the sidebar.
-//
-// [Ja] TestShow_CommunityHomeFailure は、ナビゲーションの取得成功後にコミュニティの
-// ホーム取得が失敗した場合、サイドバーだけを含むページではなく Internal Server Error が
+// TestShow_CommunityHomeFailureは、ナビゲーションの取得成功後にコミュニティの
+// ホーム取得が失敗した場合、サイドバーだけを含むページではなくInternal Server Errorが
 // 返ることを検証します。
 func TestShow_CommunityHomeFailure(t *testing.T) {
 	t.Parallel()
@@ -454,7 +381,7 @@ func TestShow_CommunityHomeFailure(t *testing.T) {
 	navigationDB := testutil.SetupDB(t)
 	homeDB := testutil.SetupDB(t)
 	if err := homeDB.Reader.Close(); err != nil {
-		t.Fatalf("Reader の Close() error = %v", err)
+		t.Fatalf("ReaderのClose()のエラー = %v", err)
 	}
 
 	handler := newHandlerForDatabases(navigationDB, homeDB)
@@ -466,20 +393,14 @@ func TestShow_CommunityHomeFailure(t *testing.T) {
 	handler.Show(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// TestShow_MarksOnlyTheCurrentPage verifies that the sidebar marks with
-// aria-current only the link pointing at the page being rendered. On home that
-// is the community's own name; the board links are not the current page and must
-// go unmarked, which is what keeps the mark from being a decoration the sidebar
-// applies wherever it appears.
-//
-// [Ja] TestShow_MarksOnlyTheCurrentPage は、サイドバーが aria-current を付けるのが
+// TestShow_MarksOnlyTheCurrentPageは、サイドバーがaria-currentを付けるのが
 // 今描画しているページを指すリンクだけであることを検証します。ホームではそれが
 // コミュニティ自身の名前であり、掲示板のリンクは現在のページではないため印は付きません。
 // これにより、印がサイドバーの現れる場所すべてに付く飾りにならずに済みます。
@@ -500,24 +421,14 @@ func TestShow_MarksOnlyTheCurrentPage(t *testing.T) {
 	body := rec.Body.String()
 
 	if got := strings.Count(body, `aria-current="page"`); got != 1 {
-		t.Errorf("aria-current=\"page\" の数 = %d, want %d (ホームを指すリンクのみ)", got, 1)
+		t.Errorf("aria-current=\"page\" の数 = %d、期待値 = %d (ホームを指すリンクのみ)", got, 1)
 	}
 	if boardLink := testutil.OpeningTag(t, body, `href="/b/jazz"`); strings.Contains(boardLink, "aria-current") {
-		t.Errorf("掲示板のリンクに aria-current が付いている: %s", boardLink)
+		t.Errorf("掲示板のリンクにaria-currentが付いている: %s", boardLink)
 	}
 }
 
-// TestShow_ThreadLanguage verifies that each row of a board's section says which
-// language its thread is written in: a badge carrying the language's own name,
-// and the title declared as that language. Home crosses every board, so it is
-// where the languages of the whole community meet, and without this a visitor
-// cannot tell which of the listed conversations they can read.
-//
-// The row for a thread whose language resolves to no display language is checked
-// for the opposite: the badge falls back to the translated word, and the title
-// declares nothing rather than an empty or invented tag.
-//
-// [Ja] TestShow_ThreadLanguage は、掲示板の区画の各行が自身のスレッドの言語を述べる
+// TestShow_ThreadLanguageは、掲示板の区画の各行が自身のスレッドの言語を述べる
 // ことを検証します。その言語自身の名前を載せたバッジと、その言語として宣言された
 // タイトルです。ホームはすべての掲示板を横断するため、コミュニティ全体の言語が出会う
 // 場所であり、これが無いと訪問者は並んだ会話のうちどれを読めるのかを見分けられません。
@@ -537,70 +448,47 @@ func TestShow_ThreadLanguage(t *testing.T) {
 
 	body := rec.Body.String()
 
-	// The title's own element carries the declaration, so the tag covers the
-	// title and nothing else on the row.
-	//
-	// [Ja] 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
+	// 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
 	// ものではない。
 	link := testutil.OpeningTag(t, body, ">Records I picked up<")
 	if !strings.Contains(link, `lang="en"`) {
-		t.Errorf("英語のスレッドのタイトル = %s, want lang=\"en\"", link)
+		t.Errorf("英語のスレッドのタイトル = %s、期待値はlang=\"en\"を持つ要素", link)
 	}
 
 	row := testutil.Element(t, body, ">Records I picked up<", "</p>")
 	for _, want := range []string{`<span class="sr-only">主言語:</span>`, `<span lang="en">English</span>`} {
 		if !strings.Contains(row, want) {
-			t.Errorf("英語のスレッドの行 = %s, want %q", row, want)
+			t.Errorf("英語のスレッドの行 = %s、%q を含むことを期待", row, want)
 		}
 	}
 
-	// Every row is badged, not only the ones in another language, so that a
-	// missing badge never has to be read as "this one is in my language".
-	//
-	// [Ja] バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
+	// バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
 	// 「これは自分の言語だ」と読む必要が生じないようにするため。
 	if !strings.Contains(body, `<span lang="ja">日本語</span>`) {
 		t.Error("日本語のスレッドにバッジが無い")
 	}
 
-	// The thread written in a language the application has no locale for is the
-	// one row that declares none. There is no tag to declare, and an invented one
-	// would have a screen reader pronounce the title by the rules of a language
-	// it is not written in, so the badge carries the translated word instead.
-	//
-	// [Ja] アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
+	// アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
 	// 唯一の行である。宣言するタグが無く、でっち上げたタグは、そのタイトルが書かれて
 	// いない言語の規則でスクリーンリーダーに発音させることになるため、バッジは代わりに
 	// 訳語を載せる。
 	otherTitle := testutil.OpeningTag(t, body, ">Mes derniers disques<")
 	if strings.Contains(otherTitle, "lang=") {
-		t.Errorf("other のスレッドのタイトル = %s, want lang 属性なし", otherTitle)
+		t.Errorf("otherのスレッドのタイトル = %s、期待値はlang属性なし", otherTitle)
 	}
 	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</p>")
 	if !strings.Contains(otherRow, "その他") {
-		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
+		t.Errorf("otherのスレッドの行 = %s、期待値は「その他」の訳語のバッジ", otherRow)
 	}
 }
 
-// TestShow_AdminLink verifies that the sidebar's localized way into the
-// administration screens is drawn only for an account admitted to them, and
-// that it leads to the admin hub. The sidebar is on every page of the community,
-// so a link drawn for everyone would be an entrance that answers most of the
-// community with a refusal.
-//
-// It is asserted here rather than on the sidebar component because what the
-// component is handed comes from a UseCase reading the roles this account holds:
-// the assertion is about the whole path from an assignment in the database to the
-// markup, and the home page is the community page every signed-in visitor lands
-// on.
-//
-// [Ja] TestShow_AdminLink は、サイドバーのローカライズされた管理画面への導線が、それを
+// TestShow_AdminLinkは、サイドバーのローカライズされた管理画面への導線が、それを
 // 許されたアカウントにだけ描かれること、そして行き先が管理ハブであることを検証します。
 // サイドバーはコミュニティのどのページにも出るため、全員に描くリンクは、コミュニティの
 // 大半に拒否で応じる入口になってしまいます。
 //
 // サイドバーのコンポーネントではなくここで検証するのは、コンポーネントが受け取るものが、
-// このアカウントの持つロールを読む UseCase から来るためです。検証したいのはデータベースの
+// このアカウントの持つロールを読むUseCaseから来るためです。検証したいのはデータベースの
 // 割当からマークアップまでの経路の全体であり、ホームはサインイン済みの訪問者が必ず着く
 // コミュニティのページです。
 func TestShow_AdminLink(t *testing.T) {
@@ -613,13 +501,13 @@ func TestShow_AdminLink(t *testing.T) {
 		wantAdminLinkText string
 	}{
 		{
-			name:              "admin ロールを持つ利用者には日本語の管理リンクが出る",
+			name:              "adminロールを持つ利用者には日本語の管理リンクが出る",
 			locale:            model.LocaleJa,
 			grantAdminRole:    true,
 			wantAdminLinkText: "管理",
 		},
 		{
-			name:              "admin ロールを持つ利用者には英語の管理リンクが出る",
+			name:              "adminロールを持つ利用者には英語の管理リンクが出る",
 			locale:            model.LocaleEn,
 			grantAdminRole:    true,
 			wantAdminLinkText: "Admin",
@@ -655,15 +543,11 @@ func TestShow_AdminLink(t *testing.T) {
 			handler.Show(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 
 			body := rec.Body.String()
-			// The settings link is asserted alongside so that a body missing both
-			// (a sidebar that failed to render its account block at all) cannot pass
-			// as the case where the admin link is correctly absent.
-			//
-			// [Ja] 設定のリンクも併せて検証する。どちらも無いボディ (アカウントのブロックを
+			// 設定のリンクも併せて検証する。どちらも無いボディ (アカウントのブロックを
 			// そもそも描けなかったサイドバー) が、管理のリンクが正しく無い場合として通って
 			// しまわないようにするためである。
 			if !strings.Contains(body, `href="/settings"`) {
@@ -672,12 +556,12 @@ func TestShow_AdminLink(t *testing.T) {
 			hasAdminLink := strings.Contains(body, `href="/admin"`)
 			wantAdminLink := tt.wantAdminLinkText != ""
 			if hasAdminLink != wantAdminLink {
-				t.Errorf(`body contains href="/admin" = %t, want %t`, hasAdminLink, wantAdminLink)
+				t.Errorf(`ボディにhref="/admin"が含まれるか = %t、期待値 = %t`, hasAdminLink, wantAdminLink)
 			}
 			if wantAdminLink {
 				adminLink := testutil.Element(t, body, `href="/admin"`, "</a>")
 				if !strings.HasSuffix(adminLink, ">"+tt.wantAdminLinkText) {
-					t.Errorf("admin link = %s, want text %q", adminLink, tt.wantAdminLinkText)
+					t.Errorf("管理リンク = %s、期待値は文言 %q", adminLink, tt.wantAdminLinkText)
 				}
 			}
 		})

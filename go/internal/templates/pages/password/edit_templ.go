@@ -13,19 +13,10 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// EditPageData is the data for the password reset update (new-password) page.
-// Token is the plaintext reset token, carried in a hidden field so the submitted
-// form names which token to spend; it is cleared by the handler when a token
-// error occurs so an invalid link is not re-submitted. FormErrors carries the
-// messages: a form-wide message (an invalid, used, or expired link) shown at the
-// top, and per-field messages (a too-short, too-long, or mismatched password)
-// beneath each field. The password values are deliberately not echoed back, since
-// re-rendering a password field with its value is a credential-leak risk.
-//
-// [Ja] EditPageData はパスワードリセット更新 (新パスワード) ページのデータです。Token は
-// 平文のリセットトークンで、送信フォームがどのトークンを消費するか示すよう hidden
+// EditPageDataはパスワードリセット更新 (新パスワード) ページのデータです。Tokenは
+// 平文のリセットトークンで、送信フォームがどのトークンを消費するか示すようhidden
 // フィールドで運びます。トークンエラー時はハンドラーが消去し、無効なリンクが再送信され
-// ないようにします。FormErrors はメッセージを運びます。上部に出すフォーム全体のメッセージ
+// ないようにします。FormErrorsはメッセージを運びます。上部に出すフォーム全体のメッセージ
 // (リンクが無効・使用済み・期限切れ) と、各フィールドの下に出すフィールド別のメッセージ
 // (短すぎ・長すぎ・不一致のパスワード) です。パスワードの値は意図的にエコーバックしません。
 // 値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスクのためです。
@@ -35,17 +26,10 @@ type EditPageData struct {
 	FormErrors *model.ValidationError
 }
 
-// Edit renders the new-password form: a password and a password-confirmation
-// field that, on submit, set the account's new password and spend the reset
-// token. The form posts to /password with a hidden _method=PATCH so the HTML form
-// drives the PATCH route, and the CSRF token and the reset token are embedded as
-// hidden fields. A link to request a fresh reset link is offered below, for when
-// the current link is no longer valid.
-//
-// [Ja] Edit は新パスワードフォームを描画します。送信するとアカウントの新しいパスワードを
+// Editは新パスワードフォームを描画します。送信するとアカウントの新しいパスワードを
 // 設定しリセットトークンを消費する、パスワードとパスワード確認のフィールドです。フォームは
-// hidden な _method=PATCH を付けて /password へ POST し、HTML フォームから PATCH ルートを
-// 動かします。CSRF トークンとリセットトークンは hidden フィールドとして埋め込みます。
+// hiddenな _method=PATCHを付けて /passwordへPOSTし、HTMLフォームからPATCHルートを
+// 動かします。CSRFトークンとリセットトークンはhiddenフィールドとして埋め込みます。
 // 現在のリンクがもう有効でないときのために、新しいリセットリンクを申請するリンクを下に
 // 提供します。
 func Edit(data EditPageData) templ.Component {
@@ -76,7 +60,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_edit_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 48, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 32, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -89,7 +73,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_edit_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 51, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 35, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -110,7 +94,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 57, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 41, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -123,7 +107,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Token)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 58, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 42, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +143,7 @@ func Edit(data EditPageData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("password-hint " + components.FieldErrorsDescribedBy("password", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 77, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 61, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -182,7 +166,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_edit_password_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 82, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 66, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +210,7 @@ func Edit(data EditPageData) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("password_confirmation", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 103, Col: 100}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 87, Col: 100}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -252,7 +236,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_edit_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 109, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 93, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -265,7 +249,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_edit_request_new_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 114, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password/edit.templ`, Line: 98, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

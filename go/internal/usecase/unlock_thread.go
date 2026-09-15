@@ -9,17 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// UnlockThreadUsecase lifts the lock an administrator placed on a thread.
-//
-// Whether the thread then takes replies is a separate question: a thread that
-// reached its post cap stays locked for that reason, which is derived from the
-// count it carries rather than from a column anyone can clear.
-//
-// It takes no reason. Lifting a lock restores what the thread was before, so
-// there is nothing for the history to explain beyond the operation itself,
-// whereas closing a thread is the decision a later administrator has to read.
-//
-// [Ja] UnlockThreadUsecaseは、管理者がスレッドに掛けたロックを外します。
+// UnlockThreadUsecaseは、管理者がスレッドに掛けたロックを外します。
 //
 // そのスレッドが実際に返信を受け付けるかどうかは別の問いです。投稿数の上限に達した
 // スレッドはその理由でロックされたままであり、それは誰かが空にできる列からではなく、
@@ -35,10 +25,7 @@ type UnlockThreadUsecase struct {
 	moderationLogRepo *repository.ModerationLogRepository
 }
 
-// NewUnlockThreadUsecase builds an UnlockThreadUsecase from the write pool and
-// the repositories it reads and persists through.
-//
-// [Ja] NewUnlockThreadUsecaseは書き込み用プールと、読み書きに使うリポジトリから
+// NewUnlockThreadUsecaseは書き込み用プールと、読み書きに使うリポジトリから
 // UnlockThreadUsecaseを構築します。
 func NewUnlockThreadUsecase(
 	writer *sql.DB,
@@ -54,19 +41,14 @@ func NewUnlockThreadUsecase(
 	}
 }
 
-// UnlockThreadInput is the input to Execute. Actor is who is lifting the lock
-// and ThreadID the /t/{id} it is lifted from.
-//
-// [Ja] UnlockThreadInputはExecuteの入力です。Actorはロックを外す側、ThreadIDはそれが
+// UnlockThreadInputはExecuteの入力です。Actorはロックを外す側、ThreadIDはそれが
 // 外される/t/{id}です。
 type UnlockThreadInput struct {
 	Actor    Actor
 	ThreadID model.ThreadID
 }
 
-// Execute lifts the lock from the thread.
-//
-// [Ja] Executeはスレッドからロックを外します。
+// Executeはスレッドからロックを外します。
 func (uc *UnlockThreadUsecase) Execute(ctx context.Context, input UnlockThreadInput) error {
 	communityPolicy, err := resolveCommunityPolicy(ctx, uc.roleRepo, input.Actor)
 	if err != nil {
@@ -79,16 +61,7 @@ func (uc *UnlockThreadUsecase) Execute(ctx context.Context, input UnlockThreadIn
 	return uc.unlock(ctx, input.Actor, input.ThreadID)
 }
 
-// unlock takes the mark off and records the operation, having first confirmed
-// inside the same transaction that the thread is there, that it is still
-// published, and that an administrator's lock is what it carries.
-//
-// A thread no administrator locked is success without an entry, for the reason a
-// second lock writes none: the request asked that the administrators' lock not
-// hold, and it does not. A thread locked only by its post cap is one such thread,
-// so lifting nothing is not recorded as having reopened it.
-//
-// [Ja] unlockは印を外して操作を記録します。その前に、同じトランザクションの中で、
+// unlockは印を外して操作を記録します。その前に、同じトランザクションの中で、
 // スレッドが存在すること、まだ公開されていること、そして管理者のロックを持っていることを
 // 確かめます。
 //

@@ -10,12 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// TestModerationLogCreateValidator_Validate covers the rules the reason recorded
-// with a moderation operation follows: a note within the limit is accepted, an
-// absent one as readily as a written one, while a note over the limit or one the
-// application cannot store is refused with a field error on reason.
-//
-// [Ja] TestModerationLogCreateValidator_Validateは、モデレーションの操作に記録する理由が
+// TestModerationLogCreateValidator_Validateは、モデレーションの操作に記録する理由が
 // 従う規則を網羅する。上限に収まる注記は受け付けられ、書かれなかった注記も書かれた注記と
 // 同じく受け付けられる。上限を超えた注記と、アプリケーションが保存できない注記は、reasonの
 // フィールドエラーで拒否される。
@@ -61,10 +56,7 @@ func TestModerationLogCreateValidator_Validate(t *testing.T) {
 			want:   strings.Repeat("あ", validator.ModerationReasonMaxLength),
 		},
 		{
-			// The count is of the trimmed and normalized reason, so a note at the
-			// limit is not refused for the CR the browser added to each line ending.
-			//
-			// [Ja] 数えるのは前後の空白を除いて正規化した後の理由であるため、上限ちょうどの
+			// 数えるのは前後の空白を除いて正規化した後の理由であるため、上限ちょうどの
 			// 注記が、ブラウザが各行末に足したCRのせいで拒否されることはない。
 			name:   "正常系: 正規化した後の長さで数える",
 			reason: " " + strings.Repeat("あ\r\n", validator.ModerationReasonMaxLength/2),
@@ -107,23 +99,23 @@ func TestModerationLogCreateValidator_Validate(t *testing.T) {
 
 			if !tt.wantErr {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("予期しないエラー: %v", err)
 				}
 				if reason != tt.want {
-					t.Errorf("Validate() = %q, want %q", reason, tt.want)
+					t.Errorf("Validate() = %q、期待値 = %q", reason, tt.want)
 				}
 				return
 			}
 
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("expected a ValidationError, got %v", err)
+				t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 			}
 			if !ve.HasFieldError("reason") {
-				t.Errorf("expected a field error on reason, got %#v", ve.Fields)
+				t.Errorf("reasonフィールドのエラーが無い: %#v", ve.Fields)
 			}
 			if reason != "" {
-				t.Errorf("expected no reason on failure, got %q", reason)
+				t.Errorf("失敗時のreason = %q、期待値は空文字列", reason)
 			}
 		})
 	}

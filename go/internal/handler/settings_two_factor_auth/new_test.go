@@ -22,14 +22,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// setupTwoFactorAuthHandler wires a settings_two_factor_auth Handler over the
-// test database and creates a user to set up 2FA. It returns the handler, the 2FA
-// repository (for assertions and seeding via the builder), and a user model to
-// place in the request context (as RequireAuth would).
-//
-// [Ja] setupTwoFactorAuthHandler はテスト用データベース上に settings_two_factor_auth
-// Handler を組み立て、2FA を設定するユーザーを作成する。ハンドラー・(検証と登録行の投入用の)
-// 2FA リポジトリ・(RequireAuth のように) リクエスト context に載せるユーザーモデルを返す。
+// setupTwoFactorAuthHandlerはテスト用データベース上にsettings_two_factor_auth
+// Handlerを組み立て、2FAを設定するユーザーを作成する。ハンドラー・(検証と登録行の投入用の)
+// 2FAリポジトリ・(RequireAuthのように) リクエストcontextに載せるユーザーモデルを返す。
 func setupTwoFactorAuthHandler(t *testing.T, db *database.DB) (*settings_two_factor_auth.Handler, *repository.UserTwoFactorAuthRepository, *model.User) {
 	t.Helper()
 
@@ -53,11 +48,8 @@ func setupTwoFactorAuthHandler(t *testing.T, db *database.DB) (*settings_two_fac
 	return h, repo, &model.User{ID: userID, Email: email}
 }
 
-// getNew builds a GET /settings/two_factor_auth/new request with the user in the
-// context (as RequireAuth would place it) and the locale set.
-//
-// [Ja] getNew は (RequireAuth が置くように) context にユーザーを載せ、ロケールを設定した
-// GET /settings/two_factor_auth/new リクエストを組み立てる。
+// getNewは (RequireAuthが置くように) contextにユーザーを載せ、ロケールを設定した
+// GET /settings/two_factor_auth/newリクエストを組み立てる。
 func getNew(user *model.User, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/settings/two_factor_auth/new", nil)
 	ctx := i18n.SetLocale(req.Context(), locale)
@@ -65,9 +57,7 @@ func getNew(user *model.User, locale model.Locale) *http.Request {
 	return req.WithContext(ctx)
 }
 
-// findCookie returns the cookie with the given name from the response, or nil.
-//
-// [Ja] findCookie はレスポンスから指定名の Cookie を返す。無ければ nil。
+// findCookieはレスポンスから指定名のCookieを返す。無ければnil。
 func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == name {
@@ -77,41 +67,31 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
-// decodeFlash reads and decodes the flash cookie from the response, mirroring the
-// base64-encoded JSON that FlashManager writes. It fails the test if the cookie is
-// missing or malformed.
-//
-// [Ja] decodeFlash はレスポンスのフラッシュ Cookie を読み取ってデコードする。
-// FlashManager が書き込む base64 エンコードされた JSON と対になる。Cookie が無い、または
+// decodeFlashはレスポンスのフラッシュCookieを読み取ってデコードする。
+// FlashManagerが書き込むbase64エンコードされたJSONと対になる。Cookieが無い、または
 // 壊れている場合はテストを失敗させる。
 func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMessage {
 	t.Helper()
 
 	c := findCookie(rec, session.FlashCookieName)
 	if c == nil {
-		t.Fatal("フラッシュ Cookie が設定されていない")
+		t.Fatal("フラッシュCookieが設定されていない")
 	}
 	data, err := base64.StdEncoding.DecodeString(c.Value)
 	if err != nil {
-		t.Fatalf("フラッシュ Cookie の base64 デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのbase64デコードに失敗: %v", err)
 	}
 	var flash session.FlashMessage
 	if err := json.Unmarshal(data, &flash); err != nil {
-		t.Fatalf("フラッシュ Cookie の JSON デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのJSONデコードに失敗: %v", err)
 	}
 	return &flash
 }
 
-// TestNew verifies that GET /settings/two_factor_auth/new returns HTTP 200, persists
-// a not-yet-enabled enrollment, and renders the localized heading, the QR code as a
-// PNG data URI, the enrollment secret for manual entry, the code form posting to
-// /settings/two_factor_auth with the CSRF hidden field, and the noindex robots meta,
-// for each supported locale.
-//
-// [Ja] TestNew は GET /settings/two_factor_auth/new が HTTP 200 を返し、未有効化の登録を
-// 永続化し、サポートする各ロケールについて、ローカライズされた見出し・PNG data URI としての
-// QR コード・手動入力用の登録 secret・CSRF hidden フィールド付きで /settings/two_factor_auth へ
-// POST するコードフォーム・noindex の robots メタを描画することを検証する。
+// TestNewはGET /settings/two_factor_auth/newがHTTP 200を返し、未有効化の登録を
+// 永続化し、サポートする各ロケールについて、ローカライズされた見出し・PNG data URIとしての
+// QRコード・手動入力用の登録secret・CSRF hiddenフィールド付きで /settings/two_factor_authへ
+// POSTするコードフォーム・noindexのrobotsメタを描画することを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -121,8 +101,8 @@ func TestNew(t *testing.T) {
 		wantHeading   string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "2 段階認証の設定", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Set up two-factor authentication", wantHeaderNav: "Global navigation"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "2段階認証の設定", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Set up two-factor authentication", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -136,31 +116,26 @@ func TestNew(t *testing.T) {
 			h.New(rec, getNew(user, tt.locale))
 
 			if rec.Code != http.StatusOK {
-				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
-			// The page shows the plaintext TOTP secret, so it must not be cached.
-			//
-			// [Ja] このページは平文の TOTP secret を表示するため、キャッシュされてはならない。
+			// このページは平文のTOTP secretを表示するため、キャッシュされてはならない。
 			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
-				t.Errorf("Cache-Control = %q, want %q", got, "no-store")
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, "no-store")
 			}
 
-			// A not-yet-enabled enrollment row is created, and its secret is shown for
-			// manual entry.
-			//
-			// [Ja] 未有効化の登録行が作成され、その secret が手動入力用に表示される。
+			// 未有効化の登録行が作成され、そのsecretが手動入力用に表示される。
 			stored, err := repo.FindByUserID(context.Background(), user.ID)
 			if err != nil {
-				t.Fatalf("FindByUserID() error = %v", err)
+				t.Fatalf("FindByUserID()のエラー = %v", err)
 			}
 			if stored == nil {
 				t.Fatal("未有効化の登録行が作成されていない")
 			}
 			if stored.Enabled {
-				t.Error("作成された行の Enabled = true, want false")
+				t.Error("作成された行のEnabled = true、期待値 = false")
 			}
 
 			body := rec.Body.String()
@@ -179,21 +154,16 @@ func TestNew(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestNew_AlreadyEnabled verifies that when 2FA is already enabled, GET
-// /settings/two_factor_auth/new does not re-enroll but shows the disable confirmation
-// form (heading and the DELETE form) instead, so the settings page is the one place
-// to turn 2FA off. No enrollment QR is rendered.
-//
-// [Ja] TestNew_AlreadyEnabled は、2FA が既に有効なとき GET /settings/two_factor_auth/new が
-// 再登録せず、代わりに無効化の確認フォーム (見出しと DELETE フォーム) を表示し、この設定
-// ページが 2FA を無効化する唯一の場所になることを検証する。登録用 QR は描画されない。
+// TestNew_AlreadyEnabledは、2FAが既に有効なときGET /settings/two_factor_auth/newが
+// 再登録せず、代わりに無効化の確認フォーム (見出しとDELETEフォーム) を表示し、この設定
+// ページが2FAを無効化する唯一の場所になることを検証する。登録用QRは描画されない。
 func TestNew_AlreadyEnabled(t *testing.T) {
 	t.Parallel()
 
@@ -206,12 +176,12 @@ func TestNew_AlreadyEnabled(t *testing.T) {
 	h.New(rec, getNew(user, model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 
 	body := rec.Body.String()
 	wants := []string{
-		"2 段階認証の無効化",
+		"2段階認証の無効化",
 		`action="/settings/two_factor_auth"`,
 		`value="DELETE"`,
 		`name="current_password"`,
@@ -221,13 +191,11 @@ func TestNew_AlreadyEnabled(t *testing.T) {
 	}
 	for _, want := range wants {
 		if !strings.Contains(body, want) {
-			t.Errorf("response body does not contain %q", want)
+			t.Errorf("レスポンスボディに %q が含まれていない", want)
 		}
 	}
-	// It must not re-enroll: no QR code is rendered.
-	//
-	// [Ja] 再登録してはならない: QR コードは描画されない。
+	// 再登録してはならない: QRコードは描画されない。
 	if strings.Contains(body, "data:image/png;base64,") {
-		t.Error("既に有効なのに登録用 QR が描画されている")
+		t.Error("既に有効なのに登録用QRが描画されている")
 	}
 }

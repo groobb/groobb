@@ -6,11 +6,8 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/emails/layouts"
 )
 
-// EnHTML renders the English HTML body, wrapping the content in the shared email
-// layout (which supplies the document scaffold and Groobb footer).
-//
-// [Ja] EnHTML は英語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
-// Groobb フッターを供給する) で内容を包みます。
+// EnHTMLは英語のHTML本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobbフッターを供給する) で内容を包みます。
 templ EnHTML(data Data) {
 	@layouts.Default("en", "Reset your password") {
 		<p>We received a request to reset the password for { data.Email }.</p>

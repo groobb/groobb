@@ -14,24 +14,13 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Show GET /admin - renders the admin hub, a list of links to the community's
-// administration screens (the user list for now). It is registered behind
-// RequireAuth, which settles that someone is signed in; whether that someone may
-// open the page is settled by the UseCase, and a refusal is answered with the
-// shared 403 page.
-//
-// The page is marked noindex because it is behind authentication and admitted to
-// a few people, so there is nothing here for a searcher. It renders in the Default
-// layout, as the settings hub does: the community shell's sidebar is for moving
-// around the community, and this page is not part of it.
-//
-// [Ja] Show GET /admin - 管理ハブを描画します。コミュニティの管理画面 (今は利用者一覧)
-// へのリンクの一覧です。RequireAuth の背後に登録され、そこで誰かがサインインしていることが
-// 決まります。その誰かがこのページを開いてよいかどうかを決めるのは UseCase で、拒否には
-// 共通の 403 ページで応答します。
+// Show GET /admin - 管理ハブを描画します。コミュニティの管理画面 (今は利用者一覧)
+// へのリンクの一覧です。RequireAuthの背後に登録され、そこで誰かがサインインしていることが
+// 決まります。その誰かがこのページを開いてよいかどうかを決めるのはUseCaseで、拒否には
+// 共通の403ページで応答します。
 //
 // 認証の背後にあり、許されるのは数人であるため、検索する人に差し出すものはありません。
-// そこで noindex を付けます。設定ハブと同じく Default レイアウトで描画します。コミュニティの
+// そこでnoindexを付けます。設定ハブと同じくDefaultレイアウトで描画します。コミュニティの
 // シェルのサイドバーはコミュニティの中を移動するためのもので、このページはその一部では
 // ないためです。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {

@@ -8,16 +8,7 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// GetThreadModerationInput is the input to Execute. Actor is who opened the
-// screen, ThreadID the /t/{id} it is about, and Number the reply number when
-// the screen is about one post of that thread rather than the thread itself.
-//
-// Number is a pointer because a screen acting on the thread names no post, and
-// the reply number 0 is not how that is said: a thread's numbering starts at 1,
-// so a zero arriving from a malformed address would otherwise read as "no post"
-// instead of as a post the thread does not have.
-//
-// [Ja] GetThreadModerationInputはExecuteの入力です。Actorは画面を開いた側、ThreadIDは
+// GetThreadModerationInputはExecuteの入力です。Actorは画面を開いた側、ThreadIDは
 // その画面が対象とする/t/{id}、Numberは画面がスレッド自身ではなくその投稿1件を対象とする
 // ときのレス番号です。
 //
@@ -31,17 +22,7 @@ type GetThreadModerationInput struct {
 	Number   *int
 }
 
-// GetThreadModerationOutput is what a confirmation page names as the target of
-// the operation it is about: the thread, and the post when the screen is about
-// one. Post is nil for a screen acting on the thread itself.
-//
-// PostAuthor is the account that wrote that post, and is nil both for a screen
-// acting on the thread and for a post whose author cannot be resolved, the
-// account having withdrawn or its row having since been purged. The screen
-// names the author either way, because what it puts in front of the
-// administrator is the post as the community reads it.
-//
-// [Ja] GetThreadModerationOutputは、確認ページが自身の対象とする操作の相手として名指す
+// GetThreadModerationOutputは、確認ページが自身の対象とする操作の相手として名指す
 // ものです。スレッドと、画面が投稿1件を対象とするときはその投稿です。スレッド自身に対して
 // 働きかける画面ではPostがnilになります。
 //
@@ -55,16 +36,7 @@ type GetThreadModerationOutput struct {
 	PostAuthor *model.User
 }
 
-// GetThreadModerationUsecase reads what the confirmation pages under a thread
-// are drawn from. It is a read UseCase: it only calls the lookup methods of its
-// repositories, so it needs neither a validator nor a transaction.
-//
-// What it resolves is the target a screen shows before anything is done to it.
-// Whether the operation itself is then carried out is the write UseCase's to
-// answer, against the state it reads inside its own transaction, so nothing
-// this UseCase reports is relied on to still hold when the submission arrives.
-//
-// [Ja] GetThreadModerationUsecaseは、スレッドの下の確認ページが描かれる元を読みます。
+// GetThreadModerationUsecaseは、スレッドの下の確認ページが描かれる元を読みます。
 // 読み取りUseCaseであり、リポジトリの取得系メソッドしか呼ばないため、validatorも
 // トランザクションも必要としません。
 //
@@ -79,10 +51,7 @@ type GetThreadModerationUsecase struct {
 	userRepo   *repository.UserRepository
 }
 
-// NewGetThreadModerationUsecase builds a GetThreadModerationUsecase over the
-// repositories the confirmation pages are read from.
-//
-// [Ja] NewGetThreadModerationUsecaseは、確認ページが読み取る各リポジトリから
+// NewGetThreadModerationUsecaseは、確認ページが読み取る各リポジトリから
 // GetThreadModerationUsecaseを構築します。
 func NewGetThreadModerationUsecase(
 	roleRepo *repository.RoleRepository,
@@ -98,25 +67,7 @@ func NewGetThreadModerationUsecase(
 	}
 }
 
-// Execute resolves the target the confirmation page names.
-//
-// Permission is answered first, so that a thread the address does not name and
-// a post that is no longer shown are both things only someone admitted to these
-// screens learns about. What is asked is whether the actor may act on a thread
-// at all rather than whether they may carry out this particular operation: the
-// screen is one step before the operation, and the judgment for the operation
-// stands in front of the operation itself.
-//
-// An unpublished thread is AppErrCodeResourceUnpublished, as it is for the
-// operations: the confirmation page would name as a target something the
-// community no longer shows.
-//
-// An unpublished post is AppErrCodeResourceNotFound rather than the answer its
-// thread gets, because the page that would name it has nothing to show. The
-// post's body is what such a page puts in front of the administrator to act on,
-// and the mark on it took that body out of view.
-//
-// [Ja] Executeは確認ページが名指す対象を解決します。
+// Executeは確認ページが名指す対象を解決します。
 //
 // 権限を最初に答えるのは、アドレスがどのスレッドも名指していないことも、投稿がもう示されて
 // いないことも、これらの画面を許された人だけが知ることであるようにするためです。尋ねるのは、
@@ -163,12 +114,7 @@ func (uc *GetThreadModerationUsecase) Execute(ctx context.Context, input GetThre
 	return &GetThreadModerationOutput{Thread: thread, Post: post, PostAuthor: author}, nil
 }
 
-// findPostAuthor reads the account that wrote the post, and returns nil when
-// there is none to resolve. A post whose author has withdrawn is still a post,
-// so the screen says the author is gone rather than refusing to name a target
-// it can otherwise show.
-//
-// [Ja] findPostAuthorは投稿を書いたアカウントを読み、解決できるものが無いときはnilを
+// findPostAuthorは投稿を書いたアカウントを読み、解決できるものが無いときはnilを
 // 返します。作者が退会した投稿も投稿であるため、画面は、他の点では示せる対象を名指すことを
 // 拒むのではなく、作者が居なくなったことを述べます。
 func (uc *GetThreadModerationUsecase) findPostAuthor(ctx context.Context, post *model.Post) (*model.User, error) {

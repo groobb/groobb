@@ -9,79 +9,45 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// recoveryCodeRegex matches a single recovery code: eight lowercase-alphanumeric
-// characters, the shape auth.GenerateRecoveryCodes produces. It gates malformed
-// input before the (more expensive) membership lookup and keeps the field-level
-// format message aligned with what a real code looks like.
-//
-// [Ja] recoveryCodeRegex は 1 つのリカバリーコード (auth.GenerateRecoveryCodes が生成する
-// 形である 8 文字の小文字英数字) にマッチします。形式不正な入力を (より高コストな) 配列内
+// recoveryCodeRegexは1つのリカバリーコード (auth.GenerateRecoveryCodesが生成する
+// 形である8文字の小文字英数字) にマッチします。形式不正な入力を (より高コストな) 配列内
 // 存在チェックの前で弾き、フィールド別の形式メッセージを実際のコードの見た目に揃えます。
 var recoveryCodeRegex = regexp.MustCompile(`^[a-z0-9]{8}$`)
 
-// SignInTwoFactorRecoveryCreateValidator validates the sign-in recovery-code
-// challenge: the submitted code's format, and that it is one of the pending user's
-// stored, still-unused recovery codes. The pending user is the account whose
-// password already passed at the sign-in step (held in the two-factor pending
-// cookie), so this validator completes the second factor when the authenticator
-// app is unavailable. Membership is a pure read (comparing the code against the
-// stored set), so per the validation guideline it belongs in the validator;
-// consuming the matched code (a DB write) is the recovery UseCase's transactional
-// concern, and this validator returns the resolved setting so the UseCase does not
-// re-read it.
-//
-// [Ja] SignInTwoFactorRecoveryCreateValidator はサインイン時のリカバリーコードチャレンジを
+// SignInTwoFactorRecoveryCreateValidatorはサインイン時のリカバリーコードチャレンジを
 // 検証します。送信されたコードの形式と、それが保留中ユーザーの保存済みでまだ未使用の
-// リカバリーコードの 1 つであることです。保留中ユーザーはサインインのステップでパスワードが
-// 既に通ったアカウント (2 段階認証の pending Cookie に保持) であり、本 validator は認証アプリを
-// 使えないときに第 2 要素を完了させます。配列内存在チェックは純粋な読み取り (コードを保存済みの
-// 集合と照合する) のため、バリデーションガイドラインに従い validator に属します。一致した
-// コードの消費 (DB 書き込み) はリカバリー UseCase のトランザクションの関心であり、本 validator
-// は解決した設定を返して UseCase が再読み込みしなくて済むようにします。
+// リカバリーコードの1つであることです。保留中ユーザーはサインインのステップでパスワードが
+// 既に通ったアカウント (2段階認証のpending Cookieに保持) であり、本validatorは認証アプリを
+// 使えないときに第2要素を完了させます。配列内存在チェックは純粋な読み取り (コードを保存済みの
+// 集合と照合する) のため、バリデーションガイドラインに従いvalidatorに属します。一致した
+// コードの消費 (DB書き込み) はリカバリーUseCaseのトランザクションの関心であり、本validator
+// は解決した設定を返してUseCaseが再読み込みしなくて済むようにします。
 type SignInTwoFactorRecoveryCreateValidator struct {
 	userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository
 }
 
-// NewSignInTwoFactorRecoveryCreateValidator creates a
-// SignInTwoFactorRecoveryCreateValidator.
-//
-// [Ja] NewSignInTwoFactorRecoveryCreateValidator は
-// SignInTwoFactorRecoveryCreateValidator を生成します。
+// NewSignInTwoFactorRecoveryCreateValidatorは
+// SignInTwoFactorRecoveryCreateValidatorを生成します。
 func NewSignInTwoFactorRecoveryCreateValidator(userTwoFactorAuthRepo *repository.UserTwoFactorAuthRepository) *SignInTwoFactorRecoveryCreateValidator {
 	return &SignInTwoFactorRecoveryCreateValidator{userTwoFactorAuthRepo: userTwoFactorAuthRepo}
 }
 
-// SignInTwoFactorRecoveryCreateValidatorInput is the input to Validate. UserID is
-// the pending user resolved from the two-factor cookie (whose password already
-// passed), and Code is the recovery code the user typed from their saved backup
-// codes.
-//
-// [Ja] SignInTwoFactorRecoveryCreateValidatorInput は Validate の入力です。UserID は
-// 2 段階認証 Cookie から解決した保留中ユーザー (パスワードが既に通っている)、Code は
+// SignInTwoFactorRecoveryCreateValidatorInputはValidateの入力です。UserIDは
+// 2段階認証Cookieから解決した保留中ユーザー (パスワードが既に通っている)、Codeは
 // ユーザーが保存済みのバックアップコードから入力したリカバリーコードです。
 type SignInTwoFactorRecoveryCreateValidatorInput struct {
 	UserID model.UserID
 	Code   string
 }
 
-// Validate checks the code's format and verifies it is one of the pending user's
-// stored recovery codes, returning the resolved 2FA setting on success so the
-// UseCase can consume the used code from it. Format problems (missing, or not the
-// expected eight lowercase-alphanumeric characters) attach to the code field. When
-// the pending user has no enabled 2FA — a stale or forged pending cookie, or 2FA
-// disabled between the password step and this challenge — it returns a form-wide
-// message so the challenge cannot succeed and the user is asked to sign in again. A
-// well-formed code that is not among the stored codes is a code-field error. A
-// genuine query failure surfaces as a plain error (handled as 500 upstream).
-//
-// [Ja] Validate はコードの形式を検証し、それが保留中ユーザーの保存済みリカバリーコードの
-// 1 つであることを検証します。成功時は解決した 2FA 設定を返し、UseCase が使用済みコードを
-// そこから消費できるようにします。形式の問題 (未入力、または期待する 8 文字の小文字英数字で
-// ない) は code フィールドに付けます。保留中ユーザーに有効な 2FA が無いとき (pending Cookie が
-// 失効・不正、またはパスワードのステップと本チャレンジの間に 2FA が無効化された) はフォーム
+// Validateはコードの形式を検証し、それが保留中ユーザーの保存済みリカバリーコードの
+// 1つであることを検証します。成功時は解決した2FA設定を返し、UseCaseが使用済みコードを
+// そこから消費できるようにします。形式の問題 (未入力、または期待する8文字の小文字英数字で
+// ない) はcodeフィールドに付けます。保留中ユーザーに有効な2FAが無いとき (pending Cookieが
+// 失効・不正、またはパスワードのステップと本チャレンジの間に2FAが無効化された) はフォーム
 // 全体のメッセージを返し、チャレンジを成功させず、ユーザーに再サインインを促します。形式は
-// 整っているが保存済みコードに含まれないコードは code フィールドのエラーです。本物のクエリ
-// 失敗は素の error として表れます (上流で 500 として扱う)。
+// 整っているが保存済みコードに含まれないコードはcodeフィールドのエラーです。本物のクエリ
+// 失敗は素のerrorとして表れます (上流で500として扱う)。
 func (v *SignInTwoFactorRecoveryCreateValidator) Validate(ctx context.Context, input SignInTwoFactorRecoveryCreateValidatorInput) (*model.UserTwoFactorAuth, error) {
 	ve := model.NewValidationError()
 
@@ -112,11 +78,7 @@ func (v *SignInTwoFactorRecoveryCreateValidator) Validate(ctx context.Context, i
 	return twoFactorAuth, nil
 }
 
-// containsRecoveryCode reports whether code is present in the stored recovery
-// codes. The comparison is exact: recovery codes are shown and stored verbatim, so
-// there is no normalization to reconcile.
-//
-// [Ja] containsRecoveryCode は code が保存済みリカバリーコードに含まれるかを返します。
+// containsRecoveryCodeはcodeが保存済みリカバリーコードに含まれるかを返します。
 // 比較は完全一致です。リカバリーコードは表示も保存もそのままの形で行うため、揃えるべき
 // 正規化はありません。
 func containsRecoveryCode(codes []string, code string) bool {

@@ -12,23 +12,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Create POST /t/{id}/posts/{number}/unpublication - takes the post the address
-// names out of view and answers with the thread it was written in, which now
-// carries a placeholder where the post stood. The CSRF check is enforced
-// upstream by the middleware, so it is not repeated here.
-//
-// The thread is answered at its own address rather than at the post's anchor.
-// What the administrator is told is carried by the flash at the top of the page,
-// and an address ending in the post's number would open the thread with that
-// notice scrolled out of sight.
-//
-// A note that is too long comes back on the confirmation page holding what was
-// written, since it is something the administrator can shorten. Every other
-// refusal is answered with a page, because there is then nothing to come back
-// to: the post is not one this visitor may act on, or not one the thread still
-// shows.
-//
-// [Ja] Create POST /t/{id}/posts/{number}/unpublication - アドレスが名指す投稿を視界から
+// Create POST /t/{id}/posts/{number}/unpublication - アドレスが名指す投稿を視界から
 // 外し、それが書かれたスレッドで応答します。スレッドは今、投稿が立っていた場所に占位を運んで
 // います。CSRFの検証は上流のミドルウェアが強制するため、ここでは繰り返しません。
 //
@@ -54,11 +38,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The note's line endings are settled here, where the submission is read, so
-	// that the value recorded and the value drawn back both come out of one
-	// normalization.
-	//
-	// [Ja] 注記の改行は、送信を読むこの場所で確定させる。記録される値と描き戻される値の
+	// 注記の改行は、送信を読むこの場所で確定させる。記録される値と描き戻される値の
 	// どちらも1回の正規化から出るようにするためである。
 	reason := model.NormalizeLineBreaks(r.PostFormValue("reason"))
 
@@ -76,16 +56,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, templates.ThreadPath(viewmodel.ThreadID(id)).String(), http.StatusSeeOther)
 }
 
-// createRefused answers an unpublication that did not happen, turning what the
-// UseCase refused it for into the response the visitor gets.
-//
-// The confirmation page is read again to be drawn again, because it names the
-// post and the submission carries only the note. The read goes through the same
-// UseCase the page was opened with, so a post that was taken out of view between
-// opening the page and submitting is answered the way it would be on the way in
-// rather than drawn as a target that is no longer one.
-//
-// [Ja] createRefusedは、行われなかった非公開に応答し、UseCaseが何を理由に拒否したかを
+// createRefusedは、行われなかった非公開に応答し、UseCaseが何を理由に拒否したかを
 // 訪問者が受け取る応答に変えます。
 //
 // 確認ページを描き直すために読み直すのは、そのページが投稿を名指す一方、送信が運ぶのが注記

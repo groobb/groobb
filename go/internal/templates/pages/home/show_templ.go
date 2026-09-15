@@ -15,31 +15,18 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// ShowPageData is the data for the community's home page: every board of the
-// community, each with the few threads that moved in it most recently.
-//
-// The visitor is not addressed here. The sidebar carries their atname and the
-// controls for their account on every page of the community, so a greeting above
-// this listing would repeat what is already on screen and push the community's
-// activity down.
-//
-// [Ja] ShowPageData はコミュニティのホームページのデータです。コミュニティのすべての
+// ShowPageDataはコミュニティのホームページのデータです。コミュニティのすべての
 // 掲示板を、それぞれ直近で動いた数件のスレッドとともに持ちます。
 //
 // 訪問者への呼びかけはここにありません。サイドバーがコミュニティのどのページでも訪問者の
-// atname とそのアカウントの操作を運ぶため、この一覧の上に置く挨拶は既に画面にあるものを
+// atnameとそのアカウントの操作を運ぶため、この一覧の上に置く挨拶は既に画面にあるものを
 // 繰り返し、コミュニティの動きを下へ押しやることになります。
 type ShowPageData struct {
 	Boards []ShowBoard
 }
 
-// ShowBoard is one section of the listing: a board and its latest threads. It
-// carries the slug rather than the id because /b/{slug} is what addresses a
-// board, and the name is the link to it: this section shows a few of the
-// board's threads, and the board's own page is where the rest are.
-//
-// [Ja] ShowBoard は一覧の区画 1 つで、掲示板とその最新スレッドです。掲示板を指すのは
-// /b/{slug} であるため id ではなく slug を運び、名前がそこへのリンクになります。この区画が
+// ShowBoardは一覧の区画1つで、掲示板とその最新スレッドです。掲示板を指すのは
+// /b/{slug} であるためidではなくslugを運び、名前がそこへのリンクになります。この区画が
 // 見せるのはその掲示板のスレッドのうち数件であり、残りがある場所が掲示板自身のページ
 // だからです。
 type ShowBoard struct {
@@ -48,25 +35,16 @@ type ShowBoard struct {
 	Threads []ShowThread
 }
 
-// ShowThread is one thread of a section, carrying the two denormalized facts a
-// row shows without reading its posts: how many there are, and when the last one
-// arrived. It carries the id as well, because the title is the link to the
-// thread and /t/{id} is what addresses one.
-//
-// [Ja] ShowThread は区画に並ぶスレッド 1 つであり、投稿を読まずに 1 行が示す 2 つの
-// 非正規化された事実 — 何件あるか、最後の 1 件がいつ届いたか — を運びます。id も併せて
+// ShowThreadは区画に並ぶスレッド1つであり、投稿を読まずに1行が示す2つの
+// 非正規化された事実 — 何件あるか、最後の1件がいつ届いたか — を運びます。idも併せて
 // 運ぶのは、タイトルがそのスレッドへのリンクであり、スレッドを指すのが /t/{id} である
 // ためです。
 type ShowThread struct {
 	ID    viewmodel.ThreadID
 	Title string
 
-	// Language is the language the thread is written in, shown as a badge on the
-	// row and declared on the title. A board is not divided by language, so this
-	// is what tells the threads of one section apart.
-	//
-	// [Ja] Language はスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
-	// 宣言します。掲示板は言語で分けないため、1 つの区画に並ぶスレッドを見分けさせる
+	// Languageはスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
+	// 宣言します。掲示板は言語で分けないため、1つの区画に並ぶスレッドを見分けさせる
 	// ものがこれです。
 	Language viewmodel.ThreadLanguage
 
@@ -74,45 +52,21 @@ type ShowThread struct {
 	LastPostedAt time.Time
 }
 
-// ShowHeadingID is the id of this page's main heading. The community layout
-// points the <main> landmark at it with aria-labelledby, so the region's
-// accessible name and the heading a sighted visitor reads are the same text.
-//
-// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
-// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// ShowHeadingIDはこのページの主見出しのidです。コミュニティレイアウトが
+// aria-labelledbyで <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
 // 目で見る訪問者が読む見出しが同じ文字列になります。
 const ShowHeadingID = "home-show-heading"
 
-// ShowCenter renders the home page, the one page of the community that crosses
-// every board. Each board is a section headed by its name, holding the few
-// threads that moved in it most recently, so the boards form the second level of
-// the page outline and their threads the third.
-//
-// The board's name is the link to its page, and the only one the section needs:
-// a trailing "see all" beside it would be a second link to the same address,
-// while the name alone already says where it leads when the link text is read on
-// its own.
-//
-// A thread's row carries its primary language, because a board is not divided by
-// language and one section holds threads in several. The badge says which, and
-// the title declares it, so a screen reader reads a title by the rules of the
-// language it is written in rather than by the page's.
-//
-// A board nobody has posted in yet says so in its own section rather than being
-// left out of the listing. The sidebar lists that board, and a home page holding
-// fewer boards than the sidebar would read as something failing to load rather
-// than as a board waiting for its first thread.
-//
-// [Ja] ShowCenter はホームページを描画します。コミュニティで唯一、すべての掲示板を
+// ShowCenterはホームページを描画します。コミュニティで唯一、すべての掲示板を
 // 横断するページです。各掲示板は自身の名前を見出しに持つ区画であり、そこで直近に動いた
-// 数件のスレッドを持ちます。掲示板がページのアウトラインの第 2 階層を、そのスレッドが
-// 第 3 階層をなします。
+// 数件のスレッドを持ちます。掲示板がページのアウトラインの第2階層を、そのスレッドが
+// 第3階層をなします。
 //
 // 掲示板の名前がそのページへのリンクであり、区画に必要なのはそれだけです。傍らに置く
-// 「すべて見る」は同じアドレスへの 2 つ目のリンクにしかならず、名前だけで既に、リンクの
+// 「すべて見る」は同じアドレスへの2つ目のリンクにしかならず、名前だけで既に、リンクの
 // テキストが単独で読まれてもどこへ導くかを述べているためです。
 //
-// スレッドの行はその主言語を運びます。掲示板を言語で分けないため、1 つの区画が複数の
+// スレッドの行はその主言語を運びます。掲示板を言語で分けないため、1つの区画が複数の
 // 言語のスレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。
 // これによりスクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている
 // 言語の規則で読み上げます。
@@ -149,7 +103,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ShowHeadingID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 119, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 73, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -162,7 +116,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 119, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 73, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -180,7 +134,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_no_boards"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 121, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 75, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -203,7 +157,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardPath(board.Slug).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 129, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 83, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -216,7 +170,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(board.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 130, Col: 22}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 84, Col: 22}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -234,7 +188,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_board_no_threads"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 136, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 90, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -257,7 +211,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var8 templ.SafeURL
 						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templates.ThreadPath(thread.ID).SafeURL())
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 143, Col: 62}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 97, Col: 62}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 						if templ_7745c5c3_Err != nil {
@@ -275,7 +229,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 							var templ_7745c5c3_Var9 string
 							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(thread.Language.Tag)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 146, Col: 41}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 100, Col: 41}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 							if templ_7745c5c3_Err != nil {
@@ -293,7 +247,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var10 string
 						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(thread.Title)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 149, Col: 28}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 103, Col: 28}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
@@ -314,7 +268,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var11 string
 						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 154, Col: 96}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 108, Col: 96}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 						if templ_7745c5c3_Err != nil {
@@ -327,7 +281,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "home_show_last_posted_label"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 156, Col: 63}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 110, Col: 63}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
@@ -340,7 +294,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var13 string
 						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.MachineDateTime(thread.LastPostedAt))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 157, Col: 77}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 111, Col: 77}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 						if templ_7745c5c3_Err != nil {
@@ -353,7 +307,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 						var templ_7745c5c3_Var14 string
 						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(templates.RelativeTime(ctx, thread.LastPostedAt))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 158, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/home/show.templ`, Line: 112, Col: 65}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 						if templ_7745c5c3_Err != nil {

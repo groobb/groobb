@@ -11,25 +11,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Breadcrumb renders the trail naming where inside the community a page sits.
-//
-// The trail is a navigation landmark of its own, named so that it is told apart
-// from the sidebar's, and an ordered list because its steps go from the
-// outermost inwards rather than being a set. The last step is the page being
-// rendered: it is marked as the current one and left unlinked, since a link to
-// where the visitor already is takes them nowhere.
-//
-// Each visual separator is a separate list item hidden from assistive
-// technology. This is the structure Basecoat's breadcrumb API styles, and it
-// keeps the chevrons out of the trail a screen reader announces.
-//
-// The same trail is published beside the markup as BreadcrumbList structured
-// data, which is what lets a search result show where the page sits in place of
-// its bare URL. It is rendered from the data the markup is rendered from, so the
-// two describe the same trail; it is left out when the instance does not know
-// its own public address, since every linked step there is named absolutely.
-//
-// [Ja] Breadcrumb は、ページがコミュニティのどこに位置するかを示す経路を描画します。
+// Breadcrumbは、ページがコミュニティのどこに位置するかを示す経路を描画します。
 //
 // この経路はそれ自身がナビゲーションのランドマークであり、サイドバーのそれと区別が
 // 付くよう名前を持ちます。順序付きリストにしているのは、各段が集合ではなく外側から
@@ -37,13 +19,13 @@ import (
 // リンクにしません。訪問者が既に居る場所へのリンクは、どこへも連れて行かないためです。
 //
 // 視覚的な区切り記号は、支援技術から隠した独立のリスト項目として置きます。これは
-// Basecoat の breadcrumb API がスタイルする構造であり、スクリーンリーダーが読み上げる
+// Basecoatのbreadcrumb APIがスタイルする構造であり、スクリーンリーダーが読み上げる
 // 経路に山括弧が混ざるのを防ぎます。
 //
-// 同じ経路を、マークアップの傍らに BreadcrumbList の構造化データとして公開します。検索
-// 結果が素の URL の代わりにページの在り処を示せるのはこれによります。マークアップと同じ
+// 同じ経路を、マークアップの傍らにBreadcrumbListの構造化データとして公開します。検索
+// 結果が素のURLの代わりにページの在り処を示せるのはこれによります。マークアップと同じ
 // データから描画するため、両者は同じ経路を述べます。インスタンスが自身の公開アドレスを
-// 知らないときは描画しません。リンクを持つ各段はそこで絶対 URL として名指されるため
+// 知らないときは描画しません。リンクを持つ各段はそこで絶対URLとして名指されるため
 // です。
 func Breadcrumb(data BreadcrumbData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -74,7 +56,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "breadcrumb_label"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 45, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 27, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -108,7 +90,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 						var templ_7745c5c3_Var3 string
 						templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Lang)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 72, Col: 25}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 54, Col: 25}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 						if templ_7745c5c3_Err != nil {
@@ -126,7 +108,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 74, Col: 19}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 56, Col: 19}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -144,7 +126,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 					var templ_7745c5c3_Var5 templ.SafeURL
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(item.Path.SafeURL())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 77, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 59, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -162,7 +144,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 						var templ_7745c5c3_Var6 string
 						templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Lang)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 80, Col: 25}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 62, Col: 25}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 						if templ_7745c5c3_Err != nil {
@@ -180,7 +162,7 @@ func Breadcrumb(data BreadcrumbData) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 83, Col: 19}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/breadcrumb.templ`, Line: 65, Col: 19}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {

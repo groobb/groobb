@@ -10,20 +10,12 @@ import (
 	templruntime "github.com/a-h/templ/runtime"
 )
 
-// Turnstile renders the Cloudflare Turnstile widget and loads its api.js so the
-// browser injects a cf-turnstile-response token into the enclosing form on
-// submit. The script is loaded async + defer so it never blocks HTML parsing.
+// TurnstileはCloudflare Turnstileウィジェットを描画し、そのapi.jsを
+// 読み込むことで、送信時にブラウザが囲んでいるフォームへcf-turnstile-response
+// トークンを差し込むようにします。スクリプトはasync + deferで読み込むため、
+// HTMLの解析をブロックしません。
 //
-// When siteKey is empty (the dev / test disable path, where config clears the
-// key) it renders nothing at all — neither the script nor the widget — so those
-// environments make no third-party request and the markup stays clean.
-//
-// [Ja] Turnstile は Cloudflare Turnstile ウィジェットを描画し、その api.js を
-// 読み込むことで、送信時にブラウザが囲んでいるフォームへ cf-turnstile-response
-// トークンを差し込むようにします。スクリプトは async + defer で読み込むため、
-// HTML の解析をブロックしません。
-//
-// siteKey が空のとき (dev / test の無効化経路。config がキーを空にする) は
+// siteKeyが空のとき (dev / testの無効化経路。configがキーを空にする) は
 // スクリプトもウィジェットも一切描画しないため、それらの環境はサードパーティ
 // リクエストを行わず、マークアップもクリーンなまま保たれます。
 func Turnstile(siteKey string) templ.Component {
@@ -55,7 +47,7 @@ func Turnstile(siteKey string) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(siteKey)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/turnstile.templ`, Line: 22, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/turnstile.templ`, Line: 14, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {

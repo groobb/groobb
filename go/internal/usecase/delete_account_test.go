@@ -16,12 +16,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newDeleteAccountUsecase wires a DeleteAccountUsecase over the test's own
-// database. The UseCase opens its own transaction, so a test asserts against the
-// rows it commits.
-//
-// [Ja] newDeleteAccountUsecase はテスト専用のデータベース上に DeleteAccountUsecase を
-// 組み立てます。UseCase は自前のトランザクションを開くため、テストはそれがコミットした行を
+// newDeleteAccountUsecaseはテスト専用のデータベース上にDeleteAccountUsecaseを
+// 組み立てます。UseCaseは自前のトランザクションを開くため、テストはそれがコミットした行を
 // 検証します。
 func newDeleteAccountUsecase(t *testing.T, db *database.DB) *usecase.DeleteAccountUsecase {
 	t.Helper()
@@ -42,12 +38,8 @@ func newDeleteAccountUsecase(t *testing.T, db *database.DB) *usecase.DeleteAccou
 	)
 }
 
-// seedWithdrawalUser creates a committed user with the password "password123" and
-// two live sessions, returning its id so a UseCase test can drive a withdrawal
-// from a real, authenticatable account and assert its sessions are cleared.
-//
-// [Ja] seedWithdrawalUser はパスワード "password123" と 2 つの有効なセッションを持つ
-// コミット済みユーザーを作成し、その id を返す。UseCase テストが実在の認証可能な
+// seedWithdrawalUserはパスワード "password123" と2つの有効なセッションを持つ
+// コミット済みユーザーを作成し、そのidを返す。UseCaseテストが実在の認証可能な
 // アカウントから退会を駆動し、セッションが消えることを検証できるようにする。
 func seedWithdrawalUser(t *testing.T, db *database.DB) model.UserID {
 	t.Helper()
@@ -89,10 +81,7 @@ func seedWithdrawalUser(t *testing.T, db *database.DB) model.UserID {
 	return user.ID
 }
 
-// countUserSessions returns how many sessions the given user still owns, for
-// asserting that withdrawal cleared them (or that a rejected withdrawal left them).
-//
-// [Ja] countUserSessions は指定ユーザーがまだ所有するセッション数を返す。退会が
+// countUserSessionsは指定ユーザーがまだ所有するセッション数を返す。退会が
 // それらを消したこと (または拒否された退会がそれらを残したこと) を検証するために使う。
 func countUserSessions(t *testing.T, db *database.DB, userID model.UserID) int {
 	t.Helper()
@@ -106,12 +95,8 @@ func countUserSessions(t *testing.T, db *database.DB, userID model.UserID) int {
 	return count
 }
 
-// TestDeleteAccountUsecase_Execute_Success verifies that a valid withdrawal
-// soft-deletes the user (stamping deleted_at), anonymizes the freed email/atname
-// with the id-derived placeholders, and deletes all of the user's sessions.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_Success は、有効な退会がユーザーを論理削除し
-// (deleted_at を打つ)、解放された email / atname を id 由来の代替値で匿名化し、そのユーザーの
+// TestDeleteAccountUsecase_Execute_Successは、有効な退会がユーザーを論理削除し
+// (deleted_atを打つ)、解放されたemail / atnameをid由来の代替値で匿名化し、そのユーザーの
 // 全セッションを削除することを検証する。
 func TestDeleteAccountUsecase_Execute_Success(t *testing.T) {
 	t.Parallel()
@@ -126,13 +111,10 @@ func TestDeleteAccountUsecase_Execute_Success(t *testing.T) {
 		UserID:          userID,
 		CurrentPassword: "password123",
 	}); err != nil {
-		t.Fatalf("Execute() error = %v, want nil", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 	}
 
-	// The row is queried directly (not via a lookup that filters deleted_at) so the
-	// soft-deleted, anonymized user is still observable.
-	//
-	// [Ja] 行は (deleted_at で絞るルックアップではなく) 直接クエリするため、論理削除・
+	// 行は (deleted_atで絞るルックアップではなく) 直接クエリするため、論理削除・
 	// 匿名化されたユーザーも観測できる。
 	var deletedAt *time.Time
 	var email, atname string
@@ -142,29 +124,25 @@ func TestDeleteAccountUsecase_Execute_Success(t *testing.T) {
 		t.Fatalf("退会後のユーザー行の取得に失敗: %v", err)
 	}
 	if deletedAt == nil {
-		t.Error("deleted_at がセットされていない (論理削除されていない)")
+		t.Error("deleted_atがセットされていない (論理削除されていない)")
 	}
 
 	wantEmail := fmt.Sprintf("deleted-%s@deleted.invalid", userID.String())
 	if email != wantEmail {
-		t.Errorf("email = %q, want %q (匿名化されるべき)", email, wantEmail)
+		t.Errorf("email = %q、期待値 = %q (匿名化されるべき)", email, wantEmail)
 	}
 	wantAtname := "deleted-" + userID.String()
 	if atname != wantAtname {
-		t.Errorf("atname = %q, want %q (匿名化されるべき)", atname, wantAtname)
+		t.Errorf("atname = %q、期待値 = %q (匿名化されるべき)", atname, wantAtname)
 	}
 
 	if got := countUserSessions(t, db, userID); got != 0 {
-		t.Errorf("退会後のセッション数 = %d, want 0 (全端末サインアウト)", got)
+		t.Errorf("退会後のセッション数 = %d、期待値 = 0 (全端末サインアウト)", got)
 	}
 }
 
-// TestDeleteAccountUsecase_Execute_ValidationError verifies that a wrong current
-// password fails with a *model.ValidationError and leaves the account fully intact:
-// not soft-deleted and with its sessions still present.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_ValidationError は、誤った現在のパスワードが
-// *model.ValidationError で失敗し、アカウントを完全に無傷のまま (論理削除されず、
+// TestDeleteAccountUsecase_Execute_ValidationErrorは、誤った現在のパスワードが
+// *model.ValidationErrorで失敗し、アカウントを完全に無傷のまま (論理削除されず、
 // セッションも残ったまま) にすることを検証する。
 func TestDeleteAccountUsecase_Execute_ValidationError(t *testing.T) {
 	t.Parallel()
@@ -180,7 +158,7 @@ func TestDeleteAccountUsecase_Execute_ValidationError(t *testing.T) {
 		CurrentPassword: "wrongpassword",
 	})
 	if ve := model.AsValidationError(err); ve == nil {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError", err)
 	}
 
 	var deletedAt *time.Time
@@ -194,28 +172,16 @@ func TestDeleteAccountUsecase_Execute_ValidationError(t *testing.T) {
 	}
 
 	if got := countUserSessions(t, db, userID); got != 2 {
-		t.Errorf("バリデーション失敗時のセッション数 = %d, want 2 (削除されるべきでない)", got)
+		t.Errorf("バリデーション失敗時のセッション数 = %d、期待値 = 2 (削除されるべきでない)", got)
 	}
 }
 
-// TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken verifies
-// that an account registered through the normal form cannot hold the atname a
-// withdrawal overwrites its own atname with, and so cannot block that withdrawal
-// on the users.atname UNIQUE constraint.
+// TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTakenは、
+// 通常のフォームから登録したアカウントが、退会が自身のatnameを上書きするのに使う値を
+// 保持できず、したがってusers.atnameのUNIQUE制約でその退会を止められないことを検証する。
 //
-// The squatter here takes the closest atname the form does accept: the tombstone
-// with its hyphen (which the atname format rejects) swapped for an underscore.
-// That value used to be the tombstone itself, which made a squatted withdrawal
-// fail with a constraint error the user could never resolve.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken は、
-// 通常のフォームから登録したアカウントが、退会が自身の atname を上書きするのに使う値を
-// 保持できず、したがって users.atname の UNIQUE 制約でその退会を止められないことを検証する。
-//
-// ここで先取りするのは、フォームが実際に受け付ける中で最も墓標に近い atname、すなわち
-// 墓標のハイフン (atname の形式が拒否する文字) をアンダースコアに替えたものである。
-// この値はかつて墓標そのものであり、先取りされた退会がユーザーには解消できない制約エラーで
-// 失敗する原因になっていた。
+// ここで先取りするのは、フォームが実際に受け付ける中で最も墓標に近いatname、すなわち
+// 墓標のハイフン (atnameの形式が拒否する文字) をアンダースコアに替えたものである。
 func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *testing.T) {
 	t.Parallel()
 
@@ -233,7 +199,7 @@ func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *tes
 			PasswordConfirmation: "password123",
 		},
 	); err != nil {
-		t.Fatalf("先取りに使う atname %q はフォームから登録できる想定: %v", lookAlike, err)
+		t.Fatalf("先取りに使うatname %q はフォームから登録できる想定: %v", lookAlike, err)
 	}
 	testutil.NewUserBuilder(t, db).WithAtname(lookAlike).Build()
 
@@ -241,7 +207,7 @@ func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *tes
 		UserID:          userID,
 		CurrentPassword: "password123",
 	}); err != nil {
-		t.Fatalf("Execute() error = %v, want nil (先取りされた atname が退会を止めてはならない)", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil (先取りされたatnameが退会を止めてはならない)", err)
 	}
 
 	var atname string
@@ -251,14 +217,11 @@ func TestDeleteAccountUsecase_Execute_SucceedsWhenALookAlikeAtnameIsTaken(t *tes
 		t.Fatalf("退会後のユーザー行の取得に失敗: %v", err)
 	}
 	if atname == lookAlike {
-		t.Errorf("墓標 atname = %q で、フォームから登録できる値と同じになっている", atname)
+		t.Errorf("墓標atname = %q で、フォームから登録できる値と同じになっている", atname)
 	}
 }
 
-// countUserRoles returns how many roles the given user still holds, for asserting
-// that withdrawal cleared them (or that a refused withdrawal left them).
-//
-// [Ja] countUserRoles は指定ユーザーがまだ持つロールの数を返す。退会がそれらを消したこと
+// countUserRolesは指定ユーザーがまだ持つロールの数を返す。退会がそれらを消したこと
 // (または拒否された退会がそれらを残したこと) を検証するために使う。
 func countUserRoles(t *testing.T, db *database.DB, userID model.UserID) int {
 	t.Helper()
@@ -272,14 +235,7 @@ func countUserRoles(t *testing.T, db *database.DB, userID model.UserID) int {
 	return count
 }
 
-// TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin verifies that the only
-// administrator left cannot withdraw, and that the refusal is a form-wide
-// validation error that leaves the account and its role untouched.
-//
-// Letting this through would leave nobody able to open the admin screens, and the
-// screens are where an administrator is appointed.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin は、残る唯一の管理者が退会
+// TestDeleteAccountUsecase_Execute_RefusesTheLastAdminは、残る唯一の管理者が退会
 // できないこと、そしてその拒否がフォーム全体のバリデーションエラーであり、アカウントと
 // そのロールを手つかずのまま残すことを検証する。
 //
@@ -300,7 +256,7 @@ func TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin(t *testing.T) {
 	})
 	ve := model.AsValidationError(err)
 	if ve == nil {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError", err)
 	}
 	if !ve.HasGlobalError() {
 		t.Errorf("拒否がフォーム全体のエラーを持っていない: %+v", ve)
@@ -316,19 +272,11 @@ func TestDeleteAccountUsecase_Execute_RefusesTheLastAdmin(t *testing.T) {
 		t.Error("最後の管理者の退会が拒否されたのにユーザーが論理削除された")
 	}
 	if got := countUserRoles(t, db, userID); got != 1 {
-		t.Errorf("拒否後のロール割当数 = %d, want 1 (削除されるべきでない)", got)
+		t.Errorf("拒否後のロール割当数 = %d、期待値 = 1 (削除されるべきでない)", got)
 	}
 }
 
-// TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended verifies
-// that a suspended administrator does not keep the withdrawal open for the one
-// who can still sign in.
-//
-// Counting a suspended holder would let the last administrator anybody can act
-// as leave, and lifting the suspension is done from the admin screens nobody
-// would then be allowed to open.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended は、停止中の
+// TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspendedは、停止中の
 // 管理者が、まだサインインできる管理者のために退会の道を開けたままにしないことを検証する。
 //
 // 停止中の保持者を数えれば、行動できる最後の管理者が去れてしまい、その停止を解除するのは、
@@ -352,22 +300,18 @@ func TestDeleteAccountUsecase_Execute_RefusesWhenTheOtherAdminIsSuspended(t *tes
 	})
 	ve := model.AsValidationError(err)
 	if ve == nil {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError (停止中の管理者は数に含まれない)", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError (停止中の管理者は数に含まれない)", err)
 	}
 	if !ve.HasGlobalError() {
 		t.Errorf("拒否がフォーム全体のエラーを持っていない: %+v", ve)
 	}
 	if got := countUserRoles(t, db, userID); got != 1 {
-		t.Errorf("拒否後のロール割当数 = %d, want 1 (削除されるべきでない)", got)
+		t.Errorf("拒否後のロール割当数 = %d、期待値 = 1 (削除されるべきでない)", got)
 	}
 }
 
-// TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains
-// verifies that an administrator withdraws while another one remains, and that
-// the account stops being counted among the holders of what it held.
-//
-// [Ja] TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains は、
-// もう 1 人の管理者が残っている状態で管理者が退会できること、そしてそのアカウントが持って
+// TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemainsは、
+// もう1人の管理者が残っている状態で管理者が退会できること、そしてそのアカウントが持って
 // いたものの保持者として数えられなくなることを検証する。
 func TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains(t *testing.T) {
 	t.Parallel()
@@ -386,13 +330,13 @@ func TestDeleteAccountUsecase_Execute_DeletesTheRolesWhenAnotherAdminRemains(t *
 		UserID:          userID,
 		CurrentPassword: "password123",
 	}); err != nil {
-		t.Fatalf("Execute() error = %v, want nil (もう 1 人の管理者が残っている)", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil (もう1人の管理者が残っている)", err)
 	}
 
 	if got := countUserRoles(t, db, userID); got != 0 {
-		t.Errorf("退会後のロール割当数 = %d, want 0", got)
+		t.Errorf("退会後のロール割当数 = %d、期待値 = 0", got)
 	}
 	if got := countUserRoles(t, db, otherAdminID); got != 1 {
-		t.Errorf("残る管理者のロール割当数 = %d, want 1", got)
+		t.Errorf("残る管理者のロール割当数 = %d、期待値 = 1", got)
 	}
 }

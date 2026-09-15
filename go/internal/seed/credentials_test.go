@@ -6,11 +6,7 @@ import (
 	"testing"
 )
 
-// TestFindCredentials verifies that a role comes back as the address the
-// browser verification signs in with, together with the password the roster
-// shares between its accounts.
-//
-// [Ja] TestFindCredentials は、役割が、ブラウザ確認がサインインに使うアドレスと、名簿が
+// TestFindCredentialsは、役割が、ブラウザ確認がサインインに使うアドレスと、名簿が
 // アカウント間で共有しているパスワードとして返ることを検証します。
 func TestFindCredentials(t *testing.T) {
 	t.Parallel()
@@ -33,32 +29,23 @@ func TestFindCredentials(t *testing.T) {
 
 			credentials, err := findCredentials(path, string(tt.role))
 			if err != nil {
-				t.Fatalf("findCredentials() error = %v", err)
+				t.Fatalf("findCredentials()のエラー = %v", err)
 			}
 
 			if credentials.Email != tt.wantEmail {
-				t.Errorf("credentials.Email = %q, want %q", credentials.Email, tt.wantEmail)
+				t.Errorf("credentials.Email = %q、期待値 = %q", credentials.Email, tt.wantEmail)
 			}
 
-			// The password is shared by every account, so what this checks is
-			// that the plaintext of the roster comes back rather than the digest
-			// a run writes.
-			//
-			// [Ja] パスワードは全アカウント共通であるため、ここで確認しているのは、実行が
+			// パスワードは全アカウント共通であるため、ここで確認しているのは、実行が
 			// 書き込むダイジェストではなく名簿の平文が返ることです。
 			if credentials.Password != validRosterPassword {
-				t.Errorf("credentials.Password = %q, want %q", credentials.Password, validRosterPassword)
+				t.Errorf("credentials.Password = %q、期待値 = %q", credentials.Password, validRosterPassword)
 			}
 		})
 	}
 }
 
-// TestFindCredentials_RejectsAWithdrawnRole verifies that an account used to
-// generate authorless content is not presented as one the browser can sign in
-// as. The account is soft-deleted before a seeding run finishes, so the address
-// in the roster is history rather than a usable credential by then.
-//
-// [Ja] TestFindCredentials_RejectsAWithdrawnRole は、作者のいないコンテンツを生成するための
+// TestFindCredentials_RejectsAWithdrawnRoleは、作者のいないコンテンツを生成するための
 // アカウントを、ブラウザがサインインできるものとして示さないことを検証します。この
 // アカウントはシード実行の完了前に論理削除されるため、その時点で名簿のアドレスは履歴であり、
 // 使用可能な資格情報ではありません。
@@ -67,45 +54,35 @@ func TestFindCredentials_RejectsAWithdrawnRole(t *testing.T) {
 
 	_, err := findCredentials(writeRoster(t, validRoster), string(roleWithdrawn))
 	if err == nil {
-		t.Fatal("findCredentials() should fail on the withdrawn role, but it succeeded")
+		t.Fatal("退会済みロールに対してfindCredentials()が失敗することを期待したが、成功した")
 	}
 	if !strings.Contains(err.Error(), "does not name an account that can sign in after seeding") {
-		t.Errorf("findCredentials() error = %q, want it to explain why the role cannot be used", err)
+		t.Errorf("findCredentials()のエラー = %q、そのロールを使えない理由の説明を期待", err)
 	}
 }
 
-// TestFindCredentials_RejectsAnUnknownRole verifies that a misspelling is
-// answered with the roles that remain able to sign in. The withdrawn role is a
-// generator role too, but including it in this list would invite an invocation
-// whose account the completed seed has already disabled.
-//
-// [Ja] TestFindCredentials_RejectsAnUnknownRole は、役割の書き間違いに対して、シード完了後も
-// サインインできる役割を案内することを検証します。withdrawn も生成器の役割ですが、この
+// TestFindCredentials_RejectsAnUnknownRoleは、役割の書き間違いに対して、シード完了後も
+// サインインできる役割を案内することを検証します。withdrawnも生成器の役割ですが、この
 // 一覧へ含めると、完了したシードが既に無効化したアカウントの指定を促すことになります。
 func TestFindCredentials_RejectsAnUnknownRole(t *testing.T) {
 	t.Parallel()
 
 	_, err := findCredentials(writeRoster(t, validRoster), "startr")
 	if err == nil {
-		t.Fatal("findCredentials() should fail on a role the roster does not hold, but it succeeded")
+		t.Fatal("名簿に無いロールに対してfindCredentials()が失敗することを期待したが、成功した")
 	}
 
 	for _, role := range signInSeedRoles {
 		if !strings.Contains(err.Error(), string(role)) {
-			t.Errorf("findCredentials() error = %q, want it to list the sign-in role %q", err, role)
+			t.Errorf("findCredentials()のエラー = %q、サインイン用のロール %q を挙げることを期待", err, role)
 		}
 	}
 	if strings.Contains(err.Error(), string(roleWithdrawn)) {
-		t.Errorf("findCredentials() error = %q, want it not to offer the withdrawn role", err)
+		t.Errorf("findCredentials()のエラー = %q、退会済みロールを案内しないことを期待", err)
 	}
 }
 
-// TestFindCredentials_RejectsAnInvalidRoster verifies that the whole roster is
-// looked over, not only the entry that was asked for. The browser verification
-// signs in as an account the seed created, and a roster the seed would refuse
-// holds no such account.
-//
-// [Ja] TestFindCredentials_RejectsAnInvalidRoster は、尋ねられた 1 件だけでなく名簿全体が
+// TestFindCredentials_RejectsAnInvalidRosterは、尋ねられた1件だけでなく名簿全体が
 // 検査されることを検証します。ブラウザ確認がサインインするのはシードが作成したアカウント
 // であり、シードが拒否する名簿には、そのアカウントが存在しません。
 func TestFindCredentials_RejectsAnInvalidRoster(t *testing.T) {
@@ -117,12 +94,12 @@ func TestFindCredentials_RejectsAnInvalidRoster(t *testing.T) {
 		wantContains string
 	}{
 		{
-			name:         "a role other than the one asked for is written twice",
+			name:         "尋ねたものとは別のロールが2度書かれている",
 			roster:       strings.Replace(validRoster, `role = "withdrawn"`, `role = "replier"`, 1),
 			wantContains: "more than one [[users]] entry with the role replier",
 		},
 		{
-			name:         "a key that does not exist",
+			name:         "存在しないキー",
 			roster:       strings.Replace(validRoster, "atname = ", "atnam = ", 1),
 			wantContains: "keys that do not exist",
 		},
@@ -134,21 +111,16 @@ func TestFindCredentials_RejectsAnInvalidRoster(t *testing.T) {
 
 			_, err := findCredentials(writeRoster(t, tt.roster), string(roleStarter))
 			if err == nil {
-				t.Fatal("findCredentials() should fail on a roster the seed would refuse, but it succeeded")
+				t.Fatal("シードが拒否する名簿に対してfindCredentials()が失敗することを期待したが、成功した")
 			}
 			if !strings.Contains(err.Error(), tt.wantContains) {
-				t.Errorf("findCredentials() error = %q, want it to contain %q", err, tt.wantContains)
+				t.Errorf("findCredentials()のエラー = %q、%q を含むことを期待", err, tt.wantContains)
 			}
 		})
 	}
 }
 
-// TestFindCredentials_RejectsAMissingFile verifies that an absent roster names
-// the example to copy. A developer who has not set the roster up meets this
-// error through the browser verification as much as through the seed, so it has
-// to point at the same file either way.
-//
-// [Ja] TestFindCredentials_RejectsAMissingFile は、名簿が無いときに複製すべき見本が
+// TestFindCredentials_RejectsAMissingFileは、名簿が無いときに複製すべき見本が
 // 名指しされることを検証します。名簿を用意していない開発者は、シードからと同じくブラウザ
 // 確認からもこのエラーに出会うため、どちらから来ても同じファイルを案内する必要があります。
 func TestFindCredentials_RejectsAMissingFile(t *testing.T) {
@@ -158,9 +130,9 @@ func TestFindCredentials_RejectsAMissingFile(t *testing.T) {
 
 	_, err := findCredentials(path, string(roleStarter))
 	if err == nil {
-		t.Fatal("findCredentials() should fail when the roster does not exist, but it succeeded")
+		t.Fatal("名簿が存在しないときにfindCredentials()が失敗することを期待したが、成功した")
 	}
 	if !strings.Contains(err.Error(), rosterExamplePath) {
-		t.Errorf("findCredentials() error = %q, want it to name %q", err, rosterExamplePath)
+		t.Errorf("findCredentials()のエラー = %q、%q を名指すことを期待", err, rosterExamplePath)
 	}
 }

@@ -18,13 +18,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newEmailConfirmationHandler wires an email-confirmation Handler over the test
-// database's repositories, so a handler test exercises the full request path
-// (validator, UseCase, session cookie) against a real database.
-//
-// [Ja] newEmailConfirmationHandler はテスト用データベースのリポジトリでメール確認
-// Handler を組み立てる。ハンドラーテストがリクエスト経路全体 (バリデーター・UseCase・
-// セッション Cookie) を実 DB に対して通せるようにするためである。
+// newEmailConfirmationHandlerはテスト用データベースのリポジトリでメール確認
+// Handlerを組み立てる。ハンドラーテストがリクエスト経路全体 (バリデーター・UseCase・
+// セッションCookie) を実DBに対して通せるようにするためである。
 func newEmailConfirmationHandler(t *testing.T, db *database.DB) *email_confirmation.Handler {
 	t.Helper()
 
@@ -41,11 +37,8 @@ func newEmailConfirmationHandler(t *testing.T, db *database.DB) *email_confirmat
 	return email_confirmation.NewHandler(cfg, sessionMgr, uc)
 }
 
-// emailConfirmationToken issues the same signed continuation token the sign-up
-// flow stores in the email-confirmation Cookie.
-//
-// [Ja] emailConfirmationToken はサインアップフローがメール確認 Cookie へ格納するものと
-// 同じ署名付き continuation token を発行します。
+// emailConfirmationTokenはサインアップフローがメール確認Cookieへ格納するものと
+// 同じ署名付きcontinuation tokenを発行します。
 func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
 	t.Helper()
 
@@ -57,16 +50,12 @@ func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
 			return cookie.Value
 		}
 	}
-	t.Fatalf("メール確認 Cookie %q の署名 token が発行されていない", session.EmailConfirmationCookieName)
+	t.Fatalf("メール確認Cookie %q の署名tokenが発行されていない", session.EmailConfirmationCookieName)
 	return ""
 }
 
-// seedActiveConfirmation creates a committed, active sign-up confirmation with
-// the given code (and a unique email) and returns its id, so a handler test can
-// drive code verification against a real row.
-//
-// [Ja] seedActiveConfirmation は指定コード (とユニークな email) のコミット済み・
-// アクティブなサインアップ確認を作成し、その id を返す。ハンドラーテストが実在の行に対して
+// seedActiveConfirmationは指定コード (とユニークなemail) のコミット済み・
+// アクティブなサインアップ確認を作成し、そのidを返す。ハンドラーテストが実在の行に対して
 // コード検証を駆動できるようにする。
 func seedActiveConfirmation(t *testing.T, db *database.DB, code string) model.EmailConfirmationID {
 	t.Helper()
@@ -84,11 +73,8 @@ func seedActiveConfirmation(t *testing.T, db *database.DB, code string) model.Em
 	return confirmation.ID
 }
 
-// getNew builds a GET /email_confirmation/new request, attaching the handoff
-// cookie when confirmationID is non-empty, with the locale set in its context.
-//
-// [Ja] getNew は GET /email_confirmation/new リクエストを組み立て、confirmationID が
-// 空でなければ受け渡し Cookie を付け、context にロケールを設定する。
+// getNewはGET /email_confirmation/newリクエストを組み立て、confirmationIDが
+// 空でなければ受け渡しCookieを付け、contextにロケールを設定する。
 func getNew(confirmationID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/email_confirmation/new", nil)
 	if confirmationID != "" {
@@ -97,12 +83,8 @@ func getNew(confirmationID string, locale model.Locale) *http.Request {
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// TestNew verifies that GET /email_confirmation/new returns HTTP 200 with the
-// code-entry form (code field and CSRF hidden field) and the localized heading
-// for each supported locale, when the handoff cookie is present.
-//
-// [Ja] TestNew は、受け渡し Cookie がある場合に GET /email_confirmation/new が HTTP 200
-// と、コード入力フォーム (code フィールド・CSRF hidden フィールド) を、サポートする各
+// TestNewは、受け渡しCookieがある場合にGET /email_confirmation/newがHTTP 200
+// と、コード入力フォーム (codeフィールド・CSRF hiddenフィールド) を、サポートする各
 // ロケールのローカライズ済み見出しとともに返すことを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -116,8 +98,8 @@ func TestNew(t *testing.T) {
 		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "確認コードを入力"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Enter your confirmation code"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "確認コードを入力"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Enter your confirmation code"},
 	}
 
 	for _, tt := range tests {
@@ -128,10 +110,10 @@ func TestNew(t *testing.T) {
 			handler.New(rec, getNew(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -145,19 +127,15 @@ func TestNew(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestNew_NoCookieRedirectsToSignUp verifies that GET /email_confirmation/new
-// without the handoff cookie redirects to sign-up, since there is no pending
-// confirmation to enter a code for.
-//
-// [Ja] TestNew_NoCookieRedirectsToSignUp は、受け渡し Cookie の無い
-// GET /email_confirmation/new がサインアップへリダイレクトすることを検証する。コードを
+// TestNew_NoCookieRedirectsToSignUpは、受け渡しCookieの無い
+// GET /email_confirmation/newがサインアップへリダイレクトすることを検証する。コードを
 // 入力すべき保留中の確認が無いためである。
 func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	t.Parallel()
@@ -170,9 +148,9 @@ func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler.New(rec, getNew("", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/sign_up" {
-		t.Errorf("Location = %q, want %q", loc, "/sign_up")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/sign_up")
 	}
 }

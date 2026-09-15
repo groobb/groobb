@@ -12,31 +12,17 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Show GET /home - renders the community's top page for a signed-in visitor: the
-// sidebar listing this community's boards, and beside it every board with the
-// few threads that moved in it most recently. It is registered behind
-// RequireAuth, which guarantees a signed-in user, so the user from the context
-// is non-nil and the handler does not nil-check it. The page is per-user and
-// behind authentication, so it is marked noindex to keep it out of search
-// indexes; the community's public pages carry no such mark. The sidebar's
-// sign-out form takes the CSRF token from the context for the double-submit-
-// cookie check.
-//
-// The page hands the layout one content column. Home is about the boards
-// themselves rather than about anything opened inside one, so there is nothing
-// for a second column to hold.
-//
-// [Ja] Show GET /home - サインイン済みの訪問者にコミュニティのトップページを描画します。
+// Show GET /home - サインイン済みの訪問者にコミュニティのトップページを描画します。
 // このコミュニティの掲示板を並べるサイドバーと、その隣にすべての掲示板を、それぞれ直近で
-// 動いた数件のスレッドとともに描きます。RequireAuth の背後に登録され、サインイン済み
-// ユーザーが保証されるため、context のユーザーは非 nil であり、ハンドラーは nil チェックを
+// 動いた数件のスレッドとともに描きます。RequireAuthの背後に登録され、サインイン済み
+// ユーザーが保証されるため、contextのユーザーは非nilであり、ハンドラーはnilチェックを
 // 持ちません。このページはユーザー固有かつ認証の背後にあるため、検索インデックスから
-// 除外するよう noindex を付けます。コミュニティの公開ページはこの印を持ちません。
-// サイドバーのサインアウトフォームは double-submit cookie 検証のため context の CSRF
+// 除外するようnoindexを付けます。コミュニティの公開ページはこの印を持ちません。
+// サイドバーのサインアウトフォームはdouble-submit cookie検証のためcontextのCSRF
 // トークンを載せます。
 //
-// このページはレイアウトへコンテンツカラムを 1 つだけ渡します。ホームが扱っているのは
-// 掲示板そのものであって、その中で開いた何かではないため、2 つ目のカラムが持つものが
+// このページはレイアウトへコンテンツカラムを1つだけ渡します。ホームが扱っているのは
+// 掲示板そのものであって、その中で開いた何かではないため、2つ目のカラムが持つものが
 // ありません。
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

@@ -1,46 +1,26 @@
-// Package model holds Groobb's domain entities and the value types they are
-// built from, such as the typed entity IDs defined here.
-//
-// [Ja] model パッケージは Groobb のドメインエンティティと、それを構成する値型
-// (ここで定義する型付きエンティティ ID など) を保持します。
+// modelパッケージはGroobbのドメインエンティティと、それを構成する値型
+// (ここで定義する型付きエンティティIDなど) を保持します。
 package model
 
 import "strconv"
 
-// UserID is the typed identifier for a user.
+// UserIDはユーザーの型付き識別子です。
 //
-// It wraps int64, the type of the INTEGER PRIMARY KEY the database assigns,
-// rather than being that type, so that IDs of different entities cannot be
-// assigned to one another by mistake: the compiler rejects passing a UserID
-// where another entity's ID is expected.
-//
-// [Ja] UserID はユーザーの型付き識別子です。
-//
-// データベースが採番する INTEGER PRIMARY KEY の型である int64 を、その型のまま
-// 使わずラップするのは、異なるエンティティの ID を取り違えて代入できないように
-// するためです。別エンティティの ID が期待される箇所に UserID を渡すとコンパイラが
+// データベースが採番するINTEGER PRIMARY KEYの型であるint64を、その型のまま
+// 使わずラップするのは、異なるエンティティのIDを取り違えて代入できないように
+// するためです。別エンティティのIDが期待される箇所にUserIDを渡すとコンパイラが
 // 拒否します。
 type UserID int64
 
-// String returns the decimal form of the UserID.
-//
-// [Ja] String は UserID を 10 進表記で返します。
+// StringはUserIDを10進表記で返します。
 func (id UserID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// ParseUserID reads a UserID out of the decimal form String writes, reporting
-// whether raw spells one at all. It sits beside String for the reason
-// ParseThreadID sits beside ThreadID's String: what counts as a user's address
-// is settled once, and every route naming the same account agrees on it.
-//
-// Anything that is not a positive whole number is rejected rather than looked
-// up, since no account carries such an id.
-//
-// [Ja] ParseUserID は、String が書く 10 進表記から UserID を読み取り、そもそも raw が
-// それを表しているかどうかを併せて返します。String の隣に置く理由は ParseThreadID が
-// ThreadID の String の隣にある理由と同じで、何が利用者のアドレスであるかを 1 度で決め、
+// ParseUserIDは、Stringが書く10進表記からUserIDを読み取り、そもそもrawが
+// それを表しているかどうかを併せて返します。Stringの隣に置く理由はParseThreadIDが
+// ThreadIDのStringの隣にある理由と同じで、何が利用者のアドレスであるかを1度で決め、
 // 同じアカウントを名指すどのルートもそれに従うようにするためです。
 //
-// 正の整数でないものはルックアップせずに拒否します。そのような id を持つアカウントは
+// 正の整数でないものはルックアップせずに拒否します。そのようなidを持つアカウントは
 // 無いためです。
 func ParseUserID(raw string) (UserID, bool) {
 	id, err := strconv.ParseInt(raw, 10, 64)
@@ -51,147 +31,84 @@ func ParseUserID(raw string) (UserID, bool) {
 	return UserID(id), true
 }
 
-// UserSessionID is the typed identifier for a user session. Like UserID it wraps
-// int64 so session IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] UserSessionID はユーザーセッションの型付き識別子です。UserID と同様に
-// int64 をラップし、セッション ID を他エンティティの ID と取り違えられない
+// UserSessionIDはユーザーセッションの型付き識別子です。UserIDと同様に
+// int64をラップし、セッションIDを他エンティティのIDと取り違えられない
 // ようにします。
 type UserSessionID int64
 
-// String returns the decimal form of the UserSessionID.
-//
-// [Ja] String は UserSessionID を 10 進表記で返します。
+// StringはUserSessionIDを10進表記で返します。
 func (id UserSessionID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// EmailConfirmationID is the typed identifier for an email confirmation. Like
-// UserID it wraps int64 so confirmation IDs cannot be mixed up with other
-// entities' IDs.
-//
-// [Ja] EmailConfirmationID はメール確認の型付き識別子です。UserID と同様に
-// int64 をラップし、確認 ID を他エンティティの ID と取り違えられないように
+// EmailConfirmationIDはメール確認の型付き識別子です。UserIDと同様に
+// int64をラップし、確認IDを他エンティティのIDと取り違えられないように
 // します。
 type EmailConfirmationID int64
 
-// String returns the decimal form of the EmailConfirmationID.
-//
-// [Ja] String は EmailConfirmationID を 10 進表記で返します。
+// StringはEmailConfirmationIDを10進表記で返します。
 func (id EmailConfirmationID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// UserPasswordID is the typed identifier for a user's password credential. Like
-// UserID it wraps int64 so password IDs cannot be mixed up with other entities'
-// IDs.
-//
-// [Ja] UserPasswordID はユーザーのパスワード資格情報の型付き識別子です。UserID と
-// 同様に int64 をラップし、パスワード ID を他エンティティの ID と取り違えられ
+// UserPasswordIDはユーザーのパスワード資格情報の型付き識別子です。UserIDと
+// 同様にint64をラップし、パスワードIDを他エンティティのIDと取り違えられ
 // ないようにします。
 type UserPasswordID int64
 
-// String returns the decimal form of the UserPasswordID.
-//
-// [Ja] String は UserPasswordID を 10 進表記で返します。
+// StringはUserPasswordIDを10進表記で返します。
 func (id UserPasswordID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// PasswordResetTokenID is the typed identifier for a password reset token. Like
-// UserID it wraps int64 so reset-token IDs cannot be mixed up with other
-// entities' IDs.
-//
-// [Ja] PasswordResetTokenID はパスワードリセットトークンの型付き識別子です。UserID と
-// 同様に int64 をラップし、リセットトークン ID を他エンティティの ID と取り違え
+// PasswordResetTokenIDはパスワードリセットトークンの型付き識別子です。UserIDと
+// 同様にint64をラップし、リセットトークンIDを他エンティティのIDと取り違え
 // られないようにします。
 type PasswordResetTokenID int64
 
-// String returns the decimal form of the PasswordResetTokenID.
-//
-// [Ja] String は PasswordResetTokenID を 10 進表記で返します。
+// StringはPasswordResetTokenIDを10進表記で返します。
 func (id PasswordResetTokenID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// UserTwoFactorAuthID is the typed identifier for a user's two-factor
-// authentication setting. Like UserID it wraps int64 so 2FA IDs cannot be mixed
-// up with other entities' IDs.
-//
-// [Ja] UserTwoFactorAuthID はユーザーの 2 段階認証設定の型付き識別子です。UserID と
-// 同様に int64 をラップし、2FA ID を他エンティティの ID と取り違えられないように
+// UserTwoFactorAuthIDはユーザーの2段階認証設定の型付き識別子です。UserIDと
+// 同様にint64をラップし、2FA IDを他エンティティのIDと取り違えられないように
 // します。
 type UserTwoFactorAuthID int64
 
-// String returns the decimal form of the UserTwoFactorAuthID.
-//
-// [Ja] String は UserTwoFactorAuthID を 10 進表記で返します。
+// StringはUserTwoFactorAuthIDを10進表記で返します。
 func (id UserTwoFactorAuthID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// CommunityID is the typed identifier for a community. Like UserID it wraps
-// int64 so community IDs cannot be mixed up with other entities' IDs, even
-// though an instance hosts exactly one community (ADR 0006) and its row is
-// always id 1.
-//
-// [Ja] CommunityID はコミュニティの型付き識別子です。1 インスタンスがちょうど 1 つの
-// コミュニティを運営し (ADR 0006)、その行が常に id 1 であっても、UserID と同様に
-// int64 をラップし、コミュニティ ID を他エンティティの ID と取り違えられないように
+// CommunityIDはコミュニティの型付き識別子です。1インスタンスがちょうど1つの
+// コミュニティを運営し (ADR 0006)、その行が常にid 1であっても、UserIDと同様に
+// int64をラップし、コミュニティIDを他エンティティのIDと取り違えられないように
 // します。
 type CommunityID int64
 
-// String returns the decimal form of the CommunityID.
-//
-// [Ja] String は CommunityID を 10 進表記で返します。
+// StringはCommunityIDを10進表記で返します。
 func (id CommunityID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// CategoryID is the typed identifier for a category. Like UserID it wraps int64
-// so category IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] CategoryID はカテゴリーの型付き識別子です。UserID と同様に int64 をラップし、
-// カテゴリー ID を他エンティティの ID と取り違えられないようにします。
+// CategoryIDはカテゴリーの型付き識別子です。UserIDと同様にint64をラップし、
+// カテゴリーIDを他エンティティのIDと取り違えられないようにします。
 type CategoryID int64
 
-// String returns the decimal form of the CategoryID.
-//
-// [Ja] String は CategoryID を 10 進表記で返します。
+// StringはCategoryIDを10進表記で返します。
 func (id CategoryID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// BoardID is the typed identifier for a board. Like UserID it wraps int64 so
-// board IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] BoardID は掲示板の型付き識別子です。UserID と同様に int64 をラップし、
-// 掲示板 ID を他エンティティの ID と取り違えられないようにします。
+// BoardIDは掲示板の型付き識別子です。UserIDと同様にint64をラップし、
+// 掲示板IDを他エンティティのIDと取り違えられないようにします。
 type BoardID int64
 
-// String returns the decimal form of the BoardID.
-//
-// [Ja] String は BoardID を 10 進表記で返します。
+// StringはBoardIDを10進表記で返します。
 func (id BoardID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// ThreadID is the typed identifier for a thread. Like UserID it wraps int64 so
-// thread IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] ThreadID はスレッドの型付き識別子です。UserID と同様に int64 をラップし、
-// スレッド ID を他エンティティの ID と取り違えられないようにします。
+// ThreadIDはスレッドの型付き識別子です。UserIDと同様にint64をラップし、
+// スレッドIDを他エンティティのIDと取り違えられないようにします。
 type ThreadID int64
 
-// String returns the decimal form of the ThreadID.
-//
-// [Ja] String は ThreadID を 10 進表記で返します。
+// StringはThreadIDを10進表記で返します。
 func (id ThreadID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// ParseThreadID reads a ThreadID out of the decimal form String writes,
-// reporting whether raw spells one at all. The two sit together so that what
-// counts as a thread's address is settled once, and every route addressing the
-// same thread agrees on it.
+// ParseThreadIDは、Stringが書く10進表記からThreadIDを読み取り、そもそもrawが
+// それを表しているかどうかを併せて返します。2つを並べて置くのは、何がスレッドのアドレスで
+// あるかを1度で決め、同じスレッドを指すどのルートもそれに従うようにするためです。
 //
-// Anything that is not a positive whole number is rejected rather than looked
-// up: no thread carries such an id, so a lookup would answer that it is missing
-// after a query. The spellings strconv accepts around a number it does read — a
-// leading zero or a plus sign — are accepted here as well, so a caller that
-// answers under a single address compares raw with the parsed id's String and
-// redirects when the two differ.
-//
-// [Ja] ParseThreadID は、String が書く 10 進表記から ThreadID を読み取り、そもそも raw が
-// それを表しているかどうかを併せて返します。2 つを並べて置くのは、何がスレッドのアドレスで
-// あるかを 1 度で決め、同じスレッドを指すどのルートもそれに従うようにするためです。
-//
-// 正の整数でないものはルックアップせずに拒否します。そのような id を持つスレッドは無く、
-// ルックアップしてもクエリを 1 回発行した末に不在と答えるだけだからです。strconv が読み取る
-// 数の周りに認める綴り (先頭のゼロやプラス記号) はここでも受け付けるため、1 つのアドレスで
-// 応答する呼び出し側は、raw と解析した id の String を突き合わせ、異なるときにリダイレクト
+// 正の整数でないものはルックアップせずに拒否します。そのようなidを持つスレッドは無く、
+// ルックアップしてもクエリを1回発行した末に不在と答えるだけだからです。strconvが読み取る
+// 数の周りに認める綴り (先頭のゼロやプラス記号) はここでも受け付けるため、1つのアドレスで
+// 応答する呼び出し側は、rawと解析したidのStringを突き合わせ、異なるときにリダイレクト
 // します。
 func ParseThreadID(raw string) (ThreadID, bool) {
 	id, err := strconv.ParseInt(raw, 10, 64)
@@ -202,62 +119,37 @@ func ParseThreadID(raw string) (ThreadID, bool) {
 	return ThreadID(id), true
 }
 
-// PostID is the typed identifier for a post. Like UserID it wraps int64 so post
-// IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] PostID は投稿の型付き識別子です。UserID と同様に int64 をラップし、投稿 ID を
-// 他エンティティの ID と取り違えられないようにします。
+// PostIDは投稿の型付き識別子です。UserIDと同様にint64をラップし、投稿IDを
+// 他エンティティのIDと取り違えられないようにします。
 type PostID int64
 
-// String returns the decimal form of the PostID.
-//
-// [Ja] String は PostID を 10 進表記で返します。
+// StringはPostIDを10進表記で返します。
 func (id PostID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// PostReferenceID is the typed identifier for a post reference. Like UserID it
-// wraps int64 so reference IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] PostReferenceID はレス参照の型付き識別子です。UserID と同様に int64 をラップし、
-// 参照 ID を他エンティティの ID と取り違えられないようにします。
+// PostReferenceIDはレス参照の型付き識別子です。UserIDと同様にint64をラップし、
+// 参照IDを他エンティティのIDと取り違えられないようにします。
 type PostReferenceID int64
 
-// String returns the decimal form of the PostReferenceID.
-//
-// [Ja] String は PostReferenceID を 10 進表記で返します。
+// StringはPostReferenceIDを10進表記で返します。
 func (id PostReferenceID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// RoleID is the typed identifier for a role. Like UserID it wraps int64 so role
-// IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] RoleID はロールの型付き識別子です。UserID と同様に int64 をラップし、ロール ID を
-// 他エンティティの ID と取り違えられないようにします。
+// RoleIDはロールの型付き識別子です。UserIDと同様にint64をラップし、ロールIDを
+// 他エンティティのIDと取り違えられないようにします。
 type RoleID int64
 
-// String returns the decimal form of the RoleID.
-//
-// [Ja] String は RoleID を 10 進表記で返します。
+// StringはRoleIDを10進表記で返します。
 func (id RoleID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// UserRoleID is the typed identifier for a role assignment. Like UserID it
-// wraps int64 so assignment IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] UserRoleID はロール割当の型付き識別子です。UserID と同様に int64 をラップし、
-// 割当 ID を他エンティティの ID と取り違えられないようにします。
+// UserRoleIDはロール割当の型付き識別子です。UserIDと同様にint64をラップし、
+// 割当IDを他エンティティのIDと取り違えられないようにします。
 type UserRoleID int64
 
-// String returns the decimal form of the UserRoleID.
-//
-// [Ja] String は UserRoleID を 10 進表記で返します。
+// StringはUserRoleIDを10進表記で返します。
 func (id UserRoleID) String() string { return strconv.FormatInt(int64(id), 10) }
 
-// ModerationLogID is the typed identifier for a moderation log entry. Like
-// UserID it wraps int64 so log IDs cannot be mixed up with other entities' IDs.
-//
-// [Ja] ModerationLogIDは操作履歴の1件の型付き識別子です。UserIDと同様にint64を
+// ModerationLogIDは操作履歴の1件の型付き識別子です。UserIDと同様にint64を
 // ラップし、履歴IDを他エンティティのIDと取り違えられないようにします。
 type ModerationLogID int64
 
-// String returns the decimal form of the ModerationLogID.
-//
-// [Ja] StringはModerationLogIDを10進表記で返します。
+// StringはModerationLogIDを10進表記で返します。
 func (id ModerationLogID) String() string { return strconv.FormatInt(int64(id), 10) }

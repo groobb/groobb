@@ -6,14 +6,8 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the confirmation-code entry page. Code is echoed
-// back so a re-rendered form (after a validation error) keeps what the user
-// typed, and FormErrors carries the validation messages: a form-wide message
-// (an incorrect or expired code) shown at the top, and a per-field message (a
-// malformed code) shown beneath the input.
-//
-// [Ja] NewPageData は確認コード入力ページのデータです。Code は再描画 (バリデーション
-// エラー後) でユーザーの入力を保つためにエコーバックし、FormErrors はバリデーション
+// NewPageDataは確認コード入力ページのデータです。Codeは再描画 (バリデーション
+// エラー後) でユーザーの入力を保つためにエコーバックし、FormErrorsはバリデーション
 // メッセージを運びます。上部に出すフォーム全体のメッセージ (コードが不正または期限切れ)
 // と、入力欄の下に出すフィールド別のメッセージ (コードの形式エラー) です。
 type NewPageData struct {
@@ -22,13 +16,9 @@ type NewPageData struct {
 	FormErrors *model.ValidationError
 }
 
-// New renders the confirmation-code entry form: a single six-digit code field
-// that, on submit, verifies the code emailed during sign-up. The CSRF token is
-// embedded as a hidden field for the double-submit-cookie check.
-//
-// [Ja] New は確認コード入力フォームを描画します。送信するとサインアップ時にメール送信
-// した 6 桁のコードを検証する単一の code フィールドです。CSRF トークンは double-submit
-// cookie 検証のため hidden フィールドとして埋め込みます。
+// Newは確認コード入力フォームを描画します。送信するとサインアップ時にメール送信
+// した6桁のコードを検証する単一のcodeフィールドです。CSRFトークンはdouble-submit
+// cookie検証のためhiddenフィールドとして埋め込みます。
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">

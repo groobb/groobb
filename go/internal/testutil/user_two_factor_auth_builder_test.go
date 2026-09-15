@@ -8,17 +8,10 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// TestUserTwoFactorAuthBuilder_Build exercises the builder's raw INSERT once, so
-// that the columns it writes directly (secret, enabled, enabled_at,
-// recovery_codes) are covered here rather than only when a later phase first
-// consumes the builder. It builds an enabled setting and reads it back through
-// the repository, asserting the enabled flag, the enabled_at stamp, the default
-// secret, and the recovery codes all round-trip.
-//
-// [Ja] TestUserTwoFactorAuthBuilder_Build はビルダーの生 INSERT を 1 度通し、ビルダーが
+// TestUserTwoFactorAuthBuilder_Buildはビルダーの生INSERTを1度通し、ビルダーが
 // 直接書き込む列 (secret・enabled・enabled_at・recovery_codes) を、後続フェーズで初めて
 // ビルダーが使われる時ではなくここで検証する。有効化済みの設定を組み立ててリポジトリ経由で
-// 読み戻し、enabled フラグ・enabled_at の打刻・既定の secret・リカバリーコードがすべて
+// 読み戻し、enabledフラグ・enabled_atの打刻・既定のsecret・リカバリーコードがすべて
 // 往復することを確認する。
 func TestUserTwoFactorAuthBuilder_Build(t *testing.T) {
 	t.Parallel()
@@ -36,30 +29,30 @@ func TestUserTwoFactorAuthBuilder_Build(t *testing.T) {
 	repo := repository.NewUserTwoFactorAuthRepository(db)
 	got, err := repo.FindByUserID(context.Background(), userID)
 	if err != nil {
-		t.Fatalf("FindByUserID() error = %v", err)
+		t.Fatalf("FindByUserID()のエラー = %v", err)
 	}
 	if got == nil {
-		t.Fatal("FindByUserID() = nil, want built setting")
+		t.Fatal("FindByUserID() = nil、期待値は構築した設定")
 	}
 
 	if got.ID != id {
-		t.Errorf("got.ID = %v, want %v", got.ID, id)
+		t.Errorf("got.ID = %v、期待値 = %v", got.ID, id)
 	}
 	if !got.Enabled {
-		t.Error("WithEnabled(true) は enabled を true にするはず")
+		t.Error("WithEnabled(true) はenabledをtrueにするはず")
 	}
 	if got.EnabledAt == nil {
-		t.Error("WithEnabled(true) は enabled_at を打刻するはず")
+		t.Error("WithEnabled(true) はenabled_atを打刻するはず")
 	}
 	if got.Secret != testutil.DefaultBuilderTOTPSecret {
-		t.Errorf("got.Secret = %q, want %q (既定の secret)", got.Secret, testutil.DefaultBuilderTOTPSecret)
+		t.Errorf("got.Secret = %q、期待値 = %q (既定のsecret)", got.Secret, testutil.DefaultBuilderTOTPSecret)
 	}
 	if len(got.RecoveryCodes) != len(recoveryCodes) {
-		t.Fatalf("len(got.RecoveryCodes) = %d, want %d", len(got.RecoveryCodes), len(recoveryCodes))
+		t.Fatalf("len(got.RecoveryCodes) = %d、期待値 = %d", len(got.RecoveryCodes), len(recoveryCodes))
 	}
 	for i, code := range recoveryCodes {
 		if got.RecoveryCodes[i] != code {
-			t.Errorf("got.RecoveryCodes[%d] = %q, want %q", i, got.RecoveryCodes[i], code)
+			t.Errorf("got.RecoveryCodes[%d] = %q、期待値 = %q", i, got.RecoveryCodes[i], code)
 		}
 	}
 }

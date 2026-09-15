@@ -8,13 +8,9 @@ import (
 	"github.com/groobb/groobb/go/internal/config"
 )
 
-// TestAssetCache verifies that a served asset carries the lifetime its
-// environment allows, and that a response which is not the asset itself carries
-// none: a cached 404 or redirect would outlive the problem that produced it.
-//
-// [Ja] TestAssetCache は、配信されたアセットがその環境で許される保持期間を伴い、
+// TestAssetCacheは、配信されたアセットがその環境で許される保持期間を伴い、
 // アセット自体ではないレスポンスが保持期間を伴わないことを検証します。キャッシュされた
-// 404 やリダイレクトは、それを生んだ問題より長く残ってしまうためです。
+// 404やリダイレクトは、それを生んだ問題より長く残ってしまうためです。
 func TestAssetCache(t *testing.T) {
 	t.Parallel()
 
@@ -25,7 +21,7 @@ func TestAssetCache(t *testing.T) {
 		wantCacheControl string
 	}{
 		{
-			name: "non-dev keeps a served asset for a year",
+			name: "dev以外では配信したアセットを1年間保持させる",
 			env:  "prod",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
@@ -33,17 +29,17 @@ func TestAssetCache(t *testing.T) {
 			wantCacheControl: "private, max-age=31536000, immutable",
 		},
 		{
-			name: "a body written without a status is treated as served",
+			name: "ステータスを指定せずに書いたボディは配信として扱う",
 			env:  "prod",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				if _, err := w.Write([]byte("body { }")); err != nil {
-					t.Errorf("failed to write the response body: %v", err)
+					t.Errorf("レスポンスボディの書き込みに失敗: %v", err)
 				}
 			},
 			wantCacheControl: "private, max-age=31536000, immutable",
 		},
 		{
-			name: "a partial asset keeps the served asset policy",
+			name: "部分応答のアセットは配信時の方針を保つ",
 			env:  "prod",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusPartialContent)
@@ -51,7 +47,7 @@ func TestAssetCache(t *testing.T) {
 			wantCacheControl: "private, max-age=31536000, immutable",
 		},
 		{
-			name: "dev does not store assets",
+			name: "devではアセットを保存させない",
 			env:  "dev",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
@@ -59,7 +55,7 @@ func TestAssetCache(t *testing.T) {
 			wantCacheControl: "no-store",
 		},
 		{
-			name: "a missing asset is not stored",
+			name: "存在しないアセットは保存させない",
 			env:  "prod",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
@@ -67,7 +63,7 @@ func TestAssetCache(t *testing.T) {
 			wantCacheControl: "private, no-store",
 		},
 		{
-			name: "a redirect is not stored",
+			name: "リダイレクトは保存させない",
 			env:  "prod",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusMovedPermanently)
@@ -87,7 +83,7 @@ func TestAssetCache(t *testing.T) {
 			handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static/css/style.css", nil))
 
 			if got := rec.Header().Get("Cache-Control"); got != tt.wantCacheControl {
-				t.Errorf("Cache-Control = %q, want %q", got, tt.wantCacheControl)
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, tt.wantCacheControl)
 			}
 		})
 	}

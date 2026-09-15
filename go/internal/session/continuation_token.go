@@ -19,16 +19,10 @@ const (
 	twoFactorPendingTokenPurpose  = continuationTokenPurpose("two_factor_pending")
 )
 
-// signContinuationToken binds a positive database id, its authentication-flow
-// purpose, and its server-side expiry to an HMAC-SHA-256 signature. The token is
-// safe for a Cookie value and reveals the id, but it cannot be altered or minted
-// without the configured key. An invalid key or id fails closed as an empty
-// token; Config.Load prevents that state in a running application.
-//
-// [Ja] signContinuationToken は正のデータベース id・認証フローの用途・サーバー側の
-// 有効期限を HMAC-SHA-256 署名へ結び付けます。token は Cookie 値として安全で id 自体は
-// 見えますが、設定済みの鍵なしに改ざん・新規発行はできません。鍵または id が不正なら空の
-// token として fail-closed にし、実行中アプリでは Config.Load がその状態を防ぎます。
+// signContinuationTokenは正のデータベースid・認証フローの用途・サーバー側の
+// 有効期限をHMAC-SHA-256署名へ結び付けます。tokenはCookie値として安全でid自体は
+// 見えますが、設定済みの鍵なしに改ざん・新規発行はできません。鍵またはidが不正なら空の
+// tokenとしてfail-closedにし、実行中アプリではConfig.Loadがその状態を防ぎます。
 func signContinuationToken(key string, purpose continuationTokenPurpose, id int64, expiresAt time.Time) string {
 	if len(key) < config.ContinuationTokenMinimumKeyLength || id <= 0 {
 		return ""
@@ -47,12 +41,8 @@ func signContinuationToken(key string, purpose continuationTokenPurpose, id int6
 	return payload + "." + signature
 }
 
-// verifyContinuationToken authenticates the token before returning its id. It
-// rejects malformed values, another flow's purpose, expired tokens, non-positive
-// ids, and signatures that were not produced with the configured key.
-//
-// [Ja] verifyContinuationToken は token を認証してから id を返します。形式不正、別フローの
-// 用途、期限切れ、正でない id、設定済みの鍵で生成されていない署名をすべて拒否します。
+// verifyContinuationTokenはtokenを認証してからidを返します。形式不正、別フローの
+// 用途、期限切れ、正でないid、設定済みの鍵で生成されていない署名をすべて拒否します。
 func verifyContinuationToken(key string, expectedPurpose continuationTokenPurpose, token string, now time.Time) (int64, bool) {
 	if len(key) < config.ContinuationTokenMinimumKeyLength {
 		return 0, false

@@ -24,44 +24,24 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// appURL is the instance's public base URL in these tests, the value the page's
-// canonical link is built under.
-//
-// [Ja] appURL は本テストでのインスタンスの公開ベース URL であり、ページの canonical の
+// appURLは本テストでのインスタンスの公開ベースURLであり、ページのcanonicalの
 // リンクがその下で組み立てられる値です。
 const appURL = "https://groobb.example.com"
 
-// communityName is the name of the community this instance hosts in these
-// tests. The pages read it from the request context, where the middleware puts
-// it in production, and end their titles with it.
-//
-// [Ja] communityName は本テストでこのインスタンスが運営するコミュニティの名前です。
-// ページはこれをリクエストの context から読み (本番ではミドルウェアがそこへ置きます)、
+// communityNameは本テストでこのインスタンスが運営するコミュニティの名前です。
+// ページはこれをリクエストのcontextから読み (本番ではミドルウェアがそこへ置きます)、
 // タイトルの末尾に置きます。
 const communityName = "ジャズ喫茶"
 
-// newHandler builds the board Handler over a database holding one community
-// whose "music" category lists two boards: "jazz", which holds four threads
-// created in the reverse of the order the listing puts them in, and "quiet",
-// which holds none. Between them the two cover what the page renders — a listing
-// ordered by when each thread was last posted in, and the state where nobody has
-// started one.
-//
-// Three languages are represented, because a board is not divided by language: a
-// listing holding only threads in the page's own language would not show whether
-// a row says which language it is in. The one written in a language the
-// application has no locale for is what the row that declares no language at all
-// is checked on.
-//
-// [Ja] newHandler は、1 つのコミュニティを持つデータベース上に board Handler を構築
-// します。その "music" カテゴリーは 2 つの掲示板を並べます。"jazz" は一覧が並べるのとは
-// 逆の順序で作られた 4 つのスレッドを持ち、"quiet" は 1 つも持ちません。この 2 つで、
+// newHandlerは、1つのコミュニティを持つデータベース上にboard Handlerを構築
+// します。その "music" カテゴリーは2つの掲示板を並べます。"jazz" は一覧が並べるのとは
+// 逆の順序で作られた4つのスレッドを持ち、"quiet" は1つも持ちません。この2つで、
 // このページが描画するもの — 各スレッドが最後に投稿された時刻による並び順と、誰もまだ
 // スレッドを立てていない状態 — を覆えます。
 //
-// 言語は 3 つ現れます。掲示板は言語で分けないためで、ページ自身の言語のスレッドしか
+// 言語は3つ現れます。掲示板は言語で分けないためで、ページ自身の言語のスレッドしか
 // 持たない一覧では、行が自身の言語を述べているかどうかを確かめられません。アプリが
-// ロケールを持たない言語で書かれた 1 本は、どの言語も宣言しない行を確かめる先です。
+// ロケールを持たない言語で書かれた1本は、どの言語も宣言しない行を確かめる先です。
 func newHandler(t *testing.T) *board.Handler {
 	t.Helper()
 
@@ -69,7 +49,7 @@ func newHandler(t *testing.T) *board.Handler {
 	db := testutil.SetupDB(t)
 
 	if _, err := db.Writer.ExecContext(ctx, "INSERT INTO communities (id, name) VALUES (1, ?)", communityName); err != nil {
-		t.Fatalf("communities への INSERT に失敗: %v", err)
+		t.Fatalf("communitiesへのINSERTに失敗: %v", err)
 	}
 
 	categoryRepo := repository.NewCategoryRepository(db)
@@ -79,7 +59,7 @@ func newHandler(t *testing.T) *board.Handler {
 
 	music, err := categoryRepo.Create(ctx, repository.CreateCategoryInput{Slug: "music", Name: "音楽", Position: 1})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	jazz, err := boardRepo.Create(ctx, repository.CreateBoardInput{
@@ -90,7 +70,7 @@ func newHandler(t *testing.T) *board.Handler {
 		Position:    1,
 	})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := boardRepo.Create(ctx, repository.CreateBoardInput{
 		CategoryID: &music.ID,
@@ -98,25 +78,25 @@ func newHandler(t *testing.T) *board.Handler {
 		Name:       "準備中の板",
 		Position:   2,
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	createThread := func(title string, language model.ThreadLanguage, postsCount int, lastPostedAt time.Time) {
 		t.Helper()
 		thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{BoardID: jazz.ID, Title: title, Language: language})
 		if err != nil {
-			t.Fatalf("Create() error = %v", err)
+			t.Fatalf("Create()のエラー = %v", err)
 		}
-		post, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: thread.ID, Number: 1, Body: title + "の 1 つ目の投稿"})
+		post, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: thread.ID, Number: 1, Body: title + "の1つ目の投稿"})
 		if err != nil {
-			t.Fatalf("Create() error = %v", err)
+			t.Fatalf("Create()のエラー = %v", err)
 		}
 		if err := threadRepo.UpdateLastPost(ctx, thread.ID, repository.UpdateThreadLastPostInput{
 			PostsCount:   postsCount,
 			LastPostID:   post.ID,
 			LastPostedAt: lastPostedAt,
 		}); err != nil {
-			t.Fatalf("UpdateLastPost() error = %v", err)
+			t.Fatalf("UpdateLastPost()のエラー = %v", err)
 		}
 	}
 	createThread("枯葉の名演", model.LocaleJa.ThreadLanguage(), 3, time.Now().Add(-48*time.Hour))
@@ -127,24 +107,15 @@ func newHandler(t *testing.T) *board.Handler {
 	return newHandlerForDB(db)
 }
 
-// newHandlerForDB builds the board Handler over the supplied application
-// database.
-//
-// [Ja] newHandlerForDB は、渡されたアプリケーションデータベース上に board Handler を
+// newHandlerForDBは、渡されたアプリケーションデータベース上にboard Handlerを
 // 構築します。
 func newHandlerForDB(db *database.DB) *board.Handler {
 	return newHandlerForDatabases(db, db, db)
 }
 
-// newHandlerForDatabases builds the board Handler with a separate database
-// behind each of its three reads: resolving the board, the community navigation,
-// and the thread listing. Production passes the same database for all three;
-// tests can break one read path without preventing the others from reaching the
-// branch under test.
-//
-// [Ja] newHandlerForDatabases は、3 つの読み取り (掲示板の解決・コミュニティの
-// ナビゲーション・スレッドの一覧) それぞれの背後に別々のデータベースを置いて board
-// Handler を構築します。本番は 3 つとも同じデータベースを渡しますが、テストでは 1 つの
+// newHandlerForDatabasesは、3つの読み取り (掲示板の解決・コミュニティの
+// ナビゲーション・スレッドの一覧) それぞれの背後に別々のデータベースを置いてboard
+// Handlerを構築します。本番は3つとも同じデータベースを渡しますが、テストでは1つの
 // 読み取りだけを壊し、残りが対象分岐へ到達できます。
 func newHandlerForDatabases(boardDB, navigationDB, threadDB *database.DB) *board.Handler {
 	getCommunityNavigationUC := usecase.NewGetCommunityNavigationUsecase(
@@ -159,15 +130,10 @@ func newHandlerForDatabases(boardDB, navigationDB, threadDB *database.DB) *board
 	return board.NewHandler(cfg, httperror.NewRenderer(cfg), getCommunityNavigationUC, getBoardUC, getBoardThreadsUC)
 }
 
-// newRequest builds a GET /b/{slug} request as the router would hand it to the
-// handler: the slug in chi's route context, and the locale, the current path and
-// the viewer in the request context, placed there directly the way i18n's,
-// templates' and the auth middleware would. A nil user is an anonymous visitor.
-//
-// [Ja] newRequest は、ルーターがハンドラーへ渡すのと同じ形で GET /b/{slug} の
-// リクエストを組み立てます。slug は chi のルート context に、ロケール・現在のパス・
-// 閲覧者はリクエスト context に、i18n・templates・認証の各ミドルウェアがするのと同じ
-// ように直接置きます。user が nil のときは匿名の訪問者です。
+// newRequestは、ルーターがハンドラーへ渡すのと同じ形でGET /b/{slug} の
+// リクエストを組み立てます。slugはchiのルートcontextに、ロケール・現在のパス・
+// 閲覧者はリクエストcontextに、i18n・templates・認証の各ミドルウェアがするのと同じ
+// ように直接置きます。userがnilのときは匿名の訪問者です。
 func newRequest(t *testing.T, slug string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
@@ -188,21 +154,12 @@ func newRequest(t *testing.T, slug string, locale model.Locale, user *model.User
 	return req.WithContext(ctx)
 }
 
-// TestShow verifies that GET /b/{slug} returns HTTP 200 with an HTML body that
-// renders, for each supported locale, the board page inside the community shell:
-// the board's name as the <h1> naming the <main> landmark, the breadcrumb naming
-// the category that lists it, the threads with their post counts and last-post
-// times ordered by when each was last posted in, the sidebar and its account
-// controls, and the complementary column standing in for a thread that has not
-// been opened. The page carries no noindex, since a community's boards are
-// public.
-//
-// [Ja] TestShow は GET /b/{slug} が HTTP 200 と、サポートする各ロケールについて
-// コミュニティのシェルの中に掲示板ページを描画した HTML ボディを返すことを検証します。
+// TestShowはGET /b/{slug} がHTTP 200と、サポートする各ロケールについて
+// コミュニティのシェルの中に掲示板ページを描画したHTMLボディを返すことを検証します。
 // <main> ランドマークを名付ける <h1> としての掲示板名、それを並べるカテゴリーを名指す
 // パンくず、最後に投稿された順に並ぶスレッドとその投稿数・最終投稿時刻、サイドバーと
 // そのアカウント操作、そしてまだ開かれていないスレッドの代わりを務める補助カラムです。
-// コミュニティの掲示板は公開であるため、このページは noindex を持ちません。
+// コミュニティの掲示板は公開であるため、このページはnoindexを持ちません。
 func TestShow(t *testing.T) {
 	t.Parallel()
 
@@ -218,7 +175,7 @@ func TestShow(t *testing.T) {
 		wantNewThread   string
 	}{
 		{
-			name:            "Japanese",
+			name:            "日本語",
 			locale:          model.LocaleJa,
 			wantPostsCount:  "42 件の投稿",
 			wantLastPosted:  "30 分前",
@@ -227,7 +184,7 @@ func TestShow(t *testing.T) {
 			wantNewThread:   "スレッドを立てる",
 		},
 		{
-			name:            "English",
+			name:            "英語",
 			locale:          model.LocaleEn,
 			wantPostsCount:  "42 posts",
 			wantLastPosted:  "30 minutes ago",
@@ -245,10 +202,10 @@ func TestShow(t *testing.T) {
 			handler.Show(rec, newRequest(t, "jazz", tt.locale, &model.User{Atname: "alice"}))
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -264,37 +221,25 @@ func TestShow(t *testing.T) {
 				"ジャズ喫茶",
 				`href="/settings"`,
 				`action="/user_session"`,
-				// The page's own language is asserted on the <html> element
-				// itself. The rows below carry lang attributes of their own, so a
-				// page-wide search for the tag is satisfied by a thread's title or
-				// its badge whatever the document declares.
-				//
-				// [Ja] ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
-				// lang 属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
+				// ページ自身の言語は <html> 要素そのもので検証する。以下の行が自身の
+				// lang属性を持つため、タグをページ全体から探す形では、文書が何を宣言して
 				// いてもスレッドのタイトルかそのバッジで満たされてしまう。
 				`<html lang="` + string(tt.locale) + `"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 
-			// A thread's title is the link to it, so the listing is how the board's
-			// conversations are reached. The heading is taken by the markup only a
-			// thread row produces — an h2 opening straight into a link to /t/ —
-			// because the page's first h2 is not necessarily this one: a flash and a
-			// form's error summary render an h2 as well. The same link keeps the
-			// minimum touch target used by the page's other compact links.
-			//
-			// [Ja] スレッドのタイトルはそれへのリンクであり、一覧が掲示板の会話へ辿り着く
-			// 手立てとなる。見出しは、スレッドの行だけが生むマークアップ (h2 が直ちに /t/ への
-			// リンクを開く形) で取り出す。ページの最初の h2 がこれであるとは限らないためで、
-			// フラッシュとフォームのエラー要約も h2 を描画する。同じリンクは、ページ内の他の
+			// スレッドのタイトルはそれへのリンクであり、一覧が掲示板の会話へ辿り着く
+			// 手立てとなる。見出しは、スレッドの行だけが生むマークアップ (h2が直ちに /t/ への
+			// リンクを開く形) で取り出す。ページの最初のh2がこれであるとは限らないためで、
+			// フラッシュとフォームのエラー要約もh2を描画する。同じリンクは、ページ内の他の
 			// 小さなリンクと共通の最小タッチ領域も保つ。
 			threadHeading := testutil.Element(t, body, `<h2><a href="/t/`, "</h2>")
 			if !strings.Contains(threadHeading, "最近買ったレコード") {
-				t.Errorf("スレッドの見出し = %s, want the title as a link to the thread", threadHeading)
+				t.Errorf("スレッドの見出し = %s、期待値はスレッドへのリンクになったタイトル", threadHeading)
 			}
 			threadLink := testutil.OpeningTag(t, threadHeading, `href="/t/`)
 			for _, want := range []string{"inline-flex", "min-h-6", "min-w-6"} {
@@ -305,43 +250,34 @@ func TestShow(t *testing.T) {
 
 			newThreadLink := testutil.OpeningTag(t, body, `href="`+templates.BoardThreadsNewPath("jazz").String()+`"`)
 			if !strings.HasPrefix(newThreadLink, "<a ") {
-				t.Errorf("スレッド作成フォームへの導線 = %s, want a link", newThreadLink)
+				t.Errorf("スレッド作成フォームへの導線 = %s、期待値はリンク", newThreadLink)
 			}
 
 			if strings.Contains(body, "noindex") {
-				t.Error("公開ページのレスポンスに noindex が含まれている")
+				t.Error("公開ページのレスポンスにnoindexが含まれている")
 			}
 
 			main := testutil.OpeningTag(t, body, `id="main"`)
 			if !strings.HasPrefix(main, "<main ") || !strings.Contains(main, `aria-labelledby="board-show-heading"`) {
-				t.Errorf("main landmark = %s, want the page heading as its accessible name", main)
+				t.Errorf("main landmark = %s、ページの見出しをアクセシブルネームに持つことを期待", main)
 			}
 			heading := testutil.OpeningTag(t, body, `id="board-show-heading"`)
 			if !strings.HasPrefix(heading, "<h1 ") {
-				t.Errorf("main landmark を名付ける要素 = %s, want h1", heading)
+				t.Errorf("main landmarkを名付ける要素 = %s、期待値 = h1", heading)
 			}
 			aside := testutil.OpeningTag(t, body, `aria-label="`+tt.wantRegionLabel+`"`)
 			if !strings.HasPrefix(aside, "<aside ") {
-				t.Errorf("スレッド領域の要素 = %s, want aside", aside)
+				t.Errorf("スレッド領域の要素 = %s、期待値 = aside", aside)
 			}
 
-			// The exact instant sits in the datetime attribute beside the text
-			// saying how long ago it was, so the moment survives the rounding the
-			// relative form does. The element carrying the attribute is looked up
-			// by the attribute itself, so the assertion also says it is a <time>
-			// rather than some other element that happens to hold a date.
-			//
-			// [Ja] 正確な時点は、どれだけ前かを述べるテキストの傍らの datetime 属性に
+			// 正確な時点は、どれだけ前かを述べるテキストの傍らのdatetime属性に
 			// 置かれ、相対表現が行う丸めを越えて残る。属性そのものを手がかりに要素を
 			// 引くことで、日付を持つ別の要素ではなく <time> であることも併せて検証する。
 			if timeTag := testutil.OpeningTag(t, body, "datetime="); !strings.HasPrefix(timeTag, "<time ") {
-				t.Errorf("datetime 属性を持つ要素 = %s, want time", timeTag)
+				t.Errorf("datetime属性を持つ要素 = %s、期待値 = time", timeTag)
 			}
 
-			// Both threads appear in the list column, so comparing their positions
-			// checks that the most recently posted-in one comes first.
-			//
-			// [Ja] どちらのスレッドも一覧カラムに現れるため、その位置を比べることで、
+			// どちらのスレッドも一覧カラムに現れるため、その位置を比べることで、
 			// 最後に投稿されたものが先に来ることを確かめられる。
 			if got, want := strings.Index(body, "最近買ったレコード"), strings.Index(body, "枯葉の名演"); got > want {
 				t.Error("スレッドが最終投稿の新しい順に並んでいない")
@@ -350,12 +286,7 @@ func TestShow(t *testing.T) {
 	}
 }
 
-// TestShow_Breadcrumb verifies that the page says where the board sits: a
-// breadcrumb naming the category that lists it, linked, followed by the board
-// itself marked as the current step and left unlinked. /b/{slug} carries nothing
-// about the category, so without this the visitor has no way to tell.
-//
-// [Ja] TestShow_Breadcrumb は、ページが掲示板の在り処を述べることを検証します。それを
+// TestShow_Breadcrumbは、ページが掲示板の在り処を述べることを検証します。それを
 // 並べるカテゴリーを名指すリンク付きのパンくずと、続く掲示板自身であり、後者は現在地の
 // 印を付けてリンクにしません。/b/{slug} はカテゴリーについて何も運ばないため、これが
 // 無いと訪問者には知る手立てがありません。
@@ -370,7 +301,7 @@ func TestShow_Breadcrumb(t *testing.T) {
 
 	nav := testutil.OpeningTag(t, body, `aria-label="パンくず"`)
 	if !strings.HasPrefix(nav, "<nav ") || !strings.Contains(nav, `class="breadcrumb `) {
-		t.Errorf("パンくずの要素 = %s, want nav.breadcrumb", nav)
+		t.Errorf("パンくずの要素 = %s、期待値 = nav.breadcrumb", nav)
 	}
 	trail := body[strings.Index(body, `aria-label="パンくず"`):]
 	trail = trail[:strings.Index(trail, "</nav>")]
@@ -378,13 +309,8 @@ func TestShow_Breadcrumb(t *testing.T) {
 		t.Error("パンくずにカテゴリーページへのリンクが無い")
 	}
 
-	// Only the classes the touch-target rule rests on are asserted, so a change
-	// to how the link looks does not fail a test about the response. A category
-	// named with one character would otherwise be narrower than the minimum a
-	// finger can reliably hit.
-	//
-	// [Ja] タッチターゲットの要件が拠って立つクラスだけを検証する。リンクの見た目の
-	// 変更が、応答についてのテストを落とさないようにするため。1 文字の名前を持つ
+	// タッチターゲットの要件が拠って立つクラスだけを検証する。リンクの見た目の
+	// 変更が、応答についてのテストを落とさないようにするため。1文字の名前を持つ
 	// カテゴリーでは、これが無いと指で確実に押せる最小の幅を下回る。
 	link := testutil.OpeningTag(t, trail, `href="/c/music"`)
 	for _, want := range []string{"inline-flex", "min-h-6", "min-w-6"} {
@@ -393,28 +319,18 @@ func TestShow_Breadcrumb(t *testing.T) {
 		}
 	}
 	if got, want := strings.Count(trail, `<li aria-hidden="true">`), 1; got != want {
-		t.Errorf("パンくずの非表示区切り数 = %d, want %d", got, want)
+		t.Errorf("パンくずの非表示区切り数 = %d、期待値 = %d", got, want)
 	}
 	if !strings.Contains(trail, "data-rtl-flip") {
-		t.Error("パンくずの区切りに RTL 反転の印が無い")
+		t.Error("パンくずの区切りにRTL反転の印が無い")
 	}
 	current := testutil.OpeningTag(t, trail, `aria-current="page"`)
 	if !strings.HasPrefix(current, "<span ") {
-		t.Errorf("パンくずの現在地の要素 = %s, want span (リンクにしない)", current)
+		t.Errorf("パンくずの現在地の要素 = %s、期待値 = span (リンクにしない)", current)
 	}
 }
 
-// TestShow_ThreadLanguage verifies that each row says which language its thread
-// is written in: a badge carrying the language's own name, and the title
-// declared as that language. A board holds threads in several languages, so
-// without this a visitor scanning the listing cannot tell which of them they can
-// read, and a screen reader pronounces every title by the page's own language.
-//
-// The row for a thread whose language resolves to no display language is checked
-// for the opposite: the badge falls back to the translated word, and the title
-// declares nothing rather than an empty or invented tag.
-//
-// [Ja] TestShow_ThreadLanguage は、各行が自身のスレッドの言語を述べることを検証します。
+// TestShow_ThreadLanguageは、各行が自身のスレッドの言語を述べることを検証します。
 // その言語自身の名前を載せたバッジと、その言語として宣言されたタイトルです。掲示板は
 // 複数の言語のスレッドを持つため、これが無いと一覧を見渡す訪問者は自分が読めるものを
 // 見分けられず、スクリーンリーダーはどのタイトルもページ自身の言語で発音します。
@@ -430,69 +346,47 @@ func TestShow_ThreadLanguage(t *testing.T) {
 
 	body := rec.Body.String()
 
-	// The title's own element carries the declaration, so the tag covers the
-	// title and nothing else on the row.
-	//
-	// [Ja] 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
+	// 宣言はタイトル自身の要素が持つ。タグが覆うのはタイトルであって、行の他の
 	// ものではない。
 	link := testutil.OpeningTag(t, body, ">Records I picked up<")
 	if !strings.Contains(link, `lang="en"`) {
-		t.Errorf("英語のスレッドのタイトル = %s, want lang=\"en\"", link)
+		t.Errorf("英語のスレッドのタイトル = %s、期待値はlang=\"en\"を持つ要素", link)
 	}
 
 	row := testutil.Element(t, body, ">Records I picked up<", "</p>")
 	for _, want := range []string{`<span class="sr-only">主言語:</span>`, `<span lang="en">English</span>`} {
 		if !strings.Contains(row, want) {
-			t.Errorf("英語のスレッドの行 = %s, want %q", row, want)
+			t.Errorf("英語のスレッドの行 = %s、%q を含むことを期待", row, want)
 		}
 	}
 
-	// Every row is badged, not only the ones in another language, so that a
-	// missing badge never has to be read as "this one is in my language".
-	//
-	// [Ja] バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
+	// バッジが付くのは別の言語の行だけではなく、どの行にも付く。バッジが無いことを
 	// 「これは自分の言語だ」と読む必要が生じないようにするため。
 	if !strings.Contains(body, `<span lang="ja">日本語</span>`) {
 		t.Error("日本語のスレッドにバッジが無い")
 	}
 
-	// The thread written in a language the application has no locale for is the
-	// one row that declares none. There is no tag to declare, and an invented one
-	// would have a screen reader pronounce the title by the rules of a language
-	// it is not written in, so the badge carries the translated word instead.
-	//
-	// [Ja] アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
+	// アプリがロケールを持たない言語で書かれたスレッドは、どの言語も宣言しない
 	// 唯一の行である。宣言するタグが無く、でっち上げたタグは、そのタイトルが書かれて
 	// いない言語の規則でスクリーンリーダーに発音させることになるため、バッジは代わりに
 	// 訳語を載せる。
 	otherTitle := testutil.OpeningTag(t, body, ">Mes derniers disques<")
 	if strings.Contains(otherTitle, "lang=") {
-		t.Errorf("other のスレッドのタイトル = %s, want lang 属性なし", otherTitle)
+		t.Errorf("otherのスレッドのタイトル = %s、期待値はlang属性なし", otherTitle)
 	}
 	otherRow := testutil.Element(t, body, ">Mes derniers disques<", "</p>")
 	if !strings.Contains(otherRow, "その他") {
-		t.Errorf("other のスレッドの行 = %s, want 「その他」の訳語のバッジ", otherRow)
+		t.Errorf("otherのスレッドの行 = %s、期待値は「その他」の訳語のバッジ", otherRow)
 	}
 }
 
-// TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail verifies that the page
-// declares its own address as the one it is to be known by, and publishes the
-// trail it draws as BreadcrumbList structured data naming each linked step
-// absolutely. A search result can then show where the board sits instead of its
-// bare URL, and the same page reached with a campaign parameter appended is not
-// counted as a second one.
-//
-// The structured data is asserted here rather than only in the component's own
-// test because this is where the base URL reaches it: a handler that stopped
-// passing it would leave the component correct and the page silent.
-//
-// [Ja] TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail は、ページが自身を知られる
+// TestShow_DeclaresItsCanonicalURLAndPublishesItsTrailは、ページが自身を知られる
 // べきアドレスとして自身のアドレスを宣言すること、そして描いた経路を、リンクを持つ各段を
-// 絶対 URL で名指す BreadcrumbList の構造化データとして公開することを検証します。これに
-// より検索結果は、素の URL ではなく掲示板の在り処を示せます。またキャンペーンのパラメータ
-// を付けて到達した同じページが、2 つ目のページとして数えられません。
+// 絶対URLで名指すBreadcrumbListの構造化データとして公開することを検証します。これに
+// より検索結果は、素のURLではなく掲示板の在り処を示せます。またキャンペーンのパラメータ
+// を付けて到達した同じページが、2つ目のページとして数えられません。
 //
-// 構造化データをコンポーネント自身のテストだけでなくここでも検証するのは、ベース URL が
+// 構造化データをコンポーネント自身のテストだけでなくここでも検証するのは、ベースURLが
 // そこへ届くのがこの経路だからです。ハンドラーがそれを渡さなくなっても、コンポーネントは
 // 正しいままページだけが黙ります。
 func TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail(t *testing.T) {
@@ -506,7 +400,7 @@ func TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail(t *testing.T) {
 
 	canonical := testutil.OpeningTag(t, body, `rel="canonical"`)
 	if want := `href="` + appURL + "/b/jazz" + `"`; !strings.Contains(canonical, want) {
-		t.Errorf("canonical のリンク = %s, want %s を含む", canonical, want)
+		t.Errorf("canonicalのリンク = %s、%s を含むことを期待", canonical, want)
 	}
 
 	testutil.AssertBreadcrumbList(t, body,
@@ -515,12 +409,7 @@ func TestShow_DeclaresItsCanonicalURLAndPublishesItsTrail(t *testing.T) {
 	)
 }
 
-// TestShow_BreadcrumbWithoutACategory verifies that a board sitting in no
-// category renders no breadcrumb at all. There is no place above it to name
-// (ADR 0011), and a trail holding only the page being rendered would repeat the
-// heading without telling the visitor anything about where they are.
-//
-// [Ja] TestShow_BreadcrumbWithoutACategory は、どのカテゴリーにも属さない掲示板の
+// TestShow_BreadcrumbWithoutACategoryは、どのカテゴリーにも属さない掲示板の
 // ページがパンくずを一切描画しないことを検証します。上位として名指す場所が無く
 // (ADR 0011)、今描画しているページだけの経路は、訪問者の居場所について何も伝えずに
 // 見出しを繰り返すだけになるためです。
@@ -533,14 +422,14 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 		Slug: "jazz",
 		Name: "ジャズ・ファンク",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	rec := httptest.NewRecorder()
 	newHandlerForDB(db).Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 
 	body := rec.Body.String()
@@ -548,29 +437,20 @@ func TestShow_BreadcrumbWithoutACategory(t *testing.T) {
 		t.Error("カテゴリーを持たない掲示板のページにパンくずが描画されている")
 	}
 	if strings.Contains(body, "ld+json") {
-		t.Error("経路を持たない掲示板のページに BreadcrumbList の構造化データが描画されている")
+		t.Error("経路を持たない掲示板のページにBreadcrumbListの構造化データが描画されている")
 	}
 	if !strings.Contains(body, "ジャズ・ファンク") {
 		t.Error("掲示板の名前がページに含まれていない")
 	}
 }
 
-// TestShow_RedirectsCaseVariantToCanonicalSlug verifies that the NOCASE lookup
-// does not turn a differently cased path into a second HTTP 200 URL. The stored
-// lowercase slug is the canonical address, and a permanent redirect moves both
-// visitors and crawlers there before the page is rendered.
-//
-// The Cache-Control of the redirect is asserted alongside the status, because a
-// permanent redirect can be held by the visitor's browser, while the CSRF cookie
-// a safe request may mint must keep it out of shared caches.
-//
-// [Ja] TestShow_RedirectsCaseVariantToCanonicalSlug は、NOCASE 検索によって大小だけが
-// 異なるパスが 2 つ目の HTTP 200 URL にならないことを検証します。保存済みの小文字 slug
+// TestShow_RedirectsCaseVariantToCanonicalSlugは、NOCASE検索によって大小だけが
+// 異なるパスが2つ目のHTTP 200 URLにならないことを検証します。保存済みの小文字slug
 // が正規アドレスであり、ページを描画する前に恒久リダイレクトで訪問者とクローラーをそこへ
 // 移します。
 //
-// リダイレクトの Cache-Control をステータスと併せて検証するのは、恒久リダイレクトを
-// 訪問者のブラウザには保持させながら、安全なリクエストが発行しうる CSRF Cookie を
+// リダイレクトのCache-Controlをステータスと併せて検証するのは、恒久リダイレクトを
+// 訪問者のブラウザには保持させながら、安全なリクエストが発行しうるCSRF Cookieを
 // 共有キャッシュには保存させないためです。
 func TestShow_RedirectsCaseVariantToCanonicalSlug(t *testing.T) {
 	t.Parallel()
@@ -583,28 +463,21 @@ func TestShow_RedirectsCaseVariantToCanonicalSlug(t *testing.T) {
 	handler.Show(rec, req)
 
 	if rec.Code != http.StatusPermanentRedirect {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusPermanentRedirect)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusPermanentRedirect)
 	}
 	if got, want := rec.Header().Get("Location"), templates.BoardPath("jazz").String()+"?utm_source=newsletter"; got != want {
-		t.Errorf("Location = %q, want %q", got, want)
+		t.Errorf("Location = %q、期待値 = %q", got, want)
 	}
 	if got, want := rec.Header().Get("Cache-Control"), "private, max-age=3600"; got != want {
-		t.Errorf("Cache-Control = %q, want %q", got, want)
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, want)
 	}
 }
 
-// TestShow_AnonymousVisitor verifies that a signed-out visitor is served the
-// board and its threads, that the sidebar's account controls are left out, and
-// that the way into an account stands in their place. The community's pages are
-// readable without an account, so the page must not depend on there being one —
-// and this board page is one of the places a visitor decides to join from, so
-// the sign-in link carries the board back to them once they have.
-//
-// [Ja] TestShow_AnonymousVisitor は、サインアウト状態の訪問者にも掲示板とそのスレッドが
+// TestShow_AnonymousVisitorは、サインアウト状態の訪問者にも掲示板とそのスレッドが
 // 届くこと、サイドバーのアカウント操作が描画されないこと、そしてその位置にアカウントを
 // 持つための導線が立つことを検証します。コミュニティのページはアカウント無しで読めるため、
 // ページがアカウントの存在に依存してはなりません。そしてこの掲示板のページは訪問者が参加を
-// 決める場所の 1 つであるため、サインインのリンクは参加した訪問者をこの掲示板へ連れ戻します。
+// 決める場所の1つであるため、サインインのリンクは参加した訪問者をこの掲示板へ連れ戻します。
 func TestShow_AnonymousVisitor(t *testing.T) {
 	t.Parallel()
 
@@ -613,7 +486,7 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, nil))
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 
 	body := rec.Body.String()
@@ -637,16 +510,10 @@ func TestShow_AnonymousVisitor(t *testing.T) {
 	}
 }
 
-// TestShow_EmptyBoard verifies that a board nobody has posted in says so, rather
-// than rendering a heading above nothing, and that the reading column stops
-// inviting the visitor to choose from a list that has nothing in it. A board
-// without a description of its own still gets a meta description naming it,
-// instead of falling back to the site-wide default every board would share.
-//
-// [Ja] TestShow_EmptyBoard は、まだ誰も書き込んでいない掲示板が、見出しの下に何も無い
+// TestShow_EmptyBoardは、まだ誰も書き込んでいない掲示板が、見出しの下に何も無い
 // 状態ではなくその旨を伝えること、そして読むためのカラムが、何も入っていない一覧から
 // 選ぶよう促すのをやめることを検証します。自身の説明を持たない掲示板も、どの掲示板でも
-// 同じになるサイト全体の既定値ではなく、それを名指す meta description を得ます。
+// 同じになるサイト全体の既定値ではなく、それを名指すmeta descriptionを得ます。
 func TestShow_EmptyBoard(t *testing.T) {
 	t.Parallel()
 
@@ -655,7 +522,7 @@ func TestShow_EmptyBoard(t *testing.T) {
 	handler.Show(rec, newRequest(t, "quiet", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 
 	body := rec.Body.String()
@@ -669,33 +536,23 @@ func TestShow_EmptyBoard(t *testing.T) {
 		t.Error("スレッドを持たない掲示板の読むためのカラムが、選べないスレッドを選ぶよう促している")
 	}
 	if !strings.Contains(body, `content="準備中の板 のスレッドの一覧です。"`) {
-		t.Error("説明を持たない掲示板のレスポンスに、掲示板を名指す meta description が含まれていない")
+		t.Error("説明を持たない掲示板のレスポンスに、掲示板を名指すmeta descriptionが含まれていない")
 	}
 
-	// The empty state carries the way in to starting a thread, so the visitor who
-	// finds nothing here is offered the thing to do about it. It is the only one
-	// on the page: the link above the list has no list to sit above.
-	//
-	// [Ja] 空状態はスレッドを立てる導線を持ち、ここに何も見つけなかった訪問者に、それに
+	// 空状態はスレッドを立てる導線を持ち、ここに何も見つけなかった訪問者に、それに
 	// ついてできることを差し出す。ページ上でこれが唯一の導線である。一覧の上のリンクには、
 	// その上に立つべき一覧が無い。
 	if !strings.Contains(body, "最初のスレッドを立てる") {
 		t.Error("スレッドを持たない掲示板の空状態に、スレッドを立てる導線が含まれていない")
 	}
 	if got, want := strings.Count(body, templates.BoardThreadsNewPath("quiet").String()), 1; got != want {
-		t.Errorf("スレッド作成フォームへの導線の数 = %d, want %d", got, want)
+		t.Errorf("スレッド作成フォームへの導線の数 = %d、期待値 = %d", got, want)
 	}
 }
 
-// TestShow_UnknownSlug verifies that a slug naming no board is answered with
-// HTTP 404 and the shared not-found page. The status is asserted alongside the
-// body because a page that reads as "not found" while answering 200 is a soft
-// 404, and this route is reachable by crawlers following a link to a board that
-// has since been removed.
-//
-// [Ja] TestShow_UnknownSlug は、どの掲示板も指さない slug が HTTP 404 と共通の
-// not-found ページで応答されることを検証します。ステータスをボディと併せて検証するのは、
-// 「見つからない」と読めるページが 200 で応答する状態がソフト 404 だからです。そして
+// TestShow_UnknownSlugは、どの掲示板も指さないslugがHTTP 404と共通の
+// not-foundページで応答されることを検証します。ステータスをボディと併せて検証するのは、
+// 「見つからない」と読めるページが200で応答する状態がソフト404だからです。そして
 // このルートには、削除済みの掲示板へのリンクを辿るクローラーが到達しえます。
 func TestShow_UnknownSlug(t *testing.T) {
 	t.Parallel()
@@ -705,21 +562,16 @@ func TestShow_UnknownSlug(t *testing.T) {
 	handler.Show(rec, newRequest(t, "no-such-board", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 	}
 	if body := rec.Body.String(); !strings.Contains(body, "ページが見つかりません") {
-		t.Error("未知の slug のレスポンスに 404 ページの見出しが含まれていない")
+		t.Error("未知のslugのレスポンスに404ページの見出しが含まれていない")
 	}
 }
 
-// TestShow_LookupFailure verifies that a failure to read the board is returned
-// as an internal server error rather than as a 404: a database that cannot be
-// reached does not mean the board is gone, and answering 404 would tell a
-// crawler to drop a page that still exists.
-//
-// [Ja] TestShow_LookupFailure は、掲示板の読み取りの失敗が 404 ではなく Internal
-// Server Error として返ることを検証します。到達できないデータベースは掲示板が無く
-// なったことを意味せず、404 で応答すればまだ存在するページを落とすようクローラーに
+// TestShow_LookupFailureは、掲示板の読み取りの失敗が404ではなくInternal
+// Server Errorとして返ることを検証します。到達できないデータベースは掲示板が無く
+// なったことを意味せず、404で応答すればまだ存在するページを落とすようクローラーに
 // 伝えてしまいます。
 func TestShow_LookupFailure(t *testing.T) {
 	t.Parallel()
@@ -733,21 +585,16 @@ func TestShow_LookupFailure(t *testing.T) {
 	handler.Show(rec, req.WithContext(ctx))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// TestShow_NavigationLookupFailure verifies the second database failure branch:
-// board lookup succeeds, then navigation lookup fails and returns an internal
-// server error. Keeping the databases separate prevents the first lookup from
-// consuming the intended failure.
-//
-// [Ja] TestShow_NavigationLookupFailure は 2 つ目の DB 失敗分岐を検証します。掲示板の
-// 取得には成功し、その後のナビゲーション取得が失敗して Internal Server Error を返します。
-// DB を分けることで、最初の取得が対象の失敗を先に消費しないようにします。
+// TestShow_NavigationLookupFailureは2つ目のDB失敗分岐を検証します。掲示板の
+// 取得には成功し、その後のナビゲーション取得が失敗してInternal Server Errorを返します。
+// DBを分けることで、最初の取得が対象の失敗を先に消費しないようにします。
 func TestShow_NavigationLookupFailure(t *testing.T) {
 	t.Parallel()
 
@@ -756,7 +603,7 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 
 	navigationDB := testutil.SetupDB(t)
 	if err := navigationDB.Reader.Close(); err != nil {
-		t.Fatalf("navigation Reader の Close() error = %v", err)
+		t.Fatalf("navigation ReaderのClose()のエラー = %v", err)
 	}
 
 	handler := newHandlerForDatabases(boardDB, navigationDB, boardDB)
@@ -764,22 +611,16 @@ func TestShow_NavigationLookupFailure(t *testing.T) {
 	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// TestShow_ThreadListingFailure verifies the third database failure branch:
-// resolving the board and reading the navigation both succeed, then the thread
-// listing fails and returns an internal server error. Splitting the listing out
-// of the board lookup gave this failure its own branch, so it needs a case of
-// its own to stay covered.
-//
-// [Ja] TestShow_ThreadListingFailure は 3 つ目の DB 失敗分岐を検証します。掲示板の解決と
-// ナビゲーションの読み取りには成功し、その後のスレッド一覧の取得が失敗して Internal
-// Server Error を返します。一覧を掲示板の解決から切り離したことでこの失敗が独立した
+// TestShow_ThreadListingFailureは3つ目のDB失敗分岐を検証します。掲示板の解決と
+// ナビゲーションの読み取りには成功し、その後のスレッド一覧の取得が失敗してInternal
+// Server Errorを返します。一覧を掲示板の解決から切り離したことでこの失敗が独立した
 // 分岐になったため、覆い続けるには独立したケースが要ります。
 func TestShow_ThreadListingFailure(t *testing.T) {
 	t.Parallel()
@@ -789,7 +630,7 @@ func TestShow_ThreadListingFailure(t *testing.T) {
 
 	threadDB := testutil.SetupDB(t)
 	if err := threadDB.Reader.Close(); err != nil {
-		t.Fatalf("thread Reader の Close() error = %v", err)
+		t.Fatalf("thread ReaderのClose()のエラー = %v", err)
 	}
 
 	handler := newHandlerForDatabases(boardDB, boardDB, threadDB)
@@ -797,17 +638,14 @@ func TestShow_ThreadListingFailure(t *testing.T) {
 	handler.Show(rec, newRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// createJazzBoard creates the board the failure cases resolve, together with the
-// category it has to belong to, so that a case about a later read reaches it.
-//
-// [Ja] createJazzBoard は、失敗のケースが解決する掲示板を、それが属さなければならない
+// createJazzBoardは、失敗のケースが解決する掲示板を、それが属さなければならない
 // カテゴリーと一緒に作ります。後続の読み取りについてのケースがそこへ到達できるように
 // するためです。
 func createJazzBoard(t *testing.T, db *database.DB) {
@@ -816,13 +654,13 @@ func createJazzBoard(t *testing.T, db *database.DB) {
 	ctx := context.Background()
 	category, err := repository.NewCategoryRepository(db).Create(ctx, repository.CreateCategoryInput{Slug: "music", Name: "音楽"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := repository.NewBoardRepository(db).Create(ctx, repository.CreateBoardInput{
 		CategoryID: &category.ID,
 		Slug:       "jazz",
 		Name:       "ジャズ・ファンク",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 }

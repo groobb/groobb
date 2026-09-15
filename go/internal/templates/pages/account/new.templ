@@ -6,17 +6,9 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the account-creation page. Atname is the submitted
-// @handle, echoed back on a validation error so the user does not retype it (it
-// is not a credential). FormErrors carries the per-field validation messages:
-// an invalid atname or a too-short, too-long, or mismatched password is shown
-// beneath the field it belongs to. The password values are deliberately not
-// echoed back; re-rendering a password field with its value is a credential-leak
-// risk, so the user re-types those on a validation error.
-//
-// [Ja] NewPageData はアカウント作成ページのデータです。Atname は送信された @ハンドルで、
+// NewPageDataはアカウント作成ページのデータです。Atnameは送信された @ハンドルで、
 // バリデーションエラー時にエコーバックしてユーザーが打ち直さずに済むようにします (資格情報
-// ではないため)。FormErrors はフィールド別のバリデーションメッセージを運び、不正な atname や
+// ではないため)。FormErrorsはフィールド別のバリデーションメッセージを運び、不正なatnameや
 // 短すぎ・長すぎ・不一致のパスワードは該当フィールドの下に表示します。パスワードの値は
 // 意図的にエコーバックしません。値付きでパスワードフィールドを再描画するのは資格情報の
 // 漏えいリスクのため、バリデーションエラー時はユーザーに再入力させます。
@@ -26,14 +18,9 @@ type NewPageData struct {
 	FormErrors *model.ValidationError
 }
 
-// New renders the account-creation form: a password and a password-confirmation
-// field that, on submit, create the account (using the email from the verified
-// confirmation) and sign the user in. The CSRF token is embedded as a hidden
-// field for the double-submit-cookie check.
-//
-// [Ja] New はアカウント作成フォームを描画します。送信すると (検証済みの確認の email を
+// Newはアカウント作成フォームを描画します。送信すると (検証済みの確認のemailを
 // 使って) アカウントを作成しユーザーをサインインさせる、パスワードとパスワード確認の
-// フィールドです。CSRF トークンは double-submit cookie 検証のため hidden フィールドとして
+// フィールドです。CSRFトークンはdouble-submit cookie検証のためhiddenフィールドとして
 // 埋め込みます。
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">

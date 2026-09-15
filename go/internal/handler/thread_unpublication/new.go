@@ -15,19 +15,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// New GET /t/{id}/unpublication/new - renders the page a thread's unpublication
-// is confirmed on: the thread about to leave the community's view, and the note
-// the history will keep. It is registered behind RequireAuth, so someone is
-// signed in; whether that someone may act on a thread at all is settled by the
-// UseCase, and a refusal is answered with the shared 403 page.
-//
-// The id is checked before anything is read, and a spelling of the same id that
-// is not the canonical one is not redirected, as on the lock's confirmation
-// page: this page is behind authentication and marked noindex, so there is no
-// second address for anyone to find, and the form it draws names the thread by
-// the id that was parsed rather than by the path that was walked.
-//
-// [Ja] New GET /t/{id}/unpublication/new - スレッドの非公開を確認するページを描画します。
+// New GET /t/{id}/unpublication/new - スレッドの非公開を確認するページを描画します。
 // これからコミュニティの視界を去るスレッドと、履歴が保つことになる注記です。RequireAuthの
 // 背後に登録されるため、誰かがサインインしています。その誰かがそもそもスレッドに対して働き
 // かけてよいかどうかを決めるのはUseCaseで、拒否には共通の403ページで応答します。
@@ -72,15 +60,7 @@ func (h *Handler) New(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// renderNew renders the confirmation page with the given status and data. It is
-// shared by New (200) and Create's re-render after a note that was refused for
-// its length (422). The status is written before rendering, so callers pass the
-// final status here rather than setting it separately.
-//
-// The page is marked noindex: it is behind authentication, admitted to a few
-// people, and what stands on it is a button rather than anything to find.
-//
-// [Ja] renderNewは、指定したステータスとデータで確認ページを描画します。New (200) と、
+// renderNewは、指定したステータスとデータで確認ページを描画します。New (200) と、
 // 長さを理由に拒否された注記の後のCreateの再描画 (422) で共有します。ステータスは描画前に
 // 書き込むため、呼び出し側は別途設定せずここに最終ステータスを渡します。
 //
@@ -98,10 +78,7 @@ func (h *Handler) renderNew(w http.ResponseWriter, r *http.Request, status int, 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if err := layouts.Default(meta, threadunpublicationpage.New(data)).Render(ctx, w); err != nil {
-		// The status and headers are already sent, so this can only be logged,
-		// not turned into a 500.
-		//
-		// [Ja] ステータスとヘッダーは既に送出済みのため、ここでは500に変えられずログに
+		// ステータスとヘッダーは既に送出済みのため、ここでは500に変えられずログに
 		// 記録するのみとする。
 		slog.ErrorContext(ctx, "スレッドの非公開の確認ページのレンダリングに失敗", "error", err)
 	}

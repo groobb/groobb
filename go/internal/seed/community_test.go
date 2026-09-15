@@ -8,16 +8,10 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// TestRunner_GenerateCommunity verifies that a run creates the row an instance
-// reads its name from, under the name of the profile that was asked for and as
-// the row the application looks the community up by. A run that wrote a
-// different id would leave a database whose community is invisible to every
-// screen, since the query that reads it selects the row id 1.
-//
-// [Ja] TestRunner_GenerateCommunity は、実行が、インスタンスが自身の名前を読み取る行を、
+// TestRunner_GenerateCommunityは、実行が、インスタンスが自身の名前を読み取る行を、
 // 指定されたプロファイルの名前で、かつアプリケーションがコミュニティを引くときの行として
-// 作成することを検証します。別の id で書いた実行は、どの画面からもコミュニティが見えない
-// データベースを残します。それを読むクエリが id 1 の行を引くためです。
+// 作成することを検証します。別のidで書いた実行は、どの画面からもコミュニティが見えない
+// データベースを残します。それを読むクエリがid 1の行を引くためです。
 func TestRunner_GenerateCommunity(t *testing.T) {
 	t.Parallel()
 
@@ -33,24 +27,24 @@ func TestRunner_GenerateCommunity(t *testing.T) {
 
 			tx := beginTx(t, db)
 			if err := runner.generateCommunity(ctx, tx, &state{}); err != nil {
-				t.Fatalf("generateCommunity() error = %v", err)
+				t.Fatalf("generateCommunity()のエラー = %v", err)
 			}
 			if err := tx.Commit(); err != nil {
-				t.Fatalf("failed to commit the transaction: %v", err)
+				t.Fatalf("トランザクションのコミットに失敗: %v", err)
 			}
 
 			community, err := repository.NewCommunityRepository(db).Find(ctx)
 			if err != nil {
-				t.Fatalf("Find() error = %v", err)
+				t.Fatalf("Find()のエラー = %v", err)
 			}
 			if community == nil {
-				t.Fatal("no community was created")
+				t.Fatal("コミュニティが作成されていない")
 			}
 			if community.Name != profile.communityName {
-				t.Errorf("community name = %q, want %q", community.Name, profile.communityName)
+				t.Errorf("コミュニティ名 = %q、期待値 = %q", community.Name, profile.communityName)
 			}
 			if community.ID != 1 {
-				t.Errorf("community id = %d, want 1", community.ID)
+				t.Errorf("コミュニティのID = %d、期待値 = 1", community.ID)
 			}
 		})
 	}

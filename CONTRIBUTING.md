@@ -1,14 +1,14 @@
-<!-- last_synced: 2026-08-28 -->
+<!-- last_synced: 2026-09-15 -->
 
-# Contributing
+# コントリビューションについて
 
-> English | [日本語](./CONTRIBUTING.ja.md)
+> 日本語 | [English](./CONTRIBUTING.en.md)
 
-Groobb is open source, but we are not currently accepting external pull requests.
+Groobbはオープンソースとして公開していますが、現在、外部からのプルリクエストは受け付けていません。
 
-Development is primarily handled by a single person ([@shimbaco](https://github.com/shimbaco)), and we do not have the capacity to properly review and manage external code contributions.
-The source code is published as a reference for those interested in how Groobb works.
+開発は基本的に個人 ([@shimbaco](https://github.com/shimbaco)) で進めており、外部からのコード貢献を適切にレビュー・管理する余裕がないためです。
+ソースコードはGroobbの仕組みに興味のある方への参考として公開しています。
 
-## Security reports
+## セキュリティに関する報告
 
-If you discover a security vulnerability, please report it using the method described in [SECURITY.md](./SECURITY.md).
+セキュリティ上の脆弱性を発見した場合は、[SECURITY.md](./SECURITY.md) に記載されている方法でご報告ください。

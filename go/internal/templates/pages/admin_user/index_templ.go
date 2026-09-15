@@ -11,60 +11,24 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// indexTableCaptionID names the table's caption, which the scrolling region
-// around the table borrows as its own name. A region without a name is
-// announced as a region and nothing more, and the words describing the table are
-// already written once in the caption.
-//
-// [Ja] indexTableCaptionID は表のキャプションを名指します。表を囲むスクロール領域が
+// indexTableCaptionIDは表のキャプションを名指します。表を囲むスクロール領域が
 // これを自身の名前として借ります。名前の無い領域は「領域」とだけ読み上げられ、表を説明
-// する言葉はキャプションに既に 1 度書かれているためです。
+// する言葉はキャプションに既に1度書かれているためです。
 const indexTableCaptionID = "admin-user-index-table-caption"
 
-// Index renders the user listing: the search that narrows it, the accounts of
-// the page being read, and the links to the pages around it.
-//
-// The accounts are a table rather than a list of cards, because a row states the
-// same four things about every account and the reason to open this page is to
-// compare them down a column. The caption says what the table holds, the header
-// cells are scoped to their column and the atname to its row, so a cell read on
-// its own is read together with what it is.
-//
-// The table sits in a region that scrolls sideways, so that a screen too narrow
-// for four columns does not cut them off. The region takes focus, since a
-// visitor who scrolls it with the keyboard has to be able to reach it.
-//
-// Each row's role button is a form of its own, since a row acts on one account
-// and a form nested in another form is not submitted. Taking the role away is
-// confirmed first: it is the button that can leave someone without the screens
-// they were using, and unlike granting it, pressing it back does not always
-// undo it. The visitor's own row asks a different question, because what it
-// takes away is the listing they are standing on: pressing it back is not
-// something they can do at all once the role is gone.
-//
-// Each button is named after the account of its row, so the accessible name says
-// what it does and to whom. The words of the button alone repeat on every row,
-// and the listing is read one row at a time.
-//
-// An empty page says which of three empty things it is: a community with no
-// accounts to show, a search that matched none of the accounts it has, or a page
-// past the end of a listing that did match accounts. They look the same but ask
-// for different next steps: waiting, searching for something else, or going
-// back a page.
-//
-// [Ja] Index は利用者一覧を描画します。それを絞り込む検索、読まれているページの
+// Indexは利用者一覧を描画します。それを絞り込む検索、読まれているページの
 // アカウント、そしてその前後のページへのリンクです。
 //
-// アカウントをカードの一覧ではなく表にするのは、どの行もアカウントについて同じ 4 つの
+// アカウントをカードの一覧ではなく表にするのは、どの行もアカウントについて同じ4つの
 // ことを述べ、このページを開く理由が列に沿ってそれらを見比べることであるためです。
-// キャプションが表の中身を述べ、見出しセルは列に、atname は行にスコープするため、単独で
+// キャプションが表の中身を述べ、見出しセルは列に、atnameは行にスコープするため、単独で
 // 読まれたセルも、それが何であるかと共に読まれます。
 //
-// 表は横にスクロールする領域の中に置きます。4 つの列に足りない幅の画面がそれらを切り
+// 表は横にスクロールする領域の中に置きます。4つの列に足りない幅の画面がそれらを切り
 // 落とさないようにするためです。領域はフォーカスを受け取ります。キーボードでそれを
 // スクロールする訪問者が、そこへ到達できる必要があるためです。
 //
-// 各行のロールのボタンはそれぞれが 1 つのフォームです。行が作用するのは 1 つのアカウント
+// 各行のロールのボタンはそれぞれが1つのフォームです。行が作用するのは1つのアカウント
 // であり、フォームの中に入れ子にしたフォームは送信されないためです。ロールを外す操作には
 // 確認を挟みます。使っていた画面を誰かから失わせうるのはこちらのボタンであり、付与と違って、
 // 押し戻せば必ず元に戻るとは限らないためです。訪問者自身の行は別の問いを立てます。そこで
@@ -72,10 +36,10 @@ const indexTableCaptionID = "admin-user-index-table-caption"
 // 自体ができないためです。
 //
 // 各ボタンは自身の行のアカウントによって名付けられ、アクセシブルネームが何を誰に対して
-// するのかを述べます。ボタンの言葉だけではどの行でも同じものが繰り返され、一覧は 1 行ずつ
+// するのかを述べます。ボタンの言葉だけではどの行でも同じものが繰り返され、一覧は1行ずつ
 // 読まれるためです。
 //
-// 空のページは、3 種類の空のどれであるかを述べます。見せるアカウントを持たない
+// 空のページは、3種類の空のどれであるかを述べます。見せるアカウントを持たない
 // コミュニティなのか、持っているアカウントのどれにも一致しなかった検索なのか、それとも
 // 一致するアカウントを持つ一覧の終端を越えたページなのかです。同じ見た目でも、待つこと、
 // 別の語で探すこと、前のページへ戻ることという異なる次の手立てを求めるためです。
@@ -107,7 +71,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 76, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 40, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -120,7 +84,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUsersPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 78, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 42, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -133,7 +97,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.AdminUsersQueryParam)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 80, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 44, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -146,7 +110,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_search_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 81, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 45, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +123,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.AdminUsersQueryParam)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 84, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 48, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -172,7 +136,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.AdminUsersQueryParam)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 85, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 49, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -185,7 +149,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.AtnamePrefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 87, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 51, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -198,7 +162,7 @@ func Index(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_search_submit_button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 92, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 56, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -217,7 +181,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_past_last_page"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 97, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 61, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -235,7 +199,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_empty"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 99, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 63, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -253,7 +217,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_no_results", map[string]any{"Query": data.AtnamePrefix}))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 102, Col: 98}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 66, Col: 98}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -272,7 +236,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(indexTableCaptionID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 106, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 70, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 			if templ_7745c5c3_Err != nil {
@@ -285,7 +249,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(indexTableCaptionID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 108, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 72, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 			if templ_7745c5c3_Err != nil {
@@ -298,7 +262,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_table_caption"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 109, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 73, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -311,7 +275,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_atname_column"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 113, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 77, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -324,7 +288,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_joined_at_column"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 114, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 78, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -337,7 +301,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_roles_column"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 115, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 79, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -350,7 +314,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_actions_column"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 116, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 80, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -368,7 +332,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(atnameCellID(user.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 122, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 86, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 				if templ_7745c5c3_Err != nil {
@@ -381,7 +345,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs("@" + user.Atname)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 123, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 87, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -394,7 +358,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var22 string
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.MachineDateTime(user.CreatedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 126, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 90, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 				if templ_7745c5c3_Err != nil {
@@ -407,7 +371,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(templates.RelativeTime(ctx, user.CreatedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 127, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 91, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -425,7 +389,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var24 string
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_no_roles"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 133, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 97, Col: 58}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -448,7 +412,7 @@ func Index(data IndexPageData) templ.Component {
 						var templ_7745c5c3_Var25 string
 						templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(roleName)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 138, Col: 26}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 102, Col: 26}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 						if templ_7745c5c3_Err != nil {
@@ -476,7 +440,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var26 templ.SafeURL
 					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUserRolePath(user.ID, data.AdminRoleName).SafeURL())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 146, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 110, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
@@ -494,7 +458,7 @@ func Index(data IndexPageData) templ.Component {
 						var templ_7745c5c3_Var27 string
 						templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "admin_user_index_revoke_admin_self_confirm"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 149, Col: 89}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 113, Col: 89}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 						if templ_7745c5c3_Err != nil {
@@ -512,7 +476,7 @@ func Index(data IndexPageData) templ.Component {
 						var templ_7745c5c3_Var28 string
 						templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "admin_user_index_revoke_admin_confirm", map[string]any{"Atname": user.Atname}))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 151, Col: 123}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 115, Col: 123}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 						if templ_7745c5c3_Err != nil {
@@ -530,7 +494,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var29 string
 					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 156, Col: 72}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 120, Col: 72}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 					if templ_7745c5c3_Err != nil {
@@ -551,7 +515,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var30 string
 					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(roleButtonID(user.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 160, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 124, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 					if templ_7745c5c3_Err != nil {
@@ -564,7 +528,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var31 string
 					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(roleButtonID(user.ID) + " " + atnameCellID(user.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 161, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 125, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 					if templ_7745c5c3_Err != nil {
@@ -577,7 +541,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var32 string
 					templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_revoke_admin_button"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 166, Col: 70}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 130, Col: 70}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 					if templ_7745c5c3_Err != nil {
@@ -595,7 +559,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var33 templ.SafeURL
 					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUserRolesPath(user.ID).SafeURL())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 170, Col: 72}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 134, Col: 72}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 					if templ_7745c5c3_Err != nil {
@@ -608,7 +572,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var34 string
 					templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 171, Col: 72}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 135, Col: 72}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 					if templ_7745c5c3_Err != nil {
@@ -621,7 +585,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var35 string
 					templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.AdminUserRoleNameParam)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 172, Col: 71}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 136, Col: 71}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 					if templ_7745c5c3_Err != nil {
@@ -634,7 +598,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var36 string
 					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.AdminRoleName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 172, Col: 100}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 136, Col: 100}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 					if templ_7745c5c3_Err != nil {
@@ -655,7 +619,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var37 string
 					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(roleButtonID(user.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 176, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 140, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 					if templ_7745c5c3_Err != nil {
@@ -668,7 +632,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var38 string
 					templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(roleButtonID(user.ID) + " " + atnameCellID(user.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 177, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 141, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 					if templ_7745c5c3_Err != nil {
@@ -681,7 +645,7 @@ func Index(data IndexPageData) templ.Component {
 					var templ_7745c5c3_Var39 string
 					templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_grant_admin_button"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 182, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 146, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 					if templ_7745c5c3_Err != nil {
@@ -710,7 +674,7 @@ func Index(data IndexPageData) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "admin_user_index_pagination_label"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 195, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 159, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 			if templ_7745c5c3_Err != nil {
@@ -728,7 +692,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var41 templ.SafeURL
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUsersPagePath(data.AtnamePrefix, data.Pagination.PreviousPage()).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 200, Col: 102}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 164, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
@@ -741,7 +705,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var42 string
 				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_previous_page_link"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 204, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 168, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 				if templ_7745c5c3_Err != nil {
@@ -760,7 +724,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var43 string
 				templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_page_position", map[string]any{"Page": data.Pagination.Page, "TotalPages": data.Pagination.TotalPages}))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 209, Col: 146}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 173, Col: 146}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 				if templ_7745c5c3_Err != nil {
@@ -779,7 +743,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var44 templ.SafeURL
 				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUsersPagePath(data.AtnamePrefix, data.Pagination.NextPage()).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 214, Col: 98}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 178, Col: 98}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 				if templ_7745c5c3_Err != nil {
@@ -792,7 +756,7 @@ func Index(data IndexPageData) templ.Component {
 				var templ_7745c5c3_Var45 string
 				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_user_index_next_page_link"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 218, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 182, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 				if templ_7745c5c3_Err != nil {
@@ -816,23 +780,13 @@ func Index(data IndexPageData) templ.Component {
 	})
 }
 
-// indexReturnTo writes the address of the listing being read into the row's
-// form, so that the page a grant or a revoke returns to is the page it was
-// pressed on: the same search and the same page number, rather than the first
-// page of everyone.
-//
-// The two values are the ones the listing's own address carries, and the handler
-// builds the address to return to out of them. A form field is used rather than
-// a whole address, so that what a submission can influence is the listing's two
-// parameters and never where the redirect goes.
-//
-// [Ja] indexReturnTo は、読まれている一覧のアドレスを行のフォームへ書き込みます。付与や
+// indexReturnToは、読まれている一覧のアドレスを行のフォームへ書き込みます。付与や
 // 剥奪が戻るページが、それが押されたページ、すなわち同じ絞り込みと同じページ番号になる
 // ようにするためです。全員の最初のページではありません。
 //
-// 2 つの値は一覧自身のアドレスが運ぶものであり、ハンドラーはそれらから戻り先のアドレスを
+// 2つの値は一覧自身のアドレスが運ぶものであり、ハンドラーはそれらから戻り先のアドレスを
 // 組み立てます。アドレスそのものではなくフォームのフィールドにするのは、送信が左右できる
-// ものを一覧の 2 つのパラメータに留め、リダイレクトの行き先そのものには決して及ばない
+// ものを一覧の2つのパラメータに留め、リダイレクトの行き先そのものには決して及ばない
 // ようにするためです。
 func indexReturnTo(data IndexPageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -862,7 +816,7 @@ func indexReturnTo(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.AdminUsersQueryParam)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 245, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 199, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 		if templ_7745c5c3_Err != nil {
@@ -875,7 +829,7 @@ func indexReturnTo(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.AtnamePrefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 245, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 199, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 		if templ_7745c5c3_Err != nil {
@@ -888,7 +842,7 @@ func indexReturnTo(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var49 string
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.PageParam)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 246, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 200, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
 		if templ_7745c5c3_Err != nil {
@@ -901,7 +855,7 @@ func indexReturnTo(data IndexPageData) templ.Component {
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Pagination.PageValue())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 246, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin_user/index.templ`, Line: 200, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 		if templ_7745c5c3_Err != nil {

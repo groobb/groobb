@@ -15,22 +15,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Create POST /t/{id}/lock - closes the thread the address names to new
-// replies and answers with the thread itself, which now states that it is
-// closed. The CSRF check is enforced upstream by the middleware, so it is not
-// repeated here.
-//
-// Who is locking is the account the session names. The submission carries no
-// field for it and none would be read: a form saying who is locking would let
-// anyone lock as an administrator.
-//
-// A note that is too long comes back on the confirmation page holding what was
-// written, since it is something the administrator can shorten. Every other
-// refusal is answered with a page, because there is then nothing to come back
-// to: the thread is not one this visitor may act on, or not one the community
-// still shows.
-//
-// [Ja] Create POST /t/{id}/lock - アドレスが名指すスレッドを新しい返信に対して締め切り、
+// Create POST /t/{id}/lock - アドレスが名指すスレッドを新しい返信に対して締め切り、
 // そのスレッド自身で応答します。スレッドは今や、閉じられていることを述べます。CSRFの検証は
 // 上流のミドルウェアが強制するため、ここでは繰り返しません。
 //
@@ -58,11 +43,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The note's line endings are settled here, where the submission is read, so
-	// that the value recorded and the value drawn back both come out of one
-	// normalization.
-	//
-	// [Ja] 注記の改行は、送信を読むこの場所で確定させる。記録される値と描き戻される値の
+	// 注記の改行は、送信を読むこの場所で確定させる。記録される値と描き戻される値の
 	// どちらも1回の正規化から出るようにするためである。
 	reason := model.NormalizeLineBreaks(r.PostFormValue("reason"))
 
@@ -79,16 +60,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, templates.ThreadPath(viewmodel.ThreadID(id)).String(), http.StatusSeeOther)
 }
 
-// createRefused answers a lock that was not placed, turning what the UseCase
-// refused it for into the response the visitor gets.
-//
-// The confirmation page is read again to be drawn again, because it names the
-// thread and the submission carries only the note. The read goes through the
-// same UseCase the page was opened with, so a thread that was taken out of view
-// between opening the page and submitting is answered the way it would be on
-// the way in rather than drawn as a target that is no longer one.
-//
-// [Ja] createRefusedは、掛けられなかったロックに応答し、UseCaseが何を理由に拒否したかを
+// createRefusedは、掛けられなかったロックに応答し、UseCaseが何を理由に拒否したかを
 // 訪問者が受け取る応答に変えます。
 //
 // 確認ページを描き直すために読み直すのは、そのページがスレッドを名指す一方、送信が運ぶのが

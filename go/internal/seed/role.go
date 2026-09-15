@@ -9,18 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// generateUserRoles gives the admin account the built-in admin role, so that the
-// admin screens can be opened right after a run.
-//
-// It runs after the accounts have been created, because an assignment belongs to
-// a user, and before the content, because what an account holds is part of who
-// it is rather than something it produces.
-//
-// The role itself is not created here. Roles are what a migration writes and the
-// cleanup preserves, so a run that created one would be writing a row the
-// application cannot make again once it is gone.
-//
-// [Ja] generateUserRoles は、管理者用のアカウントへ組み込みの admin ロールを与えます。実行の
+// generateUserRolesは、管理者用のアカウントへ組み込みのadminロールを与えます。実行の
 // 直後から管理画面を開けるようにするためです。
 //
 // これがアカウントの作成後に走るのは、割当がユーザーに属するためであり、コンテンツより先に

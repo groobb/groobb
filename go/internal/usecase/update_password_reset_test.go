@@ -15,11 +15,7 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newUpdatePasswordResetUsecase wires the usecase over the test's own database.
-// It returns the repositories so a test can seed a user, its password, and a
-// token, then assert the updated password and spent token.
-//
-// [Ja] newUpdatePasswordResetUsecase はテスト専用のデータベース上に UseCase を組み立てる。
+// newUpdatePasswordResetUsecaseはテスト専用のデータベース上にUseCaseを組み立てる。
 // テストがユーザー・そのパスワード・トークンを仕込み、更新後のパスワードと消費済みトークンを
 // 検証できるようリポジトリを返す。
 func newUpdatePasswordResetUsecase(t *testing.T, db *database.DB) (*usecase.UpdatePasswordResetUsecase, *repository.UserRepository, *repository.UserPasswordRepository, *repository.PasswordResetTokenRepository) {
@@ -38,11 +34,8 @@ func newUpdatePasswordResetUsecase(t *testing.T, db *database.DB) (*usecase.Upda
 	return uc, userRepo, userPasswordRepo, passwordResetTokenRepo
 }
 
-// seedUserWithPassword creates a committed user with an initial password,
-// returning the user id so a test can reset that password through the usecase.
-//
-// [Ja] seedUserWithPassword は初期パスワードを持つコミット済みユーザーを作成し、テストが
-// その UseCase でパスワードをリセットできるようユーザー id を返す。
+// seedUserWithPasswordは初期パスワードを持つコミット済みユーザーを作成し、テストが
+// そのUseCaseでパスワードをリセットできるようユーザーidを返す。
 func seedUserWithPassword(t *testing.T, ctx context.Context, db *database.DB, userRepo *repository.UserRepository, userPasswordRepo *repository.UserPasswordRepository, email, password string) model.UserID {
 	t.Helper()
 
@@ -60,11 +53,7 @@ func seedUserWithPassword(t *testing.T, ctx context.Context, db *database.DB, us
 	return user.ID
 }
 
-// TestUpdatePasswordResetUsecase_Execute_Success verifies that a usable token and
-// a valid password replace the user's password (the new password verifies, the
-// old one no longer does) and spend the token (it becomes used).
-//
-// [Ja] TestUpdatePasswordResetUsecase_Execute_Success は、使えるトークンと有効な
+// TestUpdatePasswordResetUsecase_Execute_Successは、使えるトークンと有効な
 // パスワードがユーザーのパスワードを置き換え (新しいパスワードで検証でき、古いパスワードでは
 // できなくなる)、トークンを消費する (使用済みになる) ことを検証する。
 func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
@@ -92,15 +81,13 @@ func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
 		Password:             "newpassword123",
 		PasswordConfirmation: "newpassword123",
 	}); err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 
-	// The new password verifies and the old one no longer does.
-	//
-	// [Ja] 新しいパスワードで検証でき、古いパスワードではもう検証できない。
+	// 新しいパスワードで検証でき、古いパスワードではもう検証できない。
 	password, err := userPasswordRepo.FindByUserID(ctx, userID)
 	if err != nil {
-		t.Fatalf("FindByUserID() error = %v", err)
+		t.Fatalf("FindByUserID()のエラー = %v", err)
 	}
 	if password == nil {
 		t.Fatal("更新後のパスワード資格情報を引けない")
@@ -112,24 +99,18 @@ func TestUpdatePasswordResetUsecase_Execute_Success(t *testing.T) {
 		t.Error("古いパスワードはもう検証できないはず")
 	}
 
-	// The token is spent.
-	//
-	// [Ja] トークンは消費済み。
+	// トークンは消費済み。
 	token, err := tokenRepo.FindByTokenDigest(ctx, auth.HashToken(rawToken))
 	if err != nil {
-		t.Fatalf("FindByTokenDigest() error = %v", err)
+		t.Fatalf("FindByTokenDigest()のエラー = %v", err)
 	}
 	if token == nil || !token.IsUsed() {
 		t.Error("更新後のトークンは使用済みのはず")
 	}
 }
 
-// TestUpdatePasswordResetUsecase_Execute_RejectsBadInput verifies that an
-// unusable token (unknown, used, expired) or an invalid password returns a
-// ValidationError and leaves the password unchanged.
-//
-// [Ja] TestUpdatePasswordResetUsecase_Execute_RejectsBadInput は、使えないトークン
-// (未知・使用済み・期限切れ) または不正なパスワードが ValidationError を返し、パスワードを
+// TestUpdatePasswordResetUsecase_Execute_RejectsBadInputは、使えないトークン
+// (未知・使用済み・期限切れ) または不正なパスワードがValidationErrorを返し、パスワードを
 // 変更しないままにすることを検証する。
 func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 	t.Parallel()
@@ -138,10 +119,7 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 
 	tests := []struct {
 		name string
-		// setupToken returns the raw token string to submit, after seeding any
-		// matching row for the user.
-		//
-		// [Ja] setupToken はユーザー向けの一致行を仕込んだ上で、送信する平文トークン
+		// setupTokenはユーザー向けの一致行を仕込んだ上で、送信する平文トークン
 		// 文字列を返す。
 		setupToken func(t *testing.T, ctx context.Context, tokenRepo *repository.PasswordResetTokenRepository, userID model.UserID) string
 		password   string
@@ -209,15 +187,13 @@ func TestUpdatePasswordResetUsecase_Execute_RejectsBadInput(t *testing.T) {
 				PasswordConfirmation: tt.password,
 			})
 			if ve := model.AsValidationError(err); ve == nil {
-				t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+				t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError", err)
 			}
 
-			// The original password is untouched.
-			//
-			// [Ja] 元のパスワードは変更されていない。
+			// 元のパスワードは変更されていない。
 			password, err := userPasswordRepo.FindByUserID(ctx, userID)
 			if err != nil {
-				t.Fatalf("FindByUserID() error = %v", err)
+				t.Fatalf("FindByUserID()のエラー = %v", err)
 			}
 			if err := auth.CheckPassword(password.PasswordDigest, "oldpassword123"); err != nil {
 				t.Errorf("失敗時は元のパスワードが保たれるはず: %v", err)

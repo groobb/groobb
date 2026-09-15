@@ -12,31 +12,11 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// ThreadLockNotice renders why a thread takes no further post, one sentence per
-// reason. It renders nothing for a thread that is not locked, so callers can
-// place it unconditionally where the reply form would otherwise go.
-//
-// A sentence is written per reason rather than one covering them all, because
-// the reasons are not variations of a single message: what each says is
-// different, and one of them may point somewhere to go next while another does
-// not. Which of the reasons a thread carries are stated is StatedReasons's to
-// answer.
-//
-// Under the sentences stands the way on to the next thread, when the caller
-// named one and the notice has one to offer. A thread that filled up ended a
-// conversation that may not be over, and without it the visitor is told only
-// that they cannot write here.
-//
-// A reason with no sentence of its own draws nothing. Every reason the
-// application holds is added together with the wording for it, so this is the
-// state of a reason introduced without one rather than a case the page expects
-// to meet.
-//
-// [Ja] ThreadLockNotice は、スレッドがこれ以上の投稿を受け付けない理由を、1 つの理由に
-// つき 1 文で描画します。ロックされていないスレッドには何も描画しないため、呼び出し側は
+// ThreadLockNoticeは、スレッドがこれ以上の投稿を受け付けない理由を、1つの理由に
+// つき1文で描画します。ロックされていないスレッドには何も描画しないため、呼び出し側は
 // 返信フォームが置かれるはずの場所に無条件で置けます。
 //
-// すべての理由をまとめた 1 文ではなく理由ごとに文を書くのは、理由が 1 つのメッセージの
+// すべての理由をまとめた1文ではなく理由ごとに文を書くのは、理由が1つのメッセージの
 // 変種ではないためです。それぞれが述べることは異なり、次に向かう先を差し出す理由もあれば
 // そうでない理由もあります。スレッドが持つ理由のうちどれを述べるかはStatedReasonsが
 // 答えます。
@@ -92,7 +72,7 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 						var templ_7745c5c3_Var3 string
 						templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_locked_by_moderator"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 51, Col: 60}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 31, Col: 60}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 						if templ_7745c5c3_Err != nil {
@@ -120,7 +100,7 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 						var templ_7745c5c3_Var5 string
 						templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_post_limit_reached", map[string]any{"Limit": data.PostLimit}))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 55, Col: 100}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 35, Col: 100}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 						if templ_7745c5c3_Err != nil {
@@ -142,7 +122,7 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 				var templ_7745c5c3_Var6 templ.SafeURL
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(path.SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 60, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 40, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -155,7 +135,7 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_lock_next_thread_link"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 61, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_lock_notice.templ`, Line: 41, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -175,12 +155,8 @@ func ThreadLockNotice(data ThreadLockNoticeData) templ.Component {
 	})
 }
 
-// threadLockSentence wraps one reason's sentence in the shape the moment calls
-// for: a destructive alert announced on arrival when it answers a submission,
-// and a quiet notice when it is part of the thread being read.
-//
-// [Ja] threadLockSentence は、1 つの理由の文を、その場面に応じた形で包みます。送信への
-// 答えであるときは到着時に読み上げられる destructive のアラートとし、読まれている
+// threadLockSentenceは、1つの理由の文を、その場面に応じた形で包みます。送信への
+// 答えであるときは到着時に読み上げられるdestructiveのアラートとし、読まれている
 // スレッドの一部であるときは控えめな注記とします。
 func threadLockSentence(refusal bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

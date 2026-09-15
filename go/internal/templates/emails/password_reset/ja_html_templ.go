@@ -13,18 +13,11 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/emails/layouts"
 )
 
-// Data holds the values rendered into the password reset templates: the address
-// the reset was requested for, the reset link the user must follow, and how many
-// hours the link stays valid. ExpiresInHours is set by the sender from
-// model.PasswordResetTokenExpirationDuration rather than hard-coded in the
-// templates, so the stated validity window cannot drift from the real expiry. It
-// is shared by the per-locale HTML and text templates in this package.
-//
-// [Ja] Data はパスワードリセットテンプレートに描画する値を保持します。リセットが申請
+// Dataはパスワードリセットテンプレートに描画する値を保持します。リセットが申請
 // されたアドレス、ユーザーがたどるべきリセットリンク、そしてリンクが有効であり続ける
-// 時間数です。ExpiresInHours はテンプレートにハードコードせず sender が
-// model.PasswordResetTokenExpirationDuration から設定するため、表示する有効期間が実際の
-// 有効期限とずれることがありません。本パッケージのロケール別 HTML / テキストテンプレートで
+// 時間数です。ExpiresInHoursはテンプレートにハードコードせずsenderが
+// model.PasswordResetTokenExpirationDurationから設定するため、表示する有効期間が実際の
+// 有効期限とずれることがありません。本パッケージのロケール別HTML / テキストテンプレートで
 // 共有します。
 type Data struct {
 	Email          string
@@ -32,11 +25,7 @@ type Data struct {
 	ExpiresInHours int
 }
 
-// enHourUnit returns the English noun ("hour" or "hours") agreeing in number with
-// ExpiresInHours, so the English templates read naturally for whatever validity
-// window is configured.
-//
-// [Ja] enHourUnit は ExpiresInHours と数が一致する英語の名詞 ("hour" または "hours") を
+// enHourUnitはExpiresInHoursと数が一致する英語の名詞 ("hour" または "hours") を
 // 返します。設定された有効期間がいくつであっても英語テンプレートが自然に読めるように
 // するためです。
 func (d Data) enHourUnit() string {
@@ -46,11 +35,8 @@ func (d Data) enHourUnit() string {
 	return "hours"
 }
 
-// JaHTML renders the Japanese HTML body, wrapping the content in the shared
-// email layout (which supplies the document scaffold and Groobb footer).
-//
-// [Ja] JaHTML は日本語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
-// Groobb フッターを供給する) で内容を包みます。
+// JaHTMLは日本語のHTML本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobbフッターを供給する) で内容を包みます。
 func JaHTML(data Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -91,7 +77,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Email)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 49, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 35, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -104,7 +90,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(data.ResetURL))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 51, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 37, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -117,7 +103,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.ResetURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 51, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 37, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -130,7 +116,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.ExpiresInHours))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 52, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/password_reset/ja_html.templ`, Line: 38, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {

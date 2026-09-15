@@ -13,34 +13,20 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the account-withdrawal confirmation page. It carries
-// only the CSRF token and the validation messages; there is no field to echo back,
-// since the sole input is the current password and re-rendering a password field
-// with its value is a credential-leak risk. FormErrors surfaces a missing or
-// incorrect current password beneath the field.
-//
-// [Ja] NewPageData は退会確認ページのデータです。運ぶのは CSRF トークンと
+// NewPageDataは退会確認ページのデータです。運ぶのはCSRFトークンと
 // バリデーションメッセージだけです。エコーバックするフィールドはありません。唯一の入力は
 // 現在のパスワードであり、値付きでパスワードフィールドを再描画するのは資格情報の漏えい
-// リスクのためです。FormErrors は現在のパスワードの未入力・不一致をフィールドの下に出します。
+// リスクのためです。FormErrorsは現在のパスワードの未入力・不一致をフィールドの下に出します。
 type NewPageData struct {
 	CSRFToken  string
 	FormErrors *model.ValidationError
 }
 
-// New renders the account-withdrawal confirmation form: an explanation of what
-// withdrawal does (irreversible; sign-out; email/atname released), a
-// current-password field for re-authentication, and a destructive submit button.
-// The form posts to /settings/withdrawal with a hidden _method=DELETE so the HTML
-// form drives the DELETE route, and the CSRF token is embedded as a hidden field.
-// An onsubmit confirm() dialog guards against an accidental click; it is only a
-// supplement, since the current-password re-authentication is the real gate.
-//
-// [Ja] New は退会確認フォームを描画します。退会で何が起きるか (不可逆・サインアウト・
-// email / atname の解放) の説明、再認証のための現在のパスワードフィールド、そして
-// destructive な送信ボタンです。フォームは hidden な _method=DELETE を付けて
-// /settings/withdrawal へ POST し、HTML フォームから DELETE ルートを動かします。CSRF
-// トークンは hidden フィールドとして埋め込みます。onsubmit の confirm() ダイアログが誤
+// Newは退会確認フォームを描画します。退会で何が起きるか (不可逆・サインアウト・
+// email / atnameの解放) の説明、再認証のための現在のパスワードフィールド、そして
+// destructiveな送信ボタンです。フォームはhiddenな _method=DELETEを付けて
+// /settings/withdrawalへPOSTし、HTMLフォームからDELETEルートを動かします。CSRF
+// トークンはhiddenフィールドとして埋め込みます。onsubmitのconfirm() ダイアログが誤
 // クリックを防ぎますが、それは補助にすぎず、現在のパスワードによる再認証が本質的なゲートです。
 func New(data NewPageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -70,7 +56,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_withdrawal_new_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 42, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 28, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +69,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_withdrawal_new_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 45, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 31, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -104,7 +90,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsWithdrawalPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 50, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 36, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -117,7 +103,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "settings_withdrawal_new_confirm"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 52, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 38, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -130,7 +116,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 57, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 43, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -166,7 +152,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("current_password", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 76, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 62, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -192,7 +178,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_withdrawal_new_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 82, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_withdrawal/new.templ`, Line: 68, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {

@@ -10,16 +10,10 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// TestFormErrors verifies that FormErrors renders a Basecoat destructive alert
-// with role="alert" for each global message, and renders nothing when there are
-// no global errors (a nil ValidationError, one carrying only field errors, or an
-// empty one). FormErrors touches no translations, so a background context is
-// enough.
-//
-// [Ja] TestFormErrors は FormErrors が各グローバルメッセージについて role="alert" 付きの
-// Basecoat destructive アラートを描画し、グローバルエラーが無いとき (nil の
+// TestFormErrorsはFormErrorsが各グローバルメッセージについてrole="alert" 付きの
+// Basecoat destructiveアラートを描画し、グローバルエラーが無いとき (nilの
 // ValidationError、フィールドエラーのみを持つもの、空のもの) は何も描画しないことを
-// 検証します。FormErrors は翻訳に触れないため、background context で十分です。
+// 検証します。FormErrorsは翻訳に触れないため、background contextで十分です。
 func TestFormErrors(t *testing.T) {
 	t.Parallel()
 
@@ -30,7 +24,7 @@ func TestFormErrors(t *testing.T) {
 		wantEmpty    bool
 	}{
 		{
-			name:       "single global error",
+			name:       "フォーム全体のエラーが1件",
 			formErrors: &model.ValidationError{Global: []string{"メールアドレスかパスワードが正しくありません"}},
 			wantContains: []string{
 				`<div class="alert" data-variant="destructive" role="alert">`,
@@ -38,7 +32,7 @@ func TestFormErrors(t *testing.T) {
 			},
 		},
 		{
-			name:       "multiple global errors",
+			name:       "フォーム全体のエラーが複数件",
 			formErrors: &model.ValidationError{Global: []string{"エラー1", "エラー2"}},
 			wantContains: []string{
 				`<h2>エラー1</h2>`,
@@ -46,17 +40,17 @@ func TestFormErrors(t *testing.T) {
 			},
 		},
 		{
-			name:       "field errors only renders nothing",
+			name:       "フィールドのエラーだけなら何も描画しない",
 			formErrors: &model.ValidationError{Fields: map[string][]string{"email": {"入力してください"}}},
 			wantEmpty:  true,
 		},
 		{
-			name:       "nil renders nothing",
+			name:       "nilなら何も描画しない",
 			formErrors: nil,
 			wantEmpty:  true,
 		},
 		{
-			name:       "empty renders nothing",
+			name:       "空なら何も描画しない",
 			formErrors: model.NewValidationError(),
 			wantEmpty:  true,
 		},
@@ -68,33 +62,28 @@ func TestFormErrors(t *testing.T) {
 
 			var buf strings.Builder
 			if err := components.FormErrors(tt.formErrors).Render(context.Background(), &buf); err != nil {
-				t.Fatalf("render failed: %v", err)
+				t.Fatalf("描画に失敗: %v", err)
 			}
 
 			got := buf.String()
 			if tt.wantEmpty {
 				if strings.TrimSpace(got) != "" {
-					t.Errorf("expected no output, got %q", got)
+					t.Errorf("出力 = %q、空を期待", got)
 				}
 				return
 			}
 			for _, want := range tt.wantContains {
 				if !strings.Contains(got, want) {
-					t.Errorf("output does not contain %q\noutput: %s", want, got)
+					t.Errorf("出力に %q が含まれていない\n出力: %s", want, got)
 				}
 			}
 		})
 	}
 }
 
-// TestFieldErrors verifies that FieldErrors renders a role="alert" paragraph per
-// message for the requested field, each carrying its own id="{field}-error-{i}"
-// (so the control can point to every one of them with aria-describedby), and
-// renders nothing when the field has no errors.
-//
-// [Ja] TestFieldErrors は FieldErrors が指定フィールドについてメッセージごとに
-// role="alert" の段落を描画し、各段落が自身の id="{field}-error-{i}" を持ち (入力欄が
-// aria-describedby でその全てを参照できるように)、フィールドにエラーが無ければ何も
+// TestFieldErrorsはFieldErrorsが指定フィールドについてメッセージごとに
+// role="alert" の段落を描画し、各段落が自身のid="{field}-error-{i}" を持ち (入力欄が
+// aria-describedbyでその全てを参照できるように)、フィールドにエラーが無ければ何も
 // 描画しないことを検証します。
 func TestFieldErrors(t *testing.T) {
 	t.Parallel()
@@ -107,7 +96,7 @@ func TestFieldErrors(t *testing.T) {
 		wantEmpty    bool
 	}{
 		{
-			name:       "single message carries the indexed id and role",
+			name:       "1件のメッセージは連番のidとroleを持つ",
 			field:      "email",
 			formErrors: &model.ValidationError{Fields: map[string][]string{"email": {"入力してください"}}},
 			wantContains: []string{
@@ -115,7 +104,7 @@ func TestFieldErrors(t *testing.T) {
 			},
 		},
 		{
-			name:  "every message carries its own indexed id",
+			name:  "どのメッセージもそれぞれ連番のidを持つ",
 			field: "email",
 			formErrors: &model.ValidationError{Fields: map[string][]string{
 				"email": {"入力してください", "正しいメールアドレスを入力してください"},
@@ -126,13 +115,13 @@ func TestFieldErrors(t *testing.T) {
 			},
 		},
 		{
-			name:       "other field's errors are not rendered",
+			name:       "他のフィールドのエラーは描画しない",
 			field:      "password",
 			formErrors: &model.ValidationError{Fields: map[string][]string{"email": {"入力してください"}}},
 			wantEmpty:  true,
 		},
 		{
-			name:       "nil renders nothing",
+			name:       "nilなら何も描画しない",
 			field:      "email",
 			formErrors: nil,
 			wantEmpty:  true,
@@ -145,34 +134,29 @@ func TestFieldErrors(t *testing.T) {
 
 			var buf strings.Builder
 			if err := components.FieldErrors(tt.field, tt.formErrors).Render(context.Background(), &buf); err != nil {
-				t.Fatalf("render failed: %v", err)
+				t.Fatalf("描画に失敗: %v", err)
 			}
 
 			got := buf.String()
 			if tt.wantEmpty {
 				if strings.TrimSpace(got) != "" {
-					t.Errorf("expected no output, got %q", got)
+					t.Errorf("出力 = %q、空を期待", got)
 				}
 				return
 			}
 			for _, want := range tt.wantContains {
 				if !strings.Contains(got, want) {
-					t.Errorf("output does not contain %q\noutput: %s", want, got)
+					t.Errorf("出力に %q が含まれていない\n出力: %s", want, got)
 				}
 			}
 		})
 	}
 }
 
-// TestFieldErrorsDescribedBy verifies that FieldErrorsDescribedBy lists every
-// error-message id for a field (space-separated, in order) so a control can
-// reference all of them from aria-describedby, and returns "" when the field has
-// no errors. The ids must match the ones FieldErrors stamps on each <p>.
-//
-// [Ja] TestFieldErrorsDescribedBy は FieldErrorsDescribedBy がフィールドの全エラー
-// メッセージ id を (順序どおり空白区切りで) 並べ、入力欄が aria-describedby からその
-// 全てを参照できることと、フィールドにエラーが無いときは "" を返すことを検証します。id は
-// FieldErrors が各 <p> に付与するものと一致していなければなりません。
+// TestFieldErrorsDescribedByはFieldErrorsDescribedByがフィールドの全エラー
+// メッセージidを (順序どおり空白区切りで) 並べ、入力欄がaria-describedbyからその
+// 全てを参照できることと、フィールドにエラーが無いときは "" を返すことを検証します。idは
+// FieldErrorsが各 <p> に付与するものと一致していなければなりません。
 func TestFieldErrorsDescribedBy(t *testing.T) {
 	t.Parallel()
 
@@ -183,13 +167,13 @@ func TestFieldErrorsDescribedBy(t *testing.T) {
 		want       string
 	}{
 		{
-			name:       "single error yields one id",
+			name:       "エラーが1件ならidを1つ返す",
 			field:      "email",
 			formErrors: &model.ValidationError{Fields: map[string][]string{"email": {"入力してください"}}},
 			want:       "email-error-0",
 		},
 		{
-			name:  "multiple errors yield space-separated ids in order",
+			name:  "エラーが複数件なら順にスペース区切りのidを返す",
 			field: "email",
 			formErrors: &model.ValidationError{Fields: map[string][]string{
 				"email": {"入力してください", "正しいメールアドレスを入力してください"},
@@ -197,13 +181,13 @@ func TestFieldErrorsDescribedBy(t *testing.T) {
 			want: "email-error-0 email-error-1",
 		},
 		{
-			name:       "no error for the field yields empty string",
+			name:       "そのフィールドのエラーが無ければ空文字列を返す",
 			field:      "password",
 			formErrors: &model.ValidationError{Fields: map[string][]string{"email": {"入力してください"}}},
 			want:       "",
 		},
 		{
-			name:       "nil yields empty string",
+			name:       "nilなら空文字列を返す",
 			field:      "email",
 			formErrors: nil,
 			want:       "",
@@ -215,22 +199,16 @@ func TestFieldErrorsDescribedBy(t *testing.T) {
 			t.Parallel()
 
 			if got := components.FieldErrorsDescribedBy(tt.field, tt.formErrors); got != tt.want {
-				t.Errorf("FieldErrorsDescribedBy(%q) = %q, want %q", tt.field, got, tt.want)
+				t.Errorf("FieldErrorsDescribedBy(%q) = %q、期待値 = %q", tt.field, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestFormErrorSummary verifies that the summary lists one link per message, in
-// the order the fields are given rather than the order the messages are stored
-// in, and that each link carries the field's label and leads to the control. The
-// order matters because the list is how a visitor walks a refused form, and a
-// map's iteration order would have them jump around it.
-//
-// [Ja] TestFormErrorSummary は、要約がメッセージ 1 つにつき 1 つのリンクを、メッセージの
+// TestFormErrorSummaryは、要約がメッセージ1つにつき1つのリンクを、メッセージの
 // 保持順ではなく与えられたフィールドの順に並べること、そして各リンクがそのフィールドの
 // ラベルを載せて入力欄へ導くことを検証します。順序が問題になるのは、この一覧が拒否された
-// フォームを訪問者が辿る道であり、map の反復順ではその上を飛び回ることになるためです。
+// フォームを訪問者が辿る道であり、mapの反復順ではその上を飛び回ることになるためです。
 func TestFormErrorSummary(t *testing.T) {
 	t.Parallel()
 
@@ -249,7 +227,7 @@ func TestFormErrorSummary(t *testing.T) {
 		},
 		Errors: errors,
 	}).Render(ctx, &buf); err != nil {
-		t.Fatalf("render failed: %v", err)
+		t.Fatalf("描画に失敗: %v", err)
 	}
 
 	got := buf.String()
@@ -261,22 +239,16 @@ func TestFormErrorSummary(t *testing.T) {
 		"最初の投稿: 本文を入力してください",
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("要約に %q が含まれていない\noutput: %s", want, got)
+			t.Errorf("要約に %q が含まれていない\n出力: %s", want, got)
 		}
 	}
 
 	if strings.Index(got, `href="#title"`) > strings.Index(got, `href="#body"`) {
-		t.Errorf("要約が与えられたフィールドの順に並んでいない\noutput: %s", got)
+		t.Errorf("要約が与えられたフィールドの順に並んでいない\n出力: %s", got)
 	}
 }
 
-// TestFormErrorSummary_NothingToList verifies that the summary draws nothing when
-// none of the listed fields has a message: a submission refused as a whole, a
-// message about a field the form does not list, and a form that was never
-// submitted. A heading over an empty list would say there is something to correct
-// where there is not.
-//
-// [Ja] TestFormErrorSummary_NothingToList は、並べる対象のフィールドがいずれもメッセージを
+// TestFormErrorSummary_NothingToListは、並べる対象のフィールドがいずれもメッセージを
 // 持たないとき、要約が何も描かないことを検証します。全体として拒否された送信、フォームが
 // 並べないフィールドについてのメッセージ、そして送信されていないフォームです。空の一覧に
 // 載った見出しは、直すものが無いところに直すものがあると述べてしまいます。
@@ -293,9 +265,9 @@ func TestFormErrorSummary_NothingToList(t *testing.T) {
 		name   string
 		errors *model.ValidationError
 	}{
-		{name: "form-wide message only", errors: globalOnly},
-		{name: "message about an unlisted field", errors: otherField},
-		{name: "not submitted", errors: nil},
+		{name: "フォーム全体のメッセージだけ", errors: globalOnly},
+		{name: "一覧に無いフィールドのメッセージ", errors: otherField},
+		{name: "未送信", errors: nil},
 	}
 
 	for _, tt := range tests {
@@ -310,7 +282,7 @@ func TestFormErrorSummary_NothingToList(t *testing.T) {
 				Fields:     []components.FormErrorSummaryField{{Name: "title", LabelKey: "thread_new_title_label"}},
 				Errors:     tt.errors,
 			}).Render(ctx, &buf); err != nil {
-				t.Fatalf("render failed: %v", err)
+				t.Fatalf("描画に失敗: %v", err)
 			}
 
 			if got := buf.String(); strings.TrimSpace(got) != "" {

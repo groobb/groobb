@@ -12,20 +12,12 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestNew verifies that GET /settings/withdrawal/new returns HTTP 200 with an HTML
-// body that renders the localized heading, the explanation of what withdrawal does,
-// the current-password field (with autocomplete="current-password"), the form
-// driving DELETE /settings/withdrawal via the _method override with the CSRF hidden
-// field, the onsubmit confirm() guard, and the noindex robots meta, for each
-// supported locale. New only renders (no database, no session), so the other
-// dependencies are passed as nil.
-//
-// [Ja] TestNew は GET /settings/withdrawal/new が HTTP 200 と、サポートする各ロケールに
+// TestNewはGET /settings/withdrawal/newがHTTP 200と、サポートする各ロケールに
 // ついて、ローカライズされた見出し・退会で何が起きるかの説明・現在のパスワードフィールド
-// (autocomplete="current-password" 付き)・_method オーバーライド経由で
-// DELETE /settings/withdrawal を動かす CSRF hidden フィールド付きフォーム・onsubmit の
-// confirm() ガード・noindex の robots メタを描画した HTML ボディを返すことを検証します。
-// New は描画のみ (DB もセッションも使わない) のため、他の依存は nil を渡します。
+// (autocomplete="current-password" 付き)・_methodオーバーライド経由で
+// DELETE /settings/withdrawalを動かすCSRF hiddenフィールド付きフォーム・onsubmitの
+// confirm() ガード・noindexのrobotsメタを描画したHTMLボディを返すことを検証します。
+// Newは描画のみ (DBもセッションも使わない) のため、他の依存はnilを渡します。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -38,8 +30,8 @@ func TestNew(t *testing.T) {
 		wantSubmit    string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "退会", wantSubmit: "退会する", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Delete account", wantSubmit: "Delete account", wantHeaderNav: "Global navigation"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "退会", wantSubmit: "退会する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Delete account", wantSubmit: "Delete account", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -53,10 +45,10 @@ func TestNew(t *testing.T) {
 			handler.New(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -77,7 +69,7 @@ func TestNew(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})

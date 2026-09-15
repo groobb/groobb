@@ -7,12 +7,7 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestPostIntervalWait verifies what the interval between one person's posts
-// amounts to at a given moment: nothing once it has run out, and otherwise the
-// remainder in whole seconds. The times are fixed rather than taken from the
-// clock, so the boundary is checked exactly and no test waits for one.
-//
-// [Ja] TestPostIntervalWait は、ある時点で 1 人の投稿の間隔がどれだけになるかを検証します。
+// TestPostIntervalWaitは、ある時点で1人の投稿の間隔がどれだけになるかを検証します。
 // 尽きていれば何も無く、そうでなければ残りを整数秒で返します。時刻は時計から取らずに
 // 固定しているため、境界をちょうどの値で確かめられ、どのテストも待ちません。
 func TestPostIntervalWait(t *testing.T) {
@@ -68,21 +63,13 @@ func TestPostIntervalWait(t *testing.T) {
 
 			got := model.PostIntervalWait(lastPostedAt, lastPostedAt.Add(tt.elapsed))
 			if got != tt.want {
-				t.Errorf("PostIntervalWait(elapsed=%s) = %s, want %s", tt.elapsed, got, tt.want)
+				t.Errorf("PostIntervalWait(elapsed=%s) = %s、期待値 = %s", tt.elapsed, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestParsePostNumber verifies that ParsePostNumber accepts the decimal form of
-// a reply number and refuses everything that names no post, so that a route
-// deciding whether an address can name one at all does it without a query.
-//
-// A spelling strconv reads but no thread would ever write — a leading zero or a
-// plus sign — parses, as it does for a thread's id, and what the route draws
-// afterwards is built from the number it yields rather than from the path.
-//
-// [Ja] TestParsePostNumberは、ParsePostNumberがレス番号の10進表記を受け付け、どの投稿も
+// TestParsePostNumberは、ParsePostNumberがレス番号の10進表記を受け付け、どの投稿も
 // 名指さないものをすべて拒否することを検証します。アドレスがそもそも投稿を名指しうるかを
 // 決めるルートが、クエリを発行せずにそれを行えるようにするためです。
 //
@@ -97,15 +84,15 @@ func TestParsePostNumber(t *testing.T) {
 		want int
 		ok   bool
 	}{
-		{name: "decimal number", raw: "12", want: 12, ok: true},
-		{name: "first post", raw: "1", want: 1, ok: true},
-		{name: "leading zero", raw: "012", want: 12, ok: true},
-		{name: "plus sign", raw: "+12", want: 12, ok: true},
-		{name: "zero", raw: "0", ok: false},
-		{name: "negative", raw: "-12", ok: false},
-		{name: "empty", raw: "", ok: false},
-		{name: "not a number", raw: "twelve", ok: false},
-		{name: "trailing text", raw: "12unpublication", ok: false},
+		{name: "10進数の番号", raw: "12", want: 12, ok: true},
+		{name: "最初の投稿", raw: "1", want: 1, ok: true},
+		{name: "先頭にゼロが付く", raw: "012", want: 12, ok: true},
+		{name: "プラス記号が付く", raw: "+12", want: 12, ok: true},
+		{name: "ゼロ", raw: "0", ok: false},
+		{name: "負の数", raw: "-12", ok: false},
+		{name: "空文字列", raw: "", ok: false},
+		{name: "数値でない", raw: "twelve", ok: false},
+		{name: "数字の後ろに文字が続く", raw: "12unpublication", ok: false},
 	}
 
 	for _, tt := range tests {
@@ -115,13 +102,13 @@ func TestParsePostNumber(t *testing.T) {
 			got, ok := model.ParsePostNumber(tt.raw)
 
 			if ok != tt.ok {
-				t.Fatalf("ParsePostNumber(%q) ok = %v, want %v", tt.raw, ok, tt.ok)
+				t.Fatalf("ParsePostNumber(%q)のok = %v、期待値 = %v", tt.raw, ok, tt.ok)
 			}
 			if !tt.ok {
 				return
 			}
 			if got != tt.want {
-				t.Errorf("ParsePostNumber(%q) = %d, want %d", tt.raw, got, tt.want)
+				t.Errorf("ParsePostNumber(%q) = %d、期待値 = %d", tt.raw, got, tt.want)
 			}
 		})
 	}

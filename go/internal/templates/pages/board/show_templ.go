@@ -15,19 +15,11 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// ShowPageData is the data for a board's page: the board itself, the trail
-// naming where it sits, and the threads posted in it, the most recently
-// posted-in first.
-//
-// The breadcrumb is part of the page rather than of the community shell, because
-// only a page knows where it sits: the shell is drawn the same way for /home,
-// which sits nowhere in particular.
-//
-// [Ja] ShowPageData は掲示板ページのデータです。掲示板自身と、その在り処を示す経路、
+// ShowPageDataは掲示板ページのデータです。掲示板自身と、その在り処を示す経路、
 // そしてそこに立っているスレッドを、最後に投稿されたものから順に持ちます。
 //
 // パンくずがコミュニティのシェルではなくページのものであるのは、自分がどこに位置するかを
-// 知っているのはページだけだからです。シェルは、特にどこにも位置しない /home に対しても
+// 知っているのはページだけだからです。シェルは、特にどこにも位置しない /homeに対しても
 // 同じように描かれます。
 type ShowPageData struct {
 	Name        string
@@ -35,37 +27,23 @@ type ShowPageData struct {
 	Breadcrumb  components.BreadcrumbData
 	Threads     []ShowThread
 
-	// Slug is the board's address, which the page carries because the link to the
-	// form a thread is started from is built from it. The name above the list
-	// cannot stand in for it: two boards may be named the same, and only the slug
-	// says which one a new thread is posted to.
-	//
-	// [Ja] Slug は掲示板のアドレスです。スレッドを立てるフォームへのリンクがこれから
+	// Slugは掲示板のアドレスです。スレッドを立てるフォームへのリンクがこれから
 	// 組み立てられるため、ページがこれを運びます。一覧の上の名前では代わりになりません。
-	// 同じ名前の掲示板は 2 つありえ、新しいスレッドがどちらに立つかを述べるのは slug
+	// 同じ名前の掲示板は2つありえ、新しいスレッドがどちらに立つかを述べるのはslug
 	// だけだからです。
 	Slug string
 }
 
-// ShowThread is one thread of the listing, carrying the two denormalized facts a
-// row shows without reading its posts: how many there are, and when the last one
-// arrived. It carries the id as well, because the title is the link to the
-// thread and /t/{id} is what addresses one.
-//
-// [Ja] ShowThread は一覧に並ぶスレッド 1 つであり、投稿を読まずに 1 行が示す 2 つの
-// 非正規化された事実 — 何件あるか、最後の 1 件がいつ届いたか — を運びます。id も併せて
+// ShowThreadは一覧に並ぶスレッド1つであり、投稿を読まずに1行が示す2つの
+// 非正規化された事実 — 何件あるか、最後の1件がいつ届いたか — を運びます。idも併せて
 // 運ぶのは、タイトルがそのスレッドへのリンクであり、スレッドを指すのが /t/{id} である
 // ためです。
 type ShowThread struct {
 	ID    viewmodel.ThreadID
 	Title string
 
-	// Language is the language the thread is written in, shown as a badge on the
-	// row and declared on the title. A board is not divided by language, so this
-	// is what tells the threads of one listing apart.
-	//
-	// [Ja] Language はスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
-	// 宣言します。掲示板は言語で分けないため、1 つの一覧に並ぶスレッドを見分けさせる
+	// Languageはスレッドが書かれている言語で、行のバッジとして見せ、タイトルに
+	// 宣言します。掲示板は言語で分けないため、1つの一覧に並ぶスレッドを見分けさせる
 	// ものがこれです。
 	Language viewmodel.ThreadLanguage
 
@@ -73,72 +51,34 @@ type ShowThread struct {
 	LastPostedAt time.Time
 }
 
-// ShowHeadingID is the id of this page's main heading. The community layout
-// points the <main> landmark at it with aria-labelledby, so the region's
-// accessible name and the heading a sighted visitor reads are the same text.
-//
-// [Ja] ShowHeadingID はこのページの主見出しの id です。コミュニティレイアウトが
-// aria-labelledby で <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
+// ShowHeadingIDはこのページの主見出しのidです。コミュニティレイアウトが
+// aria-labelledbyで <main> ランドマークをこれに向けるため、領域のアクセシブルな名前と、
 // 目で見る訪問者が読む見出しが同じ文字列になります。
 const ShowHeadingID = "board-show-heading"
 
-// ShowCenter renders the list column of a board's page: the trail naming where
-// the board sits, the board's name as the page heading, and the threads posted
-// in it. This is the page's main column, because a board is the list of its
-// threads and nothing else.
-//
-// Each thread is a card headed by its title, so the titles form the second level
-// of the page outline below the board. The title itself is the link to the
-// thread, so the link text alone says where it leads.
-//
-// A row carries the number of posts and how long ago the last one arrived, the
-// two facts a visitor scans a board with to see where the conversation is. The
-// exact instant sits in the datetime attribute beside the text that says the
-// distance from now.
-//
-// It also carries the thread's primary language, because a board is not divided
-// by language and one listing holds threads in several. The badge says which,
-// and the title declares it, so a screen reader reads a title by the rules of
-// the language it is written in rather than by the page's.
-//
-// A board with no threads says so instead of rendering an empty list: nobody has
-// started one yet, and a bare list would leave the visitor unsure whether the
-// page failed to load.
-//
-// Either way the board offers the way in to starting a thread: above the threads
-// and before the list begins when there are some, and beside the line saying
-// there are none when there are not. A visitor to an empty board needs to start
-// one rather than choose one, and the way to do it is where the reading would
-// have been.
-//
-// The link is drawn for every visitor. The form behind it is behind sign-in, and
-// an anonymous visitor who follows it is sent there carrying this address and
-// comes back to the form; what a board offers is not something only those who
-// can write get to see.
-//
-// [Ja] ShowCenter は掲示板ページの一覧カラムを描画します。掲示板の在り処を示す経路、
+// ShowCenterは掲示板ページの一覧カラムを描画します。掲示板の在り処を示す経路、
 // ページ見出しとしての掲示板名、そしてそこに立っているスレッドです。掲示板とはその
 // スレッドの一覧にほかならないため、これがページの主カラムです。
 //
 // 各スレッドは自身のタイトルを見出しに持つカードであり、タイトルは掲示板の下、ページの
-// アウトラインの第 2 階層をなします。タイトル自身がそのスレッドへのリンクであるため、
+// アウトラインの第2階層をなします。タイトル自身がそのスレッドへのリンクであるため、
 // リンクテキストだけで行き先が分かります。
 //
-// 各行は投稿の件数と、最後の 1 件がどれだけ前に届いたかを運びます。訪問者が掲示板を
-// 見渡して会話がどこにあるかを掴むための 2 つの事実です。正確な時点は、今からの隔たりを
-// 述べるテキストの傍らの datetime 属性に置きます。
+// 各行は投稿の件数と、最後の1件がどれだけ前に届いたかを運びます。訪問者が掲示板を
+// 見渡して会話がどこにあるかを掴むための2つの事実です。正確な時点は、今からの隔たりを
+// 述べるテキストの傍らのdatetime属性に置きます。
 //
-// 各行はスレッドの主言語も運びます。掲示板を言語で分けないため、1 つの一覧が複数の言語の
+// 各行はスレッドの主言語も運びます。掲示板を言語で分けないため、1つの一覧が複数の言語の
 // スレッドを持つからです。どの言語かはバッジが述べ、タイトルはそれを宣言します。これにより
 // スクリーンリーダーは、タイトルをページの言語ではなく、それが書かれている言語の規則で
 // 読み上げます。
 //
-// スレッドを 1 つも持たない掲示板は、空の一覧ではなくその旨を伝えます。まだ誰も立てて
+// スレッドを1つも持たない掲示板は、空の一覧ではなくその旨を伝えます。まだ誰も立てて
 // いない状態であり、素の空一覧では訪問者がページの読み込みに失敗したのかどうか判断
 // できないためです。
 //
 // 掲示板はどちらの状態でも、そこにスレッドを立てる道を差し出します。スレッドが並ぶときは、
-// それらの上、一覧が始まる前にあり、1 つも無いときは、そこに何も無いと述べる文言の傍らに
+// それらの上、一覧が始まる前にあり、1つも無いときは、そこに何も無いと述べる文言の傍らに
 // あります。空の掲示板の訪問者に必要なのは、選ぶことではなく始めることであり、その道は
 // 読むもののあった場所にあります。
 //
@@ -181,7 +121,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(ShowHeadingID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 145, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 85, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -194,7 +134,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 145, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 85, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -212,7 +152,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 147, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 87, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -235,7 +175,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_no_threads"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 152, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 92, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -248,7 +188,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var6 templ.SafeURL
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardThreadsNewPath(data.Slug).SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 153, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 93, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -261,7 +201,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_first_thread_link"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 154, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 94, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -279,7 +219,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var8 templ.SafeURL
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardThreadsNewPath(data.Slug).SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 158, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 98, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -292,7 +232,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_new_thread_link"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 159, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 99, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -310,7 +250,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var10 templ.SafeURL
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templates.ThreadPath(thread.ID).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 168, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 108, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -328,7 +268,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(thread.Language.Tag)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 171, Col: 37}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 111, Col: 37}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 					if templ_7745c5c3_Err != nil {
@@ -346,7 +286,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(thread.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 174, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 114, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -367,7 +307,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "posts_count", map[string]any{"Count": thread.PostsCount}))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 179, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 119, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -380,7 +320,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_last_posted_label"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 181, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 121, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -393,7 +333,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.MachineDateTime(thread.LastPostedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 182, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 122, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 				if templ_7745c5c3_Err != nil {
@@ -406,7 +346,7 @@ func ShowCenter(data ShowPageData) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(templates.RelativeTime(ctx, thread.LastPostedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 183, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 123, Col: 61}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -430,20 +370,11 @@ func ShowCenter(data ShowPageData) templ.Component {
 	})
 }
 
-// ShowRight renders the reading column of a board's page. A board holds no posts
-// of its own, so the column that shows a thread everywhere else says here that
-// none has been opened yet, and points back at the thread list beside it.
-//
-// A board with no threads is told what will fill this column instead of being
-// invited to choose one, since the list beside it is the empty state rather than
-// a set of choices. Pointing at threads that are not there would contradict the
-// column the visitor is reading.
-//
-// [Ja] ShowRight は掲示板ページの読むためのカラムを描画します。掲示板自身は投稿を
+// ShowRightは掲示板ページの読むためのカラムを描画します。掲示板自身は投稿を
 // 持たないため、他のページではスレッドを表示するこのカラムが、ここではまだスレッドが
 // 開かれていないことを伝え、隣のスレッドの一覧を指し示します。
 //
-// スレッドを 1 つも持たない掲示板には、選ぶよう促すのではなく、このカラムに何が現れる
+// スレッドを1つも持たない掲示板には、選ぶよう促すのではなく、このカラムに何が現れる
 // のかを伝えます。隣の一覧は選択肢ではなく空状態だからです。そこに無いスレッドを指し
 // 示せば、訪問者が読んでいるカラムと矛盾してしまいます。
 func ShowRight(data ShowPageData) templ.Component {
@@ -479,7 +410,7 @@ func ShowRight(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_no_threads_post_prompt"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 215, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 146, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -497,7 +428,7 @@ func ShowRight(data ShowPageData) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "board_show_thread_prompt"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 217, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/board/show.templ`, Line: 148, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {

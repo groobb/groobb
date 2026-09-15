@@ -1,9 +1,5 @@
-// Package middleware provides HTTP middleware. This file holds the
-// authentication middleware that resolves the current user from the session
-// cookie.
-//
-// [Ja] middleware パッケージは HTTP ミドルウェアを提供します。本ファイルはセッション
-// Cookie から現在のユーザーを解決する認証ミドルウェアを担います。
+// middlewareパッケージはHTTPミドルウェアを提供します。本ファイルはセッション
+// Cookieから現在のユーザーを解決する認証ミドルウェアを担います。
 package middleware
 
 import (
@@ -15,77 +11,44 @@ import (
 	"github.com/groobb/groobb/go/internal/session"
 )
 
-// contextKey is an unexported type for context keys to avoid collisions with
-// keys defined in other packages.
-//
-// [Ja] contextKey は context キー用の非公開型で、他パッケージで定義されたキーとの
+// contextKeyはcontextキー用の非公開型で、他パッケージで定義されたキーとの
 // 衝突を避けるために用いる。
 type contextKey string
 
-// userContextKey is the key under which the current user is stored in the
-// request context.
-//
-// [Ja] userContextKey は現在のユーザーをリクエスト context に格納する際のキー。
+// userContextKeyは現在のユーザーをリクエストcontextに格納する際のキー。
 const userContextKey contextKey = "user"
 
-// Auth holds the dependencies of the authentication middleware.
-//
-// [Ja] Auth は認証ミドルウェアの依存を保持する。
+// Authは認証ミドルウェアの依存を保持する。
 type Auth struct {
 	sessionMgr *session.Manager
 }
 
-// NewAuth creates an Auth middleware.
-//
-// [Ja] NewAuth は Auth ミドルウェアを生成する。
+// NewAuthはAuthミドルウェアを生成する。
 func NewAuth(sessionMgr *session.Manager) *Auth {
 	return &Auth{sessionMgr: sessionMgr}
 }
 
-// RequireAuth guards routes that require an authenticated user. It resolves the
-// current user from the session cookie and, when signed in, stores it in the
-// request context before handing off to next. An anonymous GET or HEAD request
-// (no cookie, or an unknown or stale token) is redirected to /sign_in instead of
-// reaching the handler, with the requested URL attached as return_to so the
-// visitor lands back on it once signed in — a guarded page whose link is shared
-// publicly is otherwise unreachable for whoever follows it signed out. Other
-// methods fall back to bare /sign_in because their targets cannot be safely
-// replayed as GET landing pages. Unlike SetUser, a genuine lookup failure (e.g.
-// the database is unreachable) is treated as fatal and answered with 500,
-// because a protected page cannot be rendered safely without knowing who the
-// visitor is. Every response it produces is marked Cache-Control: private,
-// no-cache.
-//
-// [Ja] RequireAuth は認証済みユーザーを要求するルートを保護する。セッション Cookie
-// から現在のユーザーを解決し、サインイン済みのときは next へ渡す前にリクエスト context
-// に格納する。匿名の GET / HEAD リクエスト (Cookie が無い / token が未知・失効) は
-// ハンドラーに到達させず /sign_in へリダイレクトし、サインイン後に元の URL へ戻れるよう
-// リクエスト先を return_to として載せる。そうしないと、保護されたページの共有リンクを
+// RequireAuthは認証済みユーザーを要求するルートを保護する。セッションCookie
+// から現在のユーザーを解決し、サインイン済みのときはnextへ渡す前にリクエストcontext
+// に格納する。匿名のGET / HEADリクエスト (Cookieが無い / tokenが未知・失効) は
+// ハンドラーに到達させず /sign_inへリダイレクトし、サインイン後に元のURLへ戻れるよう
+// リクエスト先をreturn_toとして載せる。そうしないと、保護されたページの共有リンクを
 // 未サインインで踏んだ人はそのページに辿り着けない。その他のメソッドは、宛先をサインイン後に
-// GET で安全に再現できないため、素の /sign_in へフォールバックする。SetUser と異なり、
-// 本物の解決失敗 (例: データベースに到達できない) は致命的として 500 で応答する。保護された
+// GETで安全に再現できないため、素の /sign_inへフォールバックする。SetUserと異なり、
+// 本物の解決失敗 (例: データベースに到達できない) は致命的として500で応答する。保護された
 // ページは訪問者が誰かわからないまま安全に描画できないためである。本ミドルウェアが返す
-// すべてのレスポンスには Cache-Control: private, no-cache を付ける。
+// すべてのレスポンスにはCache-Control: private, no-cacheを付ける。
 func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// What a guarded route answers depends on who is asking — the page itself
-		// for a signed-in visitor, a redirect to sign-in for anyone else — so no
-		// response leaving here may be held by a shared cache or reused without
-		// revalidation. Setting it here rather than in each handler means a route
-		// added later carries the policy by being guarded at all, and the value
-		// reaches the redirect and the 500 as well as the page. A handler needing a
-		// stricter policy replaces the value (settings_two_factor_auth uses
-		// no-store for the plaintext secret and the recovery codes).
-		//
-		// [Ja] 保護されたルートの応答は誰が要求したかで変わる (サインイン済みならページ
+		// 保護されたルートの応答は誰が要求したかで変わる (サインイン済みならページ
 		// 自身、それ以外はサインインへのリダイレクト) ため、ここを出るどのレスポンスも
 		// 共有キャッシュに保持されたり再検証なしで再利用されたりしてはならない。各
 		// ハンドラーではなくここで設定することで、後から追加したルートも保護されている
-		// こと自体で方針を備え、値はページだけでなくリダイレクトと 500 にも届く。より
-		// 厳しい方針が要るハンドラーは値を置き換える (settings_two_factor_auth は平文の
-		// secret とリカバリーコードのために no-store を使う)。
+		// こと自体で方針を備え、値はページだけでなくリダイレクトと500にも届く。より
+		// 厳しい方針が要るハンドラーは値を置き換える (settings_two_factor_authは平文の
+		// secretとリカバリーコードのためにno-storeを使う)。
 		w.Header().Set("Cache-Control", "private, no-cache")
 
 		user, err := a.sessionMgr.GetCurrentUser(ctx, r)
@@ -105,22 +68,13 @@ func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// SetUser resolves the current user from the request's session cookie and, when
-// signed in, stores it in the request context for downstream handlers and
-// templates. It never blocks the request: an anonymous request (no cookie, or an
-// unknown or stale token) proceeds with no user in the context, and a genuine
-// lookup failure (e.g. the database is unreachable) is logged and the request
-// still proceeds anonymously, so a transient database hiccup does not take down
-// pages that anonymous visitors can see. Enforcing authentication is a separate
-// concern handled by route-level middleware added in later tasks.
-//
-// [Ja] SetUser はリクエストのセッション Cookie から現在のユーザーを解決し、サイン
-// イン済みのときは後続のハンドラーやテンプレートが参照できるようリクエスト context
-// に格納する。リクエストを止めることはしない。匿名リクエスト (Cookie が無い / token
-// が未知・失効) は context にユーザーを入れずに進み、本物の解決失敗 (例: データベース
+// SetUserはリクエストのセッションCookieから現在のユーザーを解決し、サイン
+// イン済みのときは後続のハンドラーやテンプレートが参照できるようリクエストcontext
+// に格納する。リクエストを止めることはしない。匿名リクエスト (Cookieが無い / token
+// が未知・失効) はcontextにユーザーを入れずに進み、本物の解決失敗 (例: データベース
 // に到達できない) はログに記録したうえで匿名のまま進める。これにより一時的なデータ
 // ベースの不調が、匿名の訪問者でも見られるページを巻き込んで落とさないようにする。
-// 認証の強制は別の関心事であり、後続タスクで追加するルート単位のミドルウェアが担う。
+// 認証の強制は別の関心事であり、ルート単位のRequireAuthが担う。
 func (a *Auth) SetUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -140,11 +94,8 @@ func (a *Auth) SetUser(next http.Handler) http.Handler {
 	})
 }
 
-// UserFromContext returns the current user stored in ctx, or nil when the
-// request is not signed in (or SetUser did not run).
-//
-// [Ja] UserFromContext は ctx に格納された現在のユーザーを返す。未サインインの
-// とき (または SetUser が走っていないとき) は nil を返す。
+// UserFromContextはctxに格納された現在のユーザーを返す。未サインインの
+// とき (またはSetUserが走っていないとき) はnilを返す。
 func UserFromContext(ctx context.Context) *model.User {
 	user, ok := ctx.Value(userContextKey).(*model.User)
 	if !ok {
@@ -153,39 +104,25 @@ func UserFromContext(ctx context.Context) *model.User {
 	return user
 }
 
-// UserIDFromContext returns the id of the current user, or nil when the request
-// carries no signed-in one. It is what a caller passes to something that only
-// needs to know who is looking, so that the nil check happens here rather than
-// once per route reached both signed in and signed out.
-//
-// [Ja] UserIDFromContext は現在のユーザーの id を返し、リクエストがサインイン済みの
-// ユーザーを運んでいないときは nil を返します。誰が見ているかだけを必要とするものへ
-// 渡す値であり、nil の判定を、サインイン状態でもサインアウト状態でも到達するルート
-// ごとに書かず、ここに 1 度だけ置くためのものです。
+// UserIDFromContextは現在のユーザーのidを返し、リクエストがサインイン済みの
+// ユーザーを運んでいないときはnilを返します。誰が見ているかだけを必要とするものへ
+// 渡す値であり、nilの判定を、サインイン状態でもサインアウト状態でも到達するルート
+// ごとに書かず、ここに1度だけ置くためのものです。
 func UserIDFromContext(ctx context.Context) *model.UserID {
 	user := UserFromContext(ctx)
 	if user == nil {
 		return nil
 	}
-	// The id is copied before its address is taken, so that what a caller holds
-	// is not a way into the user the request carries.
-	//
-	// [Ja] id はアドレスを取る前に写します。呼び出し側が持つものが、リクエストの運ぶ
+	// idはアドレスを取る前に写します。呼び出し側が持つものが、リクエストの運ぶ
 	// ユーザーへの入口にならないようにするためです。
 	userID := user.ID
 	return &userID
 }
 
-// SetUserToContext returns a copy of ctx carrying user as the current user. It
-// stores the user under the same unexported key SetUser and RequireAuth use, so
-// UserFromContext reads it back. This lets a caller (chiefly a handler test)
-// exercise a handler that depends on UserFromContext without routing the request
-// through the auth middleware.
-//
-// [Ja] SetUserToContext は user を現在のユーザーとして載せた ctx のコピーを返す。
-// SetUser / RequireAuth と同じ非公開キーでユーザーを格納するため、UserFromContext
+// SetUserToContextはuserを現在のユーザーとして載せたctxのコピーを返す。
+// SetUser / RequireAuthと同じ非公開キーでユーザーを格納するため、UserFromContext
 // が読み戻せる。これにより呼び出し元 (主にハンドラーテスト) は、リクエストを認証
-// ミドルウェアに通さずに UserFromContext に依存するハンドラーを試せる。
+// ミドルウェアに通さずにUserFromContextに依存するハンドラーを試せる。
 func SetUserToContext(ctx context.Context, user *model.User) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
 }

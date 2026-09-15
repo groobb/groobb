@@ -2,18 +2,10 @@ version: "2"
 sql:
   - engine: "sqlite"
     queries: "db/queries/"
-    # The whole migrations directory is the schema, so a new migration needs no
-    # edit here. River's tables live there too, which is why internal/query holds
-    # a model for each of them (RiverJob, RiverLeader, ...). Those models are
-    # generated but never used: River owns its tables at runtime through
-    # riversqlite and the application does not query them. Adding a query against
-    # one of them would be the mistake to catch in review, not the models
-    # themselves.
-    #
-    # [Ja] マイグレーションのディレクトリ全体をスキーマとして渡すため、マイグレーションを
-    # 追加してもここを編集する必要はない。River のテーブルもそこにあるので、internal/query
-    # にはそれぞれのモデル (RiverJob・RiverLeader など) が生成される。これらは生成される
-    # だけで使わない。River は実行時に riversqlite を通して自分のテーブルを所有し、
+    # マイグレーションのディレクトリ全体をスキーマとして渡すため、マイグレーションを
+    # 追加してもここを編集する必要はない。Riverのテーブルもそこにあるので、internal/query
+    # にはそれぞれのモデル (RiverJob・RiverLeaderなど) が生成される。これらは生成される
+    # だけで使わない。Riverは実行時にriversqliteを通して自分のテーブルを所有し、
     # アプリケーションはそれらをクエリしない。レビューで捕まえるべきなのはモデルの存在では
     # なく、それらに対するクエリを足すことのほうである。
     schema: "db/migrations/"
@@ -26,23 +18,14 @@ sql:
         emit_interface: false
         emit_exact_table_names: false
         emit_empty_slices: true
-        # Represent a nullable column as a pointer rather than a sql.NullT
-        # wrapper, so the absent value is the nil the domain models already use
-        # and the repositories convert a row without unwrapping it first.
-        #
-        # [Ja] nullable なカラムは sql.NullT のラッパーではなくポインタで表現する。
-        # 値が無い状態がドメインモデルで既に使っている nil になり、リポジトリが行を
+        # nullableなカラムはsql.NullTのラッパーではなくポインタで表現する。
+        # 値が無い状態がドメインモデルで既に使っているnilになり、リポジトリが行を
         # 変換するときにラッパーを開く手間が無くなるため。
         emit_pointers_for_null_types: true
         overrides:
-          # Carry timestamps across the driver boundary in the one text format
-          # the columns are stored in. A plain time.Time would be bound in a
-          # different format, which compares wrongly against the stored text
-          # without failing; see the sqlitetime package.
-          #
-          # [Ja] 時刻はカラムが保存されているのと同じ 1 つのテキスト書式でドライバの
-          # 境界を渡す。素の time.Time は別の書式で束縛され、保存されたテキストとの
-          # 比較が失敗せずに狂うため (sqlitetime パッケージを参照)。
+          # 時刻はカラムが保存されているのと同じ1つのテキスト書式でドライバの
+          # 境界を渡す。素のtime.Timeは別の書式で束縛され、保存されたテキストとの
+          # 比較が失敗せずに狂うため (sqlitetimeパッケージを参照)。
           - db_type: "DATETIME"
             go_type: "github.com/groobb/groobb/go/internal/sqlitetime.Time"
           - db_type: "DATETIME"

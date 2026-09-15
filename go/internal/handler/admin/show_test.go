@@ -19,11 +19,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newAdminHandler wires an admin Handler over the test database's repositories,
-// so a handler test drives the permission check against roles that are really
-// stored.
-//
-// [Ja] newAdminHandler はテスト用データベースのリポジトリで admin Handler を組み立てます。
+// newAdminHandlerはテスト用データベースのリポジトリでadmin Handlerを組み立てます。
 // ハンドラーテストが、実際に保存されたロールに対して権限の判定を動かせるようにするためです。
 func newAdminHandler(t *testing.T, db *database.DB) *admin.Handler {
 	t.Helper()
@@ -36,12 +32,8 @@ func newAdminHandler(t *testing.T, db *database.DB) *admin.Handler {
 	)
 }
 
-// getAdmin builds a GET /admin request carrying the given user in the context (as
-// RequireAuth would place it) and the current path (as CurrentPathMiddleware
-// would), then serves it with the handler.
-//
-// [Ja] getAdmin は、(RequireAuth が置くように) context に指定されたユーザーを、
-// (CurrentPathMiddleware が置くように) 現在のパスを載せた GET /admin リクエストを組み立て、
+// getAdminは、(RequireAuthが置くように) contextに指定されたユーザーを、
+// (CurrentPathMiddlewareが置くように) 現在のパスを載せたGET /adminリクエストを組み立て、
 // ハンドラーで応答します。
 func getAdmin(t *testing.T, db *database.DB, userID model.UserID, locale model.Locale) *httptest.ResponseRecorder {
 	t.Helper()
@@ -57,14 +49,9 @@ func getAdmin(t *testing.T, db *database.DB, userID model.UserID, locale model.L
 	return rec
 }
 
-// TestShow verifies that an administrator opening GET /admin is answered with
-// HTTP 200 and an HTML body carrying the localized heading, the link on to the
-// user list, the shared signed-in header, and the noindex robots meta, for each
-// supported locale.
-//
-// [Ja] TestShow は、管理者が GET /admin を開くと HTTP 200 と、サポートする各ロケールに
+// TestShowは、管理者がGET /adminを開くとHTTP 200と、サポートする各ロケールに
 // ついて、ローカライズされた見出し・利用者一覧へのリンク・サインイン済みページ共通の
-// ヘッダー・noindex の robots メタを運ぶ HTML ボディで応答されることを検証します。
+// ヘッダー・noindexのrobotsメタを運ぶHTMLボディで応答されることを検証します。
 func TestShow(t *testing.T) {
 	t.Parallel()
 
@@ -75,8 +62,8 @@ func TestShow(t *testing.T) {
 		wantUsersLink string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "管理", wantUsersLink: "利用者の一覧", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Admin", wantUsersLink: "User list", wantHeaderNav: "Global navigation"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "管理", wantUsersLink: "利用者の一覧", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Admin", wantUsersLink: "User list", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -90,10 +77,10 @@ func TestShow(t *testing.T) {
 			rec := getAdmin(t, db, userID, tt.locale)
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -109,26 +96,18 @@ func TestShow(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestShow_Forbidden verifies that a signed-in visitor holding no role is
-// answered with the 403 page rather than the hub: being signed in is not by
-// itself permission to open the administration screens.
-//
-// The refusal is checked to be noindex and to carry none of the hub, so that a
-// page listing what the visitor may not open is neither shown to them nor
-// recorded by a crawler.
-//
-// [Ja] TestShow_Forbidden は、ロールを 1 つも持たないサインイン済みの訪問者が、ハブでは
-// なく 403 ページで応答されることを検証します。サインインしていること自体は、管理画面を
+// TestShow_Forbiddenは、ロールを1つも持たないサインイン済みの訪問者が、ハブでは
+// なく403ページで応答されることを検証します。サインインしていること自体は、管理画面を
 // 開いてよいという意味ではありません。
 //
-// 拒否が noindex であること、そしてハブの中身を一切運ばないことを確かめます。訪問者が
+// 拒否がnoindexであること、そしてハブの中身を一切運ばないことを確かめます。訪問者が
 // 開いてはならないものを並べたページが、その人にも、クローラーにも渡らないようにするため
 // です。
 func TestShow_Forbidden(t *testing.T) {
@@ -140,30 +119,26 @@ func TestShow_Forbidden(t *testing.T) {
 	rec := getAdmin(t, db, userID, model.LocaleJa)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 	}
 
 	body := rec.Body.String()
 	if !strings.Contains(body, "権限がありません") {
-		t.Error("403 ページの見出しが描画されていない")
+		t.Error("403ページの見出しが描画されていない")
 	}
 	if !strings.Contains(body, `<meta name="robots" content="noindex"`) {
-		t.Error("403 ページに noindex が付いていない")
+		t.Error("403ページにnoindexが付いていない")
 	}
 	if strings.Contains(body, `href="/admin/users"`) {
 		t.Error("権限の無い訪問者へ管理画面へのリンクが描画されている")
 	}
 }
 
-// TestShow_WithoutUser verifies that reaching the handler without the user
-// RequireAuth promises is answered with an internal server error instead of
-// panicking or treating the visitor as merely unauthorized.
-//
-// [Ja] TestShow_WithoutUser は、RequireAuth が保証するユーザー無しでハンドラーへ到達した
-// 場合に、panic や単なる権限不足ではなく Internal Server Error で応答することを検証します。
+// TestShow_WithoutUserは、RequireAuthが保証するユーザー無しでハンドラーへ到達した
+// 場合に、panicや単なる権限不足ではなくInternal Server Errorで応答することを検証します。
 func TestShow_WithoutUser(t *testing.T) {
 	t.Parallel()
 
@@ -175,19 +150,15 @@ func TestShow_WithoutUser(t *testing.T) {
 	newAdminHandler(t, db).Show(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if got := rec.Body.String(); got != "Internal Server Error\n" {
-		t.Errorf("response body = %q, want %q", got, "Internal Server Error\n")
+		t.Errorf("レスポンスボディ = %q、期待値 = %q", got, "Internal Server Error\n")
 	}
 }
 
-// TestShow_PermissionLookupFailure verifies that failure to resolve the actor's
-// roles is answered with an internal server error rather than the 403 page. A
-// database outage does not mean the signed-in visitor lacks permission.
-//
-// [Ja] TestShow_PermissionLookupFailure は、操作者のロール取得失敗が 403 ページではなく
-// Internal Server Error で応答されることを検証します。データベース障害は、サインイン済みの
+// TestShow_PermissionLookupFailureは、操作者のロール取得失敗が403ページではなく
+// Internal Server Errorで応答されることを検証します。データベース障害は、サインイン済みの
 // 訪問者に権限が無いことを意味しません。
 func TestShow_PermissionLookupFailure(t *testing.T) {
 	t.Parallel()
@@ -195,15 +166,15 @@ func TestShow_PermissionLookupFailure(t *testing.T) {
 	db := testutil.SetupDB(t)
 	userID := testutil.NewUserBuilder(t, db).Build()
 	if err := db.Reader.Close(); err != nil {
-		t.Fatalf("Reader の Close() error = %v", err)
+		t.Fatalf("ReaderのClose()のエラー = %v", err)
 	}
 
 	rec := getAdmin(t, db, userID, model.LocaleJa)
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if got := rec.Body.String(); got != "Internal Server Error\n" {
-		t.Errorf("response body = %q, want %q", got, "Internal Server Error\n")
+		t.Errorf("レスポンスボディ = %q、期待値 = %q", got, "Internal Server Error\n")
 	}
 }

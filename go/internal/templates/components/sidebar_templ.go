@@ -12,59 +12,19 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Sidebar renders the left column of the community shell: who this community
-// is, the boards it offers, and the controls for the account viewing them.
-//
-// Those three are wrapped in a complementary landmark with a name of its own,
-// so that a visitor moving between landmarks reaches the identity and the
-// account controls rather than only the navigation nested inside. The board
-// list is the <nav> landmark, named by its visible label so that assistive
-// technology tells it apart from any navigation a page renders in its content.
-// That label is a plain span rather than a document heading: the sidebar
-// precedes the page's <h1>, so putting a heading here would invert the page
-// outline. The boards are listed flat rather than divided by the categories
-// that group them, since a community of a handful of boards gains nothing from
-// labelled groups holding one board each (ADR 0011). Every link that can be the
-// current one is marked with something hovering cannot produce, so that the
-// place the visitor is now stays distinguishable from the place their pointer
-// happens to rest. A community holding no boards yet says so under the label
-// instead of leaving an empty list there: a label standing over nothing reads
-// as a list that failed to arrive, where an instance that has yet to place its
-// first board is a state every one of them passes through. The account block is
-// not navigation — it carries the sign-out form — so it sits outside that
-// <nav>. It is what keeps a visitor from being stranded: a signed-in one leaves
-// the community pages through it, and an anonymous one finds sign-in and
-// sign-up in the same place, since the community's pages are readable without an
-// account and would otherwise offer no way into one. The way into the
-// administration screens sits in that block too, and only for an account
-// admitted to them: this column is on every page of the community, so a link
-// drawn for everyone would be an entrance that answers most visitors with a
-// refusal. The sign-out form stays last, so the control that ends the session is
-// not something a visitor passes through on the way to a screen. The sign-in link
-// carries the page it is rendered on, so a visitor who signs in from here comes
-// back to what they were reading rather than landing on the home page. The footer is
-// left outside the complementary landmark, since a <footer> nested in a
-// sectioning element stops being the page's contentinfo.
-//
-// On a wide viewport the column sticks to the top of the screen and scrolls
-// within itself, so a long board list never pushes the account controls out of
-// reach. On a narrow one the three columns fall into a single stack and this
-// column simply comes first, which is what the layout's skip link exists to
-// jump over.
-//
-// [Ja] Sidebar はコミュニティのシェルの左カラムを描画します。このコミュニティが何で
+// Sidebarはコミュニティのシェルの左カラムを描画します。このコミュニティが何で
 // あるか、それが提供する掲示板、そしてそれを見ているアカウントの操作です。
 //
-// この 3 つは独自の名前を持つ補助のランドマークで包みます。ランドマーク間を移動する
+// この3つは独自の名前を持つ補助のランドマークで包みます。ランドマーク間を移動する
 // 訪問者が、その中に入れ子になったナビゲーションだけでなく、識別とアカウント操作にも
 // 辿り着けるようにするためです。掲示板の一覧が <nav> ランドマークで、見えるラベルで
 // 名付けることにより、支援技術はページがコンテンツ内に描画するナビゲーションと区別
-// できます。そのラベルは文書の見出しではなく素の span です。サイドバーがページの <h1>
+// できます。そのラベルは文書の見出しではなく素のspanです。サイドバーがページの <h1>
 // より先に来るため、ここに見出しを置くとページのアウトラインが逆転するためです。掲示板は
 // それをまとめるカテゴリーで区切らず、フラットに並べます。掲示板が数個のコミュニティは、
-// 掲示板 1 つずつのラベル付きグループからは何も得られないためです (ADR 0011)。現在位置に
-// なりうるリンクには、hover では生じない印を付けます。訪問者が今いる場所と、ポインタが
-// たまたま乗っている場所とを見分けられるようにするためです。掲示板をまだ 1 つも持たない
+// 掲示板1つずつのラベル付きグループからは何も得られないためです (ADR 0011)。現在位置に
+// なりうるリンクには、hoverでは生じない印を付けます。訪問者が今いる場所と、ポインタが
+// たまたま乗っている場所とを見分けられるようにするためです。掲示板をまだ1つも持たない
 // コミュニティは、ラベルの下を空の一覧のままにせず、その旨を伝えます。何も無いものの上に
 // 立つラベルは届かなかった一覧として読まれる一方、最初の掲示板をまだ置いていない状態は、
 // どのインスタンスも通るものだからです。アカウントのブロックはサインアウトフォームを持つ
@@ -79,11 +39,11 @@ import (
 // ならないようにするためです。サインインのリンクはそれが描画されているページを
 // 運ぶため、ここからサインインした訪問者は、ホームに着地するのではなく読んでいたものへ
 // 戻ってきます。フッターは補助のランドマークの外に残します。セクショニング要素の中に
-// 入れ子になった <footer> はページの contentinfo ではなくなるためです。
+// 入れ子になった <footer> はページのcontentinfoではなくなるためです。
 //
 // 広いビューポートではカラムが画面上部に貼り付き、自身の中でスクロールするため、長い
 // 掲示板の一覧がアカウント操作を手の届かない位置へ押し出すことはありません。狭い
-// ビューポートでは 3 カラムが 1 つの積み重ねに畳まれ、このカラムは単に先頭に来ます。
+// ビューポートでは3カラムが1つの積み重ねに畳まれ、このカラムは単に先頭に来ます。
 // レイアウトのスキップリンクはそれを飛び越えるために存在します。
 func Sidebar(data viewmodel.Sidebar) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -113,7 +73,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "sidebar_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 83, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 43, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -131,7 +91,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var3 templ.SafeURL
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templates.HomePath().SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 87, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 47, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -154,7 +114,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.CommunityName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 93, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 53, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -172,7 +132,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_boards_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 99, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 59, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +150,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_no_boards"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 102, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 62, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -213,7 +173,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 				var templ_7745c5c3_Var7 templ.SafeURL
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templates.BoardPath(board.Slug).SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 108, Col: 57}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 68, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -236,7 +196,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(board.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 114, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 74, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -264,7 +224,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("@" + data.Atname)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 123, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 83, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -277,7 +237,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var10 templ.SafeURL
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsPath().SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 124, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 84, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -290,7 +250,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_settings_link"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 125, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 85, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -308,7 +268,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 				var templ_7745c5c3_Var12 templ.SafeURL
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminPath().SafeURL())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 128, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 88, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -321,7 +281,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_admin_link"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 129, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 89, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -339,7 +299,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var14 templ.SafeURL
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templates.UserSessionPath().SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 133, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 93, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -352,7 +312,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "sidebar_sign_out_confirm"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 135, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 95, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -365,7 +325,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 139, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 99, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 			if templ_7745c5c3_Err != nil {
@@ -378,7 +338,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_sign_out_button"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 141, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 101, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -396,7 +356,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SignInPath().WithReturnTo(data.ReturnTo).SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 147, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 107, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -409,7 +369,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_sign_in_link"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 148, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 108, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -422,7 +382,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var20 templ.SafeURL
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SignUpPath().SafeURL())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 150, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 110, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -435,7 +395,7 @@ func Sidebar(data viewmodel.Sidebar) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sidebar_sign_up_link"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 151, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/sidebar.templ`, Line: 111, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {

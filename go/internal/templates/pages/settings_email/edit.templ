@@ -6,21 +6,11 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// EditPageData is the data for the email-change form page. CurrentEmail is the
-// account's current address, shown read-only so the user sees what they are
-// changing from. NewEmail is echoed back so a re-rendered form (after a validation
-// error) keeps what the user typed. FormErrors carries the messages: per-field
-// messages (a missing, malformed, unchanged, or already-taken email; a missing or
-// incorrect current password) beneath each field, and a form-wide message shown at
-// the top when the request itself failed, e.g. the confirmation mail could not be
-// enqueued. The current password is deliberately not echoed back, since
-// re-rendering a password field with its value is a credential-leak risk.
-//
-// [Ja] EditPageData はメールアドレス変更フォームページのデータです。CurrentEmail は
+// EditPageDataはメールアドレス変更フォームページのデータです。CurrentEmailは
 // アカウントの現在のアドレスで、何から変更するのかが分かるよう読み取り専用で表示します。
-// NewEmail は再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックします。
-// FormErrors はメッセージを運びます。各フィールドの下に出すフィールド別のメッセージ
-// (email の未入力・不正・未変更・使用済み、現在のパスワードの未入力・不一致) と、申請自体が
+// NewEmailは再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックします。
+// FormErrorsはメッセージを運びます。各フィールドの下に出すフィールド別のメッセージ
+// (emailの未入力・不正・未変更・使用済み、現在のパスワードの未入力・不一致) と、申請自体が
 // 失敗したとき (例: 確認メールを投入できなかった) に上部に出すフォーム全体のメッセージです。
 // 現在のパスワードは意図的にエコーバックしません。値付きでパスワードフィールドを再描画するのは
 // 資格情報の漏えいリスクのためです。
@@ -31,16 +21,10 @@ type EditPageData struct {
 	FormErrors   *model.ValidationError
 }
 
-// Edit renders the email-change form: the current address shown read-only, then a
-// new-email field and a current-password field that, on submit, request a
-// confirmation code for the new address. The form posts to /settings/email with a
-// hidden _method=PATCH so the HTML form drives the PATCH route, and the CSRF token
-// is embedded as a hidden field.
-//
-// [Ja] Edit はメールアドレス変更フォームを描画します。読み取り専用で表示する現在のアドレス、
-// 続いて送信すると新しいアドレス宛に確認コードを要求する新しい email フィールドと現在の
-// パスワードフィールドです。フォームは hidden な _method=PATCH を付けて /settings/email へ
-// POST し、HTML フォームから PATCH ルートを動かします。CSRF トークンは hidden フィールドとして
+// Editはメールアドレス変更フォームを描画します。読み取り専用で表示する現在のアドレス、
+// 続いて送信すると新しいアドレス宛に確認コードを要求する新しいemailフィールドと現在の
+// パスワードフィールドです。フォームはhiddenな _method=PATCHを付けて /settings/emailへ
+// POSTし、HTMLフォームからPATCHルートを動かします。CSRFトークンはhiddenフィールドとして
 // 埋め込みます。
 templ Edit(data EditPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">

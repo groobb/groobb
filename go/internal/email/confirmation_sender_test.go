@@ -10,24 +10,18 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// render renders a templ component to a string for body assertions.
-//
-// [Ja] render は本文の検証のため templ コンポーネントを文字列へ描画する。
+// renderは本文の検証のためtemplコンポーネントを文字列へ描画する。
 func render(t *testing.T, c templ.Component) string {
 	t.Helper()
 	var sb strings.Builder
 	if err := c.Render(context.Background(), &sb); err != nil {
-		t.Fatalf("Render() error = %v", err)
+		t.Fatalf("Render()のエラー = %v", err)
 	}
 	return sb.String()
 }
 
-// TestConfirmationSender_Send checks that Send picks the right localized subject
-// and body templates and forwards them to the base Sender, including the English
-// ones its default branch selects for a locale that is not Japanese.
-//
-// [Ja] TestConfirmationSender_Send は、Send が正しいローカライズ済みの件名と本文
-// テンプレートを選び基盤 Sender に渡すこと (日本語以外のロケールに対して default 節が
+// TestConfirmationSender_Sendは、Sendが正しいローカライズ済みの件名と本文
+// テンプレートを選び基盤Senderに渡すこと (日本語以外のロケールに対してdefault節が
 // 選ぶ英語のものを含む) を確認する。
 func TestConfirmationSender_Send(t *testing.T) {
 	t.Parallel()
@@ -45,29 +39,24 @@ func TestConfirmationSender_Send(t *testing.T) {
 		wantTextSnippet string
 	}{
 		{
-			name:            "Japanese",
+			name:            "日本語",
 			locale:          "ja",
 			wantSubject:     "[Groobb] 確認用コード",
 			wantHTMLSnippet: "確認用コードをお送りします",
 			wantTextSnippet: "確認用コードをお送りします",
 		},
 		{
-			name:            "English",
+			name:            "英語",
 			locale:          "en",
 			wantSubject:     "[Groobb] Confirmation code",
 			wantHTMLSnippet: "confirmation code",
 			wantTextSnippet: "confirmation code",
 		},
-		// A locale outside the display languages reaches Send only through a bare
-		// conversion, which model.ParseLocale exists to prevent, so no caller produces
-		// one. The case is kept as the safety net: the mail stays coherent English
-		// rather than splitting its subject and bodies across languages.
-		//
-		// [Ja] 表示言語の外のロケールは素の型変換でしか Send に届かず、それを防ぐために
-		// model.ParseLocale がある以上、呼び出し元がこの値を作ることはない。安全網として
+		// 表示言語の外のロケールは素の型変換でしかSendに届かず、それを防ぐために
+		// model.ParseLocaleがある以上、呼び出し元がこの値を作ることはない。安全網として
 		// 残しているケースで、件名と本文が別の言語に割れることなく英語で一貫する。
 		{
-			name:            "a locale outside the display languages still yields an English mail",
+			name:            "表示言語の外のロケールでも英語のメールになる",
 			locale:          "fr",
 			wantSubject:     "[Groobb] Confirmation code",
 			wantHTMLSnippet: "confirmation code",
@@ -83,35 +72,35 @@ func TestConfirmationSender_Send(t *testing.T) {
 			sender := NewConfirmationSender(noop)
 
 			if err := sender.Send(context.Background(), to, code, tt.locale); err != nil {
-				t.Fatalf("Send() error = %v", err)
+				t.Fatalf("Send()のエラー = %v", err)
 			}
 
 			if len(noop.SentEmails) != 1 {
-				t.Fatalf("len(SentEmails) = %d, want 1", len(noop.SentEmails))
+				t.Fatalf("len(SentEmails) = %d、期待値 = 1", len(noop.SentEmails))
 			}
 			sent := noop.SentEmails[0]
 
 			if sent.To != to {
-				t.Errorf("To = %q, want %q", sent.To, to)
+				t.Errorf("To = %q、期待値 = %q", sent.To, to)
 			}
 			if sent.Subject != tt.wantSubject {
-				t.Errorf("Subject = %q, want %q", sent.Subject, tt.wantSubject)
+				t.Errorf("Subject = %q、期待値 = %q", sent.Subject, tt.wantSubject)
 			}
 
 			html := render(t, sent.HTMLBody)
 			if !strings.Contains(html, code) {
-				t.Errorf("HTML body missing the code %q", code)
+				t.Errorf("HTML本文にコード %q が含まれていない", code)
 			}
 			if !strings.Contains(html, tt.wantHTMLSnippet) {
-				t.Errorf("HTML body missing %q", tt.wantHTMLSnippet)
+				t.Errorf("HTML本文に %q が含まれていない", tt.wantHTMLSnippet)
 			}
 
 			text := render(t, sent.TextBody)
 			if !strings.Contains(text, code) {
-				t.Errorf("text body missing the code %q", code)
+				t.Errorf("テキスト本文にコード %q が含まれていない", code)
 			}
 			if !strings.Contains(text, tt.wantTextSnippet) {
-				t.Errorf("text body missing %q", tt.wantTextSnippet)
+				t.Errorf("テキスト本文に %q が含まれていない", tt.wantTextSnippet)
 			}
 		})
 	}
