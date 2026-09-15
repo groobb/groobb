@@ -1,35 +1,35 @@
-<!-- last_synced: 2026-08-28 -->
+<!-- last_synced: 2026-09-15 -->
 
-# Groobb
+# Groobb (グルーブ)
 
-> English | [日本語](./README.ja.md)
+> 日本語 | [English](./README.en.md)
 
-Find your groove
+自分の居場所を見つけよう
 
-Groobb is still under development and has not been released to the public.
-A binary and installation steps for self-hosting are not available yet either.
+Groobbは開発中で、まだ一般公開していません。
+セルフホスト用のバイナリとインストール手順も用意できていません。
 
 [![Go CI](https://github.com/groobb/groobb/actions/workflows/go-ci.yml/badge.svg)](https://github.com/groobb/groobb/actions/workflows/go-ci.yml)
 
-## About Groobb
+## Groobbについて
 
-Groobb is a bulletin board service you can run on your own server.
-It can hold as many boards as you need, and conversations happen in the threads created inside them.
-The aim is to keep installation and day-to-day operation light enough that self-hosting stays easy.
+Groobbは、自分のサーバで動かせる掲示板サービスです。
+掲示板は複数作ることができ、その中にスレッドを立てて会話します。
+インストールと運用の手間を小さく保ち、簡単にセルフホストできることを目指しています。
 
-## Design
+## 設計
 
-SQLite is the only database Groobb uses.
-No separate database server is required, and the data fits in a single file.
+データベースはSQLiteだけを使います。
+別のデータベースサーバを用意する必要はなく、データはファイル1つに収まります。
 
-Static assets, translations, and migrations are embedded in the binary.
-Everything needed to run lives inside the binary, so the server does not depend on the directory it runs from.
+静的アセット・翻訳ファイル・マイグレーションはバイナリに同梱しています。
+実行に必要なものがバイナリの中で完結するため、置いたディレクトリに依存せずに動きます。
 
-## Related links
+## 関連リンク
 
-- [Contributing](./CONTRIBUTING.md)
-- [Security reporting](./SECURITY.md)
+- [コントリビューションについて](./CONTRIBUTING.md)
+- [セキュリティに関する報告](./SECURITY.md)
 
-## License
+## ライセンス
 
-Groobb is published under the [GNU Affero General Public License v3.0](./LICENSE).
+Groobbは [GNU Affero General Public License v3.0](./LICENSE) で公開しています。

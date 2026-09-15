@@ -1,168 +1,151 @@
-<!-- last_synced: 2026-09-07 -->
+# Groobb開発ガイドライン
 
-# Groobb Development Guide
+このファイルは、コーディングエージェントがこのリポジトリで作業する際のガイダンスを提供します。
 
-> English | [日本語](./AGENTS.ja.md)
+## 概要
 
-This file provides guidance for coding agents when working in this repository.
+Groobbは掲示板サービスです。
+ユーザーは自分の掲示板が作成でき、交流することができます。
 
-## Overview
+**インスタンス**とは、1つ動いているGroobbを指します。
+プロセスと、それが所有するSQLiteファイル・データをまとめたものです。
+1インスタンスは1つのコミュニティを提供するため、1台のサーバが複数のインスタンスを動かすこともあります。
+サーバそのものをインスタンスとは呼びません。
 
-Groobb is a bulletin board service.
-Users can create their own bulletin boards and interact with one another.
+## プロジェクト構造
 
-An **instance** is one running Groobb: a single process together with the SQLite file and the data it owns.
-An instance serves exactly one community, so a single server may run several instances.
-"Instance" never refers to the server itself.
-
-## Project Structure
-
-This repository mainly manages a service implemented in Go.
+このリポジトリは、主にGoで実装されたサービスを管理しています。
 
 ```
 /workspace/
-├── go/                  # Service implemented in Go
-├── caddy/               # Reverse proxy configuration
-├── docs/                # Documentation (ADRs, work plans, etc.; mounted from other repos and gitignored)
-├── .claude/             # Coding agent settings (rules and skills; mounted from other repos and gitignored)
-├── .github/             # CI/CD configuration
-├── Dockerfile.dev       # Dockerfile for the development container
-├── docker-compose.yml   # Docker Compose configuration
-├── AGENTS.md            # This file (project-wide guide)
-└── CLAUDE.md            # Pointer to AGENTS.md (for Claude Code)
+├── go/                  # Goで実装されたサービス
+├── caddy/               # リバースプロキシ設定
+├── docs/                # ドキュメント (ADR・作業計画書など。別リポジトリからのマウントでgitignore対象)
+├── .claude/             # コーディングエージェント設定 (ルール・スキル。別リポジトリからのマウントでgitignore対象)
+├── .github/             # CI/CD設定
+├── Dockerfile.dev       # 開発コンテナのDockerfile
+├── docker-compose.yml   # Docker Compose設定
+├── AGENTS.md            # このファイル (プロジェクト全体のガイド)
+└── CLAUDE.md            # AGENTS.mdへのポインタ (Claude Code用)
 ```
 
-## Development with Feature Flags
+## フィーチャーフラグによる開発
 
-Groobb controls feature rollout using **feature flags** rather than feature branches.
-Pre-release features are developed with their flag turned off, and are exposed by switching the flag on once they are ready for production.
+Groobbではフィーチャーブランチではなく **フィーチャーフラグ** を使って機能の公開を制御しています。
+リリース前の機能はフラグでオフのまま開発し、本番投入の準備が整ってからフラグを切り替えて公開します。
 
-## Development Workflow
+## 開発ワークフロー
 
-### Consistency with Existing Code
+### 既存コードとの一貫性
 
-Before implementing, check whether similar logic already exists in the codebase.
-If it does, follow that pattern to keep the codebase consistent as a whole.
-Note that established conventions of the programming language and its ecosystem, as well as documented design improvements, take precedence over local consistency.
+実装を行う前に、コードベース内に類似の処理がないか確認してください。
+類似処理が存在する場合は、そのパターンに従って実装することで、コードベース全体の一貫性を保ちます。
+ただしプログラミング言語・エコシステムの確立した慣習や、根拠を文書化した設計改善はローカルな一貫性に優先します。
 
-### Post-Implementation Checks
+### 実装後のチェック
 
-Before reporting that your work is complete, always verify the following:
+実装を終え作業の完了を伝える前に、必ず以下を確認してください:
 
-- Code formatting
-- Lint
-- Tests
+- コードフォーマット
+- リント
+- テスト
 
-The commands to run are managed in the `Makefile`.
-See [Makefile](./Makefile) and [go/Makefile](./go/Makefile).
+実行するコマンドは `Makefile` で管理しています。
+[Makefile](./Makefile), [go/Makefile](./go/Makefile) を参照してください。
 
-## Language and Writing Rules
+## 言語・文章ルール
 
-### English is the original; the writing workflow starts in Japanese
+### 使用言語
 
-The English version is the official source of truth.
-Write in Japanese first, then translate to English (with a coding agent's help), and after translating, review the English version as well to check for shifts in intent or unnatural wording.
-When there is a discrepancy, English takes precedence.
+リポジトリ内のテキストは日本語で書く。
+英語を使うのは、技術的な慣習として英語であるものと、入口ファイルの英語版の2つだけとする。
 
-### Code Comments
+- 識別子 (型名・関数名・変数名) と、ログのフィールドキー・エラーコード・環境変数名など、プログラムが解釈する文字列
+- リポジトリの入口ファイル (`README.md` / `CONTRIBUTING.md` / `SECURITY.md`) に併置する英語版 (`xxx.en.md`)
 
-English block → blank line → Japanese block prefixed with the `[Ja]` marker.
-The `[Ja]` marker always sits at the start of a line, so inline (end-of-line) bilingual comments are not used — write the two blocks on their own lines above the code.
-Comments explain why the code is the way it is; let the code itself say what it does, and keep implementation history in the git log.
+ログやエラーのメッセージ、テストの失敗メッセージのように人が読む文面も、コードコメント・コミットメッセージ・Markdownドキュメントも日本語で書く。
 
-### Markdown Documents
+### 入口ファイルの英語版
 
-Manage `xxx.md` (English, original) and `xxx.ja.md` (Japanese translation) in parallel.
-Place a `<!-- last_synced: YYYY-MM-DD -->` HTML comment on the first line of both files and keep the sync dates aligned.
-The bilingual pair is required only for documents published externally; non-public ones such as those under `docs/private/` may be written in Japanese only.
+日本語版を正本とし、英語版はその翻訳として維持する。
+両ファイルの先頭行に `<!-- last_synced: YYYY-MM-DD -->` のHTMLコメントを置いて同期日を揃え、片方を変更したらもう片方も同じコミットで更新する。
 
-### Commit Messages
+### コードコメント
 
-English title + optional body (English body + blank line + Japanese body prefixed with the `[Ja]` marker).
-Do not keep a Japanese title (prioritize English scannability of `git log --oneline`).
+コメントは日本語だけで書き、言語を示すマーカーは付けない。
+注意喚起プレフィックス (`TODO` / `FIXME` / `NOTE`) はgrepで横断的に拾えるよう英語のまま使う。
+コメントにはコードの「なぜ」を書き、「何を」はコードに語らせる (実装の変遷はgitの履歴に委ねる)。
 
-### Identifiers
+### 日本語テキストの表記
 
-Type, function, and variable names are in English only.
+日本語テキストでは半角丸括弧を使い、両端に半角スペースを置く (例: `テスト (テスト) テスト`)。
+行頭・行末や句読点に接する側のスペースは不要。
 
-### Japanese Text Style
+半角英数字と日本語の間には半角スペースを入れない (例: `REST APIの認証`)。
+半角丸括弧の両端、インラインコード、URLの前後はこの対象外とする。
 
-In Japanese text, use half-width parentheses with a half-width space on both sides (e.g. `テスト (テスト) テスト`).
-Where the parenthesis meets a line boundary or Japanese punctuation, no space is needed on that side.
+## コーディング規約
 
-### When you change one side, update the other in the same commit
+### 設定
 
-This prevents translation drift.
+設定はTOMLの設定ファイルと環境変数から読み込み、空でない値を持つ環境変数がファイルの値に優先する。
+Groobbが定義する環境変数には必ず `GROOBB_` プレフィックスを付ける (外部ライブラリが要求するものを除く)。
 
-### Existing Code and Documents
+設定を1つ増やすときは、次をまとめて更新する。
 
-These rules apply from new writing onward.
-Existing single-language code and documents are made bilingual when you edit or change them (no bulk migration needed).
-"Edit or change" means actually modifying the comment or document itself; editing only the adjacent code does not count.
-New comments added to an existing file follow these rules even when the surrounding comments do not; a mix of styles within one file is acceptable.
+- `Config` のフィールドと `Load` での `newSetting` による解決 ([internal/config](./go/internal/config/config.go))
+- `fileConfig` のフィールド ([internal/config/file.go](./go/internal/config/file.go))
+- [groobb.example.toml](./go/groobb.example.toml) のコメント付きの記載
+- 秘密情報の場合は `Config.LogValue` の項目
 
-## Coding Conventions
+環境変数名とファイルのキーは1対1に対応させ、変数名が示す構成要素をテーブルにする (`GROOBB_SMTP_HOST` は `[email.smtp]` の `host`)。
+値の誤りと必須設定の欠落はどちらも起動時に拒否する。
+`setting` のメソッドを使い、不正な値のエラーでは実際の入力元を、欠落のエラーでは受け付ける2つの入力名を挙げる。
+サンプルは、未知のキーを拒否するスキーマと揃えて保つ (ずれたサンプルはコピーした運用者のインスタンスを止める)。
 
-### Settings
+秘密情報はログに出さない。
+`Config.LogValue` は設定済みの秘密情報を `[REDACTED]` として表示し、設定ファイルのパースエラーはライブラリのメッセージを落とす (そのメッセージがファイルの内容を引用しうるため)。
 
-Settings come from a TOML configuration file and from environment variables, and an environment variable holding a non-empty value wins over the file.
-For environment variables defined by Groobb, always prefix them with `GROOBB_` (except those required by external libraries).
+### バイナリへの同梱
 
-Adding one setting means updating all of the following together:
+静的アセット・ロケール・マイグレーションは `embed.FS` でバイナリに同梱し、サーバーを実行するディレクトリに依存せず読めるようにする。
+セルフホストのインスタンスはバイナリだけで動くため、これらをディスクから読むとその前提が崩れる。
+埋め込みの実装は [static](./go/static/static.go) と [db](./go/db/migrations.go) を参照する。
 
-- the `Config` field and its resolution through `newSetting` in `Load` ([internal/config](./go/internal/config/config.go))
-- the `fileConfig` field ([internal/config/file.go](./go/internal/config/file.go))
-- the commented entry in [groobb.example.toml](./go/groobb.example.toml)
-- the entry in `Config.LogValue`, for a secret
+### Groobbが所有するSQLiteスキーマ
 
-Keep the environment variable name and the file key one to one, with the component the variable names becoming the table (`GROOBB_SMTP_HOST` is `host` under `[email.smtp]`).
-Reject invalid values and missing required settings at startup.
-Use the methods of `setting` so an invalid-value error names the value's actual source, while a missing-setting error names both accepted inputs.
-Keep the example file in step with the schema, which rejects unknown keys: a sample that drifts from it stops the instance of whoever copied it.
+以下の規約は、Groobbが所有するアプリケーションスキーマだけに適用する。
+Riverが所有するマイグレーションは上流の宣言を維持し、本節の対象外とする。
 
-Never log a secret.
-`Config.LogValue` renders a configured secret as `[REDACTED]`, and a parse error from the configuration file drops the library's message, which can quote the file.
+- 主キーは `INTEGER PRIMARY KEY` とし、`AUTOINCREMENT` は付けない
+- 時刻の列は宣言型を `DATETIME`、真偽値の列は `BOOLEAN` と書く
+- 時刻は桁数を固定したISO8601 UTCで保持する
+- データベースが生成する現在時刻の既定値を列に持たせる場合は、`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` を使う
+- 大文字小文字を区別しない一意性には、値をASCIIに制限した列だけで `COLLATE NOCASE` を使い、Unicodeを許す値にはUnicode対応の方法を選ぶ
+- リストを値に取る列はJSON配列を保持する `TEXT` とし、`json_valid` と `json_type` のチェックで守る
 
-### Embedded Resources
+各規約の根拠は[初期スキーマ](./go/db/migrations/20260821075404_create_initial_schema.sql)の冒頭のコメントにある。
+Riverの例外は [Riverのマイグレーション](./go/db/migrations/20260821101022_create_river_tables.sql) に記録している。
 
-Static assets, locales, and migrations ship inside the binary through `embed.FS`, so that they are read without depending on the directory the server runs from.
-A self-hosted instance runs from the binary alone, so reading any of them from disk breaks that premise.
-For the embedding, see [static](./go/static/static.go) and [db](./go/db/migrations.go).
+### SQLiteへの読み書き
 
-### Groobb-Owned SQLite Schema
+時刻をクエリに渡すときは、`time.Time` をそのままbindせず `sqlitetime.Time` を経由する。
+`DATETIME` の列はsqlcのoverrideでこの型になっているため、通常は生成コードに従えばよい。
+保存されているテキストそのものを読むときは、宣言型を持たない式 (`CAST(x AS TEXT)`) にする。
 
-These conventions apply only to the application schema owned by Groobb.
-Migrations owned by River retain their upstream declarations and are outside the scope of this section.
+書き込みは `database.DB` の `Writer`、読み取りは `Reader` を使う。
+リポジトリは2つの `*query.Queries` を持ってメソッドごとに使い分け、UseCaseは書き込み用プールだけを `writer *sql.DB` として受け取る。
+アプリケーションの接続は `database.Open` を通して開き、本番コードから `sql.Open` を直接呼ばない。
+共通のPRAGMAと `_txlock=immediate` を持たないアプリケーション用の書き込み接続を作らない。
 
-- Primary keys are `INTEGER PRIMARY KEY`, without `AUTOINCREMENT`
-- Timestamp columns are declared `DATETIME` and boolean columns `BOOLEAN`
-- Timestamps hold ISO8601 UTC at a fixed width
-- When a column needs a database-generated current timestamp default, use `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
-- Use `COLLATE NOCASE` for case-insensitive uniqueness only when the column's values are restricted to ASCII; choose a Unicode-aware approach for values that allow Unicode
-- A list-valued column is `TEXT` holding a JSON array, guarded by `json_valid` and `json_type` checks
+書式と型の詳細は [internal/sqlitetime](./go/internal/sqlitetime/sqlitetime.go)、プールの構成は [internal/database](./go/internal/database/database.go) の `DB` 型とDSN組み立て関数のコメントを参照する。
 
-The reasoning behind these conventions is in the comment at the top of the [initial schema](./go/db/migrations/20260821075404_create_initial_schema.sql).
-The River exception is documented in the [River migration](./go/db/migrations/20260821101022_create_river_tables.sql).
+## コーディングエージェントとの作業
 
-### Reading and Writing SQLite
+- ユーザーとの会話は常に日本語で行う
+- ブランチの作成・コミット・リモートへの `git push` は、ユーザーからの明示的な指示があるまで行わない
 
-Pass a timestamp to a query through `sqlitetime.Time`; never bind a plain `time.Time`.
-Columns declared `DATETIME` already carry this type through a sqlc override, so following the generated code is usually enough.
-To read the stored text itself, use an expression that has no declared type (`CAST(x AS TEXT)`).
+## ローカルのメモ
 
-Write through the `Writer` of `database.DB` and read through its `Reader`.
-A repository holds two `*query.Queries` and picks between them per method, while a UseCase takes only the write pool, as `writer *sql.DB`.
-Open application connections through `database.Open`; do not call `sql.Open` directly in production code.
-Do not construct an application write connection without the shared PRAGMAs and `_txlock=immediate`.
-
-For the format and the types see [internal/sqlitetime](./go/internal/sqlitetime/sqlitetime.go), and for the pool setup see the `DB` and DSN builder comments in [internal/database](./go/internal/database/database.go).
-
-## Working with Coding Agents
-
-- Converse with the user in Japanese
-- Do not create a branch, commit, or `git push` to a remote until the user explicitly asks for it
-
-## Local Notes
-
-If `AGENTS.override.md` exists at the repository root, read it as well.
-It is not tracked in this repository, and it points to the detailed guidelines available in the local development environment.
+リポジトリルートに `AGENTS.override.md` があれば、それも併せて読むこと。
+このリポジトリでは追跡しておらず、ローカルの開発環境で参照できる詳細なガイドラインの所在を示している。
