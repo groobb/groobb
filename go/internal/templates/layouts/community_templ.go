@@ -13,45 +13,23 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// Community is the shell every page inside the community is drawn in: a sidebar
-// it renders itself, and the two content columns the page hands over. It exists
-// beside Default rather than as a branch inside it, because Default narrows its
-// content to a single centered column for the authentication forms, and a layout
-// that did both would be read by no one looking for either.
-//
-// The page's own column is the <main> landmark, so there is exactly one whatever
-// side it is on, and the skip link at the top of the body jumps a keyboard
-// visitor straight to it past the sidebar. The other column is complementary and
-// is dropped below the three-column breakpoint: keeping it would put a long list
-// between the visitor and what they opened the page for, and it is reachable at
-// its own address anyway. The sidebar is never dropped, since it is how the rest
-// of the community is reached.
-//
-// A page that hands over no complementary column is drawn beside the sidebar
-// alone, in a grid of two tracks rather than three left with a gap where a
-// column was expected. The column it did hand over is the <main> landmark, so
-// one nil settles both the tracks and the regions and the two cannot disagree.
-// That column then has the whole width to itself, so the measure is capped here
-// instead of by each such page, keeping the text of one that spans a wide
-// display readable.
-//
-// [Ja] Community はコミュニティ内のどのページも描かれるシェルです。自身が描画する
-// サイドバーと、ページから渡される 2 つのコンテンツカラムから成ります。Default の中の
-// 分岐ではなく Default の隣に置くのは、Default が認証系フォームのためにコンテンツを
-// 中央 1 カラムへ絞る作りであり、両方を兼ねるレイアウトはどちらを探す人にも読まれなく
+// Communityはコミュニティ内のどのページも描かれるシェルです。自身が描画する
+// サイドバーと、ページから渡される2つのコンテンツカラムから成ります。Defaultの中の
+// 分岐ではなくDefaultの隣に置くのは、Defaultが認証系フォームのためにコンテンツを
+// 中央1カラムへ絞る作りであり、両方を兼ねるレイアウトはどちらを探す人にも読まれなく
 // なるためです。
 //
 // ページ自身のカラムが <main> ランドマークであり、それが左右どちらであってもちょうど
-// 1 つ存在します。body 先頭のスキップリンクは、キーボードの訪問者をサイドバーを飛び越えて
-// そこへ直接連れて行きます。もう一方のカラムは補足であり、3 カラムのブレークポイントより
+// 1つ存在します。body先頭のスキップリンクは、キーボードの訪問者をサイドバーを飛び越えて
+// そこへ直接連れて行きます。もう一方のカラムは補足であり、3カラムのブレークポイントより
 // 下では落とします。残せば、訪問者とそのページを開いた目的の間に長い一覧が挟まることに
 // なり、そのカラムの中身はそれ自身のアドレスからも辿れるためです。サイドバーは落としま
 // せん。コミュニティの他の場所へ辿り着く手立てがそれだからです。
 //
-// 補足のカラムを渡さないページは、サイドバーの隣に 1 カラムだけで描きます。カラムが
-// あるはずの場所を空けた 3 トラックではなく、2 トラックのグリッドにします。渡されたほうの
-// カラムが <main> ランドマークになるため、トラック数と領域は 1 つの nil 判定で決まり、
-// 両者が食い違うことはありません。そのカラムは幅を独り占めするため、1 行の長さの上限は
+// 補足のカラムを渡さないページは、サイドバーの隣に1カラムだけで描きます。カラムが
+// あるはずの場所を空けた3トラックではなく、2トラックのグリッドにします。渡されたほうの
+// カラムが <main> ランドマークになるため、トラック数と領域は1つのnil判定で決まり、
+// 両者が食い違うことはありません。そのカラムは幅を独り占めするため、1行の長さの上限は
 // そうしたページごとにではなくここで与え、広いディスプレイいっぱいに伸びたテキストが
 // 読めなくならないようにします。
 func Community(data CommunityLayoutData) templ.Component {
@@ -82,7 +60,7 @@ func Community(data CommunityLayoutData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.Locale(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 54, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 32, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -103,7 +81,7 @@ func Community(data CommunityLayoutData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "skip_to_main_content"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 63, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 41, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -149,7 +127,7 @@ func Community(data CommunityLayoutData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Columns.MainLabelledBy)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 72, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 50, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -175,7 +153,7 @@ func Community(data CommunityLayoutData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Columns.MainLabelledBy)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 76, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 54, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -196,7 +174,7 @@ func Community(data CommunityLayoutData) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Columns.ComplementaryLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 79, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 57, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -222,7 +200,7 @@ func Community(data CommunityLayoutData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Columns.ComplementaryLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 83, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 61, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -243,7 +221,7 @@ func Community(data CommunityLayoutData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Columns.MainLabelledBy)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 86, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layouts/community.templ`, Line: 64, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {

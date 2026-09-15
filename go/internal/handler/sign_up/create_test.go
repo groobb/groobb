@@ -20,17 +20,10 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignUpHandler wires a sign-up Handler over the test database's repositories,
-// a fake job inserter, and a Turnstile verifier that passes by default, so a
-// handler test exercises the full request path (Turnstile gate, validator,
-// UseCase, session cookie) against a real database. The inserter and verifier are
-// returned too so a test can make enqueue fail or make Turnstile verification
-// fail.
-//
-// [Ja] newSignUpHandler はテスト用データベースのリポジトリ、フェイクのジョブ
-// インサーター、既定で通過する Turnstile 検証器でサインアップ Handler を組み立て、
-// ハンドラーテストが実 DB に対してリクエスト経路全体 (Turnstile ゲート・バリデーター・
-// UseCase・セッション Cookie) を通すようにします。テストが enqueue や Turnstile 検証を
+// newSignUpHandlerはテスト用データベースのリポジトリ、フェイクのジョブ
+// インサーター、既定で通過するTurnstile検証器でサインアップHandlerを組み立て、
+// ハンドラーテストが実DBに対してリクエスト経路全体 (Turnstileゲート・バリデーター・
+// UseCase・セッションCookie) を通すようにします。テストがenqueueやTurnstile検証を
 // 失敗させられるよう、インサーターと検証器も併せて返します。
 func newSignUpHandler(t *testing.T, db *database.DB) (*sign_up.Handler, *testutil.FakeJobInserter, *testutil.FakeTurnstileVerifier) {
 	t.Helper()
@@ -50,11 +43,8 @@ func newSignUpHandler(t *testing.T, db *database.DB) (*sign_up.Handler, *testuti
 	return sign_up.NewHandler(cfg, sessionMgr, uc, verifier), inserter, verifier
 }
 
-// postSignUp builds a POST /sign_up request carrying the given email as form
-// data, with the locale set in its context.
-//
-// [Ja] postSignUp は指定した email をフォームデータとして運ぶ POST /sign_up リクエストを
-// 組み立て、context にロケールを設定します。
+// postSignUpは指定したemailをフォームデータとして運ぶPOST /sign_upリクエストを
+// 組み立て、contextにロケールを設定します。
 func postSignUp(email string, locale model.Locale) *http.Request {
 	form := url.Values{"email": {email}}
 	req := httptest.NewRequest(http.MethodPost, "/sign_up", strings.NewReader(form.Encode()))
@@ -71,11 +61,8 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
-// TestCreate_Success verifies that a valid new email redirects to the code-entry
-// page and stores the confirmation id in the handoff cookie.
-//
-// [Ja] TestCreate_Success は、有効な新規メールがコード入力ページへリダイレクトし、
-// 受け渡し Cookie に確認 id を保存することを検証します。
+// TestCreate_Successは、有効な新規メールがコード入力ページへリダイレクトし、
+// 受け渡しCookieに確認idを保存することを検証します。
 func TestCreate_Success(t *testing.T) {
 	t.Parallel()
 
@@ -86,26 +73,23 @@ func TestCreate_Success(t *testing.T) {
 	handler.Create(rec, postSignUp("new@example.com", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/email_confirmation/new" {
-		t.Errorf("Location = %q, want %q", loc, "/email_confirmation/new")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/email_confirmation/new")
 	}
 
 	cookie := findCookie(rec, session.EmailConfirmationCookieName)
 	if cookie == nil {
-		t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
+		t.Fatalf("メール確認Cookie %q が設定されていない", session.EmailConfirmationCookieName)
 	}
 	if cookie.Value == "" {
-		t.Error("メール確認 Cookie の値が空 (確認 id が運ばれていない)")
+		t.Error("メール確認Cookieの値が空 (確認idが運ばれていない)")
 	}
 }
 
-// TestCreate_DuplicateEmail verifies that an already-registered email re-renders
-// the form with 422 and the duplicate-email message, and sets no handoff cookie.
-//
-// [Ja] TestCreate_DuplicateEmail は、登録済みメールがフォームを 422 と重複メッセージ付きで
-// 再描画し、受け渡し Cookie を設定しないことを検証します。
+// TestCreate_DuplicateEmailは、登録済みメールがフォームを422と重複メッセージ付きで
+// 再描画し、受け渡しCookieを設定しないことを検証します。
 func TestCreate_DuplicateEmail(t *testing.T) {
 	t.Parallel()
 
@@ -117,35 +101,28 @@ func TestCreate_DuplicateEmail(t *testing.T) {
 	handler.Create(rec, postSignUp("taken@example.com", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusUnprocessableEntity)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "このメールアドレスは既に使用されています") {
 		t.Error("重複メールのエラーメッセージが描画されていない")
 	}
-	// The accessible-error markup must accompany the message so screen readers
-	// announce it and associate it with the input.
-	//
-	// [Ja] スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
+	// スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
 	// アクセシブルなエラーマークアップがメッセージに伴っていること。
 	if !strings.Contains(body, `aria-invalid="true"`) {
-		t.Error("エラー時の入力欄に aria-invalid='true' が無い")
+		t.Error("エラー時の入力欄にaria-invalid='true' が無い")
 	}
 	if !strings.Contains(body, `role="alert"`) {
-		t.Error("エラーメッセージに role='alert' が無い")
+		t.Error("エラーメッセージにrole='alert' が無い")
 	}
 	if cookie := findCookie(rec, session.EmailConfirmationCookieName); cookie != nil && cookie.Value != "" {
-		t.Error("バリデーションエラー時は受け渡し Cookie を設定すべきでない")
+		t.Error("バリデーションエラー時は受け渡しCookieを設定すべきでない")
 	}
 }
 
-// TestCreate_EnqueueFailure verifies that when the confirmation mail cannot be
-// enqueued, Create re-renders the sign-up form with 500 and a form-wide error
-// (the retry path), echoes the email back, and sets no handoff cookie.
-//
-// [Ja] TestCreate_EnqueueFailure は、確認メールを投入できないとき、Create が
-// サインアップフォームを 500 とフォーム全体のエラー (再申請導線) で再描画し、email を
-// エコーバックし、受け渡し Cookie を設定しないことを検証します。
+// TestCreate_EnqueueFailureは、確認メールを投入できないとき、Createが
+// サインアップフォームを500とフォーム全体のエラー (再申請導線) で再描画し、emailを
+// エコーバックし、受け渡しCookieを設定しないことを検証します。
 func TestCreate_EnqueueFailure(t *testing.T) {
 	t.Parallel()
 
@@ -157,41 +134,32 @@ func TestCreate_EnqueueFailure(t *testing.T) {
 	handler.Create(rec, postSignUp("new@example.com", model.LocaleJa))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	body := rec.Body.String()
-	// The sign-up form is re-rendered (the retry path) with the email preserved
-	// and a form-wide alert carrying the user-safe message.
-	//
-	// [Ja] サインアップフォームが再描画され (再申請導線)、email が保持され、ユーザー
+	// サインアップフォームが再描画され (再申請導線)、emailが保持され、ユーザー
 	// 安全なメッセージを載せたフォーム全体のアラートが伴うこと。
 	if !strings.Contains(body, `action="/sign_up"`) {
 		t.Error("再申請フォームが再描画されていない")
 	}
 	if !strings.Contains(body, `value="new@example.com"`) {
-		t.Error("入力した email がエコーバックされていない")
+		t.Error("入力したemailがエコーバックされていない")
 	}
 	if !strings.Contains(body, `role="alert"`) {
-		t.Error("フォーム全体のエラーに role='alert' が無い")
+		t.Error("フォーム全体のエラーにrole='alert' が無い")
 	}
 	if !strings.Contains(body, "確認コードの送信に失敗しました") {
 		t.Error("フォーム全体のエラーメッセージが描画されていない")
 	}
 	if cookie := findCookie(rec, session.EmailConfirmationCookieName); cookie != nil && cookie.Value != "" {
-		t.Error("enqueue 失敗時は受け渡し Cookie を設定すべきでない")
+		t.Error("enqueue失敗時は受け渡しCookieを設定すべきでない")
 	}
 }
 
-// TestCreate_TurnstileFailure verifies that when Turnstile verification does not
-// pass — a non-pass or a siteverify error — Create stops the request at the bot
-// gate: it re-renders the form with 422 and the form-wide Turnstile message,
-// echoes the email back, forwards the submitted token to the verifier, does not
-// enqueue the confirmation mail, and sets no handoff cookie.
-//
-// [Ja] TestCreate_TurnstileFailure は、Turnstile 検証が通過しないとき (非通過または
-// siteverify エラー) に Create が Bot ゲートでリクエストを止めることを検証します。
-// フォームを 422 とフォーム全体の Turnstile メッセージで再描画し、email をエコーバックし、
-// 送信されたトークンを検証器へ渡し、確認メールを投入せず、受け渡し Cookie を設定しない
+// TestCreate_TurnstileFailureは、Turnstile検証が通過しないとき (非通過または
+// siteverifyエラー) にCreateがBotゲートでリクエストを止めることを検証します。
+// フォームを422とフォーム全体のTurnstileメッセージで再描画し、emailをエコーバックし、
+// 送信されたトークンを検証器へ渡し、確認メールを投入せず、受け渡しCookieを設定しない
 // ことを確認します。
 func TestCreate_TurnstileFailure(t *testing.T) {
 	t.Parallel()
@@ -226,39 +194,31 @@ func TestCreate_TurnstileFailure(t *testing.T) {
 			handler.Create(rec, req)
 
 			if rec.Code != http.StatusUnprocessableEntity {
-				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+				t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusUnprocessableEntity)
 			}
 			body := rec.Body.String()
 			if !strings.Contains(body, "ロボットでないことの確認に失敗しました") {
-				t.Error("Turnstile 失敗のフォーム全体メッセージが描画されていない")
+				t.Error("Turnstile失敗のフォーム全体メッセージが描画されていない")
 			}
 			if !strings.Contains(body, `role="alert"`) {
-				t.Error("フォーム全体のエラーに role='alert' が無い")
+				t.Error("フォーム全体のエラーにrole='alert' が無い")
 			}
-			// The email is echoed back so the user does not have to retype it.
-			//
-			// [Ja] ユーザーが再入力しなくて済むよう email はエコーバックされること。
+			// ユーザーが再入力しなくて済むようemailはエコーバックされること。
 			if !strings.Contains(body, `value="new@example.com"`) {
-				t.Error("入力した email がエコーバックされていない")
+				t.Error("入力したemailがエコーバックされていない")
 			}
-			// The submitted token reached the verifier, confirming the handler read
-			// the correct cf-turnstile-response field.
-			//
-			// [Ja] 送信されたトークンが検証器へ到達しており、ハンドラーが正しい
-			// cf-turnstile-response フィールドを読んでいることを確認する。
+			// 送信されたトークンが検証器へ到達しており、ハンドラーが正しい
+			// cf-turnstile-responseフィールドを読んでいることを確認する。
 			if verifier.Token != "submitted-token" {
-				t.Errorf("verifier に渡ったトークン = %q, want %q", verifier.Token, "submitted-token")
+				t.Errorf("verifierに渡ったトークン = %q、期待値 = %q", verifier.Token, "submitted-token")
 			}
-			// The bot gate must stop the request before the UseCase, so no
-			// confirmation mail is enqueued.
-			//
-			// [Ja] Bot ゲートは UseCase の前でリクエストを止めるため、確認メールは
+			// BotゲートはUseCaseの前でリクエストを止めるため、確認メールは
 			// 投入されないこと。
 			if inserter.Called {
-				t.Error("Turnstile 失敗時に確認メールが投入された (UseCase に進んでしまっている)")
+				t.Error("Turnstile失敗時に確認メールが投入された (UseCaseに進んでしまっている)")
 			}
 			if cookie := findCookie(rec, session.EmailConfirmationCookieName); cookie != nil && cookie.Value != "" {
-				t.Error("Turnstile 失敗時は受け渡し Cookie を設定すべきでない")
+				t.Error("Turnstile失敗時は受け渡しCookieを設定すべきでない")
 			}
 		})
 	}

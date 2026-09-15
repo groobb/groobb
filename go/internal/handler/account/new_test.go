@@ -17,13 +17,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newAccountHandler wires an account Handler over the test database's
-// repositories, so a handler test drives the CreateAccountUsecase and the
-// transaction it opens against a real database.
-//
-// [Ja] newAccountHandler はテスト用データベースのリポジトリで account Handler を
-// 組み立てます。ハンドラーテストが CreateAccountUsecase と、それが開くトランザクションを
-// 実 DB に対して駆動できるようにするためです。
+// newAccountHandlerはテスト用データベースのリポジトリでaccount Handlerを
+// 組み立てます。ハンドラーテストがCreateAccountUsecaseと、それが開くトランザクションを
+// 実DBに対して駆動できるようにするためです。
 func newAccountHandler(t *testing.T, db *database.DB) *account.Handler {
 	t.Helper()
 
@@ -45,11 +41,8 @@ func newAccountHandler(t *testing.T, db *database.DB) *account.Handler {
 	return account.NewHandler(cfg, sessionMgr, createAccountUC, createSessionUC)
 }
 
-// emailConfirmationToken issues the same signed continuation token the
-// sign-up flow would place in the handoff Cookie.
-//
-// [Ja] emailConfirmationToken はサインアップフローが受け渡し Cookie に設定するものと
-// 同じ署名付き continuation token を発行します。
+// emailConfirmationTokenはサインアップフローが受け渡しCookieに設定するものと
+// 同じ署名付きcontinuation tokenを発行します。
 func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
 	t.Helper()
 
@@ -58,16 +51,13 @@ func emailConfirmationToken(t *testing.T, id model.EmailConfirmationID) string {
 	mgr.SetEmailConfirmationID(rec, id)
 	cookie := findCookie(rec, session.EmailConfirmationCookieName)
 	if cookie == nil || cookie.Value == "" {
-		t.Fatalf("メール確認 Cookie %q の署名 token が発行されていない", session.EmailConfirmationCookieName)
+		t.Fatalf("メール確認Cookie %q の署名tokenが発行されていない", session.EmailConfirmationCookieName)
 	}
 	return cookie.Value
 }
 
-// getAccountNew builds a GET /account/new request, attaching the handoff cookie
-// when confirmationID is non-empty, with the locale set in its context.
-//
-// [Ja] getAccountNew は GET /account/new リクエストを組み立て、confirmationID が空で
-// なければ受け渡し Cookie を付け、context にロケールを設定する。
+// getAccountNewはGET /account/newリクエストを組み立て、confirmationIDが空で
+// なければ受け渡しCookieを付け、contextにロケールを設定する。
 func getAccountNew(confirmationID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/account/new", nil)
 	if confirmationID != "" {
@@ -76,14 +66,9 @@ func getAccountNew(confirmationID string, locale model.Locale) *http.Request {
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// TestNew verifies that GET /account/new returns HTTP 200 with the account-creation
-// form (atname, password, and password-confirmation fields and a CSRF hidden field)
-// and the localized heading and atname label for each supported locale, when the
-// handoff cookie is present.
-//
-// [Ja] TestNew は、受け渡し Cookie がある場合に GET /account/new が HTTP 200 と、
-// アカウント作成フォーム (atname / password / password_confirmation フィールド・
-// CSRF hidden フィールド) を、サポートする各ロケールのローカライズ済み見出しと
+// TestNewは、受け渡しCookieがある場合にGET /account/newがHTTP 200と、
+// アカウント作成フォーム (atname / password / password_confirmationフィールド・
+// CSRF hiddenフィールド) を、サポートする各ロケールのローカライズ済み見出しと
 // アットネームのラベルとともに返すことを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -98,8 +83,8 @@ func TestNew(t *testing.T) {
 		wantHeading string
 		wantLabel   string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "アカウントを作成", wantLabel: "アットネーム"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Create your account", wantLabel: "Atname"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "アカウントを作成", wantLabel: "アットネーム"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Create your account", wantLabel: "Atname"},
 	}
 
 	for _, tt := range tests {
@@ -110,10 +95,10 @@ func TestNew(t *testing.T) {
 			handler.New(rec, getAccountNew(emailConfirmationToken(t, model.EmailConfirmationID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -131,18 +116,14 @@ func TestNew(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestNew_NoCookieRedirectsToSignUp verifies that GET /account/new without the
-// handoff cookie redirects to sign-up, since there is no in-progress sign-up to
-// finish.
-//
-// [Ja] TestNew_NoCookieRedirectsToSignUp は、受け渡し Cookie の無い GET /account/new が
+// TestNew_NoCookieRedirectsToSignUpは、受け渡しCookieの無いGET /account/newが
 // サインアップへリダイレクトすることを検証する。完了すべき進行中のサインアップが無い
 // ためである。
 func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
@@ -156,9 +137,9 @@ func TestNew_NoCookieRedirectsToSignUp(t *testing.T) {
 	handler.New(rec, getAccountNew("", model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/sign_up" {
-		t.Errorf("Location = %q, want %q", loc, "/sign_up")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/sign_up")
 	}
 }

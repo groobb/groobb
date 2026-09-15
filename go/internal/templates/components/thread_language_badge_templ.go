@@ -12,40 +12,17 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// ThreadLanguageBadge renders a thread's primary language beside the thread it
-// belongs to. A board is not split by language, so one listing holds threads in
-// several of them and the badge is what a visitor finds their own conversations
-// with. It is drawn for every thread rather than only for the ones that differ
-// from the language the page is in: a badge that appears conditionally would
-// have to be read as "no badge means my language", and what is shown would then
-// depend on who is looking.
-//
-// The wording is the language's own name, so a speaker recognises it whatever
-// language the UI is drawn in. That name alone does not say what it is a name
-// of, so a visually hidden label precedes it and the badge is read aloud as
-// "primary language: English".
-//
-// The lang attribute goes on the inner element holding the name alone. On the
-// badge as a whole it would cover the hidden label too, which is written in the
-// language of the UI, and a screen reader would announce that label in the
-// thread's language.
-//
-// The thread whose language resolves to no display language is the exception the
-// name cannot be written for. It carries the translated word for "other" and
-// declares no language, since it has no tag to declare and an invented one would
-// be pronounced by the rules of a language the thread is not written in.
-//
-// [Ja] ThreadLanguageBadge はスレッドの主言語を、それが属するスレッドの傍らに描画します。
-// 掲示板は言語で分けないため 1 つの一覧が複数の言語のスレッドを持ち、訪問者が自分の読める
+// ThreadLanguageBadgeはスレッドの主言語を、それが属するスレッドの傍らに描画します。
+// 掲示板は言語で分けないため1つの一覧が複数の言語のスレッドを持ち、訪問者が自分の読める
 // 会話を見つける手立てがこのバッジです。ページの言語と異なるものにだけではなく、どの
 // スレッドにも描きます。条件付きで現れるバッジは「バッジが無い = 自分の言語」と読む必要が
 // あり、何が表示されるかが誰が見ているかに依存することになるためです。
 //
-// 文言はその言語自身の名前とし、UI がどの言語で描かれていても話者がそれと分かるように
+// 文言はその言語自身の名前とし、UIがどの言語で描かれていても話者がそれと分かるように
 // します。その名前だけでは何の名前なのかを述べないため、視覚的に隠したラベルを前に置き、
 // バッジが「主言語: English」と読み上げられるようにします。
 //
-// lang 属性は名前だけを持つ内側の要素に付けます。バッジ全体に付けると、UI の言語で書かれた
+// lang属性は名前だけを持つ内側の要素に付けます。バッジ全体に付けると、UIの言語で書かれた
 // 隠しラベルまで覆い、スクリーンリーダーはそのラベルをスレッドの言語で読み上げます。
 //
 // どの表示言語にも解決しない言語のスレッドが、自称表記を書けない唯一の例外です。そちらは
@@ -79,7 +56,7 @@ func ThreadLanguageBadge(language viewmodel.ThreadLanguage) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_language_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 49, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 26, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -97,7 +74,7 @@ func ThreadLanguageBadge(language viewmodel.ThreadLanguage) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(language.Tag)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 51, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 28, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -110,7 +87,7 @@ func ThreadLanguageBadge(language viewmodel.ThreadLanguage) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(language.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 51, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 28, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -124,7 +101,7 @@ func ThreadLanguageBadge(language viewmodel.ThreadLanguage) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "thread_language_other"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 53, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/thread_language_badge.templ`, Line: 30, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {

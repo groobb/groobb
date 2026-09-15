@@ -1,9 +1,5 @@
-// Package i18n provides internationalization: locale detection from requests,
-// a translation function backed by go-i18n, and an HTTP middleware that stores
-// the resolved locale in the request context.
-//
-// [Ja] i18n パッケージは国際化機能を提供します。リクエストからのロケール判定、
-// go-i18n を用いた翻訳関数、解決したロケールをリクエスト context に格納する HTTP
+// i18nパッケージは国際化機能を提供します。リクエストからのロケール判定、
+// go-i18nを用いた翻訳関数、解決したロケールをリクエストcontextに格納するHTTP
 // ミドルウェアを含みます。
 package i18n
 
@@ -21,19 +17,13 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// Embed the locale files so the binary is self-contained and needs no external
-// translation files at runtime.
-//
-// [Ja] ロケールファイルを埋め込み、バイナリを自己完結させて実行時に外部の翻訳
+// ロケールファイルを埋め込み、バイナリを自己完結させて実行時に外部の翻訳
 // ファイルを必要としないようにする。
 //
 //go:embed locales/*.toml
 var localesFS embed.FS
 
-// contextKey is an unexported type for context keys to avoid collisions with
-// keys defined in other packages.
-//
-// [Ja] contextKey は context キー用の非公開型で、他パッケージで定義されたキーとの
+// contextKeyはcontextキー用の非公開型で、他パッケージで定義されたキーとの
 // 衝突を避けるために用いる。
 type contextKey string
 
@@ -42,16 +32,11 @@ const (
 	localizerContextKey contextKey = "localizer"
 )
 
-// bundle holds the parsed translations for every supported language. It is
-// built once at startup and only read afterwards.
-//
-// [Ja] bundle はサポートする全言語のパース済み翻訳を保持する。起動時に一度だけ
+// bundleはサポートする全言語のパース済み翻訳を保持する。起動時に一度だけ
 // 構築し、以降は読み取り専用で扱う。
 var bundle *i18n.Bundle
 
-// init builds the translation bundle from the embedded locale files.
-//
-// [Ja] init は埋め込まれたロケールファイルから翻訳バンドルを構築する。
+// initは埋め込まれたロケールファイルから翻訳バンドルを構築する。
 func init() {
 	bundle = i18n.NewBundle(language.Japanese)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
@@ -59,15 +44,10 @@ func init() {
 	for _, locale := range model.Locales() {
 		data, err := localesFS.ReadFile(fmt.Sprintf("locales/%s.toml", locale))
 		if err != nil {
-			// The locale files are embedded at build time, so a read failure
-			// means the file name and the locale in model.Locales() are out of
-			// sync (e.g. a renamed file, or a language added without its file).
-			// Fail fast instead of silently starting with that locale missing.
-			//
-			// [Ja] ロケールファイルはビルド時に埋め込まれるため、読み込み失敗は
-			// ファイル名と model.Locales() のロケールの不整合 (リネーム漏れや、ファイルを
+			// ロケールファイルはビルド時に埋め込まれるため、読み込み失敗は
+			// ファイル名とmodel.Locales() のロケールの不整合 (リネーム漏れや、ファイルを
 			// 伴わない言語の追加など) を意味する。該当ロケールが欠けたまま黙って起動せず、
-			// fail-fast する。
+			// fail-fastする。
 			panic(fmt.Sprintf("i18n: failed to read embedded locale file locales/%s.toml: %v", locale, err))
 		}
 
@@ -75,12 +55,8 @@ func init() {
 	}
 }
 
-// T translates messageID using the locale stored in ctx. When the translation
-// is missing it falls back to returning messageID, so a typo surfaces in the
-// rendered output instead of crashing.
-//
-// [Ja] T は ctx に格納されたロケールで messageID を翻訳する。翻訳が見つからない
-// 場合は messageID をそのまま返すため、タイプミスはクラッシュではなく描画結果に
+// Tはctxに格納されたロケールでmessageIDを翻訳する。翻訳が見つからない
+// 場合はmessageIDをそのまま返すため、タイプミスはクラッシュではなく描画結果に
 // 現れる。
 func T(ctx context.Context, messageID string, templateData ...map[string]any) string {
 	localizer := GetLocalizer(ctx)
@@ -92,9 +68,7 @@ func T(ctx context.Context, messageID string, templateData ...map[string]any) st
 	if len(templateData) > 0 && templateData[0] != nil {
 		config.TemplateData = templateData[0]
 
-		// Enable plural handling when a Count value is supplied.
-		//
-		// [Ja] Count が渡された場合は複数形処理を有効にする。
+		// Countが渡された場合は複数形処理を有効にする。
 		if count, ok := pluralCount(templateData[0]["Count"]); ok {
 			config.PluralCount = count
 		}
@@ -108,18 +82,11 @@ func T(ctx context.Context, messageID string, templateData ...map[string]any) st
 	return message
 }
 
-// pluralCount converts an arbitrary Count value into an int for plural
-// selection. It accepts every signed and unsigned integer type so callers
-// don't have to care whether the count comes from a typed int32 column, an
-// int64 COUNT(*), etc.; without this a non-int/int32 count would leave
-// PluralCount unset and silently fall back to the "other" form (e.g. "1
-// posts"). The second return value reports whether v was an integer.
-//
-// [Ja] pluralCount は任意の Count 値を複数形選択用の int に変換する。符号付き /
-// 符号なしのいずれの整数型も受け付けるため、呼び出し元は Count が int32 のカラム
-// 由来か int64 の COUNT(*) 由来かを気にしなくてよい。これが無いと int / int32
-// 以外の count では PluralCount が未設定のまま "other" 形に黙ってフォールバック
-// する (例: "1 posts")。第 2 戻り値は v が整数だったかどうかを表す。
+// pluralCountは任意のCount値を複数形選択用のintに変換する。符号付き /
+// 符号なしのいずれの整数型も受け付けるため、呼び出し元はCountがint32のカラム
+// 由来かint64のCOUNT(*) 由来かを気にしなくてよい。これが無いとint / int32
+// 以外のcountではPluralCountが未設定のまま "other" 形に黙ってフォールバック
+// する (例: "1 posts")。第2戻り値はvが整数だったかどうかを表す。
 func pluralCount(v any) (int, bool) {
 	switch count := v.(type) {
 	case int:
@@ -147,15 +114,9 @@ func pluralCount(v any) (int, bool) {
 	}
 }
 
-// clampUint64ToInt converts an unsigned count to int, clamping values that
-// exceed math.MaxInt. Plural selection only distinguishes "is it 1?" from
-// "anything else", so clamping a count that large to math.MaxInt still
-// resolves to the "other" form and avoids an overflow wraparound to a
-// negative number.
-//
-// [Ja] clampUint64ToInt は符号なしの count を int に変換し、math.MaxInt を超える
-// 値はクランプする。複数形選択は「1 かどうか」しか区別しないため、それほど大きな
-// count を math.MaxInt にクランプしても "other" 形に解決され、負数へのオーバー
+// clampUint64ToIntは符号なしのcountをintに変換し、math.MaxIntを超える
+// 値はクランプする。複数形選択は「1かどうか」しか区別しないため、それほど大きな
+// countをmath.MaxIntにクランプしても "other" 形に解決され、負数へのオーバー
 // フローを避けられる。
 func clampUint64ToInt(v uint64) int {
 	if v > math.MaxInt {
@@ -164,11 +125,8 @@ func clampUint64ToInt(v uint64) int {
 	return int(v)
 }
 
-// GetLocale returns the locale stored in ctx, or model.DefaultLocale when none
-// is set.
-//
-// [Ja] GetLocale は ctx に格納されたロケールを返す。未設定の場合は
-// model.DefaultLocale を返す。
+// GetLocaleはctxに格納されたロケールを返す。未設定の場合は
+// model.DefaultLocaleを返す。
 func GetLocale(ctx context.Context) model.Locale {
 	if locale, ok := ctx.Value(localeContextKey).(model.Locale); ok {
 		return locale
@@ -176,20 +134,14 @@ func GetLocale(ctx context.Context) model.Locale {
 	return model.DefaultLocale
 }
 
-// SetLocale returns a copy of ctx with the given locale stored in it.
-//
-// [Ja] SetLocale は指定したロケールを格納した ctx のコピーを返す。
+// SetLocaleは指定したロケールを格納したctxのコピーを返す。
 func SetLocale(ctx context.Context, locale model.Locale) context.Context {
 	return context.WithValue(ctx, localeContextKey, locale)
 }
 
-// GetLocalizer returns the Localizer stored in ctx. When none is present it
-// builds one from the context locale, so T works even without the middleware
-// (e.g. in tests that only call SetLocale).
-//
-// [Ja] GetLocalizer は ctx に格納された Localizer を返す。無い場合は context の
-// ロケールから生成するため、ミドルウェア無し (例: SetLocale だけを呼ぶテスト) でも
-// T が機能する。
+// GetLocalizerはctxに格納されたLocalizerを返す。無い場合はcontextの
+// ロケールから生成するため、ミドルウェア無し (例: SetLocaleだけを呼ぶテスト) でも
+// Tが機能する。
 func GetLocalizer(ctx context.Context) *i18n.Localizer {
 	if localizer, ok := ctx.Value(localizerContextKey).(*i18n.Localizer); ok {
 		return localizer
@@ -197,29 +149,17 @@ func GetLocalizer(ctx context.Context) *i18n.Localizer {
 	return i18n.NewLocalizer(bundle, string(GetLocale(ctx)))
 }
 
-// SetLocalizer returns a copy of ctx with the given Localizer stored in it.
-//
-// [Ja] SetLocalizer は指定した Localizer を格納した ctx のコピーを返す。
+// SetLocalizerは指定したLocalizerを格納したctxのコピーを返す。
 func SetLocalizer(ctx context.Context, localizer *i18n.Localizer) context.Context {
 	return context.WithValue(ctx, localizerContextKey, localizer)
 }
 
-// DetectLanguage picks a display language from the request's Accept-Language
-// header. ParseAcceptLanguage returns the requested languages sorted by quality
-// value (most preferred first), so returning the first one model.ParseLocale
-// accepts honors the client's preference order. Anything unrecognized falls back
-// to model.DefaultLocale.
+// DetectLanguageはリクエストのAccept-Languageヘッダーから表示言語を選ぶ。
+// ParseAcceptLanguageは要求言語を品質値順 (優先度の高い順) で返すため、
+// model.ParseLocaleが受け付ける最初のものを返すことでクライアントの優先順を尊重
+// できる。認識できないものはmodel.DefaultLocaleにフォールバックする。
 //
-// We deliberately avoid language.Matcher here: with only two display languages
-// its language-distance heuristics surprise us (e.g. it maps an unsupported "de"
-// onto English), whereas an explicit scan over the parsed tags is predictable.
-//
-// [Ja] DetectLanguage はリクエストの Accept-Language ヘッダーから表示言語を選ぶ。
-// ParseAcceptLanguage は要求言語を品質値順 (優先度の高い順) で返すため、
-// model.ParseLocale が受け付ける最初のものを返すことでクライアントの優先順を尊重
-// できる。認識できないものは model.DefaultLocale にフォールバックする。
-//
-// ここでは language.Matcher を意図的に使わない。表示言語が 2 つだけだと、その
+// ここではlanguage.Matcherを意図的に使わない。表示言語が2つだけだと、その
 // 言語距離ヒューリスティックが想定外の挙動をする (例: 未対応の "de" を英語に
 // マップする) ためで、パース済みタグを明示的に走査する方が予測可能。
 func DetectLanguage(r *http.Request) model.Locale {
@@ -235,13 +175,9 @@ func DetectLanguage(r *http.Request) model.Locale {
 	return model.DefaultLocale
 }
 
-// Middleware resolves the request locale from the Accept-Language header and
-// stores both the locale and a matching Localizer in the request context for
-// downstream handlers and templates.
-//
-// [Ja] Middleware は Accept-Language ヘッダーからリクエストのロケールを解決し、
-// 後続のハンドラーやテンプレートが参照できるよう、ロケールと対応する Localizer の
-// 両方をリクエスト context に格納する。
+// MiddlewareはAccept-Languageヘッダーからリクエストのロケールを解決し、
+// 後続のハンドラーやテンプレートが参照できるよう、ロケールと対応するLocalizerの
+// 両方をリクエストcontextに格納する。
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		locale := DetectLanguage(r)

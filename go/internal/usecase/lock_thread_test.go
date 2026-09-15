@@ -19,21 +19,12 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// threadModerationFixture is the UseCases under test together with the board and
-// thread they act on, the administrator acting, and the database the assertions
-// read the committed rows back from.
-//
-// The phase's four operations share it because each acts on the same thing: one
-// thread the community shows. A test about one of them has to set up what
-// another leaves behind, as a lift is given a lock, and as an operation refused
-// on an unpublished thread is given an unpublication.
-//
-// [Ja] threadModerationFixtureは、テスト対象のUseCaseと、それらが操作する掲示板と
+// threadModerationFixtureは、テスト対象のUseCaseと、それらが操作する掲示板と
 // スレッド、操作する管理者、そして検証がコミットされた行を読み戻すデータベースです。
 //
-// 本フェーズの4つの操作がこれを共有するのは、いずれも同じもの、すなわちコミュニティが
-// 示している1つのスレッドに対して行われるためです。ある操作のテストは別の操作が残すものを
-// 用意することになります。解除に与えられるのはロックであり、非公開のスレッドで拒否される
+// ロック・解除・スレッド非公開・投稿非公開の操作がこれを共有するのは、いずれも
+// コミュニティが示している1つのスレッドに対して行われるためです。ある操作のテストは
+// 別の操作が残すものを用意することになります。解除に与えられるのはロックであり、非公開のスレッドで拒否される
 // 操作に与えられるのは非公開です。
 type threadModerationFixture struct {
 	db                *database.DB
@@ -48,10 +39,7 @@ type threadModerationFixture struct {
 	admin             model.UserID
 }
 
-// newThreadModerationUsecases builds the UseCases over a database holding one
-// board, one thread with its first post, and an administrator to act as.
-//
-// [Ja] newThreadModerationUsecasesは、掲示板が1つ、最初の投稿を持つスレッドが1つ、そして
+// newThreadModerationUsecasesは、掲示板が1つ、最初の投稿を持つスレッドが1つ、そして
 // 操作する管理者がいるデータベース上に、UseCaseを構築します。
 func newThreadModerationUsecases(t *testing.T) (threadModerationFixture, context.Context) {
 	t.Helper()
@@ -60,11 +48,7 @@ func newThreadModerationUsecases(t *testing.T) (threadModerationFixture, context
 	return newThreadModerationUsecasesOn(t, testutil.SetupDB(t)), ctx
 }
 
-// newThreadModerationUsecasesOn seeds the board, thread and administrator into
-// db and builds the UseCases over it. It takes the database rather than opening
-// one so that a test can hand it a pool it opened itself.
-//
-// [Ja] newThreadModerationUsecasesOnは掲示板・スレッド・管理者をdbに投入し、その上に
+// newThreadModerationUsecasesOnは掲示板・スレッド・管理者をdbに投入し、その上に
 // UseCaseを構築します。データベースを開かずに受け取るのは、テストが自分で開いたプールを
 // 渡せるようにするためです。
 func newThreadModerationUsecasesOn(t *testing.T, db *database.DB) threadModerationFixture {
@@ -100,10 +84,7 @@ func newThreadModerationUsecasesOn(t *testing.T, db *database.DB) threadModerati
 	}
 }
 
-// newLockThreadUsecase wires a LockThreadUsecase over db's pools. The UseCase
-// opens its own transaction, so a test asserts against the rows it commits.
-//
-// [Ja] newLockThreadUsecaseはdbのプール上にLockThreadUsecaseを組み立てます。UseCaseは
+// newLockThreadUsecaseはdbのプール上にLockThreadUsecaseを組み立てます。UseCaseは
 // 自前のトランザクションを開くため、テストはそれがコミットした行を検証します。
 func newLockThreadUsecase(db *database.DB) *usecase.LockThreadUsecase {
 	return usecase.NewLockThreadUsecase(
@@ -115,9 +96,7 @@ func newLockThreadUsecase(db *database.DB) *usecase.LockThreadUsecase {
 	)
 }
 
-// newUnlockThreadUsecase wires an UnlockThreadUsecase over db's pools.
-//
-// [Ja] newUnlockThreadUsecaseはdbのプール上にUnlockThreadUsecaseを組み立てます。
+// newUnlockThreadUsecaseはdbのプール上にUnlockThreadUsecaseを組み立てます。
 func newUnlockThreadUsecase(db *database.DB) *usecase.UnlockThreadUsecase {
 	return usecase.NewUnlockThreadUsecase(
 		db.Writer,
@@ -127,9 +106,7 @@ func newUnlockThreadUsecase(db *database.DB) *usecase.UnlockThreadUsecase {
 	)
 }
 
-// newUnpublishThreadUsecase wires an UnpublishThreadUsecase over db's pools.
-//
-// [Ja] newUnpublishThreadUsecaseはdbのプール上にUnpublishThreadUsecaseを組み立てます。
+// newUnpublishThreadUsecaseはdbのプール上にUnpublishThreadUsecaseを組み立てます。
 func newUnpublishThreadUsecase(db *database.DB) *usecase.UnpublishThreadUsecase {
 	return usecase.NewUnpublishThreadUsecase(
 		db.Writer,
@@ -141,9 +118,7 @@ func newUnpublishThreadUsecase(db *database.DB) *usecase.UnpublishThreadUsecase 
 	)
 }
 
-// newUnpublishPostUsecase wires an UnpublishPostUsecase over db's pools.
-//
-// [Ja] newUnpublishPostUsecaseはdbのプール上にUnpublishPostUsecaseを組み立てます。
+// newUnpublishPostUsecaseはdbのプール上にUnpublishPostUsecaseを組み立てます。
 func newUnpublishPostUsecase(db *database.DB) *usecase.UnpublishPostUsecase {
 	return usecase.NewUnpublishPostUsecase(
 		db.Writer,
@@ -155,11 +130,8 @@ func newUnpublishPostUsecase(db *database.DB) *usecase.UnpublishPostUsecase {
 	)
 }
 
-// newGetThreadModerationUsecase wires a GetThreadModerationUsecase over db's
-// pools. It reads, so a test gives it the state the other three leave behind.
-//
-// [Ja] newGetThreadModerationUsecaseはdbのプール上にGetThreadModerationUsecaseを
-// 組み立てます。これは読み取るものであるため、テストは他の3つが残す状態をこれに与えます。
+// newGetThreadModerationUsecaseはdbのプール上にGetThreadModerationUsecaseを
+// 組み立てます。これは読み取るものであるため、テストは書き込みUseCaseが残す状態をこれに与えます。
 func newGetThreadModerationUsecase(db *database.DB) *usecase.GetThreadModerationUsecase {
 	return usecase.NewGetThreadModerationUsecase(
 		repository.NewRoleRepository(db),
@@ -169,11 +141,7 @@ func newGetThreadModerationUsecase(db *database.DB) *usecase.GetThreadModeration
 	)
 }
 
-// listModerationLogs returns the whole history, the most recent operation
-// first. A test reads it to state what an operation recorded, and to state that
-// an operation that changed nothing recorded nothing.
-//
-// [Ja] listModerationLogsは履歴の全体を、新しい操作から順に返します。テストは、ある操作が
+// listModerationLogsは履歴の全体を、新しい操作から順に返します。テストは、ある操作が
 // 何を記録したかを述べるため、そして何も変えなかった操作が何も記録しなかったことを述べる
 // ために、これを読みます。
 func listModerationLogs(t *testing.T, db *database.DB) []*model.ModerationLog {
@@ -186,10 +154,7 @@ func listModerationLogs(t *testing.T, db *database.DB) []*model.ModerationLog {
 	return logs
 }
 
-// seedScopedActor creates a user holding a role that grants exactly the given
-// scopes, for a test stating what one scope admits and what it does not.
-//
-// [Ja] seedScopedActorは、与えたスコープだけを持つロールを保持する利用者を作ります。
+// seedScopedActorは、与えたスコープだけを持つロールを保持する利用者を作ります。
 // 1つのスコープが何を許し何を許さないかを述べるテストのためのものです。
 func seedScopedActor(t *testing.T, db *database.DB, name model.RoleName, scopes []model.Scope) model.UserID {
 	t.Helper()
@@ -200,11 +165,7 @@ func seedScopedActor(t *testing.T, db *database.DB, name model.RoleName, scopes 
 	return userID
 }
 
-// unpublishThread marks the fixture's thread unpublished, which is the state the
-// operations acting on what the community shows are refused on. Unpublishing the
-// thread is the one that is not, being the operation that puts it in this state.
-//
-// [Ja] unpublishThreadはフィクスチャのスレッドに非公開の印を付けます。コミュニティの
+// unpublishThreadはフィクスチャのスレッドに非公開の印を付けます。コミュニティの
 // 示しているものに対して行われる操作が拒否される状態です。スレッドの非公開だけは拒否され
 // ません。スレッドをこの状態に置く操作そのものであるためです。
 func unpublishThread(t *testing.T, db *database.DB, id model.ThreadID) {
@@ -215,11 +176,7 @@ func unpublishThread(t *testing.T, db *database.DB, id model.ThreadID) {
 	}
 }
 
-// TestLockThreadUsecase_Execute_Success verifies that an administrator closes a
-// thread to new replies, that the thread then says so, and that the history
-// carries the operation with the reason that was written.
-//
-// [Ja] TestLockThreadUsecase_Execute_Successは、管理者がスレッドを新しい返信に対して
+// TestLockThreadUsecase_Execute_Successは、管理者がスレッドを新しい返信に対して
 // 締め切れること、スレッドがその旨を述べること、そして履歴が書かれた理由とともにその操作を
 // 運ぶことを検証します。
 func TestLockThreadUsecase_Execute_Success(t *testing.T) {
@@ -232,44 +189,40 @@ func TestLockThreadUsecase_Execute_Success(t *testing.T) {
 		ThreadID: f.thread.ID,
 		Reason:   "  規約に反する書き込みが続いたため  ",
 	}); err != nil {
-		t.Fatalf("Execute() error = %v, want nil", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 	}
 
 	thread := findThread(t, f.db, f.thread.ID)
 	if thread.LockedAt == nil {
-		t.Fatal("ロック後の LockedAt = nil, want 非nil")
+		t.Fatal("ロック後のLockedAt = nil、期待値 = 非nil")
 	}
 	if reasons := thread.LockReasons(); len(reasons) != 1 || reasons[0] != model.ThreadLockReasonLockedByModerator {
-		t.Errorf("ロック後の LockReasons() = %v, want [%s]", reasons, model.ThreadLockReasonLockedByModerator)
+		t.Errorf("ロック後のLockReasons() = %v、期待値 = [%s]", reasons, model.ThreadLockReasonLockedByModerator)
 	}
 
 	logs := listModerationLogs(t, f.db)
 	if len(logs) != 1 {
-		t.Fatalf("操作履歴の件数 = %d, want 1", len(logs))
+		t.Fatalf("操作履歴の件数 = %d、期待値 = 1", len(logs))
 	}
 	log := logs[0]
 	if log.Action != model.ModerationActionThreadLock {
-		t.Errorf("Action = %q, want %q", log.Action, model.ModerationActionThreadLock)
+		t.Errorf("Action = %q、期待値 = %q", log.Action, model.ModerationActionThreadLock)
 	}
 	if log.UserID == nil || *log.UserID != f.admin {
-		t.Errorf("UserID = %v, want %s", log.UserID, f.admin)
+		t.Errorf("UserID = %v、期待値 = %s", log.UserID, f.admin)
 	}
 	if log.ThreadID == nil || *log.ThreadID != f.thread.ID {
-		t.Errorf("ThreadID = %v, want %s", log.ThreadID, f.thread.ID)
+		t.Errorf("ThreadID = %v、期待値 = %s", log.ThreadID, f.thread.ID)
 	}
 	if log.Reason != "規約に反する書き込みが続いたため" {
-		t.Errorf("Reason = %q, want %q", log.Reason, "規約に反する書き込みが続いたため")
+		t.Errorf("Reason = %q、期待値 = %q", log.Reason, "規約に反する書き込みが続いたため")
 	}
 	if log.PostID != nil || log.TargetUserID != nil {
-		t.Errorf("PostID = %v, TargetUserID = %v, want どちらも nil", log.PostID, log.TargetUserID)
+		t.Errorf("PostID = %v、TargetUserID = %v、期待値 = どちらもnil", log.PostID, log.TargetUserID)
 	}
 }
 
-// TestLockThreadUsecase_Execute_ScopedActor verifies that thread_lock:write is
-// what admits the lock, and that a role carrying another moderation scope alone
-// is refused.
-//
-// [Ja] TestLockThreadUsecase_Execute_ScopedActorは、ロックを許すのがthread_lock:writeで
+// TestLockThreadUsecase_Execute_ScopedActorは、ロックを許すのがthread_lock:writeで
 // あること、そして別のモデレーションのスコープだけを持つロールが拒否されることを検証します。
 func TestLockThreadUsecase_Execute_ScopedActor(t *testing.T) {
 	t.Parallel()
@@ -281,7 +234,7 @@ func TestLockThreadUsecase_Execute_ScopedActor(t *testing.T) {
 		wantAdmitted bool
 	}{
 		{
-			name:         "thread_lock:write を持つロールは許される",
+			name:         "thread_lock:writeを持つロールは許される",
 			roleName:     "thread_locker",
 			scopes:       []model.Scope{model.ScopeThreadLockWrite},
 			wantAdmitted: true,
@@ -312,29 +265,26 @@ func TestLockThreadUsecase_Execute_ScopedActor(t *testing.T) {
 
 			if tt.wantAdmitted {
 				if err != nil {
-					t.Fatalf("Execute() error = %v, want nil", err)
+					t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 				}
 				if findThread(t, f.db, f.thread.ID).LockedAt == nil {
-					t.Error("ロック後の LockedAt = nil, want 非nil")
+					t.Error("ロック後のLockedAt = nil、期待値 = 非nil")
 				}
 				return
 			}
 
 			assertAppErrCode(t, err, model.AppErrCodeForbidden)
 			if findThread(t, f.db, f.thread.ID).LockedAt != nil {
-				t.Error("拒否後の LockedAt = 非nil, want nil")
+				t.Error("拒否後のLockedAt = 非nil、期待値 = nil")
 			}
 			if logs := listModerationLogs(t, f.db); len(logs) != 0 {
-				t.Errorf("拒否後の操作履歴の件数 = %d, want 0", len(logs))
+				t.Errorf("拒否後の操作履歴の件数 = %d、期待値 = 0", len(logs))
 			}
 		})
 	}
 }
 
-// TestLockThreadUsecase_Execute_UnknownThread verifies that locking a thread the
-// community does not have is answered as a missing resource.
-//
-// [Ja] TestLockThreadUsecase_Execute_UnknownThreadは、コミュニティが持たないスレッドの
+// TestLockThreadUsecase_Execute_UnknownThreadは、コミュニティが持たないスレッドの
 // ロックが、リソースの不在として答えられることを検証します。
 func TestLockThreadUsecase_Execute_UnknownThread(t *testing.T) {
 	t.Parallel()
@@ -348,15 +298,11 @@ func TestLockThreadUsecase_Execute_UnknownThread(t *testing.T) {
 
 	assertAppErrCode(t, err, model.AppErrCodeResourceNotFound)
 	if logs := listModerationLogs(t, f.db); len(logs) != 0 {
-		t.Errorf("操作履歴の件数 = %d, want 0", len(logs))
+		t.Errorf("操作履歴の件数 = %d、期待値 = 0", len(logs))
 	}
 }
 
-// TestLockThreadUsecase_Execute_UnpublishedThread verifies that an unpublished
-// thread is refused with its own code rather than as a missing one: it is an
-// address the community held and no longer shows, and it shows nothing to lock.
-//
-// [Ja] TestLockThreadUsecase_Execute_UnpublishedThreadは、非公開のスレッドが不在としてでは
+// TestLockThreadUsecase_Execute_UnpublishedThreadは、非公開のスレッドが不在としてでは
 // なく専用のコードで拒否されることを検証します。コミュニティが持っていて今は示さない
 // アドレスであり、ロックする対象を何も示していないためです。
 func TestLockThreadUsecase_Execute_UnpublishedThread(t *testing.T) {
@@ -372,18 +318,14 @@ func TestLockThreadUsecase_Execute_UnpublishedThread(t *testing.T) {
 
 	assertAppErrCode(t, err, model.AppErrCodeResourceUnpublished)
 	if findThread(t, f.db, f.thread.ID).LockedAt != nil {
-		t.Error("拒否後の LockedAt = 非nil, want nil")
+		t.Error("拒否後のLockedAt = 非nil、期待値 = nil")
 	}
 	if logs := listModerationLogs(t, f.db); len(logs) != 0 {
-		t.Errorf("操作履歴の件数 = %d, want 0", len(logs))
+		t.Errorf("操作履歴の件数 = %d、期待値 = 0", len(logs))
 	}
 }
 
-// TestLockThreadUsecase_Execute_AlreadyLocked verifies that locking a thread an
-// administrator already locked succeeds without adding a second entry to the
-// history.
-//
-// [Ja] TestLockThreadUsecase_Execute_AlreadyLockedは、管理者が既にロックしたスレッドの
+// TestLockThreadUsecase_Execute_AlreadyLockedは、管理者が既にロックしたスレッドの
 // ロックが、履歴に2件目を足さずに成功することを検証します。
 func TestLockThreadUsecase_Execute_AlreadyLocked(t *testing.T) {
 	t.Parallel()
@@ -392,27 +334,23 @@ func TestLockThreadUsecase_Execute_AlreadyLocked(t *testing.T) {
 	input := usecase.LockThreadInput{Actor: usecase.UserActor(f.admin), ThreadID: f.thread.ID}
 
 	if err := f.lockUC.Execute(ctx, input); err != nil {
-		t.Fatalf("1度目の Execute() error = %v, want nil", err)
+		t.Fatalf("1度目のExecute()のエラー = %v、期待値 = nil", err)
 	}
 	lockedAt := findThread(t, f.db, f.thread.ID).LockedAt
 
 	if err := f.lockUC.Execute(ctx, input); err != nil {
-		t.Fatalf("2度目の Execute() error = %v, want nil", err)
+		t.Fatalf("2度目のExecute()のエラー = %v、期待値 = nil", err)
 	}
 
 	if got := findThread(t, f.db, f.thread.ID).LockedAt; got == nil || !got.Equal(*lockedAt) {
-		t.Errorf("2度目の後の LockedAt = %v, want %v", got, lockedAt)
+		t.Errorf("2度目の後のLockedAt = %v、期待値 = %v", got, lockedAt)
 	}
 	if logs := listModerationLogs(t, f.db); len(logs) != 1 {
-		t.Errorf("操作履歴の件数 = %d, want 1", len(logs))
+		t.Errorf("操作履歴の件数 = %d、期待値 = 1", len(logs))
 	}
 }
 
-// TestLockThreadUsecase_Execute_InvalidReason verifies that a reason over the
-// limit is refused as a validation error, with the thread left open and nothing
-// recorded.
-//
-// [Ja] TestLockThreadUsecase_Execute_InvalidReasonは、上限を超えた理由がバリデーション
+// TestLockThreadUsecase_Execute_InvalidReasonは、上限を超えた理由がバリデーション
 // エラーとして拒否され、スレッドが開いたまま、何も記録されないことを検証します。
 func TestLockThreadUsecase_Execute_InvalidReason(t *testing.T) {
 	t.Parallel()
@@ -427,24 +365,20 @@ func TestLockThreadUsecase_Execute_InvalidReason(t *testing.T) {
 
 	ve := model.AsValidationError(err)
 	if ve == nil {
-		t.Fatalf("Execute() error = %v, want *model.ValidationError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.ValidationError", err)
 	}
 	if !ve.HasFieldError("reason") {
-		t.Errorf("reason のフィールドエラーが無い: %#v", ve.Fields)
+		t.Errorf("reasonのフィールドエラーが無い: %#v", ve.Fields)
 	}
 	if findThread(t, f.db, f.thread.ID).LockedAt != nil {
-		t.Error("拒否後の LockedAt = 非nil, want nil")
+		t.Error("拒否後のLockedAt = 非nil、期待値 = nil")
 	}
 	if logs := listModerationLogs(t, f.db); len(logs) != 0 {
-		t.Errorf("操作履歴の件数 = %d, want 0", len(logs))
+		t.Errorf("操作履歴の件数 = %d、期待値 = 0", len(logs))
 	}
 }
 
-// TestLockThreadUsecase_Execute_ForbiddenBeforeReason verifies that an actor who
-// may not lock threads is refused before the reason is examined, so a refusal
-// does not turn into a request to shorten a note that would be refused anyway.
-//
-// [Ja] TestLockThreadUsecase_Execute_ForbiddenBeforeReasonは、スレッドをロックできない
+// TestLockThreadUsecase_Execute_ForbiddenBeforeReasonは、スレッドをロックできない
 // 操作者が理由の検査より先に拒否されることを検証します。拒否が、どのみち拒否される注記を
 // 短くするようにという要求に変わらないためです。
 func TestLockThreadUsecase_Execute_ForbiddenBeforeReason(t *testing.T) {
@@ -461,11 +395,7 @@ func TestLockThreadUsecase_Execute_ForbiddenBeforeReason(t *testing.T) {
 	assertAppErrCode(t, err, model.AppErrCodeForbidden)
 }
 
-// TestLockThreadUsecase_Execute_Operator verifies that an operator running a
-// subcommand locks the thread and is recorded with no user id: no row in the
-// database describes them.
-//
-// [Ja] TestLockThreadUsecase_Execute_Operatorは、サブコマンドを実行する運用者がスレッドを
+// TestLockThreadUsecase_Execute_Operatorは、サブコマンドを実行する運用者がスレッドを
 // ロックし、利用者idを持たない形で記録されることを検証します。運用者を記述する行は
 // データベースに無いためです。
 func TestLockThreadUsecase_Execute_Operator(t *testing.T) {
@@ -477,27 +407,22 @@ func TestLockThreadUsecase_Execute_Operator(t *testing.T) {
 		Actor:    usecase.OperatorActor(),
 		ThreadID: f.thread.ID,
 	}); err != nil {
-		t.Fatalf("Execute() error = %v, want nil", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 	}
 
 	logs := listModerationLogs(t, f.db)
 	if len(logs) != 1 {
-		t.Fatalf("操作履歴の件数 = %d, want 1", len(logs))
+		t.Fatalf("操作履歴の件数 = %d、期待値 = 1", len(logs))
 	}
 	if logs[0].UserID != nil {
-		t.Errorf("UserID = %v, want nil", logs[0].UserID)
+		t.Errorf("UserID = %v、期待値 = nil", logs[0].UserID)
 	}
 	if logs[0].Reason != "" {
-		t.Errorf("Reason = %q, want 空文字列", logs[0].Reason)
+		t.Errorf("Reason = %q、期待値 = 空文字列", logs[0].Reason)
 	}
 }
 
-// TestLockThreadUsecase_Execute_ConcurrentWithReply verifies that a reply from
-// another pool waits for an uncommitted lock and is refused after it commits.
-// A reply committed before the lock could succeed; this test fixes the opposite
-// order to exercise the refusal rather than accepting either outcome.
-//
-// [Ja] TestLockThreadUsecase_Execute_ConcurrentWithReplyは、別プールからの返信が未コミットの
+// TestLockThreadUsecase_Execute_ConcurrentWithReplyは、別プールからの返信が未コミットの
 // ロックを待ち、そのコミット後に拒否されることを検証します。返信が先にコミットされれば
 // 成功し得ますが、このテストは逆の順序に固定し、拒否されることを確かめます。
 func TestLockThreadUsecase_Execute_ConcurrentWithReply(t *testing.T) {
@@ -513,23 +438,14 @@ func TestLockThreadUsecase_Execute_ConcurrentWithReply(t *testing.T) {
 
 	lockReady := make(chan struct{})
 	allowCommit := make(chan struct{})
-	// The hook stays on the connection until the cleanup takes it off, so it
-	// runs again for any commit that follows. Both signals are closed through a
-	// sync.OnceFunc, so what keeps this test from panicking on a second close is
-	// the signal itself rather than the order its assertions happen to be in.
-	//
-	// [Ja] フックはクリーンアップが外すまで接続に残るため、後続のコミットでも再び走る。
+	// フックはクリーンアップが外すまで接続に残るため、後続のコミットでも再び走る。
 	// 2つの通知はどちらもsync.OnceFunc経由で閉じ、二重クローズでパニックしないことの根拠を、
 	// 後続のアサーションの並びではなく通知そのものに持たせる。
 	notifyLockReady := sync.OnceFunc(func() { close(lockReady) })
 	resumeCommit := sync.OnceFunc(func() { close(allowCommit) })
 	defer resumeCommit()
 
-	// The hook belongs only to this test's writer connection. It pauses after
-	// the thread and history are written, while SQLite still holds the write
-	// lock, without adding a synchronization hook to the application itself.
-	//
-	// [Ja] フックはこのテストの書き込み接続にだけ設定する。スレッドと履歴を書き込んだ後、
+	// フックはこのテストの書き込み接続にだけ設定する。スレッドと履歴を書き込んだ後、
 	// SQLiteが書き込みロックを保持している間に停止させ、本番コードへの同期点の追加を避ける。
 	conn, err := f.db.Writer.Conn(ctx)
 	if err != nil {
@@ -601,11 +517,7 @@ func TestLockThreadUsecase_Execute_ConcurrentWithReply(t *testing.T) {
 		replyResult <- err
 	}()
 
-	// InUse confirms the reply has taken its independent writer connection
-	// before the lock is released. A goroutine-start signal alone would allow
-	// the lock to commit before the reply even reaches the database.
-	//
-	// [Ja] InUseにより、ロックを解放する前に返信が独立した書き込み接続を取得したことを
+	// InUseにより、ロックを解放する前に返信が独立した書き込み接続を取得したことを
 	// 確認する。goroutineの起動通知だけでは、返信がDBへ到達する前にコミットされ得る。
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
@@ -621,29 +533,25 @@ func TestLockThreadUsecase_Execute_ConcurrentWithReply(t *testing.T) {
 	resumeCommit()
 
 	if err := <-lockResult; err != nil {
-		t.Fatalf("ロックの error = %v, want nil", err)
+		t.Fatalf("ロックのエラー = %v、期待値 = nil", err)
 	}
 	assertAppErrCode(t, <-replyResult, model.AppErrCodeThreadLocked)
 	thread := findThread(t, f.db, f.thread.ID)
 	if thread.LockedAt == nil {
-		t.Error("ロック後の LockedAt = nil, want 非nil")
+		t.Error("ロック後のLockedAt = nil、期待値 = 非nil")
 	}
 	if thread.PostsCount != 1 {
-		t.Errorf("thread.PostsCount = %d, want 1", thread.PostsCount)
+		t.Errorf("thread.PostsCount = %d、期待値 = 1", thread.PostsCount)
 	}
 	if got := countPosts(t, f.db); got != 1 {
-		t.Errorf("投稿の件数 = %d, want 1", got)
+		t.Errorf("投稿の件数 = %d、期待値 = 1", got)
 	}
 	if logs := listModerationLogs(t, f.db); len(logs) != 1 || logs[0].Action != model.ModerationActionThreadLock {
-		t.Errorf("操作履歴 = %v, want ロック1件", logs)
+		t.Errorf("操作履歴 = %v、期待値 = ロック1件", logs)
 	}
 }
 
-// TestLockThreadUsecase_Execute_ReplyAfterCommit verifies that a reply sent
-// through another pool after locking has completed is refused, even when its
-// author is the administrator who locked the thread.
-//
-// [Ja] TestLockThreadUsecase_Execute_ReplyAfterCommitは、ロック完了後に別プールから送った
+// TestLockThreadUsecase_Execute_ReplyAfterCommitは、ロック完了後に別プールから送った
 // 返信が、ロックした管理者自身の投稿も含めて拒否されることを検証します。
 func TestLockThreadUsecase_Execute_ReplyAfterCommit(t *testing.T) {
 	t.Parallel()
@@ -668,9 +576,9 @@ func TestLockThreadUsecase_Execute_ReplyAfterCommit(t *testing.T) {
 		assertAppErrCode(t, err, model.AppErrCodeThreadLocked)
 	}
 	if got := findThread(t, f.db, f.thread.ID).PostsCount; got != 1 {
-		t.Errorf("thread.PostsCount = %d, want 1", got)
+		t.Errorf("thread.PostsCount = %d、期待値 = 1", got)
 	}
 	if got := countPosts(t, f.db); got != 1 {
-		t.Errorf("投稿の件数 = %d, want 1", got)
+		t.Errorf("投稿の件数 = %d、期待値 = 1", got)
 	}
 }

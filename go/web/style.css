@@ -1,35 +1,19 @@
-/* Groobb stylesheet entry point. Tailwind v4 detects content sources (templ
-   files and generated *_templ.go) automatically, so no separate config file is
-   needed. Basecoat is loaded right after Tailwind because the selected Basecoat
-   style pack must come after any stylesheet that emits a reset/base layer;
-   loading it before Tailwind's preflight would let preflight reset Basecoat's
-   component defaults (borders, inputs).
-
-   [Ja] Groobb のスタイルシートのエントリポイント。Tailwind v4 はコンテンツソース
-   (templ ファイルと生成された *_templ.go) を自動検出するため、別の設定ファイルは
-   不要。Basecoat は Tailwind の直後に読み込む。選択したスタイルパックは reset/base
-   層を出力するスタイルシートより後に置く必要があり、Tailwind の preflight より前に
-   置くと preflight が Basecoat のコンポーネント既定 (border・input など) をリセット
+/* Groobbのスタイルシートのエントリポイント。Tailwind v4はコンテンツソース
+   (templファイルと生成された *_templ.go) を自動検出するため、別の設定ファイルは
+   不要。BasecoatはTailwindの直後に読み込む。選択したスタイルパックはreset/base
+   層を出力するスタイルシートより後に置く必要があり、Tailwindのpreflightより前に
+   置くとpreflightがBasecoatのコンポーネント既定 (border・inputなど) をリセット
    してしまうため。 */
 @import "tailwindcss";
 @import "basecoat-css";
 
 /*
-  Theme token layer. Basecoat exposes shadcn/ui-compatible CSS variables and we
-  override them here (after Basecoat, so these win) to own Groobb's palette.
-  Groobb's brand colors are not finalized yet, so these are provisional neutral
-  values mapped to Tailwind's gray scale (matching the monochrome look the
-  current pages already use: near-black text/buttons, red errors). Both :root
-  (light) and .dark are defined so components are dark-ready; the actual theme
-  toggle is out of scope until a header/nav exists to host it.
-
-  [Ja] テーマトークン層。Basecoat は shadcn/ui 互換の CSS 変数を公開しており、ここで
-  (Basecoat の後に置いて優先させて) 上書きし、Groobb のパレットを自分のものとして
-  定義する。Groobb のブランドカラーは未確定のため、これらは Tailwind の gray スケール
-  にマップした暫定の中立値 (現状のページが既に使っているモノクロ基調 = near-black の
-  テキスト / ボタン、赤のエラーに合わせる)。:root (ライト) と .dark の双方を定義して
-  コンポーネントをダーク対応可能にするが、実際の切替 UI はそれを置くヘッダー /
-  ナビゲーションができるまでスコープ外とする。
+  テーマトークン層。Basecoatはshadcn/ui互換のCSS変数を公開しており、ここで
+  (Basecoatの後に置いて優先させて) 上書きし、Groobbのパレットを自分のものとして
+  定義する。Groobbのブランドカラーは未確定のため、これらはTailwindのgrayスケール
+  にマップした暫定の中立値 (現状のページが既に使っているモノクロ基調 = near-blackの
+  テキスト / ボタン、赤のエラーに合わせる)。:rootはライト用、.darkはダーク用の
+  トークンを定義する。
 */
 :root {
   --background: var(--color-white);

@@ -8,11 +8,7 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// TestFindProfile verifies that a command line reaches the states written here
-// by name, and that a name nothing is written under is reported as such rather
-// than resolved to something.
-//
-// [Ja] TestFindProfile は、コマンドラインがここに書かれた状態へ名前で辿り着けること、
+// TestFindProfileは、コマンドラインがここに書かれた状態へ名前で辿り着けること、
 // そして何も書かれていない名前が、何かへ解決されるのではなくそのように報告されることを
 // 検証します。
 func TestFindProfile(t *testing.T) {
@@ -36,27 +32,22 @@ func TestFindProfile(t *testing.T) {
 			profile, ok := FindProfile(tt.name)
 
 			if ok != tt.want {
-				t.Fatalf("FindProfile(%q) ok = %v, want %v", tt.name, ok, tt.want)
+				t.Fatalf("FindProfile(%q)のok = %v、期待値 = %v", tt.name, ok, tt.want)
 			}
 			if !tt.want {
 				return
 			}
 			if profile.Name() != tt.name {
-				t.Errorf("FindProfile(%q).Name() = %q, want %q", tt.name, profile.Name(), tt.name)
+				t.Errorf("FindProfile(%q).Name() = %q、期待値 = %q", tt.name, profile.Name(), tt.name)
 			}
 			if len(profile.boards) != tt.boards {
-				t.Errorf("FindProfile(%q) board count = %d, want %d", tt.name, len(profile.boards), tt.boards)
+				t.Errorf("FindProfile(%q)の掲示板の件数 = %d、期待値 = %d", tt.name, len(profile.boards), tt.boards)
 			}
 		})
 	}
 }
 
-// TestProfileNames verifies that the usage line the names are written into
-// offers what FindProfile answers to, and that the default is among them: a name
-// the line omits is one nobody finds, and one it offers but the lookup refuses
-// would send a developer to a command that fails.
-//
-// [Ja] TestProfileNames は、名前を書き込む usage の行が、FindProfile が応じるものを
+// TestProfileNamesは、名前を書き込むusageの行が、FindProfileが応じるものを
 // 提示していること、そして既定がその中にあることを検証します。行が落とした名前は誰にも
 // 見つけられず、行が提示しても引きが拒む名前は、開発者を失敗するコマンドへ送ることに
 // なります。
@@ -66,25 +57,20 @@ func TestProfileNames(t *testing.T) {
 	names := ProfileNames()
 
 	if len(names) != len(profiles) {
-		t.Fatalf("ProfileNames() = %v, want %d names", names, len(profiles))
+		t.Fatalf("ProfileNames() = %v、期待値 = %d 件の名前", names, len(profiles))
 	}
 	for _, name := range names {
 		if _, ok := FindProfile(name); !ok {
-			t.Errorf("ProfileNames() offers %q, which FindProfile does not answer to", name)
+			t.Errorf("ProfileNames()がFindProfileの応じない %q を示している", name)
 		}
 	}
 	if want := DefaultProfile().Name(); !slices.Contains(names, want) {
-		t.Errorf("ProfileNames() = %v, want it to hold the default %q", names, want)
+		t.Errorf("ProfileNames() = %v、既定の %q を含むことを期待", names, want)
 	}
 }
 
-// TestProfiles_SpreadTheirThreadsOverTime verifies that every profile places
-// its threads in the past. A plan written without a span would stamp them all
-// with the moment the run happened, leaving a thread list ordered on a column
-// every row shares and a board whose every thread reads as posted just now.
-//
-// [Ja] TestProfiles_SpreadTheirThreadsOverTime は、どのプロファイルもスレッドを過去に
-// 置くことを検証します。span を書かずに作られた plan は、そのすべてに実行した瞬間の時刻を
+// TestProfiles_SpreadTheirThreadsOverTimeは、どのプロファイルもスレッドを過去に
+// 置くことを検証します。spanを書かずに作られたplanは、そのすべてに実行した瞬間の時刻を
 // 押すため、どの行も同じ値を持つ列で並んだスレッド一覧と、どのスレッドも今しがた投稿された
 // ように読める掲示板を残します。
 func TestProfiles_SpreadTheirThreadsOverTime(t *testing.T) {
@@ -92,20 +78,13 @@ func TestProfiles_SpreadTheirThreadsOverTime(t *testing.T) {
 
 	for _, profile := range profiles {
 		if profile.plan.span <= 0 {
-			t.Errorf("the profile %q has the span %s, want a positive one", profile.name, profile.plan.span)
+			t.Errorf("プロファイル %q の期間 = %s、正の値を期待", profile.name, profile.plan.span)
 		}
 	}
 }
 
-// TestProfiles_NameTheirCommunity verifies that every profile carries a name for
-// the community it generates, and that no two carry the same one. The name is
-// what the sidebar heading and the suffix of every page title show, so a profile
-// without one would generate a community that names itself nowhere, and two
-// profiles sharing one would leave the states they generate indistinguishable at
-// the place the name is read.
-//
-// [Ja] TestProfiles_NameTheirCommunity は、どのプロファイルも生成するコミュニティの
-// 名前を持つこと、そして 2 つが同じ名前を持たないことを検証します。名前はサイドバーの
+// TestProfiles_NameTheirCommunityは、どのプロファイルも生成するコミュニティの
+// 名前を持つこと、そして2つが同じ名前を持たないことを検証します。名前はサイドバーの
 // 見出しと各ページのタイトルの接尾辞に出るものであり、名前の無いプロファイルは、どこでも
 // 自身を名乗らないコミュニティを生成します。同じ名前を共有すれば、名前が読まれる場所で
 // 生成された状態を見分けられなくなります。
@@ -115,12 +94,12 @@ func TestProfiles_NameTheirCommunity(t *testing.T) {
 	namedBy := make(map[string]string, len(profiles))
 	for _, profile := range profiles {
 		if profile.communityName == "" {
-			t.Errorf("the profile %q names no community", profile.name)
+			t.Errorf("プロファイル %q がコミュニティ名を持たない", profile.name)
 
 			continue
 		}
 		if other, exists := namedBy[profile.communityName]; exists {
-			t.Errorf("the profiles %q and %q both name their community %q", other, profile.name, profile.communityName)
+			t.Errorf("プロファイル %q と %q がどちらもコミュニティ名を %q にしている", other, profile.name, profile.communityName)
 
 			continue
 		}
@@ -128,17 +107,9 @@ func TestProfiles_NameTheirCommunity(t *testing.T) {
 	}
 }
 
-// TestRunner_GenerateThreads_ColdStart verifies that the cold-start profile
-// produces the state an instance opens in: one board with no category, a few
-// threads in it, and a few posts in each. It is the state ADR 0010 asks the
-// screens to be checked in, so nothing a community accumulates over months — a
-// thread at the post limit, the exchanges the written-out threads show — may
-// appear in it. The English thread is the exception, because a board carrying
-// both languages is what the lounge opens with rather than what it accumulates.
-//
-// [Ja] TestRunner_GenerateThreads_ColdStart は、cold-start プロファイルがインスタンスの
-// 開くときの状態を生むことを検証します。カテゴリーを持たない掲示板 1 つ、そこに立つ
-// 数本のスレッド、各スレッドの数件の投稿です。ADR 0010 が画面を確かめる先として求める
+// TestRunner_GenerateThreads_ColdStartは、cold-startプロファイルがインスタンスの
+// 開くときの状態を生むことを検証します。カテゴリーを持たない掲示板1つ、そこに立つ
+// 数本のスレッド、各スレッドの数件の投稿です。ADR 0010が画面を確かめる先として求める
 // のがこの状態であるため、コミュニティが何ヶ月もかけて蓄積するもの (投稿数の上限に
 // 達したスレッドや、書き下したスレッドが見せるやり取り) が現れてはなりません。英語の
 // スレッドだけは例外です。両方の言語が並ぶ掲示板は、ラウンジが蓄積するものではなく、
@@ -150,73 +121,63 @@ func TestRunner_GenerateThreads_ColdStart(t *testing.T) {
 	st, ctx := generateContent(t, db, coldStartProfile)
 
 	if len(st.boards) != 1 {
-		t.Fatalf("board count = %d, want 1", len(st.boards))
+		t.Fatalf("掲示板の件数 = %d、期待値 = 1", len(st.boards))
 	}
 
 	board := st.boards[0].board
 	if board.CategoryID != nil {
-		t.Errorf("the board %q has the category %v, want none", board.Slug, *board.CategoryID)
+		t.Errorf("掲示板 %q のカテゴリー = %v、期待値は無し", board.Slug, *board.CategoryID)
 	}
 
 	var categoryCount int
 	if err := db.Reader.QueryRowContext(ctx, "SELECT COUNT(*) FROM categories").Scan(&categoryCount); err != nil {
-		t.Fatalf("failed to count the categories: %v", err)
+		t.Fatalf("カテゴリーの件数の取得に失敗: %v", err)
 	}
 	if categoryCount != 0 {
-		t.Errorf("category count = %d, want 0", categoryCount)
+		t.Errorf("カテゴリーの件数 = %d、期待値 = 0", categoryCount)
 	}
 
 	threads := threadsOf(t, db, ctx, board.ID)
 	if want := coldStartContentPlan.quietBoardThreads + writtenThreadCount(coldStartProfile); len(threads) != want {
-		t.Fatalf("thread count = %d, want %d", len(threads), want)
+		t.Fatalf("スレッドの件数 = %d、期待値 = %d", len(threads), want)
 	}
 
-	// The board an instance opens with already reads in two languages, so the
-	// thread that puts English on it has to be among the rows above.
-	//
-	// [Ja] インスタンスが開くときに持つ掲示板は、すでに 2 つの言語で読めます。そのため
+	// インスタンスが開くときに持つ掲示板は、すでに2つの言語で読めます。そのため
 	// 英語を持ち込むスレッドは、上の行のなかに無ければなりません。
 	english := findThread(t, threads, englishScript.title)
 	if english.Language != englishScript.language {
-		t.Errorf("the thread %q is written in %q, want %q", english.Title, english.Language, englishScript.language)
+		t.Errorf("スレッド %q の言語 = %q、期待値 = %q", english.Title, english.Language, englishScript.language)
 	}
 
 	for _, thread := range threads {
 		if thread.Title == fullThreadTitle {
-			t.Errorf("the thread %q was generated, want no thread that has reached the limit", thread.Title)
+			t.Errorf("スレッド %q が生成された (上限に達したスレッドは生成しないことを期待)", thread.Title)
 		}
 		if thread.Title == referenceScript.title || thread.Title == withdrawnScript.title || thread.Title == otherLanguageScript.title {
-			t.Errorf("the written-out thread %q was generated, want it left to the mature community", thread.Title)
+			t.Errorf("書き下したスレッド %q が生成された (matureのコミュニティに任せることを期待)", thread.Title)
 		}
 
 		posts := postsOf(t, db, ctx, thread.ID)
 
-		// How many posts a written-out thread holds is its script's to say, so
-		// the plan's bounds are asked of the ordinary threads alone.
-		//
-		// [Ja] 書き下したスレッドがいくつの投稿を持つのかは、その台本が述べることです。
-		// そのため plan の上下限は通常のスレッドにだけ問います。
+		// 書き下したスレッドがいくつの投稿を持つのかは、その台本が述べることです。
+		// そのためplanの上下限は通常のスレッドにだけ問います。
 		if thread.Title != englishScript.title &&
 			(len(posts) < coldStartContentPlan.minPostsPerThread || len(posts) > coldStartContentPlan.maxPostsPerThread) {
 			t.Errorf(
-				"the thread %q holds %d posts, want between %d and %d",
+				"スレッド %q の投稿数 = %d、期待値 = %d 以上 %d 以下",
 				thread.Title, len(posts), coldStartContentPlan.minPostsPerThread, coldStartContentPlan.maxPostsPerThread,
 			)
 		}
 		if thread.PostsCount != len(posts) {
-			t.Errorf("the thread %q reports %d posts, want %d", thread.Title, thread.PostsCount, len(posts))
+			t.Errorf("スレッド %q のPostsCount = %d、期待値 = %d", thread.Title, thread.PostsCount, len(posts))
 		}
 
-		// A board whose newest thread was last written in weeks ago says that
-		// nobody is there, which is the one thing the first days must not be
-		// generated as (ADR 0010).
-		//
-		// [Ja] 最新のスレッドが数週間前にしか書かれていない掲示板は、そこに誰も
+		// 最新のスレッドが数週間前にしか書かれていない掲示板は、そこに誰も
 		// いないことを述べます。立ち上げ直後を、それとして生成してはなりません
 		// (ADR 0010)。
 		if age := time.Since(thread.LastPostedAt); age > coldStartContentPlan.span {
 			t.Errorf(
-				"the thread %q was last posted in %s ago, want no more than %s",
+				"スレッド %q の最終投稿からの経過時間 = %s、期待値 = %s 以内",
 				thread.Title, age.Round(time.Hour), coldStartContentPlan.span,
 			)
 		}

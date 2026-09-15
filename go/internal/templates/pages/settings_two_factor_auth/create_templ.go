@@ -11,27 +11,17 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// CreatePageData is the data for the page shown right after 2FA is enabled. It
-// carries the freshly generated recovery codes, which are displayed here once and
-// never again, so the user can record them before leaving the page.
-//
-// [Ja] CreatePageData は 2FA を有効化した直後に表示するページのデータです。生成したての
+// CreatePageDataは2FAを有効化した直後に表示するページのデータです。生成したての
 // リカバリーコードを運びます。ここで一度だけ表示され二度と表示されないため、ユーザーは
 // ページを離れる前に控えられます。
 type CreatePageData struct {
 	RecoveryCodes []string
 }
 
-// Create renders the confirmation shown after two-factor authentication is enabled:
-// a heading, an explanation that the recovery codes are for signing in when the
-// authenticator app is unavailable, a warning to save them now (they are shown only
-// once), the codes themselves, and a link back to the settings hub. There is no
-// form, so no CSRF token is needed.
-//
-// [Ja] Create は 2 段階認証を有効化した後に表示する確認画面を描画します。見出し、認証アプリを
+// Createは2段階認証を有効化した後に表示する確認画面を描画します。見出し、認証アプリを
 // 使えないときにサインインするためのリカバリーコードだという説明、今すぐ保存するよう促す警告
 // (一度だけ表示される)、コードそのもの、そして設定ハブへ戻るリンクです。フォームが無いため
-// CSRF トークンは不要です。
+// CSRFトークンは不要です。
 func Create(data CreatePageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -60,7 +50,7 @@ func Create(data CreatePageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_create_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 30, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 20, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -73,7 +63,7 @@ func Create(data CreatePageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_create_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 33, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 23, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -86,7 +76,7 @@ func Create(data CreatePageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_create_recovery_codes_warning"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 37, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 27, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -104,7 +94,7 @@ func Create(data CreatePageData) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(code)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 43, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 33, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -122,7 +112,7 @@ func Create(data CreatePageData) templ.Component {
 		var templ_7745c5c3_Var6 templ.SafeURL
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 48, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 38, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -135,7 +125,7 @@ func Create(data CreatePageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_create_done"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 49, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 39, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

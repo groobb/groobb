@@ -13,20 +13,11 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the sign-in recovery-code challenge page. Code is
-// echoed back so a re-rendered form (after a validation error) keeps what the user
-// typed, and FormErrors carries the validation messages: a form-wide message (a
-// gone challenge that asks the user to sign in again) shown at the top, and a
-// per-field message (a malformed or unknown code) shown beneath the input.
-// ReturnTo carries where the visitor was headed when a guarded route turned them
-// away, handed over by the password step, and travels on through this form and
-// the link back to the authenticator challenge.
-//
-// [Ja] NewPageData はサインイン時のリカバリーコードチャレンジページのデータです。Code は
-// 再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// NewPageDataはサインイン時のリカバリーコードチャレンジページのデータです。Codeは
+// 再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrorsは
 // バリデーションメッセージを運びます。上部に出すフォーム全体のメッセージ (失われたチャレンジ
 // で再サインインを促すもの) と、入力欄の下に出すフィールド別のメッセージ (コードの形式エラー・
-// 未知のコード) です。ReturnTo は保護されたルートに追い返されたとき訪問者が向かっていた先を
+// 未知のコード) です。ReturnToは保護されたルートに追い返されたとき訪問者が向かっていた先を
 // 運び、パスワードのステップから引き渡され、このフォームと認証アプリのチャレンジへ戻るリンクを
 // 通じてさらに引き継がれます。
 type NewPageData struct {
@@ -36,17 +27,10 @@ type NewPageData struct {
 	ReturnTo   string
 }
 
-// New renders the sign-in recovery-code challenge form: a single recovery-code
-// field that, on submit, verifies the code against the pending user's stored codes
-// and completes sign-in (consuming the used code). The form posts to
-// /sign_in/two_factor/recovery, and the CSRF token is embedded as a hidden field
-// for the double-submit-cookie check. A link back to the authenticator-code
-// challenge lets a user who can reach their app switch away from recovery codes.
-//
-// [Ja] New はサインイン時のリカバリーコードチャレンジフォームを描画します。送信すると保留中
+// Newはサインイン時のリカバリーコードチャレンジフォームを描画します。送信すると保留中
 // ユーザーの保存済みコードに対してコードを検証しサインインを完了させる (使用したコードを消費
-// する) 単一のリカバリーコードフィールドです。フォームは /sign_in/two_factor/recovery へ POST
-// し、CSRF トークンは double-submit cookie 検証のため hidden フィールドとして埋め込みます。
+// する) 単一のリカバリーコードフィールドです。フォームは /sign_in/two_factor/recoveryへPOST
+// し、CSRFトークンはdouble-submit cookie検証のためhiddenフィールドとして埋め込みます。
 // 認証アプリのコードチャレンジへ戻るリンクにより、アプリを使えるユーザーはリカバリーコードから
 // 切り替えられます。
 func New(data NewPageData) templ.Component {
@@ -77,7 +61,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_two_factor_recovery_new_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 49, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 33, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -90,7 +74,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_two_factor_recovery_new_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 52, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 36, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +95,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SignInTwoFactorRecoveryPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 56, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 40, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +108,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 57, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 41, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -142,7 +126,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.ReturnToParam)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 59, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 43, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -155,7 +139,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.ReturnTo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 59, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 43, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -191,7 +175,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.Code)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 73, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 57, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -209,7 +193,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("code", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 85, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 69, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -235,7 +219,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_two_factor_recovery_new_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 91, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 75, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -248,7 +232,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var11 templ.SafeURL
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SignInTwoFactorNewPath().WithReturnTo(data.ReturnTo).SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 95, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 79, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -261,7 +245,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "sign_in_two_factor_recovery_new_use_authenticator_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 96, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/sign_in_two_factor_recovery/new.templ`, Line: 80, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {

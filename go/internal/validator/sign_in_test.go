@@ -11,15 +11,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// TestSignInCreateValidator_Validate covers the format checks (required and
-// well-formed email, required password) that need no database, and the state
-// checks that do: a correct credential returns the user, while an unknown email,
-// a missing password credential, and a wrong password all fail with the same
-// generic global message so the form does not leak which accounts exist.
-//
-// [Ja] TestSignInCreateValidator_Validate は DB 不要の形式チェック (必須・メール形式・
-// パスワード必須) と、DB を要する状態チェックを網羅します。正しい資格情報はユーザーを返し、
-// 未知の email・パスワード資格情報の欠如・誤ったパスワードはいずれも同じ汎用グローバル
+// TestSignInCreateValidator_ValidateはDB不要の形式チェック (必須・メール形式・
+// パスワード必須) と、DBを要する状態チェックを網羅します。正しい資格情報はユーザーを返し、
+// 未知のemail・パスワード資格情報の欠如・誤ったパスワードはいずれも同じ汎用グローバル
 // メッセージで失敗し、フォームがどのアカウントが存在するかを漏らさないことを確かめます。
 func TestSignInCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
@@ -31,49 +25,44 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 	v := validator.NewSignInCreateValidator(userRepo, userPasswordRepo, userTwoFactorAuthRepo)
 	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
-	// Seed an account with a password to sign in against.
-	//
-	// [Ja] サインインの対象となる、パスワード付きのアカウントを 1 つ用意する。
+	// サインインの対象となる、パスワード付きのアカウントを1つ用意する。
 	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
-	// Seed an account without any password (e.g. an SSO-only user) to assert it
-	// cannot sign in with a password.
-	//
-	// [Ja] パスワードの無いアカウント (例: SSO のみのユーザー) を用意し、パスワードでは
+	// パスワードの無いアカウント (例: SSOのみのユーザー) を用意し、パスワードでは
 	// サインインできないことを確かめる。
 	testutil.NewUserBuilder(t, db).WithEmail("nopass@example.com").Build()
 
-	t.Run("正常系: 正しい資格情報はユーザーを返す (2FA 無しなので設定は nil)", func(t *testing.T) {
+	t.Run("正常系: 正しい資格情報はユーザーを返す (2FA無しなので設定はnil)", func(t *testing.T) {
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "member@example.com",
 			Password: "password123",
 		})
 		if err != nil {
-			t.Fatalf("Validate() error = %v, want nil", err)
+			t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 		}
 		if output.User == nil || output.User.ID != userID {
-			t.Fatalf("Validate() user = %v, want id %v", output.User, userID)
+			t.Fatalf("Validate()のユーザー = %v、期待値はid %v", output.User, userID)
 		}
 		if output.UserTwoFactorAuth != nil {
-			t.Errorf("Validate() UserTwoFactorAuth = %v, want nil (2FA 未設定のため)", output.UserTwoFactorAuth)
+			t.Errorf("Validate()のUserTwoFactorAuth = %v、期待値 = nil (2FA未設定のため)", output.UserTwoFactorAuth)
 		}
 	})
 
-	t.Run("正常系: 大文字違いの email でもサインインできる (NOCASE 照合)", func(t *testing.T) {
+	t.Run("正常系: 大文字違いのemailでもサインインできる (NOCASE照合)", func(t *testing.T) {
 		output, err := v.Validate(ctx, validator.SignInCreateValidatorInput{
 			Email:    "MEMBER@example.com",
 			Password: "password123",
 		})
 		if err != nil {
-			t.Fatalf("Validate() error = %v, want nil", err)
+			t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 		}
 		if output.User == nil || output.User.ID != userID {
-			t.Fatalf("Validate() user = %v, want id %v", output.User, userID)
+			t.Fatalf("Validate()のユーザー = %v、期待値はid %v", output.User, userID)
 		}
 	})
 
-	t.Run("正常系: 2FA 有効なユーザーは有効な 2FA 設定を併せて返す", func(t *testing.T) {
+	t.Run("正常系: 2FA有効なユーザーは有効な2FA設定を併せて返す", func(t *testing.T) {
 		twoFAUserID := testutil.NewUserBuilder(t, db).WithEmail("2fa-on@example.com").Build()
 		testutil.NewUserPasswordBuilder(t, db).WithUserID(twoFAUserID).WithPassword("password123").Build()
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(twoFAUserID).WithEnabled(true).Build()
@@ -83,20 +72,20 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 			Password: "password123",
 		})
 		if err != nil {
-			t.Fatalf("Validate() error = %v, want nil", err)
+			t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 		}
 		if output.User == nil || output.User.ID != twoFAUserID {
-			t.Fatalf("Validate() user = %v, want id %v", output.User, twoFAUserID)
+			t.Fatalf("Validate()のユーザー = %v、期待値はid %v", output.User, twoFAUserID)
 		}
 		if output.UserTwoFactorAuth == nil {
-			t.Fatal("Validate() UserTwoFactorAuth = nil, want 有効な 2FA 設定")
+			t.Fatal("Validate()のUserTwoFactorAuth = nil、期待値は有効な2FA設定")
 		}
 		if !output.UserTwoFactorAuth.Enabled {
-			t.Error("返された 2FA 設定が enabled でない")
+			t.Error("返された2FA設定がenabledでない")
 		}
 	})
 
-	t.Run("正常系: 登録中 (未有効化) の 2FA は無しとして扱う", func(t *testing.T) {
+	t.Run("正常系: 登録中 (未有効化) の2FAは無しとして扱う", func(t *testing.T) {
 		enrollingUserID := testutil.NewUserBuilder(t, db).WithEmail("2fa-enrolling@example.com").Build()
 		testutil.NewUserPasswordBuilder(t, db).WithUserID(enrollingUserID).WithPassword("password123").Build()
 		testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(enrollingUserID).WithEnabled(false).Build()
@@ -106,7 +95,7 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 			Password: "password123",
 		})
 		if err != nil {
-			t.Fatalf("Validate() error = %v, want nil", err)
+			t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 		}
 		if output.UserTwoFactorAuth != nil {
 			t.Errorf("Validate() UserTwoFactorAuth = %v, want nil (未有効化のため)", output.UserTwoFactorAuth)
@@ -138,11 +127,11 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output, err := v.Validate(ctx, tt.input)
 			if output != nil {
-				t.Errorf("Validate() output = %v, want nil", output)
+				t.Errorf("Validate()の出力 = %v、期待値 = nil", output)
 			}
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("Validate() error = %v, want *model.ValidationError", err)
+				t.Fatalf("Validate()のエラー = %v、期待値 = *model.ValidationError", err)
 			}
 			if !ve.HasFieldError(tt.wantField) {
 				t.Errorf("フィールド %q のエラーが無い: %+v", tt.wantField, ve.Fields)
@@ -171,17 +160,14 @@ func TestSignInCreateValidator_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output, err := v.Validate(ctx, tt.input)
 			if output != nil {
-				t.Errorf("Validate() output = %v, want nil", output)
+				t.Errorf("Validate()の出力 = %v、期待値 = nil", output)
 			}
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("Validate() error = %v, want *model.ValidationError", err)
+				t.Fatalf("Validate()のエラー = %v、期待値 = *model.ValidationError", err)
 			}
-			// A failed credential check reports a single global message and no
-			// field error, so it does not point at email vs password.
-			//
-			// [Ja] 資格情報チェックの失敗は単一のグローバルメッセージのみを報告し、
-			// フィールドエラーは出さない。email かパスワードかを指さないため。
+			// 資格情報チェックの失敗は単一のグローバルメッセージのみを報告し、
+			// フィールドエラーは出さない。emailかパスワードかを指さないため。
 			if !ve.HasGlobalError() {
 				t.Errorf("グローバルエラーが無い: %+v", ve)
 			}

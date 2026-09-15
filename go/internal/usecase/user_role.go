@@ -9,30 +9,12 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// resolveRoleAssignment resolves the role an assignment is about and confirms
-// that the user receiving or losing it is someone the community still has. Both
-// granting and revoking ask the same two questions, so a name nothing carries
-// and an account nobody is are answered the same way whichever of them was
-// requested.
-//
-// Either being absent is AppErrCodeResourceNotFound rather than a validation
-// error: the role name and the user come from the address a request names, not
-// from a field someone filled in, so there is no form to send back with the
-// message.
-//
-// A withdrawn account is absent here, because the lookup leaves it out. Giving a
-// role to someone who has left would put a holder into the community that nobody
-// can sign in as.
-//
-// The user that was resolved is handed back as well, since the caller needs the
-// target's atname to say what happened, and it has already been read here.
-//
-// [Ja] resolveRoleAssignment は、割当が対象とするロールを解決し、それを受け取る (または
-// 失う) 利用者をコミュニティがまだ持っていることを確かめます。付与と剥奪はこの 2 つの
+// resolveRoleAssignmentは、割当が対象とするロールを解決し、それを受け取る (または
+// 失う) 利用者をコミュニティがまだ持っていることを確かめます。付与と剥奪はこの2つの
 // 問いを同じく尋ねるため、どのロールも持たない名前も、誰でもないアカウントも、どちらが
 // 要求されたかによらず同じ形で答えられます。
 //
-// どちらの不在も、バリデーションエラーではなく AppErrCodeResourceNotFound です。ロール名も
+// どちらの不在も、バリデーションエラーではなくAppErrCodeResourceNotFoundです。ロール名も
 // 利用者も、誰かが入力したフィールドではなくリクエストが名指すアドレスから来るものであり、
 // メッセージを添えて返すフォームがありません。
 //
@@ -40,7 +22,7 @@ import (
 // ロールを与えれば、誰もサインインできない保持者をコミュニティに置くことになります。
 //
 // 解決した利用者も併せて返します。呼び出し元が、何が起きたのかを述べるために対象の
-// atname を必要とし、それはここで既に読まれているためです。
+// atnameを必要とし、それはここで既に読まれているためです。
 func resolveRoleAssignment(
 	ctx context.Context,
 	roleRepo *repository.RoleRepository,
@@ -77,13 +59,7 @@ func resolveRoleAssignment(
 	return role, user, nil
 }
 
-// holdsRole reports whether the user already holds the given role.
-//
-// The repository must be enlisted in the caller's transaction (WithTx), because
-// what the answer decides is whether to write: read outside it, an assignment
-// could appear or disappear between the answer and the write it led to.
-//
-// [Ja] holdsRole は、ユーザーが既にそのロールを持っているかどうかを返します。
+// holdsRoleは、ユーザーが既にそのロールを持っているかどうかを返します。
 //
 // リポジトリは呼び出し側のトランザクションに参加していなければなりません (WithTx)。この
 // 答えが決めるのは書き込むかどうかであり、その外で読めば、答えとそれが導いた書き込みの
@@ -107,26 +83,13 @@ func holdsRole(
 	return false, nil
 }
 
-// removingLeavesNoAdmin reports whether removing one active admin holder would
-// leave the community without an active administrator. The result applies only
-// to targets included in the count: a suspended or withdrawn holder is already
-// excluded, so removing their assignment does not reduce the count.
-//
-// Losing the last administrator is not a state anyone can undo from a screen:
-// the admin screens are what appoints an administrator, and nobody would be
-// admitted to them. What remains is the groobb subcommand against the database
-// file, so the refusal here is what keeps the community from needing it.
-//
-// The count must be read inside the transaction that writes, so that the number
-// the refusal is decided against cannot change before the removal it admits.
-//
-// [Ja] removingLeavesNoAdminは、有効なadminロールの保持者を1人外すと、有効な管理者が
+// removingLeavesNoAdminは、有効なadminロールの保持者を1人外すと、有効な管理者が
 // いなくなるかどうかを返します。この結果は人数に含まれる対象にだけ適用します。停止中・
 // 退会済みの保持者は既に除外されており、その割当を外しても人数は減りません。
 //
 // 最後の管理者を失うことは、画面から取り消せる状態ではありません。管理者を立てるのは管理
 // 画面であり、誰もそこを許されなくなるためです。残るのはデータベースファイルに対する
-// groobb のサブコマンドであり、ここでの拒否が、コミュニティがそれを必要とせずに済む理由
+// groobbのサブコマンドであり、ここでの拒否が、コミュニティがそれを必要とせずに済む理由
 // です。
 //
 // 件数は書き込むトランザクションの中で読まなければなりません。拒否を判断した数が、それが

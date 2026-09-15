@@ -25,13 +25,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSettingsWithdrawalHandler wires a settings_withdrawal Handler over the test
-// database's repositories, so a handler test drives the DeleteAccountUsecase and
-// the transaction it opens against a real database.
-//
-// [Ja] newSettingsWithdrawalHandler はテスト用データベースのリポジトリで
-// settings_withdrawal Handler を組み立てます。ハンドラーテストが DeleteAccountUsecase
-// と、それが開くトランザクションを実 DB に対して駆動できるようにするためです。
+// newSettingsWithdrawalHandlerはテスト用データベースのリポジトリで
+// settings_withdrawal Handlerを組み立てます。ハンドラーテストがDeleteAccountUsecase
+// と、それが開くトランザクションを実DBに対して駆動できるようにするためです。
 func newSettingsWithdrawalHandler(t *testing.T, db *database.DB) *settings_withdrawal.Handler {
 	t.Helper()
 
@@ -55,14 +51,9 @@ func newSettingsWithdrawalHandler(t *testing.T, db *database.DB) *settings_withd
 	return settings_withdrawal.NewHandler(cfg, sessionMgr, flashMgr, deleteAccountUC)
 }
 
-// seedWithdrawalUser creates a committed user with the password "password123" and a
-// live session, returning the user model (so a test can place it in the request
-// context, as RequireAuth would) and the session token (so the request can carry
-// the matching session cookie).
-//
-// [Ja] seedWithdrawalUser はパスワード "password123" と有効なセッションを 1 つ持つ
-// コミット済みユーザーを作成し、ユーザーモデル (テストが RequireAuth のように context に
-// 載せられるよう) とセッショントークン (リクエストが一致するセッション Cookie を運べるよう)
+// seedWithdrawalUserはパスワード "password123" と有効なセッションを1つ持つ
+// コミット済みユーザーを作成し、ユーザーモデル (テストがRequireAuthのようにcontextに
+// 載せられるよう) とセッショントークン (リクエストが一致するセッションCookieを運べるよう)
 // を返します。
 func seedWithdrawalUser(t *testing.T, db *database.DB) (*model.User, string) {
 	t.Helper()
@@ -103,21 +94,13 @@ func seedWithdrawalUser(t *testing.T, db *database.DB) (*model.User, string) {
 	return user, token
 }
 
-// deleteWithdrawal builds a DELETE /settings/withdrawal request carrying the current
-// password as form data, the session cookie for the token, the user in the context
-// (as RequireAuth would place it), and the locale set. The form is parsed while the
-// request is still a POST and only then is the method switched to DELETE, mirroring
-// what the method-override middleware does in production: Go's ParseForm reads the
-// body only for POST/PUT/PATCH, so a request constructed directly as DELETE would
-// leave the handler's FormValue empty.
-//
-// [Ja] deleteWithdrawal は現在のパスワードをフォームデータとして運ぶ
-// DELETE /settings/withdrawal リクエストを組み立て、token のセッション Cookie、
-// (RequireAuth が置くように) context のユーザー、そして設定したロケールを載せます。
-// フォームはリクエストがまだ POST のうちに解析し、その後でメソッドを DELETE に切り替えます。
-// これは本番のメソッドオーバーライドミドルウェアの挙動を再現したものです。Go の ParseForm は
-// POST/PUT/PATCH のときだけボディを読むため、最初から DELETE として組み立てたリクエストでは
-// ハンドラーの FormValue が空になってしまいます。
+// deleteWithdrawalは現在のパスワードをフォームデータとして運ぶ
+// DELETE /settings/withdrawalリクエストを組み立て、tokenのセッションCookie、
+// (RequireAuthが置くように) contextのユーザー、そして設定したロケールを載せます。
+// フォームはリクエストがまだPOSTのうちに解析し、その後でメソッドをDELETEに切り替えます。
+// これは本番のメソッドオーバーライドミドルウェアの挙動を再現したものです。GoのParseFormは
+// POST/PUT/PATCHのときだけボディを読むため、最初からDELETEとして組み立てたリクエストでは
+// ハンドラーのFormValueが空になってしまいます。
 func deleteWithdrawal(user *model.User, currentPassword, token string, locale model.Locale) *http.Request {
 	form := url.Values{"current_password": {currentPassword}}
 	req := httptest.NewRequest(http.MethodPost, "/settings/withdrawal", strings.NewReader(form.Encode()))
@@ -132,9 +115,7 @@ func deleteWithdrawal(user *model.User, currentPassword, token string, locale mo
 	return req.WithContext(ctx)
 }
 
-// findCookie returns the cookie with the given name from the response, or nil.
-//
-// [Ja] findCookie はレスポンスから指定名の Cookie を返す。無ければ nil。
+// findCookieはレスポンスから指定名のCookieを返す。無ければnil。
 func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == name {
@@ -144,39 +125,30 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
-// decodeFlash reads and decodes the flash cookie from the response, mirroring the
-// base64-encoded JSON that FlashManager writes. It fails the test if the cookie is
-// missing or malformed.
-//
-// [Ja] decodeFlash はレスポンスのフラッシュ Cookie を読み取ってデコードする。
-// FlashManager が書き込む base64 エンコードされた JSON と対になる。Cookie が無い、
+// decodeFlashはレスポンスのフラッシュCookieを読み取ってデコードする。
+// FlashManagerが書き込むbase64エンコードされたJSONと対になる。Cookieが無い、
 // または壊れている場合はテストを失敗させる。
 func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMessage {
 	t.Helper()
 
 	c := findCookie(rec, session.FlashCookieName)
 	if c == nil {
-		t.Fatal("フラッシュ Cookie が設定されていない")
+		t.Fatal("フラッシュCookieが設定されていない")
 	}
 	data, err := base64.StdEncoding.DecodeString(c.Value)
 	if err != nil {
-		t.Fatalf("フラッシュ Cookie の base64 デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのbase64デコードに失敗: %v", err)
 	}
 	var flash session.FlashMessage
 	if err := json.Unmarshal(data, &flash); err != nil {
-		t.Fatalf("フラッシュ Cookie の JSON デコードに失敗: %v", err)
+		t.Fatalf("フラッシュCookieのJSONデコードに失敗: %v", err)
 	}
 	return &flash
 }
 
-// TestDelete_Success verifies that DELETE /settings/withdrawal with the correct
-// current password withdraws the account (soft-deletes and anonymizes the user and
-// deletes its sessions), clears the session cookie, sets the completion flash, and
-// redirects to the top page.
-//
-// [Ja] TestDelete_Success は、正しい現在のパスワード付きの DELETE /settings/withdrawal が
+// TestDelete_Successは、正しい現在のパスワード付きのDELETE /settings/withdrawalが
 // アカウントを退会させ (ユーザーを論理削除・匿名化し、そのセッションを削除する)、
-// セッション Cookie を消去し、完了フラッシュを設定し、トップページへリダイレクトすることを
+// セッションCookieを消去し、完了フラッシュを設定し、トップページへリダイレクトすることを
 // 検証する。
 func TestDelete_Success(t *testing.T) {
 	t.Parallel()
@@ -190,34 +162,27 @@ func TestDelete_Success(t *testing.T) {
 	handler.Delete(rec, deleteWithdrawal(user, "password123", token, model.LocaleJa))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/" {
-		t.Errorf("Location = %q, want %q", loc, "/")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/")
 	}
 
-	// The session cookie is cleared (a matching cookie with MaxAge < 0).
-	//
-	// [Ja] セッション Cookie が消去される (MaxAge < 0 の同名 Cookie)。
+	// セッションCookieが消去される (MaxAge < 0の同名Cookie)。
 	if c := findCookie(rec, session.CookieName); c == nil || c.MaxAge >= 0 {
-		t.Error("セッション Cookie が消去されていない")
+		t.Error("セッションCookieが消去されていない")
 	}
 
-	// A success flash is set so the top page renders the "withdrawn" toast.
-	//
-	// [Ja] トップページが「退会しました」toast を描画するよう成功フラッシュが設定される。
+	// トップページが「退会しました」toastを描画するよう成功フラッシュが設定される。
 	flash := decodeFlash(t, rec)
 	if flash.Type != session.FlashSuccess {
-		t.Errorf("flash type = %q, want %q", flash.Type, session.FlashSuccess)
+		t.Errorf("フラッシュの種類 = %q、期待値 = %q", flash.Type, session.FlashSuccess)
 	}
 	if want := i18n.T(i18n.SetLocale(context.Background(), model.LocaleJa), "flash_account_withdrawn"); flash.Message != want {
-		t.Errorf("flash message = %q, want %q", flash.Message, want)
+		t.Errorf("フラッシュのメッセージ = %q、期待値 = %q", flash.Message, want)
 	}
 
-	// The user row is soft-deleted. The row is queried directly (not via a lookup
-	// that filters deleted_at) so the soft-deleted user is still observable.
-	//
-	// [Ja] ユーザー行が論理削除される。行は (deleted_at で絞るルックアップではなく) 直接
+	// ユーザー行が論理削除される。行は (deleted_atで絞るルックアップではなく) 直接
 	// クエリするため、論理削除されたユーザーも観測できる。
 	var deletedAt *time.Time
 	if err := db.Reader.QueryRowContext(context.Background(),
@@ -226,22 +191,16 @@ func TestDelete_Success(t *testing.T) {
 		t.Fatalf("退会後のユーザー行の取得に失敗: %v", err)
 	}
 	if deletedAt == nil {
-		t.Error("deleted_at がセットされていない (論理削除されていない)")
+		t.Error("deleted_atがセットされていない (論理削除されていない)")
 	}
 
-	// The session row is gone (all devices signed out by the UseCase).
-	//
-	// [Ja] セッション行が消えている (UseCase が全端末をサインアウトさせた)。
+	// セッション行が消えている (UseCaseが全端末をサインアウトさせた)。
 	if got := countUserSessions(t, db, user.ID); got != 0 {
-		t.Errorf("退会後のセッション数 = %d, want 0", got)
+		t.Errorf("退会後のセッション数 = %d、期待値 = 0", got)
 	}
 }
 
-// TestDelete_ValidationError verifies that a wrong current password re-renders the
-// confirmation form with 422 and the incorrect-password message, and leaves the
-// account fully intact: not soft-deleted and with its sessions still present.
-//
-// [Ja] TestDelete_ValidationError は、誤った現在のパスワードが確認フォームを 422 と
+// TestDelete_ValidationErrorは、誤った現在のパスワードが確認フォームを422と
 // パスワード誤りのメッセージで再描画し、アカウントを完全に無傷のまま (論理削除されず、
 // セッションも残ったまま) にすることを検証する。
 func TestDelete_ValidationError(t *testing.T) {
@@ -256,30 +215,23 @@ func TestDelete_ValidationError(t *testing.T) {
 	handler.Delete(rec, deleteWithdrawal(user, "wrongpassword", "wd-h-token-unused", model.LocaleJa))
 
 	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusUnprocessableEntity)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "現在のパスワードが正しくありません") {
 		t.Error("現在パスワード誤りのエラーメッセージが描画されていない")
 	}
-	// The accessible-error markup must accompany the message so screen readers
-	// announce it and associate it with the input.
-	//
-	// [Ja] スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
+	// スクリーンリーダーがメッセージを読み上げ、入力欄に関連付けられるよう、
 	// アクセシブルなエラーマークアップがメッセージに伴っていること。
 	if !strings.Contains(body, `aria-invalid="true"`) {
-		t.Error("エラー時の入力欄に aria-invalid='true' が無い")
+		t.Error("エラー時の入力欄にaria-invalid='true' が無い")
 	}
-	// The confirmation form is re-rendered (still driving DELETE /settings/withdrawal).
-	//
-	// [Ja] 確認フォームが再描画される (引き続き DELETE /settings/withdrawal を動かす)。
+	// 確認フォームが再描画される (引き続きDELETE /settings/withdrawalを動かす)。
 	if !strings.Contains(body, `action="/settings/withdrawal"`) {
 		t.Error("退会確認フォームが再描画されていない")
 	}
 
-	// The account is untouched: not soft-deleted, sessions intact.
-	//
-	// [Ja] アカウントは無傷: 論理削除されず、セッションも残る。
+	// アカウントは無傷: 論理削除されず、セッションも残る。
 	var deletedAt *time.Time
 	if err := db.Reader.QueryRowContext(context.Background(),
 		`SELECT deleted_at FROM users WHERE id = ?`, int64(user.ID),
@@ -290,14 +242,11 @@ func TestDelete_ValidationError(t *testing.T) {
 		t.Error("バリデーション失敗時にユーザーが論理削除された")
 	}
 	if got := countUserSessions(t, db, user.ID); got != 1 {
-		t.Errorf("バリデーション失敗時のセッション数 = %d, want 1 (削除されるべきでない)", got)
+		t.Errorf("バリデーション失敗時のセッション数 = %d、期待値 = 1 (削除されるべきでない)", got)
 	}
 }
 
-// countUserSessions returns how many sessions the given user still owns, for
-// asserting that withdrawal cleared them (or that a rejected withdrawal left them).
-//
-// [Ja] countUserSessions は指定ユーザーがまだ所有するセッション数を返す。退会が
+// countUserSessionsは指定ユーザーがまだ所有するセッション数を返す。退会が
 // それらを消したこと (または拒否された退会がそれらを残したこと) を検証するために使う。
 func countUserSessions(t *testing.T, db *database.DB, userID model.UserID) int {
 	t.Helper()

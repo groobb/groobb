@@ -1,8 +1,6 @@
-# golangci-lint v2 configuration (minimal initial setup).
-# https://golangci-lint.run/usage/configuration/
-#
-# [Ja] golangci-lint v2 の設定ファイル (初期は最小構成)。
-# レイヤー依存ルール (depguard) などは Go アプリの構造が育つ後続フェーズで追加します。
+# golangci-lint v2の設定ファイル (初期は最小構成)。
+# レイヤー依存ルール (depguard) などはGoアプリの構造が育つ後続フェーズで追加します。
+# 参照: https://golangci-lint.run/usage/configuration/
 version: "2"
 
 run:
@@ -11,26 +9,21 @@ run:
 
 linters:
   enable:
-    - govet # Go standard static analysis. [Ja] Go 標準の静的解析
-    - staticcheck # advanced static analysis. [Ja] 高度な静的解析
-    - errcheck # report unchecked errors. [Ja] 未チェックのエラーを検出
-    - ineffassign # detect ineffectual assignments. [Ja] 無効な代入を検出
-    - unused # detect unused code. [Ja] 未使用コードを検出
-    - gosec # security checks. [Ja] セキュリティチェック
+    - govet # Go標準の静的解析
+    - staticcheck # 高度な静的解析
+    - errcheck # 未チェックのエラーを検出
+    - ineffassign # 無効な代入を検出
+    - unused # 未使用コードを検出
+    - gosec # セキュリティチェック
 
   exclusions:
     rules:
-      # Test files exercise internal seams and fixtures, so skip gosec there.
-      # depguard will join this list once the layer-dependency rules are
-      # introduced in a later phase.
-      #
-      # [Ja] テストファイルは内部の継ぎ目やフィクスチャを扱うため gosec を無効化する。
-      # depguard はレイヤー依存ルールを後続フェーズで導入した時点でこのリストに加える。
+      # テストファイルは内部の継ぎ目やフィクスチャを扱うためgosecを無効化する。
+      # depguardはレイヤー依存ルールを後続フェーズで導入した時点でこのリストに加える。
       - path: '(.+)_test\.go'
         linters:
           - gosec
-      # templ-generated files are not hand-written, so exclude them from linters.
-      # [Ja] templ 生成ファイルは手書きではないため、リンターの対象から除外する。
+      # templ生成ファイルは手書きではないため、リンターの対象から除外する。
       - path: '(.+)_templ\.go'
         linters:
           - govet
@@ -48,42 +41,27 @@ linters:
 
   settings:
     gosec:
-      # Raise the gate to medium severity and confidence to match the sister
-      # Korylus projects (Annict / Mewst / Wikino). This drops low-confidence
-      # findings such as G101 on the fixed values in internal/testutil that read
-      # like credentials (TestContinuationTokenKey), which exist only so tests
-      # share one non-production value and are never secrets.
-      #
-      # [Ja] severity / confidence をともに medium に上げ、姉妹 Korylus プロジェクト
-      # (Annict / Mewst / Wikino) に揃える。これにより internal/testutil の、認証情報のように
-      # 見える固定値 (TestContinuationTokenKey) に対する G101 のような低信頼度の指摘を
-      # 除外する。これらはテストが 1 つの非本番の値を共有するためだけに存在し、秘密情報では
+      # severity / confidenceをともにmediumに上げ、姉妹Korylusプロジェクト
+      # (Annict / Mewst / Wikino) に揃える。これによりinternal/testutilの、認証情報のように
+      # 見える固定値 (TestContinuationTokenKey) に対するG101のような低信頼度の指摘を
+      # 除外する。これらはテストが1つの非本番の値を共有するためだけに存在し、秘密情報では
       # ない。
       severity: medium
       confidence: medium
-      # G120: the unlimited-body-size warning on r.FormValue / r.ParseForm. gosec
-      # detects this per-function, so every form-parsing site (the CSRF and
-      # method-override middleware here, and every form handler in later phases)
-      # stays flagged. A request-body size cap belongs in one place at the server
-      # or middleware level rather than scattered per call site, so it is added
-      # when the HTTP server is wired; excluding G120 globally here matches the
-      # sister Korylus projects (Annict / Mewst / Wikino) and avoids littering
-      # nolint over every form-parsing call.
-      #
-      # [Ja] G120: r.FormValue / r.ParseForm のボディサイズ未制限の指摘。gosec は
-      # 関数単位で検出するため、フォームを解析する箇所 (ここの CSRF / method-override
+      # G120: r.FormValue / r.ParseFormのボディサイズ未制限の指摘。gosecは
+      # 関数単位で検出するため、フォームを解析する箇所 (ここのCSRF / method-override
       # ミドルウェアや、後続フェーズの各フォームハンドラー) はすべて検出対象に残る。
       # リクエストボディサイズの上限は呼び出し箇所ごとに散らすのではなくサーバー /
-      # ミドルウェア単位の 1 箇所に置くべきもので、HTTP サーバー配線時に追加する。
-      # ここで G120 を一括除外するのは姉妹 Korylus プロジェクト (Annict / Mewst /
-      # Wikino) に揃える措置で、各フォーム解析箇所に nolint を散在させるのを避ける。
+      # ミドルウェア単位の1箇所に置くべきもので、HTTPサーバー配線時に追加する。
+      # ここでG120を一括除外するのは姉妹Korylusプロジェクト (Annict / Mewst /
+      # Wikino) に揃える措置で、各フォーム解析箇所にnolintを散在させるのを避ける。
       excludes:
         - G120
 
 formatters:
   enable:
-    - gofmt # standard Go formatting. [Ja] Go 標準フォーマット
-    - goimports # organize imports. [Ja] import 文の整理
+    - gofmt # Go標準フォーマット
+    - goimports # import文の整理
   exclusions:
     paths:
       - bin/.*
@@ -91,10 +69,9 @@ formatters:
       - static/css/.*
       - static/js/.*
       - node_modules/.*
-      - '(.+)_templ\.go' # templ-generated files. [Ja] templ 生成ファイル
+      - '(.+)_templ\.go' # templ生成ファイル
   settings:
     goimports:
-      # Group imports of this module separately from third-party packages.
-      # [Ja] 本モジュールの import をサードパーティと分けてグループ化します。
+      # 本モジュールのimportをサードパーティと分けてグループ化します。
       local-prefixes:
         - github.com/groobb/groobb/go

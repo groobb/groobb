@@ -13,11 +13,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// renderThreadLockNotice renders the notice for reasons with the page drawn in
-// locale, and returns the markup. The reasons are passed as the domain's own so
-// that a case names the condition rather than the presentation form of it.
-//
-// [Ja] renderThreadLockNotice は、ページを locale で描いた状態で reasons の案内を描画し、
+// renderThreadLockNoticeは、ページをlocaleで描いた状態でreasonsの案内を描画し、
 // そのマークアップを返します。理由はドメインのものとして渡すため、各ケースは表示用の形では
 // なく条件そのものを名指します。
 func renderThreadLockNotice(t *testing.T, locale model.Locale, reasons []model.ThreadLockReason, refusal bool) string {
@@ -32,17 +28,13 @@ func renderThreadLockNotice(t *testing.T, locale model.Locale, reasons []model.T
 
 	var buf bytes.Buffer
 	if err := components.ThreadLockNotice(data).Render(ctx, &buf); err != nil {
-		t.Fatalf("failed to render: %v", err)
+		t.Fatalf("描画に失敗: %v", err)
 	}
 
 	return buf.String()
 }
 
-// TestThreadLockNotice verifies that every lock reason says what closed the
-// thread in either UI language, with the cap written into its sentence where it
-// applies, and that a thread still taking posts draws nothing at all.
-//
-// [Ja] TestThreadLockNoticeは、どのロック理由も、スレッドを閉じたものをどちらのUI言語でも
+// TestThreadLockNoticeは、どのロック理由も、スレッドを閉じたものをどちらのUI言語でも
 // 述べること、上限については文にアプリケーションが適用する件数が書き込まれること、また
 // 投稿をまだ受け付けるスレッドには何も描かれないことを検証します。
 func TestThreadLockNotice(t *testing.T) {
@@ -55,25 +47,25 @@ func TestThreadLockNotice(t *testing.T) {
 		want    string
 	}{
 		{
-			name:    "post limit reached on a Japanese page",
+			name:    "日本語のページで投稿数の上限に達した",
 			locale:  model.LocaleJa,
 			reasons: []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached},
 			want:    "このスレッドは投稿数の上限 (1000 件) に達しました。",
 		},
 		{
-			name:    "post limit reached on an English page",
+			name:    "英語のページで投稿数の上限に達した",
 			locale:  model.LocaleEn,
 			reasons: []model.ThreadLockReason{model.ThreadLockReasonPostLimitReached},
 			want:    "This thread has reached its limit of 1000 posts.",
 		},
 		{
-			name:    "moderator lock on a Japanese page",
+			name:    "日本語のページでモデレーターがロックした",
 			locale:  model.LocaleJa,
 			reasons: []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator},
 			want:    "このスレッドは管理者によりロックされました。これ以上は書き込めません。",
 		},
 		{
-			name:    "moderator lock on an English page",
+			name:    "英語のページでモデレーターがロックした",
 			locale:  model.LocaleEn,
 			reasons: []model.ThreadLockReason{model.ThreadLockReasonLockedByModerator},
 			want:    "This thread has been locked by an administrator. Nothing more can be written here.",
@@ -90,21 +82,16 @@ func TestThreadLockNotice(t *testing.T) {
 		})
 	}
 
-	t.Run("an unlocked thread draws nothing", func(t *testing.T) {
+	t.Run("ロックされていないスレッドは何も描かない", func(t *testing.T) {
 		t.Parallel()
 
 		if got := renderThreadLockNotice(t, model.LocaleJa, nil, false); got != "" {
-			t.Errorf("ロックされていないスレッドの案内 = %q, want 空文字列", got)
+			t.Errorf("ロックされていないスレッドの案内 = %q、期待値 = 空文字列", got)
 		}
 	})
 }
 
-// TestThreadLockNotice_Refusal verifies that the same reason is announced as an
-// alert when it explains a submission that was just refused, and stays a quiet
-// notice when it is part of a thread being read. Both say the same thing, but
-// only one of them is the answer to something the visitor did.
-//
-// [Ja] TestThreadLockNotice_Refusal は、同じ理由が、たった今拒否された送信を説明する
+// TestThreadLockNotice_Refusalは、同じ理由が、たった今拒否された送信を説明する
 // ときはアラートとして読み上げられ、読まれているスレッドの一部であるときは控えめな注記の
 // ままであることを検証します。どちらも同じことを述べますが、訪問者が行ったことへの答えで
 // あるのは一方だけです。
@@ -124,16 +111,7 @@ func TestThreadLockNotice_Refusal(t *testing.T) {
 	}
 }
 
-// TestThreadLockNotice_ModeratorLockStatedAlone verifies that a thread an
-// administrator closed says that and nothing else, even when it also holds
-// every post it can hold.
-//
-// The administrator's decision is the answer to why nothing more can be written
-// here. Drawing the cap's sentence beside it would offer a second, independent
-// explanation for one refusal, and the first thing a visitor would take from it
-// is that the conversation carries on in the next thread.
-//
-// [Ja] TestThreadLockNotice_ModeratorLockStatedAloneは、管理者が閉じたスレッドが、
+// TestThreadLockNotice_ModeratorLockStatedAloneは、管理者が閉じたスレッドが、
 // 持てる投稿をすべて持っている場合でも、そのことだけを述べることを検証します。
 //
 // ここにこれ以上書けない理由への答えは管理者の判断です。その隣に上限の文を描けば、1つの
@@ -155,17 +133,7 @@ func TestThreadLockNotice_ModeratorLockStatedAlone(t *testing.T) {
 	}
 }
 
-// TestThreadLockNotice_NextThread verifies that the way on to the next thread
-// stands under the notice exactly when the cap is the only thing holding and the
-// caller named where a thread is started.
-//
-// A caller that named none draws no link, which is the state of a page that
-// answers a submission without having read the board. A lock that holds for
-// another reason as well draws none either: the thread would have been stopped
-// even with room left in it, so starting the next one would be walking around
-// the decision rather than carrying the conversation on.
-//
-// [Ja] TestThreadLockNotice_NextThread は、次のスレッドへ向かう道が、上限だけが成立して
+// TestThreadLockNotice_NextThreadは、次のスレッドへ向かう道が、上限だけが成立して
 // いて、かつ呼び出し側がスレッドを立てる場所を名指したときにちょうど、案内の下に立つことを
 // 検証します。
 //
@@ -192,7 +160,7 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 		wantText string
 	}{
 		{
-			name:     "post limit alone on a Japanese page",
+			name:     "日本語のページで投稿数の上限だけ",
 			locale:   model.LocaleJa,
 			reasons:  limitReached,
 			path:     templates.BoardThreadsNewPath("jazz"),
@@ -200,16 +168,16 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 			wantText: "この掲示板で新しいスレッドを立てる",
 		},
 		{
-			name:     "post limit alone on an English page",
+			name:     "英語のページで投稿数の上限だけ",
 			locale:   model.LocaleEn,
 			reasons:  limitReached,
 			path:     templates.BoardThreadsNewPath("jazz"),
 			wantLink: true,
 			wantText: "Start a new thread in this board",
 		},
-		{name: "no board named", locale: model.LocaleJa, reasons: limitReached, wantLink: false},
-		{name: "moderator lock alone", locale: model.LocaleJa, reasons: moderatorLocked, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
-		{name: "moderator lock alongside the post limit", locale: model.LocaleJa, reasons: moderatorLockedAtLimit, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
+		{name: "掲示板の指定が無い", locale: model.LocaleJa, reasons: limitReached, wantLink: false},
+		{name: "モデレーターのロックだけ", locale: model.LocaleJa, reasons: moderatorLocked, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
+		{name: "モデレーターのロックと投稿数の上限", locale: model.LocaleJa, reasons: moderatorLockedAtLimit, path: templates.BoardThreadsNewPath("jazz"), wantLink: false},
 	}
 
 	for _, tt := range tests {
@@ -225,13 +193,13 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 
 			var buf bytes.Buffer
 			if err := components.ThreadLockNotice(data).Render(ctx, &buf); err != nil {
-				t.Fatalf("failed to render: %v", err)
+				t.Fatalf("描画に失敗: %v", err)
 			}
 
 			got := buf.String()
 			hasLink := strings.Contains(got, `href="/b/jazz/threads/new"`)
 			if hasLink != tt.wantLink {
-				t.Errorf("次のスレッドへのリンクの有無 = %v, want %v: %s", hasLink, tt.wantLink, got)
+				t.Errorf("次のスレッドへのリンクの有無 = %v、期待値 = %v: %s", hasLink, tt.wantLink, got)
 			}
 			if tt.wantLink && !strings.Contains(got, tt.wantText) {
 				t.Errorf("リンクの文言 %q が含まれていない: %s", tt.wantText, got)
@@ -240,14 +208,8 @@ func TestThreadLockNotice_NextThread(t *testing.T) {
 	}
 }
 
-// TestThreadLockNotice_SaysEveryReason verifies that every reason a thread can
-// be locked for draws something, in either UI language. A locked thread carries
-// neither the reply form nor the way into an account, so a reason with no
-// sentence of its own would end the thread with nothing at all: the visitor
-// would be unable to write and unable to see why.
-//
-// [Ja] TestThreadLockNotice_SaysEveryReason は、スレッドをロックしうるどの理由も、
-// どちらの UI 言語でも何かを描くことを検証します。ロック中のスレッドは返信フォームも
+// TestThreadLockNotice_SaysEveryReasonは、スレッドをロックしうるどの理由も、
+// どちらのUI言語でも何かを描くことを検証します。ロック中のスレッドは返信フォームも
 // アカウントへの導線も持たないため、自身の文を持たない理由はスレッドを何も無い状態で
 // 終わらせます。訪問者は書くこともできず、なぜかを知ることもできません。
 func TestThreadLockNotice_SaysEveryReason(t *testing.T) {

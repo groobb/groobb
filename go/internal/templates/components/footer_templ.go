@@ -10,11 +10,7 @@ import (
 	templruntime "github.com/a-h/templ/runtime"
 )
 
-// Footer renders a minimal page footer with a copyright notice. It is kept
-// deliberately small for the bootstrap; legal links (terms / privacy) are added
-// once those pages exist.
-//
-// [Ja] Footer は著作権表示のみの最小限のページフッターを描画します。ブートストラップ
+// Footerは著作権表示のみの最小限のページフッターを描画します。ブートストラップ
 // 段階では意図的に小さく保ち、法的リンク (利用規約 / プライバシー) は該当ページが
 // できた時点で追加します。
 func Footer() templ.Component {

@@ -13,23 +13,13 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the two-factor authentication setup (enrollment)
-// page. QRCodeDataURI is the server-rendered QR code as a PNG data URI, dropped
-// straight into an <img src>; Secret is the same enrollment secret shown as text so
-// a user who cannot scan can type it into their authenticator app. Neither is
-// echoed form input — both come from the resolved enrollment. FormErrors surfaces a
-// missing, malformed, or incorrect code beneath the code field (a form-wide message
-// when the enrollment could not be resolved). The typed code is deliberately not
-// echoed back, since a TOTP code is single-use and the user reads a fresh one from
-// the app on retry.
-//
-// [Ja] NewPageData は 2 段階認証の設定 (登録) ページのデータです。QRCodeDataURI は
-// サーバーが描画した QR コードの PNG data URI で、<img src> にそのまま入れます。Secret は
-// 同じ登録用 secret をテキストで表示したもので、スキャンできないユーザーが認証アプリに
+// NewPageDataは2段階認証の設定 (登録) ページのデータです。QRCodeDataURIは
+// サーバーが描画したQRコードのPNG data URIで、<img src> にそのまま入れます。Secretは
+// 同じ登録用secretをテキストで表示したもので、スキャンできないユーザーが認証アプリに
 // 入力できるようにします。どちらもフォーム入力のエコーバックではなく、解決した登録から
-// 得ます。FormErrors はコードの未入力・不正・不一致を code フィールドの下に出します
+// 得ます。FormErrorsはコードの未入力・不正・不一致をcodeフィールドの下に出します
 // (登録を解決できなかったときはフォーム全体のメッセージ)。入力されたコードは意図的に
-// エコーバックしません。TOTP コードは 1 回使い切りで、再試行時はユーザーがアプリから新しい
+// エコーバックしません。TOTPコードは1回使い切りで、再試行時はユーザーがアプリから新しい
 // コードを読むためです。
 type NewPageData struct {
 	CSRFToken     string
@@ -38,20 +28,12 @@ type NewPageData struct {
 	FormErrors    *model.ValidationError
 }
 
-// New renders the two-factor authentication setup form: the QR code encoding the
-// otpauth URI, the secret shown as text for manual entry, and a code field where
-// the user confirms a code from their authenticator app to enable 2FA. The QR image
-// is given a white background and padding because the generated code has no quiet
-// zone of its own, and a scanner needs that light margin around the code. The form
-// posts to /settings/two_factor_auth (POST, no method override) with the CSRF token
-// embedded as a hidden field.
-//
-// [Ja] New は 2 段階認証の設定フォームを描画します。otpauth URI をエンコードした QR コード、
-// 手動入力用にテキスト表示した secret、そしてユーザーが認証アプリのコードを確認して 2FA を
-// 有効化する code フィールドです。生成した QR コードは自前のクワイエットゾーン (静穏帯) を
-// 持たず、スキャナーはコードの周囲にその明るい余白を必要とするため、QR 画像に白背景と
-// パディングを与えます。フォームは CSRF トークンを hidden フィールドとして埋め込み、
-// /settings/two_factor_auth へ POST します (メソッドオーバーライドなし)。
+// Newは2段階認証の設定フォームを描画します。otpauth URIをエンコードしたQRコード、
+// 手動入力用にテキスト表示したsecret、そしてユーザーが認証アプリのコードを確認して2FAを
+// 有効化するcodeフィールドです。生成したQRコードは自前のクワイエットゾーン (静穏帯) を
+// 持たず、スキャナーはコードの周囲にその明るい余白を必要とするため、QR画像に白背景と
+// パディングを与えます。フォームはCSRFトークンをhiddenフィールドとして埋め込み、
+// /settings/two_factor_authへPOSTします (メソッドオーバーライドなし)。
 func New(data NewPageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -80,7 +62,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_new_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 54, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 36, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -93,7 +75,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_new_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 57, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 39, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -114,7 +96,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.SafeURL(data.QRCodeDataURI))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 63, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 45, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -127,7 +109,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "settings_two_factor_auth_new_qr_alt"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 64, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 46, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -140,7 +122,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_new_secret_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 71, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 53, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -153,7 +135,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Secret)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 74, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 56, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -166,7 +148,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsTwoFactorAuthPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 78, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 60, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -179,7 +161,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 79, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 61, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -215,7 +197,7 @@ func New(data NewPageData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("code", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 101, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 83, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -241,7 +223,7 @@ func New(data NewPageData) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_new_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 107, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/new.templ`, Line: 89, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {

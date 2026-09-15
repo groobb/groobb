@@ -11,34 +11,14 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// PostForm renders the form a post is written in: the body, the rules it is
-// judged by, and the button that submits it.
-//
-// The reply carries no language of its own. A thread states the language it is
-// mainly written in, and a reply in another one is accepted, so asking for it
-// again on every post would be a choice made once per thread repeated at every
-// turn of the conversation.
-//
-// The length limit is not written as a maxlength. That attribute counts UTF-16
-// code units where the server counts code points, so it would stop text the
-// server accepts; the limit is stated in the hint beside the field, which is the
-// count the submission is actually judged by.
-//
-// The notation for quoting another post is stated beside the field as well.
-// Nothing in the form suggests it otherwise, and a visitor who does not know it
-// writes a reply that reads as an answer to nothing in particular.
-//
-// A leading newline inside the textarea is consumed by the HTML parser. Adding
-// one before the body preserves any blank lines the visitor actually entered.
-//
-// [Ja] PostForm は投稿を書くフォームを描画します。本文、それが判定される規則、そして
+// PostFormは投稿を書くフォームを描画します。本文、それが判定される規則、そして
 // それを送信するボタンです。
 //
 // 返信は自身の言語を持ちません。スレッドは主に使われる言語を述べ、別の言語での返信も
-// 受け付けるため、投稿のたびに言語を尋ねることは、スレッドにつき 1 度行われる選択を
+// 受け付けるため、投稿のたびに言語を尋ねることは、スレッドにつき1度行われる選択を
 // 会話の一手ごとに繰り返すことになります。
 //
-// 長さの上限は maxlength には書きません。この属性が数えるのは UTF-16 のコード単位で、
+// 長さの上限はmaxlengthには書きません。この属性が数えるのはUTF-16のコード単位で、
 // サーバーが数えるのはコードポイントであるため、サーバーが受け付けるテキストを止めて
 // しまいます。上限はフィールドの傍らのヒントで述べます。そちらが、送信が実際に判定される
 // 数です。
@@ -47,7 +27,7 @@ import (
 // 示唆することは無く、それを知らない訪問者は、何に対する答えなのかの分からない返信を
 // 書くことになります。
 //
-// textarea の先頭の改行は HTML パーサーが消費します。本文の前に改行を 1 つ足すことで、
+// textareaの先頭の改行はHTMLパーサーが消費します。本文の前に改行を1つ足すことで、
 // 訪問者が入力した先頭の空行を保ちます。
 func PostForm(data PostFormData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -109,7 +89,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(data.Action.SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 51, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 31, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -122,7 +102,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 52, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 32, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -164,7 +144,7 @@ func PostForm(data PostFormData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("body-hint body-reference-hint " + FieldErrorsDescribedBy("body", data.Errors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 69, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 49, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -187,7 +167,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("\n" + data.Body)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 73, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 53, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -200,7 +180,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "post_body_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 74, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 54, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -213,7 +193,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "post_reference_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 75, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 55, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -234,7 +214,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "post_interval_hint", map[string]any{"Count": data.PostIntervalSeconds}))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 79, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 59, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -247,7 +227,7 @@ func PostForm(data PostFormData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "post_reply_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 82, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/post_form.templ`, Line: 62, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

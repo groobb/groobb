@@ -11,13 +11,7 @@ import (
 	"github.com/groobb/groobb/go/internal/email"
 )
 
-// clearEnv moves the test into an empty working directory and unsets every
-// setting in the environment, so that a case states exactly which source
-// provides which value. Without it a case would read whatever the developer's
-// own environment holds, and any configuration file that happens to sit in the
-// package directory.
-//
-// [Ja] clearEnv はテストを空の作業ディレクトリへ移し、環境変数の設定をすべて未設定に
+// clearEnvはテストを空の作業ディレクトリへ移し、環境変数の設定をすべて未設定に
 // します。各ケースがどの入力からどの値を得るかを明示するためです。これが無いと、ケースは
 // 開発者自身の環境変数や、パッケージのディレクトリにたまたま置かれた設定ファイルを
 // 読んでしまいます。
@@ -51,13 +45,9 @@ func clearEnv(t *testing.T) {
 	}
 }
 
-// setRequiredEnv sets the environment variables that Load requires, from a
-// cleared environment.
-// t.Setenv restores the previous values automatically when the test ends.
-//
-// [Ja] setRequiredEnv は、クリアされた環境変数の状態から、Load が必須とする環境変数を
+// setRequiredEnvは、クリアされた環境変数の状態から、Loadが必須とする環境変数を
 // 設定します。
-// t.Setenv はテスト終了時に元の値を自動的に復元します。
+// t.Setenvはテスト終了時に元の値を自動的に復元します。
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	clearEnv(t)
@@ -67,40 +57,34 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("GROOBB_CONTINUATION_TOKEN_KEY", "groobb-test-continuation-token-key-32-bytes")
 }
 
-// TestLoad verifies that Load reads the required environment variables.
-//
-// [Ja] TestLoad は Load が必須の環境変数を読み込むことを検証します。
+// TestLoadはLoadが必須の環境変数を読み込むことを検証します。
 func TestLoad(t *testing.T) {
 	setRequiredEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.Env != "test" {
-		t.Errorf("Env = %q, want %q", cfg.Env, "test")
+		t.Errorf("Env = %q、期待値 = %q", cfg.Env, "test")
 	}
 	if cfg.Port != "8080" {
-		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
+		t.Errorf("Port = %q、期待値 = %q", cfg.Port, "8080")
 	}
 	if cfg.DatabasePath != "tmp/groobb_test.sqlite" {
-		t.Errorf("DatabasePath = %q, want %q", cfg.DatabasePath, "tmp/groobb_test.sqlite")
+		t.Errorf("DatabasePath = %q、期待値 = %q", cfg.DatabasePath, "tmp/groobb_test.sqlite")
 	}
 	if cfg.ContinuationTokenKey != "groobb-test-continuation-token-key-32-bytes" {
-		t.Errorf("ContinuationTokenKey was not loaded from the environment")
+		t.Errorf("ContinuationTokenKeyが環境変数から読み込まれていない")
 	}
 }
 
-// TestLoadReadsEmailSettings verifies the optional Resend email settings are
-// read from the environment, and default to empty when unset (they are not
-// required because the worker that uses them is not started yet).
-//
-// [Ja] TestLoadReadsEmailSettings は任意の Resend メール設定が環境変数から読み込まれ、
+// TestLoadReadsEmailSettingsは任意のResendメール設定が環境変数から読み込まれ、
 // 未設定時は空になることを検証する (これらを使うワーカーはまだ起動されないため必須では
 // ない)。
 func TestLoadReadsEmailSettings(t *testing.T) {
-	t.Run("set", func(t *testing.T) {
+	t.Run("設定あり", func(t *testing.T) {
 		setRequiredEnv(t)
 		t.Setenv("GROOBB_RESEND_API_KEY", "re_test_key")
 		t.Setenv("GROOBB_EMAIL_FROM", "noreply@example.dev")
@@ -108,21 +92,21 @@ func TestLoadReadsEmailSettings(t *testing.T) {
 
 		cfg, err := Load()
 		if err != nil {
-			t.Fatalf("Load() returned an unexpected error: %v", err)
+			t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 		}
 
 		if cfg.ResendAPIKey != "re_test_key" {
-			t.Errorf("ResendAPIKey = %q, want %q", cfg.ResendAPIKey, "re_test_key")
+			t.Errorf("ResendAPIKey = %q、期待値 = %q", cfg.ResendAPIKey, "re_test_key")
 		}
 		if cfg.EmailFrom != "noreply@example.dev" {
-			t.Errorf("EmailFrom = %q, want %q", cfg.EmailFrom, "noreply@example.dev")
+			t.Errorf("EmailFrom = %q、期待値 = %q", cfg.EmailFrom, "noreply@example.dev")
 		}
 		if cfg.EmailFromName != "Groobb" {
-			t.Errorf("EmailFromName = %q, want %q", cfg.EmailFromName, "Groobb")
+			t.Errorf("EmailFromName = %q、期待値 = %q", cfg.EmailFromName, "Groobb")
 		}
 	})
 
-	t.Run("unset defaults to empty without error", func(t *testing.T) {
+	t.Run("未設定ならエラー無しで空になる", func(t *testing.T) {
 		setRequiredEnv(t)
 		t.Setenv("GROOBB_RESEND_API_KEY", "")
 		t.Setenv("GROOBB_EMAIL_FROM", "")
@@ -130,22 +114,17 @@ func TestLoadReadsEmailSettings(t *testing.T) {
 
 		cfg, err := Load()
 		if err != nil {
-			t.Fatalf("Load() should not fail when email settings are missing: %v", err)
+			t.Fatalf("メール設定が無いときにLoad()が失敗した: %v", err)
 		}
 
 		if cfg.ResendAPIKey != "" || cfg.EmailFrom != "" || cfg.EmailFromName != "" {
-			t.Errorf("email settings should default to empty, got %q / %q / %q",
+			t.Errorf("メール設定 = %q / %q / %q、空を期待",
 				cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailFromName)
 		}
 	})
 }
 
-// TestLoadReadsAppURL verifies the optional AppURL accepts public HTTP and HTTPS
-// base URLs from the environment, and defaults to empty when unset (it is not
-// required for the same reason as the email settings: a deployment without it
-// must still boot).
-//
-// [Ja] TestLoadReadsAppURL は任意の AppURL が公開 HTTP・HTTPS ベース URL を環境変数
+// TestLoadReadsAppURLは任意のAppURLが公開HTTP・HTTPSベースURLを環境変数
 // から受け入れ、未設定時は空になることを検証する (メール設定と同じ理由で必須ではない:
 // 未設定でも起動できる必要がある)。
 func TestLoadReadsAppURL(t *testing.T) {
@@ -154,8 +133,8 @@ func TestLoadReadsAppURL(t *testing.T) {
 		value string
 	}{
 		{name: "HTTPS", value: "https://groobb.example.dev"},
-		{name: "HTTP with a port", value: "http://localhost:8080"},
-		{name: "unset defaults to empty without error", value: ""},
+		{name: "ポート付きのHTTP", value: "http://localhost:8080"},
+		{name: "未設定ならエラー無しで空になる", value: ""},
 	}
 
 	for _, tt := range tests {
@@ -165,110 +144,96 @@ func TestLoadReadsAppURL(t *testing.T) {
 
 			cfg, err := Load()
 			if err != nil {
-				t.Fatalf("Load() returned an unexpected error: %v", err)
+				t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 			}
 
 			if cfg.AppURL != tt.value {
-				t.Errorf("AppURL = %q, want %q", cfg.AppURL, tt.value)
+				t.Errorf("AppURL = %q、期待値 = %q", cfg.AppURL, tt.value)
 			}
 		})
 	}
 }
 
-// TestLoadRejectsInvalidAppURL verifies a supplied AppURL is an absolute public
-// HTTP(S) base URL that can be joined to an application path without changing
-// its meaning. The error names the source that supplied the bad value, so an
-// operator knows which input to correct.
-//
-// [Ja] TestLoadRejectsInvalidAppURL は、指定された AppURL がアプリケーションのパスの
-// 意味を変えずに連結できる絶対公開 HTTP(S) ベース URL であることを検証します。エラーは
+// TestLoadRejectsInvalidAppURLは、指定されたAppURLがアプリケーションのパスの
+// 意味を変えずに連結できる絶対公開HTTP(S) ベースURLであることを検証します。エラーは
 // 不正な値を与えた入力元を名指しし、運用者が修正すべき入力を分かるようにします。
 func TestLoadRejectsInvalidAppURL(t *testing.T) {
 	tests := []struct {
 		name  string
 		value string
 	}{
-		{name: "relative", value: "groobb.example.dev"},
-		{name: "unsupported scheme", value: "ftp://groobb.example.dev"},
-		{name: "missing host", value: "https:///groobb"},
-		{name: "user information", value: "https://alice@groobb.example.dev"},
-		{name: "query", value: "https://groobb.example.dev?view=full"},
-		{name: "empty query", value: "https://groobb.example.dev?"},
-		{name: "fragment", value: "https://groobb.example.dev#top"},
-		{name: "empty fragment", value: "https://groobb.example.dev#"},
-		{name: "trailing slash", value: "https://groobb.example.dev/"},
-		{name: "path", value: "https://groobb.example.dev/community"},
+		{name: "相対", value: "groobb.example.dev"},
+		{name: "対応していないスキーム", value: "ftp://groobb.example.dev"},
+		{name: "ホストが無い", value: "https:///groobb"},
+		{name: "ユーザー情報", value: "https://alice@groobb.example.dev"},
+		{name: "クエリ", value: "https://groobb.example.dev?view=full"},
+		{name: "空のクエリ", value: "https://groobb.example.dev?"},
+		{name: "フラグメント", value: "https://groobb.example.dev#top"},
+		{name: "空のフラグメント", value: "https://groobb.example.dev#"},
+		{name: "末尾スラッシュ", value: "https://groobb.example.dev/"},
+		{name: "パス", value: "https://groobb.example.dev/community"},
 	}
 
 	for _, tt := range tests {
-		t.Run("environment/"+tt.name, func(t *testing.T) {
+		t.Run("環境変数/"+tt.name, func(t *testing.T) {
 			setRequiredEnv(t)
 			t.Setenv("GROOBB_APP_URL", tt.value)
 
 			_, err := Load()
 			if err == nil {
-				t.Fatalf("Load() should reject AppURL %q", tt.value)
+				t.Fatalf("Load()がAppURL %q を拒否しなかった", tt.value)
 			}
 			if got := err.Error(); !strings.Contains(got, "the environment variable GROOBB_APP_URL") {
-				t.Errorf("error = %q, want the environment source", got)
+				t.Errorf("エラー = %q、環境変数の入力元を期待", got)
 			}
 		})
 	}
 
-	t.Run("configuration file source", func(t *testing.T) {
+	t.Run("設定ファイルの入力元", func(t *testing.T) {
 		setRequiredEnv(t)
 		writeConfigFile(t, "[app]\nurl = \"https://groobb.example.dev/\"\n")
 
 		_, err := Load()
 		if err == nil {
-			t.Fatal("Load() should reject an invalid AppURL from the configuration file")
+			t.Fatal("Load()が設定ファイルの不正なAppURLを拒否しなかった")
 		}
 		if got := err.Error(); !strings.Contains(got, `"app.url" in the configuration file`) {
-			t.Errorf("error = %q, want the configuration file source", got)
+			t.Errorf("エラー = %q、設定ファイルの入力元を期待", got)
 		}
 	})
 }
 
-// Cloudflare's documented dummy keys, used only as test fixtures (never as dev
-// runtime defaults).
-//
-// [Ja] Cloudflare が公開しているダミーキー。テストのフィクスチャとしてのみ使い、
-// dev の実行時デフォルトには使わない。
+// Cloudflareが公開しているダミーキー。テストのフィクスチャとしてのみ使い、
+// devの実行時デフォルトには使わない。
 const (
 	turnstileTestSiteKey   = "1x00000000000000000000AA"
 	turnstileTestSecretKey = "1x0000000000000000000000000000000AA"
 )
 
-// TestLoadReadsTurnstileSettings verifies the optional Turnstile keys are read
-// from the environment, and default to empty when unset (they are not required
-// because Turnstile is enabled operationally by provisioning the real keys).
-//
-// [Ja] TestLoadReadsTurnstileSettings は任意の Turnstile キーが環境変数から読み込まれ、
+// TestLoadReadsTurnstileSettingsは任意のTurnstileキーが環境変数から読み込まれ、
 // 未設定時は空になることを検証する (実キーを設定する運用で有効化するため必須ではない)。
 func TestLoadReadsTurnstileSettings(t *testing.T) {
-	t.Run("set", func(t *testing.T) {
+	t.Run("設定あり", func(t *testing.T) {
 		setRequiredEnv(t)
-		// Keep DISABLE unset so it does not clear the keys under assertion.
-		//
-		// [Ja] DISABLE を未設定にして、検証対象のキーが空に落とされないようにする。
+		// DISABLEを未設定にして、検証対象のキーが空に落とされないようにする。
 		t.Setenv("GROOBB_TURNSTILE_DISABLE", "")
 		t.Setenv("GROOBB_TURNSTILE_SITE_KEY", turnstileTestSiteKey)
 		t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", turnstileTestSecretKey)
 
 		cfg, err := Load()
 		if err != nil {
-			t.Fatalf("Load() returned an unexpected error: %v", err)
+			t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 		}
 
 		if cfg.TurnstileSiteKey != turnstileTestSiteKey {
-			t.Errorf("TurnstileSiteKey = %q, want %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
+			t.Errorf("TurnstileSiteKey = %q、期待値 = %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
 		}
 		if cfg.TurnstileSecretKey != turnstileTestSecretKey {
-			t.Errorf("TurnstileSecretKey = %q, want %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
+			t.Errorf("TurnstileSecretKey = %q、期待値 = %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
 		}
 	})
 
-	t.Run("unset defaults to empty without error", func(t *testing.T) {
+	t.Run("未設定ならエラー無しで空になる", func(t *testing.T) {
 		setRequiredEnv(t)
 		t.Setenv("GROOBB_TURNSTILE_DISABLE", "")
 		t.Setenv("GROOBB_TURNSTILE_SITE_KEY", "")
@@ -276,22 +241,18 @@ func TestLoadReadsTurnstileSettings(t *testing.T) {
 
 		cfg, err := Load()
 		if err != nil {
-			t.Fatalf("Load() should not fail when Turnstile keys are missing: %v", err)
+			t.Fatalf("Turnstileのキーが無いときにLoad()が失敗した: %v", err)
 		}
 
 		if cfg.TurnstileSiteKey != "" || cfg.TurnstileSecretKey != "" {
-			t.Errorf("Turnstile keys should default to empty, got %q / %q",
+			t.Errorf("Turnstileのキー = %q / %q、空を期待",
 				cfg.TurnstileSiteKey, cfg.TurnstileSecretKey)
 		}
 	})
 }
 
-// TestLoadTurnstileDisable verifies the fail-closed disable logic:
-// GROOBB_TURNSTILE_DISABLE clears both keys in non-production environments but is
-// ignored (keys kept) in production.
-//
-// [Ja] TestLoadTurnstileDisable は fail-closed の無効化ロジックを検証する。
-// GROOBB_TURNSTILE_DISABLE は非本番環境では両キーを空にするが、本番環境では無視され
+// TestLoadTurnstileDisableはfail-closedの無効化ロジックを検証する。
+// GROOBB_TURNSTILE_DISABLEは非本番環境では両キーを空にするが、本番環境では無視され
 // (キーを保持する)。
 func TestLoadTurnstileDisable(t *testing.T) {
 	tests := []struct {
@@ -300,10 +261,10 @@ func TestLoadTurnstileDisable(t *testing.T) {
 		disable         string
 		wantKeysCleared bool
 	}{
-		{name: "dev DISABLE clears keys", env: "dev", disable: "true", wantKeysCleared: true},
-		{name: "test DISABLE clears keys", env: "test", disable: "true", wantKeysCleared: true},
-		{name: "production DISABLE is ignored", env: "prod", disable: "true", wantKeysCleared: false},
-		{name: "DISABLE unset keeps keys", env: "test", disable: "", wantKeysCleared: false},
+		{name: "devではDISABLEがキーを空にする", env: "dev", disable: "true", wantKeysCleared: true},
+		{name: "testではDISABLEがキーを空にする", env: "test", disable: "true", wantKeysCleared: true},
+		{name: "本番ではDISABLEが無視される", env: "prod", disable: "true", wantKeysCleared: false},
+		{name: "DISABLEが未設定ならキーを保つ", env: "test", disable: "", wantKeysCleared: false},
 	}
 
 	for _, tt := range tests {
@@ -316,34 +277,29 @@ func TestLoadTurnstileDisable(t *testing.T) {
 
 			cfg, err := Load()
 			if err != nil {
-				t.Fatalf("Load() returned an unexpected error: %v", err)
+				t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 			}
 
 			if tt.wantKeysCleared {
 				if cfg.TurnstileSiteKey != "" || cfg.TurnstileSecretKey != "" {
-					t.Errorf("keys should be cleared, got site=%q secret=%q",
+					t.Errorf("キーが空になっていない: site=%q secret=%q",
 						cfg.TurnstileSiteKey, cfg.TurnstileSecretKey)
 				}
 				return
 			}
 
 			if cfg.TurnstileSiteKey != turnstileTestSiteKey {
-				t.Errorf("TurnstileSiteKey = %q, want %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
+				t.Errorf("TurnstileSiteKey = %q、期待値 = %q", cfg.TurnstileSiteKey, turnstileTestSiteKey)
 			}
 			if cfg.TurnstileSecretKey != turnstileTestSecretKey {
-				t.Errorf("TurnstileSecretKey = %q, want %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
+				t.Errorf("TurnstileSecretKey = %q、期待値 = %q", cfg.TurnstileSecretKey, turnstileTestSecretKey)
 			}
 		})
 	}
 }
 
-// TestLoadTurnstilePartialKeyWarning verifies that Load warns in production when
-// exactly one Turnstile key is set (a silent-bypass misconfiguration), and stays
-// quiet when both keys are set, both are empty, or the environment is not
-// production.
-//
-// [Ja] TestLoadTurnstilePartialKeyWarning は、本番で Turnstile のキーが片方だけ設定
-// されているとき (黙ってバイパスされる設定ミス) に Load が警告し、両方設定・両方空・
+// TestLoadTurnstilePartialKeyWarningは、本番でTurnstileのキーが片方だけ設定
+// されているとき (黙ってバイパスされる設定ミス) にLoadが警告し、両方設定・両方空・
 // 非本番のときは警告しないことを検証する。
 func TestLoadTurnstilePartialKeyWarning(t *testing.T) {
 	tests := []struct {
@@ -353,11 +309,11 @@ func TestLoadTurnstilePartialKeyWarning(t *testing.T) {
 		secretKey string
 		wantWarn  bool
 	}{
-		{name: "prod site key only warns", env: "prod", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: true},
-		{name: "prod secret key only warns", env: "prod", siteKey: "", secretKey: turnstileTestSecretKey, wantWarn: true},
-		{name: "prod both keys set does not warn", env: "prod", siteKey: turnstileTestSiteKey, secretKey: turnstileTestSecretKey, wantWarn: false},
-		{name: "prod both keys empty does not warn", env: "prod", siteKey: "", secretKey: "", wantWarn: false},
-		{name: "dev site key only does not warn", env: "dev", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: false},
+		{name: "prodでサイトキーだけなら警告する", env: "prod", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: true},
+		{name: "prodでシークレットキーだけなら警告する", env: "prod", siteKey: "", secretKey: turnstileTestSecretKey, wantWarn: true},
+		{name: "prodで両方のキーがあれば警告しない", env: "prod", siteKey: turnstileTestSiteKey, secretKey: turnstileTestSecretKey, wantWarn: false},
+		{name: "prodで両方のキーが空なら警告しない", env: "prod", siteKey: "", secretKey: "", wantWarn: false},
+		{name: "devでサイトキーだけなら警告しない", env: "dev", siteKey: turnstileTestSiteKey, secretKey: "", wantWarn: false},
 	}
 
 	for _, tt := range tests {
@@ -368,10 +324,7 @@ func TestLoadTurnstilePartialKeyWarning(t *testing.T) {
 			t.Setenv("GROOBB_TURNSTILE_SITE_KEY", tt.siteKey)
 			t.Setenv("GROOBB_TURNSTILE_SECRET_KEY", tt.secretKey)
 
-			// Capture the default slog output for the duration of the test and
-			// restore it afterward, so the partial-key warning can be asserted.
-			//
-			// [Ja] 片方キー警告を検証できるよう、テスト中だけデフォルトの slog 出力を
+			// 片方キー警告を検証できるよう、テスト中だけデフォルトのslog出力を
 			// 捕捉し、終了後に元へ戻す。
 			var buf bytes.Buffer
 			original := slog.Default()
@@ -379,45 +332,41 @@ func TestLoadTurnstilePartialKeyWarning(t *testing.T) {
 			defer slog.SetDefault(original)
 
 			if _, err := Load(); err != nil {
-				t.Fatalf("Load() returned an unexpected error: %v", err)
+				t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 			}
 
 			warned := strings.Contains(buf.String(), "片方のみ設定")
 			if warned != tt.wantWarn {
-				t.Errorf("partial-key warning logged = %v, want %v (log: %q)", warned, tt.wantWarn, buf.String())
+				t.Errorf("片方キーの警告の出力 = %v、期待値 = %v (ログ: %q)", warned, tt.wantWarn, buf.String())
 			}
 		})
 	}
 }
 
-// TestLoadDefaultsEnvToDev verifies that an empty APP_ENV defaults to "dev".
-//
-// [Ja] TestLoadDefaultsEnvToDev は APP_ENV が空のとき "dev" が既定値になることを検証します。
+// TestLoadDefaultsEnvToDevはAPP_ENVが空のとき "dev" が既定値になることを検証します。
 func TestLoadDefaultsEnvToDev(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("APP_ENV", "")
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.Env != "dev" {
-		t.Errorf("Env = %q, want %q", cfg.Env, "dev")
+		t.Errorf("Env = %q、期待値 = %q", cfg.Env, "dev")
 	}
 }
 
-// TestLoadMissingRequiredEnv verifies that Load fails when a required variable is missing.
-//
-// [Ja] TestLoadMissingRequiredEnv は必須の環境変数が欠けているとき Load が失敗することを検証します。
+// TestLoadMissingRequiredEnvは必須の環境変数が欠けているときLoadが失敗することを検証します。
 func TestLoadMissingRequiredEnv(t *testing.T) {
 	tests := []struct {
 		name  string
 		unset string
 	}{
-		{name: "GROOBB_PORT is missing", unset: "GROOBB_PORT"},
-		{name: "GROOBB_DATABASE_PATH is missing", unset: "GROOBB_DATABASE_PATH"},
-		{name: "GROOBB_CONTINUATION_TOKEN_KEY is missing", unset: "GROOBB_CONTINUATION_TOKEN_KEY"},
+		{name: "GROOBB_PORTが無い", unset: "GROOBB_PORT"},
+		{name: "GROOBB_DATABASE_PATHが無い", unset: "GROOBB_DATABASE_PATH"},
+		{name: "GROOBB_CONTINUATION_TOKEN_KEYが無い", unset: "GROOBB_CONTINUATION_TOKEN_KEY"},
 	}
 
 	for _, tt := range tests {
@@ -426,42 +375,35 @@ func TestLoadMissingRequiredEnv(t *testing.T) {
 			t.Setenv(tt.unset, "")
 
 			if _, err := Load(); err == nil {
-				t.Errorf("Load() should fail when %s is missing, but got nil error", tt.unset)
+				t.Errorf("%s が無いときにLoad()のエラーがnilだった", tt.unset)
 			}
 		})
 	}
 }
 
-// TestLoadRejectsShortContinuationTokenKey verifies that an easily guessed key
-// cannot reach the signing code through the normal application startup path.
-//
-// [Ja] TestLoadRejectsShortContinuationTokenKey は、推測しやすい短い鍵が通常のアプリ起動
+// TestLoadRejectsShortContinuationTokenKeyは、推測しやすい短い鍵が通常のアプリ起動
 // 経路から署名処理へ到達できないことを検証します。
 func TestLoadRejectsShortContinuationTokenKey(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("GROOBB_CONTINUATION_TOKEN_KEY", "too-short")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("Load() should fail when GROOBB_CONTINUATION_TOKEN_KEY is shorter than 32 bytes")
+		t.Fatal("GROOBB_CONTINUATION_TOKEN_KEYが32バイト未満なのにLoad()が失敗しなかった")
 	}
 }
 
-// TestLoadRejectsAnInvalidPort verifies that a port the server cannot listen on
-// stops startup naming the setting, rather than surfacing as a failure to bind
-// or, for 0, as an instance listening on whatever port the kernel handed out.
-//
-// [Ja] TestLoadRejectsAnInvalidPort は、サーバーが待ち受けられないポートが設定名を挙げて
-// 起動を止めることを検証する。bind の失敗として現れたり、0 の場合にカーネルが割り当てた
+// TestLoadRejectsAnInvalidPortは、サーバーが待ち受けられないポートが設定名を挙げて
+// 起動を止めることを検証する。bindの失敗として現れたり、0の場合にカーネルが割り当てた
 // ポートで待ち受けるインスタンスになったりしないようにするため。
 func TestLoadRejectsAnInvalidPort(t *testing.T) {
 	tests := []struct {
 		name  string
 		value string
 	}{
-		{name: "not a number", value: "http"},
-		{name: "out of range", value: "70000"},
-		{name: "zero", value: "0"},
-		{name: "negative", value: "-1"},
+		{name: "数値ではない", value: "http"},
+		{name: "範囲外", value: "70000"},
+		{name: "ゼロ", value: "0"},
+		{name: "負の値", value: "-1"},
 	}
 
 	for _, tt := range tests {
@@ -471,28 +413,20 @@ func TestLoadRejectsAnInvalidPort(t *testing.T) {
 
 			_, err := Load()
 			if err == nil {
-				t.Fatalf("Load() should reject GROOBB_PORT = %q", tt.value)
+				t.Fatalf("Load()がGROOBB_PORT = %q を拒否しなかった", tt.value)
 			}
 			if !strings.Contains(err.Error(), "GROOBB_PORT") {
-				t.Errorf("the error should name the source of the value, got: %v", err)
+				t.Errorf("エラーが値の入力元を挙げていない: %v", err)
 			}
 		})
 	}
 }
 
-// TestLoadReadsTrustedProxies verifies how the list is written: a single
-// address stands for itself, a CIDR block for its network, whitespace around an
-// entry is not part of it, and an entry carrying bits below its prefix length
-// is kept in one form. IPv4-mapped IPv6 blocks are represented by their IPv4
-// equivalents so they use the same address family as runtime peers, and an IPv6
-// zone is dropped so that an entry covers the same range the resolution asks
-// about after it drops the zone from the peer.
-//
-// [Ja] TestLoadReadsTrustedProxies は一覧の書き方を検証する。単一のアドレスはそれ自身を、
-// CIDR ブロックはそのネットワークを表すこと、項目の前後の空白は項目の一部ではないこと、
-// prefix 長より下位のビットを持つ項目が 1 つの形に収まることである。IPv4-mapped IPv6 の
-// ブロックは、実行時のピアと同じアドレスファミリーになるよう同等の IPv4 表現にする。
-// IPv6 の zone は取り除き、解決がピアから zone を落としたうえで問い合わせるのと同じ範囲を
+// TestLoadReadsTrustedProxiesは一覧の書き方を検証する。単一のアドレスはそれ自身を、
+// CIDRブロックはそのネットワークを表すこと、項目の前後の空白は項目の一部ではないこと、
+// prefix長より下位のビットを持つ項目が1つの形に収まることである。IPv4-mapped IPv6の
+// ブロックは、実行時のピアと同じアドレスファミリーになるよう同等のIPv4表現にする。
+// IPv6のzoneは取り除き、解決がピアからzoneを落としたうえで問い合わせるのと同じ範囲を
 // 項目が覆うようにする。
 func TestLoadReadsTrustedProxies(t *testing.T) {
 	tests := []struct {
@@ -501,37 +435,37 @@ func TestLoadReadsTrustedProxies(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "a single address stands for itself",
+			name:  "単一のアドレスはそれ自身を表す",
 			value: "127.0.0.1",
 			want:  []string{"127.0.0.1/32"},
 		},
 		{
-			name:  "an IPv6 address stands for itself",
+			name:  "IPv6アドレスはそれ自身を表す",
 			value: "::1",
 			want:  []string{"::1/128"},
 		},
 		{
-			name:  "several entries are separated by commas and may be spaced out",
+			name:  "複数の項目はカンマで区切り、前後に空白を置ける",
 			value: "127.0.0.1, ::1 , 10.0.0.0/8",
 			want:  []string{"127.0.0.1/32", "::1/128", "10.0.0.0/8"},
 		},
 		{
-			name:  "a block keeps one form regardless of the address written for it",
+			name:  "ブロックは書かれたアドレスによらず1つの形になる",
 			value: "10.1.2.3/8",
 			want:  []string{"10.0.0.0/8"},
 		},
 		{
-			name:  "an IPv4-mapped IPv6 address block becomes its IPv4 equivalent",
+			name:  "IPv4-mapped IPv6アドレスのブロックは同等のIPv4になる",
 			value: "::ffff:127.0.0.1/128",
 			want:  []string{"127.0.0.1/32"},
 		},
 		{
-			name:  "an IPv4-mapped IPv6 network becomes its IPv4 equivalent",
+			name:  "IPv4-mapped IPv6ネットワークは同等のIPv4になる",
 			value: "::ffff:10.1.2.3/104",
 			want:  []string{"10.0.0.0/8"},
 		},
 		{
-			name:  "an IPv6 address written with a zone stands for the address alone",
+			name:  "zone付きで書いたIPv6アドレスはアドレスだけを表す",
 			value: "fe80::1%eth0",
 			want:  []string{"fe80::1/128"},
 		},
@@ -544,7 +478,7 @@ func TestLoadReadsTrustedProxies(t *testing.T) {
 
 			cfg, err := Load()
 			if err != nil {
-				t.Fatalf("Load() returned an unexpected error: %v", err)
+				t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 			}
 
 			got := make([]string, 0, len(cfg.TrustedProxies))
@@ -552,38 +486,29 @@ func TestLoadReadsTrustedProxies(t *testing.T) {
 				got = append(got, prefix.String())
 			}
 			if !slices.Equal(got, tt.want) {
-				t.Errorf("TrustedProxies = %v, want %v", got, tt.want)
+				t.Errorf("TrustedProxies = %v、期待値 = %v", got, tt.want)
 			}
 		})
 	}
 }
 
-// TestLoadWithoutTrustedProxies verifies that leaving the setting out is not an
-// error and leaves no proxy trusted, which is what an instance exposed directly
-// needs: the forwarding headers are then never read.
-//
-// [Ja] TestLoadWithoutTrustedProxies は、設定を書かないことがエラーにならず、信頼する
-// プロキシが 1 つも無い状態になることを検証する。直接公開されているインスタンスに必要なのが
+// TestLoadWithoutTrustedProxiesは、設定を書かないことがエラーにならず、信頼する
+// プロキシが1つも無い状態になることを検証する。直接公開されているインスタンスに必要なのが
 // これで、その場合に転送ヘッダーは一切読まれない。
 func TestLoadWithoutTrustedProxies(t *testing.T) {
 	setRequiredEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if len(cfg.TrustedProxies) != 0 {
-		t.Errorf("TrustedProxies = %v, want none", cfg.TrustedProxies)
+		t.Errorf("TrustedProxies = %v、空を期待", cfg.TrustedProxies)
 	}
 }
 
-// TestLoadRejectsAnInvalidTrustedProxy verifies that an entry which is not an
-// address stops startup naming the entry and the source. Dropping it instead
-// would leave the visitors behind that proxy recorded as the proxy itself,
-// which looks like a working configuration.
-//
-// [Ja] TestLoadRejectsAnInvalidTrustedProxy は、アドレスではない項目が、その項目と入力元を
+// TestLoadRejectsAnInvalidTrustedProxyは、アドレスではない項目が、その項目と入力元を
 // 挙げて起動を止めることを検証する。代わりに取り除くと、そのプロキシの背後にいる訪問者が
 // プロキシ自身として記録され、動いている設定に見えてしまう。
 func TestLoadRejectsAnInvalidTrustedProxy(t *testing.T) {
@@ -591,12 +516,12 @@ func TestLoadRejectsAnInvalidTrustedProxy(t *testing.T) {
 		name  string
 		value string
 	}{
-		{name: "not an address", value: "proxy.example.dev"},
-		{name: "an address out of range", value: "10.0.0.256"},
-		{name: "a prefix length out of range", value: "10.0.0.0/33"},
-		{name: "an IPv4-mapped prefix that also covers IPv6", value: "::ffff:127.0.0.1/95"},
-		{name: "one bad entry among good ones", value: "127.0.0.1,proxy.example.dev"},
-		{name: "an empty entry left by a stray comma", value: "127.0.0.1,"},
+		{name: "アドレスではない", value: "proxy.example.dev"},
+		{name: "範囲外のアドレス", value: "10.0.0.256"},
+		{name: "範囲外のprefix長", value: "10.0.0.0/33"},
+		{name: "IPv6も覆うIPv4-mappedのprefix", value: "::ffff:127.0.0.1/95"},
+		{name: "正しい項目に混じった1つの不正な項目", value: "127.0.0.1,proxy.example.dev"},
+		{name: "余分なカンマが残した空の項目", value: "127.0.0.1,"},
 	}
 
 	for _, tt := range tests {
@@ -606,18 +531,16 @@ func TestLoadRejectsAnInvalidTrustedProxy(t *testing.T) {
 
 			_, err := Load()
 			if err == nil {
-				t.Fatalf("Load() should reject GROOBB_TRUSTED_PROXIES = %q", tt.value)
+				t.Fatalf("Load()がGROOBB_TRUSTED_PROXIES = %q を拒否しなかった", tt.value)
 			}
 			if !strings.Contains(err.Error(), "GROOBB_TRUSTED_PROXIES") {
-				t.Errorf("the error should name the source of the value, got: %v", err)
+				t.Errorf("エラーが値の入力元を挙げていない: %v", err)
 			}
 		})
 	}
 }
 
-// TestEnvHelpers verifies the IsDev / IsTest / IsProduction helpers.
-//
-// [Ja] TestEnvHelpers は IsDev / IsTest / IsProduction ヘルパーを検証します。
+// TestEnvHelpersはIsDev / IsTest / IsProductionヘルパーを検証します。
 func TestEnvHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -636,50 +559,43 @@ func TestEnvHelpers(t *testing.T) {
 		t.Run(tt.env, func(t *testing.T) {
 			cfg := &Config{Env: tt.env}
 			if got := cfg.IsDev(); got != tt.isDev {
-				t.Errorf("IsDev() = %v, want %v", got, tt.isDev)
+				t.Errorf("IsDev() = %v、期待値 = %v", got, tt.isDev)
 			}
 			if got := cfg.IsTest(); got != tt.isTest {
-				t.Errorf("IsTest() = %v, want %v", got, tt.isTest)
+				t.Errorf("IsTest() = %v、期待値 = %v", got, tt.isTest)
 			}
 			if got := cfg.IsProduction(); got != tt.isProduction {
-				t.Errorf("IsProduction() = %v, want %v", got, tt.isProduction)
+				t.Errorf("IsProduction() = %v、期待値 = %v", got, tt.isProduction)
 			}
 		})
 	}
 }
 
-// TestGetAssetVersion verifies that dev returns a non-empty dynamic value and
-// that other environments return the static AssetVersion fixed at startup.
-//
-// [Ja] TestGetAssetVersion は、開発環境では空でない動的な値を返し、それ以外の
-// 環境では起動時に固定した静的な AssetVersion を返すことを検証します。
+// TestGetAssetVersionは、開発環境では空でない動的な値を返し、それ以外の
+// 環境では起動時に固定した静的なAssetVersionを返すことを検証します。
 func TestGetAssetVersion(t *testing.T) {
 	t.Parallel()
 
-	t.Run("dev returns a non-empty dynamic value", func(t *testing.T) {
+	t.Run("devでは空でない動的な値を返す", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Env: "dev"}
 		if got := cfg.GetAssetVersion(); got == "" {
-			t.Error("GetAssetVersion() should not be empty in dev")
+			t.Error("devでGetAssetVersion()が空だった")
 		}
 	})
 
-	t.Run("non-dev returns the static AssetVersion", func(t *testing.T) {
+	t.Run("dev以外では静的なAssetVersionを返す", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := &Config{Env: "prod", AssetVersion: "abc123"}
 		if got := cfg.GetAssetVersion(); got != "abc123" {
-			t.Errorf("GetAssetVersion() = %q, want %q", got, "abc123")
+			t.Errorf("GetAssetVersion() = %q、期待値 = %q", got, "abc123")
 		}
 	})
 }
 
-// TestBuildAssetVersion verifies the order the asset version falls back in, so
-// that a build without the stamp still serves a value that changes per revision
-// and only a build with neither settles on the fixed placeholder.
-//
-// [Ja] TestBuildAssetVersion はアセットバージョンのフォールバック順序を検証します。
+// TestBuildAssetVersionはアセットバージョンのフォールバック順序を検証します。
 // 埋め込みの無いビルドでもリビジョンごとに変わる値を配信し、どちらも無いビルドだけが
 // 固定のプレースホルダーに落ち着くようにするためです。
 func TestBuildAssetVersion(t *testing.T) {
@@ -692,19 +608,19 @@ func TestBuildAssetVersion(t *testing.T) {
 		want     string
 	}{
 		{
-			name:     "prefers the value stamped in at build time",
+			name:     "ビルド時に埋め込んだ値を優先する",
 			stamped:  "19ae8301290f4dc0e814bd0298d9e5c73cda684c",
 			revision: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
 			want:     "19ae8301290f4dc0e814bd0298d9e5c73cda684c",
 		},
 		{
-			name:     "falls back to the build revision",
+			name:     "ビルドのリビジョンにフォールバックする",
 			stamped:  "",
 			revision: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
 			want:     "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
 		},
 		{
-			name:     "falls back to dev without either",
+			name:     "どちらも無ければdevにフォールバックする",
 			stamped:  "",
 			revision: "",
 			want:     "dev",
@@ -716,17 +632,13 @@ func TestBuildAssetVersion(t *testing.T) {
 			t.Parallel()
 
 			if got := buildAssetVersion(tt.stamped, tt.revision); got != tt.want {
-				t.Errorf("buildAssetVersion(%q, %q) = %q, want %q", tt.stamped, tt.revision, got, tt.want)
+				t.Errorf("buildAssetVersion(%q, %q) = %q、期待値 = %q", tt.stamped, tt.revision, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestVCSRevisionFromSettings verifies revision extraction independently of the
-// build information carried by the test binary, which normally has no VCS
-// settings.
-//
-// [Ja] TestVCSRevisionFromSettings は、通常 VCS 設定を持たないテストバイナリ自身の
+// TestVCSRevisionFromSettingsは、通常VCS設定を持たないテストバイナリ自身の
 // ビルド情報に依存せず、リビジョンの抽出を検証します。
 func TestVCSRevisionFromSettings(t *testing.T) {
 	t.Parallel()
@@ -737,21 +649,21 @@ func TestVCSRevisionFromSettings(t *testing.T) {
 		want     string
 	}{
 		{
-			name: "returns a full revision unchanged",
+			name: "完全なリビジョンをそのまま返す",
 			settings: []debug.BuildSetting{
 				{Key: "vcs.revision", Value: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6"},
 			},
 			want: "5b40e741a55ead5001d61c10a4774a0ccaa3a2d6",
 		},
 		{
-			name: "keeps a short revision",
+			name: "短いリビジョンを保つ",
 			settings: []debug.BuildSetting{
 				{Key: "vcs.revision", Value: "abc123"},
 			},
 			want: "abc123",
 		},
 		{
-			name: "returns empty without a revision setting",
+			name: "リビジョンの設定が無ければ空を返す",
 			settings: []debug.BuildSetting{
 				{Key: "vcs.modified", Value: "true"},
 			},
@@ -764,48 +676,39 @@ func TestVCSRevisionFromSettings(t *testing.T) {
 			t.Parallel()
 
 			if got := vcsRevisionFromSettings(tt.settings); got != tt.want {
-				t.Errorf("vcsRevisionFromSettings(%v) = %q, want %q", tt.settings, got, tt.want)
+				t.Errorf("vcsRevisionFromSettings(%v) = %q、期待値 = %q", tt.settings, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestLoadEmailProviderDefaultsToResend verifies an unset provider keeps the
-// Resend transport, so a deployment made before the setting existed is unchanged.
-//
-// [Ja] TestLoadEmailProviderDefaultsToResend は、プロバイダー未設定のとき Resend の
-// transport が維持されることを検証する。この設定が存在する前のデプロイが変わらないため。
+// TestLoadEmailProviderDefaultsToResendは、プロバイダー未設定のときResendの
+// transportが維持されることを検証する。この設定が存在する前のデプロイが変わらないため。
 func TestLoadEmailProviderDefaultsToResend(t *testing.T) {
 	setRequiredEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.EmailProvider != EmailProviderResend {
-		t.Errorf("EmailProvider = %q, want %q", cfg.EmailProvider, EmailProviderResend)
+		t.Errorf("EmailProvider = %q、期待値 = %q", cfg.EmailProvider, EmailProviderResend)
 	}
 }
 
-// TestLoadRejectsUnknownEmailProvider verifies a provider outside the supported
-// set stops startup rather than silently falling back to one of them.
-//
-// [Ja] TestLoadRejectsUnknownEmailProvider は、対応していないプロバイダーが指定された
+// TestLoadRejectsUnknownEmailProviderは、対応していないプロバイダーが指定された
 // とき、いずれかへ黙ってフォールバックせず起動を止めることを検証する。
 func TestLoadRejectsUnknownEmailProvider(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("GROOBB_EMAIL_PROVIDER", "sendmail")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("Load() should reject an unknown GROOBB_EMAIL_PROVIDER")
+		t.Fatal("Load()が未知のGROOBB_EMAIL_PROVIDERを拒否しなかった")
 	}
 }
 
-// setSMTPEnv sets a complete, valid set of SMTP settings that individual cases
-// then break in one place.
-//
-// [Ja] setSMTPEnv は妥当で完全な SMTP 設定一式を設定する。各ケースはそこから 1 箇所だけを
+// setSMTPEnvは妥当で完全なSMTP設定一式を設定する。各ケースはそこから1箇所だけを
 // 壊す。
 func setSMTPEnv(t *testing.T) {
 	t.Helper()
@@ -818,10 +721,7 @@ func setSMTPEnv(t *testing.T) {
 	t.Setenv("GROOBB_SMTP_TLS_MODE", smtpTLSModeStartTLS)
 }
 
-// TestLoadReadsSMTPSettings verifies the relay settings are read into the
-// configuration when the SMTP provider is selected.
-//
-// [Ja] TestLoadReadsSMTPSettings は、SMTP プロバイダーが選択されたときにリレーの設定が
+// TestLoadReadsSMTPSettingsは、SMTPプロバイダーが選択されたときにリレーの設定が
 // 設定へ読み込まれることを検証する。
 func TestLoadReadsSMTPSettings(t *testing.T) {
 	setRequiredEnv(t)
@@ -829,33 +729,30 @@ func TestLoadReadsSMTPSettings(t *testing.T) {
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.EmailProvider != EmailProviderSMTP {
-		t.Errorf("EmailProvider = %q, want %q", cfg.EmailProvider, EmailProviderSMTP)
+		t.Errorf("EmailProvider = %q、期待値 = %q", cfg.EmailProvider, EmailProviderSMTP)
 	}
 	if cfg.SMTPHost != "smtp.example.dev" {
-		t.Errorf("SMTPHost = %q, want %q", cfg.SMTPHost, "smtp.example.dev")
+		t.Errorf("SMTPHost = %q、期待値 = %q", cfg.SMTPHost, "smtp.example.dev")
 	}
 	if cfg.SMTPPort != 587 {
-		t.Errorf("SMTPPort = %d, want 587", cfg.SMTPPort)
+		t.Errorf("SMTPPort = %d、期待値 = 587", cfg.SMTPPort)
 	}
 	if cfg.SMTPUsername != "smtp-user" {
-		t.Errorf("SMTPUsername = %q, want %q", cfg.SMTPUsername, "smtp-user")
+		t.Errorf("SMTPUsername = %q、期待値 = %q", cfg.SMTPUsername, "smtp-user")
 	}
 	if cfg.SMTPPassword != "smtp-password" {
-		t.Errorf("SMTPPassword was not loaded from the environment")
+		t.Errorf("SMTPPasswordが環境変数から読み込まれていない")
 	}
 	if cfg.SMTPTLSMode != smtpTLSModeStartTLS {
-		t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
+		t.Errorf("SMTPTLSMode = %q、期待値 = %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
 	}
 }
 
-// TestLoadDefaultsSMTPTLSModeToStartTLS verifies an unset TLS mode secures the
-// connection rather than leaving it in the clear.
-//
-// [Ja] TestLoadDefaultsSMTPTLSModeToStartTLS は、TLS モード未設定のときに接続を平文の
+// TestLoadDefaultsSMTPTLSModeToStartTLSは、TLSモード未設定のときに接続を平文の
 // ままにせず保護することを検証する。
 func TestLoadDefaultsSMTPTLSModeToStartTLS(t *testing.T) {
 	setRequiredEnv(t)
@@ -864,20 +761,16 @@ func TestLoadDefaultsSMTPTLSModeToStartTLS(t *testing.T) {
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.SMTPTLSMode != smtpTLSModeStartTLS {
-		t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
+		t.Errorf("SMTPTLSMode = %q、期待値 = %q", cfg.SMTPTLSMode, smtpTLSModeStartTLS)
 	}
 }
 
-// TestLoadAcceptsSMTPTLSModes fixes every supported mode at the environment
-// boundary so none can disappear from startup configuration while the sender's
-// direct tests continue to pass.
-//
-// [Ja] TestLoadAcceptsSMTPTLSModes は、サポートするすべてのモードを環境変数との
-// 境界で固定する。Sender の直接テストが通り続ける一方で、起動設定からいずれかの
+// TestLoadAcceptsSMTPTLSModesは、サポートするすべてのモードを環境変数との
+// 境界で固定する。Senderの直接テストが通り続ける一方で、起動設定からいずれかの
 // モードが欠落することを防ぐため。
 func TestLoadAcceptsSMTPTLSModes(t *testing.T) {
 	tests := []string{
@@ -894,20 +787,17 @@ func TestLoadAcceptsSMTPTLSModes(t *testing.T) {
 
 			cfg, err := Load()
 			if err != nil {
-				t.Fatalf("Load() returned an unexpected error: %v", err)
+				t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 			}
 
 			if cfg.SMTPTLSMode != mode {
-				t.Errorf("SMTPTLSMode = %q, want %q", cfg.SMTPTLSMode, mode)
+				t.Errorf("SMTPTLSMode = %q、期待値 = %q", cfg.SMTPTLSMode, mode)
 			}
 		})
 	}
 }
 
-// TestLoadAcceptsSMTPWithoutCredentials verifies a relay that authorises by
-// source address is a valid configuration.
-//
-// [Ja] TestLoadAcceptsSMTPWithoutCredentials は、送信元アドレスで認可するリレーが妥当な
+// TestLoadAcceptsSMTPWithoutCredentialsは、送信元アドレスで認可するリレーが妥当な
 // 設定であることを検証する。
 func TestLoadAcceptsSMTPWithoutCredentials(t *testing.T) {
 	setRequiredEnv(t)
@@ -917,18 +807,15 @@ func TestLoadAcceptsSMTPWithoutCredentials(t *testing.T) {
 
 	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if cfg.SMTPUsername != "" || cfg.SMTPPassword != "" {
-		t.Error("credentials should stay empty when neither variable is set")
+		t.Error("どちらの変数も設定していないのに認証情報が空ではない")
 	}
 }
 
-// TestLoadRejectsIncompleteSMTPSettings checks each way the relay settings can be
-// wrong, so an operator gets a startup error instead of mail that never arrives.
-//
-// [Ja] TestLoadRejectsIncompleteSMTPSettings はリレー設定が誤りうる各ケースを確認する。
+// TestLoadRejectsIncompleteSMTPSettingsはリレー設定が誤りうる各ケースを確認する。
 // 運用者が、届かないメールではなく起動時エラーを受け取るようにするため。
 func TestLoadRejectsIncompleteSMTPSettings(t *testing.T) {
 	tests := []struct {
@@ -936,15 +823,15 @@ func TestLoadRejectsIncompleteSMTPSettings(t *testing.T) {
 		key   string
 		value string
 	}{
-		{name: "host missing", key: "GROOBB_SMTP_HOST", value: ""},
-		{name: "port missing", key: "GROOBB_SMTP_PORT", value: ""},
-		{name: "port not a number", key: "GROOBB_SMTP_PORT", value: "submission"},
-		{name: "port out of range", key: "GROOBB_SMTP_PORT", value: "70000"},
-		{name: "port zero", key: "GROOBB_SMTP_PORT", value: "0"},
-		{name: "username without password", key: "GROOBB_SMTP_PASSWORD", value: ""},
-		{name: "password without username", key: "GROOBB_SMTP_USERNAME", value: ""},
-		{name: "unknown TLS mode", key: "GROOBB_SMTP_TLS_MODE", value: "ssl"},
-		{name: "From address missing", key: "GROOBB_EMAIL_FROM", value: ""},
+		{name: "ホストが無い", key: "GROOBB_SMTP_HOST", value: ""},
+		{name: "ポートが無い", key: "GROOBB_SMTP_PORT", value: ""},
+		{name: "ポートが数値ではない", key: "GROOBB_SMTP_PORT", value: "submission"},
+		{name: "ポートが範囲外", key: "GROOBB_SMTP_PORT", value: "70000"},
+		{name: "ポートがゼロ", key: "GROOBB_SMTP_PORT", value: "0"},
+		{name: "パスワードの無いユーザー名", key: "GROOBB_SMTP_PASSWORD", value: ""},
+		{name: "ユーザー名の無いパスワード", key: "GROOBB_SMTP_USERNAME", value: ""},
+		{name: "未知のTLSモード", key: "GROOBB_SMTP_TLS_MODE", value: "ssl"},
+		{name: "送信元アドレスが無い", key: "GROOBB_EMAIL_FROM", value: ""},
 	}
 
 	for _, tt := range tests {
@@ -954,16 +841,13 @@ func TestLoadRejectsIncompleteSMTPSettings(t *testing.T) {
 			t.Setenv(tt.key, tt.value)
 
 			if _, err := Load(); err == nil {
-				t.Fatalf("Load() should reject %s = %q", tt.key, tt.value)
+				t.Fatalf("Load()が %s = %q を拒否しなかった", tt.key, tt.value)
 			}
 		})
 	}
 }
 
-// TestLoadWarnsOnUnencryptedSMTPInProduction verifies the unencrypted relay is
-// allowed but called out, since it is only safe on a trusted local channel.
-//
-// [Ja] TestLoadWarnsOnUnencryptedSMTPInProduction は、暗号化しないリレーが許容されつつ
+// TestLoadWarnsOnUnencryptedSMTPInProductionは、暗号化しないリレーが許容されつつ
 // 指摘されることを検証する。安全なのは信頼できるローカル経路に限られるため。
 func TestLoadWarnsOnUnencryptedSMTPInProduction(t *testing.T) {
 	setRequiredEnv(t)
@@ -977,31 +861,22 @@ func TestLoadWarnsOnUnencryptedSMTPInProduction(t *testing.T) {
 	t.Cleanup(func() { slog.SetDefault(original) })
 
 	if _, err := Load(); err != nil {
-		t.Fatalf("Load() returned an unexpected error: %v", err)
+		t.Fatalf("Load()が予期しないエラーを返した: %v", err)
 	}
 
 	if !strings.Contains(buf.String(), "SMTP") {
-		t.Errorf("expected a warning about the unencrypted relay, got: %s", buf.String())
+		t.Errorf("暗号化しないリレーについての警告を期待したが、出力は: %s", buf.String())
 	}
 }
 
-// TestSMTPTLSModeValuesMatchEmailPackage pins the literals this package repeats
-// to the email package's constants. Only the worker's unchecked string
-// conversion joins the two at runtime, so a value that drifts on one side would
-// still load here and then fall through to the sender's STARTTLS default.
-//
-// The import is test-only: the production config package avoids importing the
-// email package, which would pull in the mail templates while config is imported
-// by nearly every package.
-//
-// [Ja] TestSMTPTLSModeValuesMatchEmailPackage は、本パッケージが再掲しているリテラルを
-// email パッケージの定数に固定する。実行時に両者を繋ぐのはワーカーの検査を伴わない文字列
-// 変換だけなので、片側の値がずれてもここでは読み込めてしまい、Sender 側では STARTTLS の
+// TestSMTPTLSModeValuesMatchEmailPackageは、本パッケージが再掲しているリテラルを
+// emailパッケージの定数に固定する。実行時に両者を繋ぐのはワーカーの検査を伴わない文字列
+// 変換だけなので、片側の値がずれてもここでは読み込めてしまい、Sender側ではSTARTTLSの
 // 既定へ落ちてしまう。
 //
-// この import はテスト専用であり、本番の config パッケージが email パッケージを import
-// しないようにする。email パッケージはメールテンプレートを引き込む一方、config はほぼ
-// すべてのパッケージから import されるためである。
+// このimportはテスト専用であり、本番のconfigパッケージがemailパッケージをimport
+// しないようにする。emailパッケージはメールテンプレートを引き込む一方、configはほぼ
+// すべてのパッケージからimportされるためである。
 func TestSMTPTLSModeValuesMatchEmailPackage(t *testing.T) {
 	t.Parallel()
 
@@ -1020,17 +895,13 @@ func TestSMTPTLSModeValuesMatchEmailPackage(t *testing.T) {
 			t.Parallel()
 
 			if tt.got != string(tt.want) {
-				t.Errorf("config value = %q, want %q from the email package", tt.got, tt.want)
+				t.Errorf("configの値 = %q、期待値 = emailパッケージの %q", tt.got, tt.want)
 			}
 		})
 	}
 }
 
-// TestLogValueRedactsSecrets verifies that logging a Config keeps the values
-// that authenticate the instance out of the log, while still showing which
-// secrets are set and every setting that is not one.
-//
-// [Ja] TestLogValueRedactsSecrets は、Config をログに出してもインスタンスの認証に使う値が
+// TestLogValueRedactsSecretsは、Configをログに出してもインスタンスの認証に使う値が
 // ログへ入らないこと、その一方でどの秘密情報が設定されているかと、秘密情報でない設定は
 // 見えることを検証します。
 func TestLogValueRedactsSecrets(t *testing.T) {
@@ -1049,8 +920,8 @@ func TestLogValueRedactsSecrets(t *testing.T) {
 		name  string
 		value any
 	}{
-		{name: "pointer", value: &cfg},
-		{name: "value", value: cfg},
+		{name: "ポインター", value: &cfg},
+		{name: "値", value: cfg},
 	}
 
 	for _, tt := range tests {
@@ -1067,15 +938,15 @@ func TestLogValueRedactsSecrets(t *testing.T) {
 			}
 			for _, secret := range secrets {
 				if strings.Contains(logged, secret) {
-					t.Errorf("the log should not hold the secret %q, got: %s", secret, logged)
+					t.Errorf("ログに秘密情報 %q が含まれている: %s", secret, logged)
 				}
 			}
 
 			if !strings.Contains(logged, redactedSecret) {
-				t.Errorf("the log should mark the secrets that are set, got: %s", logged)
+				t.Errorf("ログが設定済みの秘密情報を示していない: %s", logged)
 			}
 			if !strings.Contains(logged, cfg.SMTPHost) {
-				t.Errorf("the log should keep the settings that are not secrets, got: %s", logged)
+				t.Errorf("ログに秘密情報でない設定が残っていない: %s", logged)
 			}
 		})
 	}

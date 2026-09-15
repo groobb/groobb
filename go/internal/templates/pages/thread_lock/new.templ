@@ -5,25 +5,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// New renders the page a thread's lock is confirmed on: what locking does, the
-// thread it is about to be done to, an optional note, and the button that does
-// it.
-//
-// The thread is not chosen here. It is named by the address the form submits
-// to, so the page can only close the thread it was opened from, and it states
-// which one that is instead of offering a choice that is already made.
-//
-// The note is optional and its label says so. What the history has to carry is
-// the operation, which it carries either way, and a required note is answered
-// by a full stop as readily as by a reason. The hint says where the note goes,
-// because an administrator writing it has to know whether the thread's readers
-// will see it: they will not.
-//
-// A cancel link stands beside the button, since arriving here is one click from
-// the thread and leaving should be one click back. The link is the way out of a
-// destructive confirmation, so it is not styled as a second thing to press.
-//
-// [Ja] Newは、スレッドのロックを確認するページを描画します。ロックが何をするのか、これから
+// Newは、スレッドのロックを確認するページを描画します。ロックが何をするのか、これから
 // それが行われるスレッド、任意の注記、そしてそれを行うボタンです。
 //
 // スレッドはここで選びません。フォームの送信先のアドレスが名指すため、このページは自身が

@@ -8,10 +8,7 @@ import (
 	"github.com/groobb/groobb/go/internal/auth"
 )
 
-// TestHashPasswordAndCheckPassword verifies that a hash produced by
-// HashPassword validates against the original password and rejects a wrong one.
-//
-// [Ja] TestHashPasswordAndCheckPassword は HashPassword が生成したハッシュが元の
+// TestHashPasswordAndCheckPasswordはHashPasswordが生成したハッシュが元の
 // パスワードで検証でき、誤ったパスワードを拒否することを検証します。
 func TestHashPasswordAndCheckPassword(t *testing.T) {
 	t.Parallel()
@@ -20,25 +17,22 @@ func TestHashPasswordAndCheckPassword(t *testing.T) {
 
 	hash, err := auth.HashPassword(plain)
 	if err != nil {
-		t.Fatalf("HashPassword() error = %v", err)
+		t.Fatalf("HashPassword()のエラー = %v", err)
 	}
 	if hash == plain {
-		t.Error("HashPassword() returned the plaintext instead of a hash")
+		t.Error("HashPassword()がハッシュではなく平文を返した")
 	}
 
 	if err := auth.CheckPassword(hash, plain); err != nil {
-		t.Errorf("CheckPassword() with the correct password error = %v, want nil", err)
+		t.Errorf("正しいパスワードでのCheckPassword()のエラー = %v、期待値 = nil", err)
 	}
 	if err := auth.CheckPassword(hash, "wrong-password"); err == nil {
-		t.Error("CheckPassword() with a wrong password = nil, want an error")
+		t.Error("誤ったパスワードでのCheckPassword() = nil、エラーを期待")
 	}
 }
 
-// TestHashPasswordProducesUniqueHashes verifies that bcrypt salting makes two
-// hashes of the same password differ while both still validate.
-//
-// [Ja] TestHashPasswordProducesUniqueHashes は bcrypt のソルトにより同じパスワード
-// の 2 つのハッシュが異なり、かつどちらも検証できることを確認します。
+// TestHashPasswordProducesUniqueHashesはbcryptのソルトにより同じパスワード
+// の2つのハッシュが異なり、かつどちらも検証できることを確認します。
 func TestHashPasswordProducesUniqueHashes(t *testing.T) {
 	t.Parallel()
 
@@ -46,34 +40,28 @@ func TestHashPasswordProducesUniqueHashes(t *testing.T) {
 
 	hash1, err := auth.HashPassword(plain)
 	if err != nil {
-		t.Fatalf("HashPassword() error = %v", err)
+		t.Fatalf("HashPassword()のエラー = %v", err)
 	}
 	hash2, err := auth.HashPassword(plain)
 	if err != nil {
-		t.Fatalf("HashPassword() error = %v", err)
+		t.Fatalf("HashPassword()のエラー = %v", err)
 	}
 
 	if hash1 == hash2 {
-		t.Error("HashPassword() produced identical hashes; bcrypt salting is not working")
+		t.Error("HashPassword()が同一のハッシュを生成した (bcryptのソルトが機能していない)")
 	}
 	if err := auth.CheckPassword(hash1, plain); err != nil {
-		t.Errorf("CheckPassword(hash1) error = %v", err)
+		t.Errorf("CheckPassword(hash1)のエラー = %v", err)
 	}
 	if err := auth.CheckPassword(hash2, plain); err != nil {
-		t.Errorf("CheckPassword(hash2) error = %v", err)
+		t.Errorf("CheckPassword(hash2)のエラー = %v", err)
 	}
 }
 
-// TestValidatePasswordStrength verifies the length policy: a password shorter
-// than the minimum returns ErrPasswordTooShort, one longer than the byte maximum
-// returns ErrPasswordTooLong, and a password within range passes. The minimum is
-// measured in runes, so an 8-character Japanese password (24 bytes) is accepted,
-// and the maximum is measured in bytes to honor bcrypt's 72-byte limit.
-//
-// [Ja] TestValidatePasswordStrength は長さポリシーを検証します。最小未満は
-// ErrPasswordTooShort、バイト最大超過は ErrPasswordTooLong を返し、範囲内のパスワードは
-// 通ります。最小は rune 単位で測るため 8 文字の日本語パスワード (24 バイト) は受理され、
-// 最大は bcrypt の 72 バイト制限を尊重してバイト単位で測ります。
+// TestValidatePasswordStrengthは長さポリシーを検証します。最小未満は
+// ErrPasswordTooShort、バイト最大超過はErrPasswordTooLongを返し、範囲内のパスワードは
+// 通ります。最小はrune単位で測るため8文字の日本語パスワード (24バイト) は受理され、
+// 最大はbcryptの72バイト制限を尊重してバイト単位で測ります。
 func TestValidatePasswordStrength(t *testing.T) {
 	t.Parallel()
 
@@ -82,14 +70,14 @@ func TestValidatePasswordStrength(t *testing.T) {
 		password string
 		wantErr  error
 	}{
-		{name: "valid ASCII password", password: "password123", wantErr: nil},
-		{name: "exactly the minimum length", password: "12345678", wantErr: nil},
-		{name: "Japanese password of 7 runes is too short", password: "ぱすわーどです", wantErr: auth.ErrPasswordTooShort},
-		{name: "Japanese password of 8 runes accepted", password: "ぱすわーどですよ", wantErr: nil},
-		{name: "too short", password: "1234567", wantErr: auth.ErrPasswordTooShort},
-		{name: "empty", password: "", wantErr: auth.ErrPasswordTooShort},
-		{name: "too long (73 bytes)", password: strings.Repeat("a", 73), wantErr: auth.ErrPasswordTooLong},
-		{name: "exactly the maximum byte length", password: strings.Repeat("a", 72), wantErr: nil},
+		{name: "有効なASCIIのパスワード", password: "password123", wantErr: nil},
+		{name: "最小の長さちょうど", password: "12345678", wantErr: nil},
+		{name: "7文字の日本語パスワードは短すぎる", password: "ぱすわーどです", wantErr: auth.ErrPasswordTooShort},
+		{name: "8文字の日本語パスワードは受理される", password: "ぱすわーどですよ", wantErr: nil},
+		{name: "短すぎる", password: "1234567", wantErr: auth.ErrPasswordTooShort},
+		{name: "空", password: "", wantErr: auth.ErrPasswordTooShort},
+		{name: "長すぎる (73バイト)", password: strings.Repeat("a", 73), wantErr: auth.ErrPasswordTooLong},
+		{name: "最大バイト長ちょうど", password: strings.Repeat("a", 72), wantErr: nil},
 	}
 
 	for _, tt := range tests {
@@ -98,7 +86,7 @@ func TestValidatePasswordStrength(t *testing.T) {
 
 			err := auth.ValidatePasswordStrength(tt.password)
 			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("ValidatePasswordStrength(%q) error = %v, want %v", tt.password, err, tt.wantErr)
+				t.Errorf("ValidatePasswordStrength(%q)のエラー = %v、期待値 = %v", tt.password, err, tt.wantErr)
 			}
 		})
 	}

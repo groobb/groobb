@@ -21,17 +21,10 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// newBoardDB creates a database holding one community with a "music" category
-// listing the "jazz" board, and a "quiet" board sitting in no category.
-//
-// Two boards are created because the trail the form draws differs between them:
-// a board in a category is named below it, and a board in none (ADR 0011) starts
-// the trail at the board itself. The form itself is the same on both.
-//
-// [Ja] newBoardDB は、1 つのコミュニティを持つデータベースを作ります。"music"
+// newBoardDBは、1つのコミュニティを持つデータベースを作ります。"music"
 // カテゴリーが "jazz" 掲示板を並べ、"quiet" 掲示板はどのカテゴリーにも属しません。
 //
-// 掲示板を 2 つ作るのは、フォームが描く経路が両者で異なるためです。カテゴリーに属する
+// 掲示板を2つ作るのは、フォームが描く経路が両者で異なるためです。カテゴリーに属する
 // 掲示板はその下に名指され、どのカテゴリーにも属さない掲示板 (ADR 0011) では経路が掲示板
 // 自身から始まります。フォーム自体はどちらでも同じです。
 func newBoardDB(t *testing.T) *database.DB {
@@ -41,7 +34,7 @@ func newBoardDB(t *testing.T) *database.DB {
 	db := testutil.SetupDB(t)
 
 	if _, err := db.Writer.ExecContext(ctx, "INSERT INTO communities (id, name) VALUES (1, ?)", communityName); err != nil {
-		t.Fatalf("communities への INSERT に失敗: %v", err)
+		t.Fatalf("communitiesへのINSERTに失敗: %v", err)
 	}
 
 	categoryRepo := repository.NewCategoryRepository(db)
@@ -49,34 +42,27 @@ func newBoardDB(t *testing.T) *database.DB {
 
 	music, err := categoryRepo.Create(ctx, repository.CreateCategoryInput{Slug: "music", Name: "音楽"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := boardRepo.Create(ctx, repository.CreateBoardInput{
 		CategoryID: &music.ID,
 		Slug:       "jazz",
 		Name:       "ジャズ・ファンク",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := boardRepo.Create(ctx, repository.CreateBoardInput{Slug: "quiet", Name: "雑談"}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	return db
 }
 
-// newFormRequest builds a GET /b/{slug}/threads/new request as the router would
-// hand it to the handler: the slug in chi's route context, and the locale, the
-// current path and the viewer in the request context, placed there directly the
-// way i18n's, templates' and the auth middleware would. A nil user is an
-// anonymous visitor, which in production RequireAuth turns away before the
-// handler runs.
-//
-// [Ja] newFormRequest は、ルーターがハンドラーへ渡すのと同じ形で
-// GET /b/{slug}/threads/new のリクエストを組み立てます。slug は chi のルート context に、
-// ロケール・現在のパス・閲覧者はリクエスト context に、i18n・templates・認証の各ミドル
-// ウェアがするのと同じように直接置きます。user が nil のときは匿名の訪問者で、本番では
-// ハンドラーが走る前に RequireAuth が追い返します。
+// newFormRequestは、ルーターがハンドラーへ渡すのと同じ形で
+// GET /b/{slug}/threads/newのリクエストを組み立てます。slugはchiのルートcontextに、
+// ロケール・現在のパス・閲覧者はリクエストcontextに、i18n・templates・認証の各ミドル
+// ウェアがするのと同じように直接置きます。userがnilのときは匿名の訪問者で、本番では
+// ハンドラーが走る前にRequireAuthが追い返します。
 func newFormRequest(t *testing.T, slug string, locale model.Locale, user *model.User) *http.Request {
 	t.Helper()
 
@@ -97,23 +83,10 @@ func newFormRequest(t *testing.T, slug string, locale model.Locale, user *model.
 	return req.WithContext(ctx)
 }
 
-// TestNew verifies that GET /b/{slug}/threads/new returns HTTP 200 with an HTML
-// body that renders, for each supported locale, the thread-creation form inside
-// the community shell: the trail back to the board it will post to, the board's
-// name in the lead, the three labelled fields with the limits they are judged
-// by, the interval between one person's posts, and the CSRF token the submission
-// carries.
-//
-// The primary language opens on the one the page is drawn in, so the choice is
-// already made for the visitor who writes in the language they are reading.
-//
-// The response asks not to be indexed and not to be stored, since it is a form
-// behind authentication that a re-render fills with what the visitor typed.
-//
-// [Ja] TestNew は GET /b/{slug}/threads/new が HTTP 200 と、サポートする各ロケールに
-// ついてコミュニティのシェルの中にスレッド作成フォームを描画した HTML ボディを返すことを
+// TestNewはGET /b/{slug}/threads/newがHTTP 200と、サポートする各ロケールに
+// ついてコミュニティのシェルの中にスレッド作成フォームを描画したHTMLボディを返すことを
 // 検証します。投稿先の掲示板へ戻る経路、説明文の中の掲示板名、判定に使われる上限を添えた
-// ラベル付きの 3 つのフィールド、1 人の投稿と投稿の間隔、そして送信が運ぶ CSRF トークン
+// ラベル付きの3つのフィールド、1人の投稿と投稿の間隔、そして送信が運ぶCSRFトークン
 // です。
 //
 // 主言語はページが描かれている言語で開きます。読んでいる言語で書く訪問者にとって、選択は
@@ -141,7 +114,7 @@ func TestNew(t *testing.T) {
 		unselectedValue string
 	}{
 		{
-			name:            "Japanese",
+			name:            "日本語",
 			locale:          model.LocaleJa,
 			wantHeading:     "スレッドを立てる",
 			wantLead:        "ジャズ・ファンク に新しいスレッドを立てます。",
@@ -155,7 +128,7 @@ func TestNew(t *testing.T) {
 			unselectedValue: "en",
 		},
 		{
-			name:            "English",
+			name:            "英語",
 			locale:          model.LocaleEn,
 			wantHeading:     "Start a thread",
 			wantLead:        "Starting a new thread in ジャズ・ファンク.",
@@ -178,21 +151,21 @@ func TestNew(t *testing.T) {
 			handler.New(rec, newFormRequest(t, "jazz", tt.locale, &model.User{Atname: "alice"}))
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 			if got, want := rec.Header().Get("Cache-Control"), "private, no-store"; got != want {
-				t.Errorf("Cache-Control = %q, want %q", got, want)
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, want)
 			}
 
 			body := rec.Body.String()
 			if got := parsedTextareaValue(t, body); got != "" {
-				t.Errorf("initial textarea value = %q, want empty", got)
+				t.Errorf("初回のtextareaの値 = %q、空を期待", got)
 			}
 			if strings.Contains(body, `id="thread-new-errors"`) {
-				t.Error("initial form should not display an error summary")
+				t.Error("初回のフォームにエラーの要約が表示されている")
 			}
 			wants := []string{
 				"<title>" + tt.wantHeading + " - " + communityName + "</title>",
@@ -212,37 +185,28 @@ func TestNew(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 
-			// The board is part of the address the form posts to rather than a
-			// field, so the form can only start a thread in the board it was
-			// opened from.
-			//
-			// [Ja] 掲示板はフィールドではなくフォームの送信先のアドレスの一部であるため、
+			// 掲示板はフィールドではなくフォームの送信先のアドレスの一部であるため、
 			// フォームはそれが開かれた掲示板にしかスレッドを立てられない。
 			action := `action="` + templates.BoardThreadsPath("jazz").String() + `"`
 			formTag := testutil.OpeningTag(t, body, action)
 			if !strings.HasPrefix(formTag, "<form ") || !strings.Contains(formTag, `method="POST"`) {
-				t.Errorf("フォームの開始タグ = %s, want a POST form to %s", formTag, action)
+				t.Errorf("フォームの開始タグ = %s、%s へPOSTするフォームを期待", formTag, action)
 			}
 			if strings.Contains(body, `name="board`) {
 				t.Error("フォームに掲示板を選ぶフィールドがある")
 			}
 
-			// Each control is labelled, marked required, and pointed at the hint
-			// stating the limit its submission is judged by. The limits are not
-			// written as maxlength, which counts UTF-16 code units where the
-			// server counts code points.
-			//
-			// [Ja] 各入力欄はラベルを持ち、必須の印が付き、送信が判定される上限を述べる
-			// ヒントを指す。上限は maxlength には書かない。この属性が数えるのは UTF-16 の
+			// 各入力欄はラベルを持ち、必須の印が付き、送信が判定される上限を述べる
+			// ヒントを指す。上限はmaxlengthには書かない。この属性が数えるのはUTF-16の
 			// コード単位で、サーバーが数えるのはコードポイントであるため。
 			for _, field := range []string{"title", "language", "body"} {
 				label := testutil.OpeningTag(t, body, `for="`+field+`"`)
 				if !strings.HasPrefix(label, "<label ") {
-					t.Errorf("%s のラベル = %s, want label", field, label)
+					t.Errorf("%s のラベル = %s、期待値 = label", field, label)
 				}
 				control := testutil.OpeningTag(t, body, `id="`+field+`"`)
 				for _, want := range []string{"required", `aria-describedby="` + field + `-hint"`} {
@@ -251,76 +215,59 @@ func TestNew(t *testing.T) {
 					}
 				}
 				if strings.Contains(control, "maxlength") {
-					t.Errorf("%s の入力欄に maxlength がある: %s", field, control)
+					t.Errorf("%s の入力欄にmaxlengthがある: %s", field, control)
 				}
 
-				// A form with nothing to fix opens with the caret in the title, the
-				// field it is filled in from.
-				//
-				// [Ja] 直すところの無いフォームは、それが埋められていく最初の欄である
+				// 直すところの無いフォームは、それが埋められていく最初の欄である
 				// タイトルにキャレットを置いて開く。
 				if want := field == "title"; strings.Contains(control, "autofocus") != want {
-					t.Errorf("%s の入力欄の autofocus = %v, want %v: %s", field, !want, want, control)
+					t.Errorf("%s の入力欄のautofocus = %v、期待値 = %v: %s", field, !want, want, control)
 				}
 			}
 
-			// The select opens on the language the page is drawn in, and offers
-			// only the languages a thread may be written in.
-			//
-			// [Ja] select はページが描かれている言語で開き、スレッドを書ける言語だけを
+			// selectはページが描かれている言語で開き、スレッドを書ける言語だけを
 			// 差し出す。
 			selected := testutil.OpeningTag(t, body, `value="`+tt.selectedValue+`"`)
 			if !strings.Contains(selected, "selected") {
-				t.Errorf("%q の選択肢 = %s, want selected", tt.selectedValue, selected)
+				t.Errorf("%q の選択肢 = %s、selectedを期待", tt.selectedValue, selected)
 			}
 			unselected := testutil.OpeningTag(t, body, `value="`+tt.unselectedValue+`"`)
 			if strings.Contains(unselected, "selected") {
-				t.Errorf("%q の選択肢 = %s, want not selected", tt.unselectedValue, unselected)
+				t.Errorf("%q の選択肢 = %s、selectedが無いことを期待", tt.unselectedValue, unselected)
 			}
 			if got, want := strings.Count(body, "<option "), len(model.ThreadLanguages()); got != want {
-				t.Errorf("選択肢の数 = %d, want %d", got, want)
+				t.Errorf("選択肢の数 = %d、期待値 = %d", got, want)
 			}
 
-			// The form can be submitted: the route it posts to accepts it, so the
-			// button is the way what was written reaches the board.
-			//
-			// [Ja] フォームは送信できる。送信先のルートがそれを受け付けるため、書かれた
+			// フォームは送信できる。送信先のルートがそれを受け付けるため、書かれた
 			// ものが掲示板へ届く手立てがこのボタンである。
 			submit := testutil.OpeningTag(t, testutil.Element(t, body, action, "</form>"), `type="submit"`)
 			if strings.Contains(submit, "disabled") {
-				t.Errorf("送信ボタン = %s, want enabled", submit)
+				t.Errorf("送信ボタン = %s、有効であることを期待", submit)
 			}
 
 			main := testutil.OpeningTag(t, body, `id="main"`)
 			if !strings.HasPrefix(main, "<main ") || !strings.Contains(main, `aria-labelledby="thread-new-heading"`) {
-				t.Errorf("main landmark = %s, want the page heading as its accessible name", main)
+				t.Errorf("main landmark = %s、ページの見出しをアクセシブルネームに持つことを期待", main)
 			}
 			heading := testutil.OpeningTag(t, body, `id="thread-new-heading"`)
 			if !strings.HasPrefix(heading, "<h1 ") {
-				t.Errorf("main landmark を名付ける要素 = %s, want h1", heading)
+				t.Errorf("main landmarkを名付ける要素 = %s、期待値 = h1", heading)
 			}
 
-			// A page asking not to be indexed publishes no trail for a search
-			// result to show, and declares no canonical address.
-			//
-			// [Ja] インデックスされないよう求めるページは、検索結果が示す経路を公開せず、
+			// インデックスされないよう求めるページは、検索結果が示す経路を公開せず、
 			// 正規アドレスも宣言しない。
 			if strings.Contains(body, "application/ld+json") {
-				t.Error("noindex のページに構造化データが含まれている")
+				t.Error("noindexのページに構造化データが含まれている")
 			}
 			if strings.Contains(body, `rel="canonical"`) {
-				t.Error("noindex のページに canonical のリンクが含まれている")
+				t.Error("noindexのページにcanonicalのリンクが含まれている")
 			}
 		})
 	}
 }
 
-// TestNew_BoardWithoutCategory verifies that the form opened from a board
-// sitting in no category (ADR 0011) starts its trail at the board. Unlike a
-// board's own page, the trail is not left empty: the board above the form is
-// still a place to name and the way back out of it.
-//
-// [Ja] TestNew_BoardWithoutCategory は、どのカテゴリーにも属さない掲示板 (ADR 0011)
+// TestNew_BoardWithoutCategoryは、どのカテゴリーにも属さない掲示板 (ADR 0011)
 // から開いたフォームの経路が掲示板から始まることを検証します。掲示板自身のページと違い
 // 経路は空になりません。フォームの上位である掲示板は名指す場所であり、そこから出る道でも
 // あるためです。
@@ -331,7 +278,7 @@ func TestNew_BoardWithoutCategory(t *testing.T) {
 	newHandlerForDB(newBoardDB(t)).New(rec, newFormRequest(t, "quiet", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 
 	body := rec.Body.String()
@@ -343,22 +290,13 @@ func TestNew_BoardWithoutCategory(t *testing.T) {
 	}
 }
 
-// TestNew_RedirectsNonCanonicalSlugToCanonicalPath verifies that a slug reaching
-// the board through the database's case-insensitive collation is redirected to
-// the stored spelling, so the form answers under one address however the visitor
-// arrived at it. The board's own page normalizes the same way.
-//
-// The Cache-Control of the redirect is asserted alongside the status, because a
-// permanent redirect can be held by the visitor's browser, while the CSRF cookie
-// a safe request may mint must keep it out of shared caches.
-//
-// [Ja] TestNew_RedirectsNonCanonicalSlugToCanonicalPath は、DB の大文字小文字を無視する
-// 照合で掲示板へ到達した slug が、保存されている綴りへリダイレクトされることを検証します。
-// これにより、訪問者がどう辿り着いてもフォームは 1 つのアドレスで応答します。掲示板自身の
+// TestNew_RedirectsNonCanonicalSlugToCanonicalPathは、DBの大文字小文字を無視する
+// 照合で掲示板へ到達したslugが、保存されている綴りへリダイレクトされることを検証します。
+// これにより、訪問者がどう辿り着いてもフォームは1つのアドレスで応答します。掲示板自身の
 // ページも同じ正規化を行います。
 //
-// リダイレクトの Cache-Control をステータスと併せて検証するのは、恒久リダイレクトを訪問者の
-// ブラウザには保持させながら、安全なリクエストが発行しうる CSRF Cookie を共有キャッシュには
+// リダイレクトのCache-Controlをステータスと併せて検証するのは、恒久リダイレクトを訪問者の
+// ブラウザには保持させながら、安全なリクエストが発行しうるCSRF Cookieを共有キャッシュには
 // 保存させないためです。
 func TestNew_RedirectsNonCanonicalSlugToCanonicalPath(t *testing.T) {
 	t.Parallel()
@@ -367,22 +305,18 @@ func TestNew_RedirectsNonCanonicalSlugToCanonicalPath(t *testing.T) {
 	newHandlerForDB(newBoardDB(t)).New(rec, newFormRequest(t, "JAZZ", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusPermanentRedirect {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusPermanentRedirect)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusPermanentRedirect)
 	}
 	if got, want := rec.Header().Get("Location"), templates.BoardThreadsNewPath("jazz").String(); got != want {
-		t.Errorf("Location = %q, want %q", got, want)
+		t.Errorf("Location = %q、期待値 = %q", got, want)
 	}
 	if got, want := rec.Header().Get("Cache-Control"), "private, max-age=3600"; got != want {
-		t.Errorf("Cache-Control = %q, want %q", got, want)
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, want)
 	}
 }
 
-// TestNew_NotFound verifies that a slug naming no board is answered with the
-// shared 404 page rather than a form that would post to a board that is not
-// there.
-//
-// [Ja] TestNew_NotFound は、どの掲示板も指さない slug に、そこに無い掲示板へ送信する
-// ことになるフォームではなく共通の 404 ページで応答することを検証します。
+// TestNew_NotFoundは、どの掲示板も指さないslugに、そこに無い掲示板へ送信する
+// ことになるフォームではなく共通の404ページで応答することを検証します。
 func TestNew_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -390,29 +324,20 @@ func TestNew_NotFound(t *testing.T) {
 	newHandlerForDB(newBoardDB(t)).New(rec, newFormRequest(t, "unknown", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 	}
 	if !strings.Contains(rec.Body.String(), "ページが見つかりません") {
-		t.Error("404 ページの文言が含まれていない")
+		t.Error("404ページの文言が含まれていない")
 	}
 }
 
-// TestNew_RedirectsAnonymousToSignInWithReturnTo verifies that the route is
-// guarded and that an anonymous visitor is sent to sign-in carrying this
-// address, so following a shared link to the form lands them back on it once
-// signed in rather than on the home page.
-//
-// The request goes through a router registering the route the way serve.go does,
-// because what turns the visitor away is the middleware the route is registered
-// behind rather than anything in the handler.
-//
-// [Ja] TestNew_RedirectsAnonymousToSignInWithReturnTo は、このルートが保護されており、
+// TestNew_RedirectsAnonymousToSignInWithReturnToは、このルートが保護されており、
 // 匿名の訪問者がこのアドレスを載せてサインインへ送られることを検証します。これにより、
 // 共有されたフォームのリンクを踏んだ人は、サインイン後にホームではなくそのフォームへ
 // 着地します。
 //
 // リクエストをルーター経由で流すのは、訪問者を追い返すのがハンドラーの中の何かではなく、
-// そのルートが登録されている背後のミドルウェアであるためです。ルートの登録は serve.go と
+// そのルートが登録されている背後のミドルウェアであるためです。ルートの登録はserve.goと
 // 同じ形にしています。
 func TestNew_RedirectsAnonymousToSignInWithReturnTo(t *testing.T) {
 	t.Parallel()
@@ -431,21 +356,16 @@ func TestNew_RedirectsAnonymousToSignInWithReturnTo(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if got, want := rec.Header().Get("Location"), templates.SignInPath().WithReturnTo(path).String(); got != want {
-		t.Errorf("Location = %q, want %q", got, want)
+		t.Errorf("Location = %q、期待値 = %q", got, want)
 	}
 }
 
-// TestNew_BoardLookupFailure verifies that a board read that fails is answered
-// with an internal server error rather than the 404 page. An unreachable
-// database does not mean the board is gone, and answering 404 would tell a
-// crawler to drop a form that is still there.
-//
-// [Ja] TestNew_BoardLookupFailure は、掲示板の読み取りの失敗が 404 ページではなく
-// Internal Server Error として返ることを検証します。到達できないデータベースは掲示板が
-// 無くなったことを意味せず、404 で応答すればまだ存在するフォームを落とすようクローラーに
+// TestNew_BoardLookupFailureは、掲示板の読み取りの失敗が404ページではなく
+// Internal Server Errorとして返ることを検証します。到達できないデータベースは掲示板が
+// 無くなったことを意味せず、404で応答すればまだ存在するフォームを落とすようクローラーに
 // 伝えてしまいます。
 func TestNew_BoardLookupFailure(t *testing.T) {
 	t.Parallel()
@@ -453,7 +373,7 @@ func TestNew_BoardLookupFailure(t *testing.T) {
 	db := newBoardDB(t)
 	boardDB := testutil.SetupDB(t)
 	if err := boardDB.Reader.Close(); err != nil {
-		t.Fatalf("board Reader の Close() error = %v", err)
+		t.Fatalf("board ReaderのClose()のエラー = %v", err)
 	}
 
 	rec := httptest.NewRecorder()
@@ -461,21 +381,16 @@ func TestNew_BoardLookupFailure(t *testing.T) {
 	handler.New(rec, newFormRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }
 
-// TestNew_NavigationLookupFailure verifies the second database failure branch:
-// the board is resolved, then the navigation the shell renders fails and returns
-// an internal server error. Keeping the databases separate prevents the first
-// read from consuming the intended failure.
-//
-// [Ja] TestNew_NavigationLookupFailure は 2 つ目の DB 失敗分岐を検証します。掲示板の
-// 解決には成功し、その後のシェルが描くナビゲーションの取得が失敗して Internal Server
-// Error を返します。DB を分けることで、最初の読み取りが対象の失敗を先に消費しないように
+// TestNew_NavigationLookupFailureは2つ目のDB失敗分岐を検証します。掲示板の
+// 解決には成功し、その後のシェルが描くナビゲーションの取得が失敗してInternal Server
+// Errorを返します。DBを分けることで、最初の読み取りが対象の失敗を先に消費しないように
 // します。
 func TestNew_NavigationLookupFailure(t *testing.T) {
 	t.Parallel()
@@ -483,7 +398,7 @@ func TestNew_NavigationLookupFailure(t *testing.T) {
 	db := newBoardDB(t)
 	navigationDB := testutil.SetupDB(t)
 	if err := navigationDB.Reader.Close(); err != nil {
-		t.Fatalf("navigation Reader の Close() error = %v", err)
+		t.Fatalf("navigation ReaderのClose()のエラー = %v", err)
 	}
 
 	rec := httptest.NewRecorder()
@@ -491,9 +406,9 @@ func TestNew_NavigationLookupFailure(t *testing.T) {
 	handler.New(rec, newFormRequest(t, "jazz", model.LocaleJa, &model.User{Atname: "alice"}))
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusInternalServerError)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 	if !strings.Contains(rec.Body.String(), "Internal Server Error") {
-		t.Error("response body does not contain Internal Server Error")
+		t.Error("レスポンスボディにInternal Server Errorが含まれていない")
 	}
 }

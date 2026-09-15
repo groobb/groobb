@@ -13,21 +13,13 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestEdit verifies that GET /settings/email/edit returns HTTP 200 with an HTML
-// body that renders the localized heading, the signed-in user's current email
-// (read-only), the new-email and current-password fields, and the form driving
-// PATCH /settings/email via the _method override with the CSRF hidden field, plus
-// the noindex robots meta, for each supported locale. The user is placed in the
-// context directly (as RequireAuth would), so the handler runs without the auth
-// middleware or a database; the UseCase is unused by Edit, so nil is passed.
-//
-// [Ja] TestEdit は GET /settings/email/edit が HTTP 200 と、サポートする各ロケールに
-// ついて、ローカライズされた見出し・サインイン済みユーザーの現在の email (読み取り専用)・
-// 新しい email と現在のパスワードのフィールド・_method オーバーライド経由で
-// PATCH /settings/email を動かす CSRF hidden フィールド付きフォーム、そして noindex の
-// robots メタを描画した HTML ボディを返すことを検証します。ユーザーは (RequireAuth が
-// するように) context に直接載せ、認証ミドルウェアや DB なしでハンドラーを走らせます。
-// UseCase は Edit では使われないため nil を渡します。
+// TestEditはGET /settings/email/editがHTTP 200と、サポートする各ロケールに
+// ついて、ローカライズされた見出し・サインイン済みユーザーの現在のemail (読み取り専用)・
+// 新しいemailと現在のパスワードのフィールド・_methodオーバーライド経由で
+// PATCH /settings/emailを動かすCSRF hiddenフィールド付きフォーム、そしてnoindexの
+// robotsメタを描画したHTMLボディを返すことを検証します。ユーザーは (RequireAuthが
+// するように) contextに直接載せ、認証ミドルウェアやDBなしでハンドラーを走らせます。
+// UseCaseはEditでは使われないためnilを渡します。
 func TestEdit(t *testing.T) {
 	t.Parallel()
 
@@ -40,8 +32,8 @@ func TestEdit(t *testing.T) {
 		wantSubmit    string
 		wantHeaderNav string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する", wantHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Change email address", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "メールアドレスの変更", wantSubmit: "変更する", wantHeaderNav: "グローバルナビゲーション"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Change email address", wantSubmit: "Change email address", wantHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -57,17 +49,17 @@ func TestEdit(t *testing.T) {
 			handler.Edit(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
 			wants := []string{
 				tt.wantHeading,
 				tt.wantSubmit,
-				"member@example.com", // the current email, shown read-only
+				"member@example.com", // 読み取り専用で表示する現在のメールアドレス
 				`action="/settings/email"`,
 				`method="POST"`,
 				`name="_method" value="PATCH"`,
@@ -81,7 +73,7 @@ func TestEdit(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})

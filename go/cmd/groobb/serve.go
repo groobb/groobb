@@ -58,13 +58,8 @@ import (
 	"github.com/groobb/groobb/go/static"
 )
 
-// registerAdminRoutes registers the community's administration screens and the
-// role writes they submit. Every one of them is behind RequireAuth, and holding
-// that registration in one function is what lets a test drive the routes the
-// server itself serves.
-//
-// [Ja] registerAdminRoutes は、コミュニティの管理画面と、そこから送信されるロールの
-// 書き込みを登録します。どれも RequireAuth の背後にあり、その登録を 1 つの関数に持つ
+// registerAdminRoutesは、コミュニティの管理画面と、そこから送信されるロールの
+// 書き込みを登録します。どれもRequireAuthの背後にあり、その登録を1つの関数に持つ
 // ことが、サーバー自身が配信するルートをテストから動かせるようにしています。
 func registerAdminRoutes(
 	r chi.Router,
@@ -73,48 +68,24 @@ func registerAdminRoutes(
 	users *admin_user.Handler,
 	userRoles *admin_user_role.Handler,
 ) {
-	// Admin hub: the landing page that links to the community's administration
-	// screens (the user list for now). It is behind RequireAuth, which turns an
-	// anonymous visitor away to sign-in; whether a signed-in visitor may open it is
-	// decided by the UseCase behind the handler, which answers a refusal with the
-	// 403 page.
-	//
-	// [Ja] 管理ハブ: コミュニティの管理画面 (今は利用者一覧) へリンクする着地ページ。
-	// RequireAuth の背後に置き、匿名の訪問者はサインインへ追い返される。サインイン済みの
-	// 訪問者がこれを開いてよいかどうかは、ハンドラーの背後の UseCase が決め、拒否には
-	// 403 ページで応答する。
+	// 管理ハブ: コミュニティの管理画面 (今は利用者一覧) へリンクする着地ページ。
+	// RequireAuthの背後に置き、匿名の訪問者はサインインへ追い返される。サインイン済みの
+	// 訪問者がこれを開いてよいかどうかは、ハンドラーの背後のUseCaseが決め、拒否には
+	// 403ページで応答する。
 	r.With(auth.RequireAuth).Get("/admin", hub.Show)
 
-	// Admin — user list: one page of the community's accounts, narrowed by the
-	// beginning of an atname and paged through the query string. It is behind
-	// RequireAuth like the hub above it; the UseCase behind the handler decides
-	// whether a signed-in visitor may read it, and the handler answers a refusal
-	// with the 403 page. A value that is not a whole page number, or is below the
-	// first page, is answered with the 404 page, while a number past the last page
-	// draws an empty listing with a way back.
-	//
-	// [Ja] 管理 — 利用者一覧: コミュニティのアカウントの 1 ページを、atname の先頭部分で
-	// 絞り込み、クエリ文字列でページを送って読む。上のハブと同じく RequireAuth の背後に
-	// 置く。サインイン済みの訪問者がこれを読んでよいかどうかはハンドラーの背後の UseCase が
-	// 決め、ハンドラーは拒否には 403 ページで応答する。整数でないページ番号と最初のページ
-	// より前の番号には 404 ページで、最後のページより後ろの番号には戻る道を持つ空の一覧で
+	// 管理 — 利用者一覧: コミュニティのアカウントの1ページを、atnameの先頭部分で
+	// 絞り込み、クエリ文字列でページを送って読む。上のハブと同じくRequireAuthの背後に
+	// 置く。サインイン済みの訪問者がこれを読んでよいかどうかはハンドラーの背後のUseCaseが
+	// 決め、ハンドラーは拒否には403ページで応答する。整数でないページ番号と最初のページ
+	// より前の番号には404ページで、最後のページより後ろの番号には戻る道を持つ空の一覧で
 	// 応答する。
 	r.With(auth.RequireAuth).Get("/admin/users", users.Index)
 
-	// Admin - user roles: give an account a role and take one back. Both are
-	// behind RequireAuth like the listing whose buttons submit to them; the
-	// UseCase behind each decides whether the signed-in visitor may hand roles
-	// out, and the handler answers a refusal with the 403 page and an account or
-	// role that is not there with the 404 page. The grant is a plain POST naming
-	// the role in the submission, while the revoke names the assignment in the
-	// address and is reached from the listing's form via the _method override.
-	// Leaving the community without an administrator is refused, and that refusal
-	// comes back on the listing as a flash.
-	//
-	// [Ja] 管理 - 利用者のロール: アカウントにロールを与え、また取り上げる。どちらも、
-	// ボタンがここへ送信する一覧と同じく RequireAuth の背後に置く。サインイン済みの訪問者が
-	// ロールを配ってよいかどうかはそれぞれの背後の UseCase が決め、ハンドラーは拒否には
-	// 403 ページで、存在しないアカウントやロールには 404 ページで応答する。付与は素の POST で
+	// 管理 - 利用者のロール: アカウントにロールを与え、また取り上げる。どちらも、
+	// ボタンがここへ送信する一覧と同じくRequireAuthの背後に置く。サインイン済みの訪問者が
+	// ロールを配ってよいかどうかはそれぞれの背後のUseCaseが決め、ハンドラーは拒否には
+	// 403ページで、存在しないアカウントやロールには404ページで応答する。付与は素のPOSTで
 	// ロールを送信が名指し、剥奪は割当をアドレスが名指して、一覧のフォームから _method
 	// オーバーライドで到達する。コミュニティを管理者のいない状態にすることは拒否し、その拒否は
 	// フラッシュとして一覧に戻ってくる。
@@ -122,10 +93,7 @@ func registerAdminRoutes(
 	r.With(auth.RequireAuth).Delete("/admin/users/{id}/roles/{name}", userRoles.Delete)
 }
 
-// runServe starts the HTTP server and blocks until it has finished shutting
-// down.
-//
-// [Ja] runServe は HTTP サーバーを起動し、シャットダウンが完了するまでブロックします。
+// runServeはHTTPサーバーを起動し、シャットダウンが完了するまでブロックします。
 func runServe() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -133,13 +101,9 @@ func runServe() {
 		os.Exit(1)
 	}
 
-	// Open the SQLite database and verify connectivity before serving requests, so
-	// a misconfigured or unopenable database fails fast at startup. The bounded
-	// context only guards the initial open/ping; the pools themselves outlive it.
-	//
-	// [Ja] リクエストを受ける前に SQLite データベースを開いて疎通を確認し、設定ミスや
-	// 開けないデータベースを起動時に早期検知する。タイムアウト付き context は
-	// 最初のオープン / ping だけを制御し、プール自体はそれより長く生存する。
+	// リクエストを受ける前にSQLiteデータベースを開いて疎通を確認し、設定ミスや
+	// 開けないデータベースを起動時に早期検知する。タイムアウト付きcontextは
+	// 最初のオープン / pingだけを制御し、プール自体はそれより長く生存する。
 	connectCtx, connectCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	db, err := database.Open(connectCtx, cfg.DatabasePath)
 	connectCancel()
@@ -154,12 +118,7 @@ func runServe() {
 	}()
 	slog.Info("opened the database")
 
-	// Bring the schema up to date on startup. A self-hosted instance is expected
-	// to be upgraded by replacing the binary and restarting it, so applying the
-	// migrations here is what keeps the database in step with the code without the
-	// operator running a separate command.
-	//
-	// [Ja] 起動時にスキーマを最新へ揃える。セルフホストのインスタンスはバイナリを置き換えて
+	// 起動時にスキーマを最新へ揃える。セルフホストのインスタンスはバイナリを置き換えて
 	// 再起動することで更新される想定のため、ここでマイグレーションを適用することが、運用者に
 	// 別のコマンドを求めずにデータベースをコードへ追随させる手段になる。
 	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -170,16 +129,10 @@ func runServe() {
 		os.Exit(1)
 	}
 
-	// Build and start the background job worker on its own connection. Sign-up is the
-	// first flow to enqueue a job (the confirmation email), so the worker is
-	// wired and started here; without it, enqueued jobs would never be processed.
-	// The bounded context guards only opening that connection; the worker runs on a
-	// background context and is drained by Stop on shutdown.
-	//
-	// [Ja] バックグラウンドジョブのワーカーを専用の接続上に構築・起動する。サインアップは
+	// バックグラウンドジョブのワーカーを専用の接続上に構築・起動する。サインアップは
 	// 最初にジョブ (確認メール) を投入するフローのため、ワーカーをここで配線・起動する。
-	// これが無いと投入されたジョブは処理されない。タイムアウト付き context はその接続を開く
-	// 処理のみを制御し、ワーカーは background context で動き、シャットダウン時に Stop で
+	// これが無いと投入されたジョブは処理されない。タイムアウト付きcontextはその接続を開く
+	// 処理のみを制御し、ワーカーはbackground contextで動き、シャットダウン時にStopで
 	// ドレインする。
 	workerCtx, workerCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	workerClient, err := worker.NewClient(workerCtx, cfg.DatabasePath, cfg)
@@ -200,11 +153,7 @@ func runServe() {
 		}
 	}()
 
-	// Wire the request-path dependencies: repositories over the application's
-	// connection, then the session manager, dispatcher, validator, UseCase, and
-	// handlers.
-	//
-	// [Ja] リクエスト経路の依存を配線する。アプリ用の接続上のリポジトリ、続いて
+	// リクエスト経路の依存を配線する。アプリ用の接続上のリポジトリ、続いて
 	// セッションマネージャ・ディスパッチャー・バリデーター・UseCase・ハンドラー。
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
@@ -224,24 +173,16 @@ func runServe() {
 
 	sessionMgr := session.NewManager(userRepo, cfg)
 
-	// Flash manager: reads and writes the one-off flash cookie. Its Middleware is
-	// wired globally below so any page's layout can render a pending message.
-	//
-	// [Ja] フラッシュマネージャ: 一度きりのフラッシュ Cookie を読み書きする。その Middleware を
+	// フラッシュマネージャ: 一度きりのフラッシュCookieを読み書きする。そのMiddlewareを
 	// 下でグローバルに配線し、どのページのレイアウトからも保留中のメッセージを描画できるようにする。
 	flashMgr := session.NewFlashManager(cfg)
 
 	jobDispatcher := dispatcher.NewDispatcher(workerClient.Client())
 
-	// One Turnstile verifier is shared across the public-form handlers (sign-up
-	// here, then sign-in and password-reset). Only the secret key is needed: an
-	// empty key (the disabled dev / test setup) makes Verify bypass every request,
-	// and the site key is passed to templates from cfg directly.
-	//
-	// [Ja] Turnstile の検証器は公開フォームのハンドラー (ここではサインアップ、続いて
-	// サインインとパスワードリセット) で 1 つを共有する。必要なのはシークレットキーのみ。
-	// キーが空 (無効化された dev / test 構成) のとき Verify はすべてのリクエストを
-	// バイパスし、サイトキーは cfg から直接テンプレートへ渡す。
+	// Turnstileの検証器は公開フォームのハンドラー (ここではサインアップ、続いて
+	// サインインとパスワードリセット) で1つを共有する。必要なのはシークレットキーのみ。
+	// キーが空 (無効化されたdev / test構成) のときVerifyはすべてのリクエストを
+	// バイパスし、サイトキーはcfgから直接テンプレートへ渡す。
 	turnstileVerifier := turnstile.NewClient(cfg.TurnstileSecretKey)
 
 	signUpValidator := validator.NewSignUpCreateValidator(userRepo)
@@ -364,61 +305,28 @@ func runServe() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 
-	// Name Groobb as the issuer of every redirect the application writes, so that a
-	// URL which bounces unexpectedly can be traced to a layer by reading one header
-	// instead of the configurations of Cloudflare and the proxy in front of us. It
-	// is registered above the trailing-slash normalization because that
-	// normalization answers a request itself, and a middleware only reaches a
-	// response that a middleware below it wrote.
-	//
-	// [Ja] アプリケーションが書き出すすべてのリダイレクトの発行元として Groobb を示す。
-	// 意図せず転送される URL を、前段の Cloudflare とプロキシの設定を読むのではなく、
-	// ヘッダー 1 つを読んでどの層のものか辿れるようにするためである。末尾スラッシュの正規化
+	// アプリケーションが書き出すすべてのリダイレクトの発行元としてGroobbを示す。
+	// 意図せず転送されるURLを、前段のCloudflareとプロキシの設定を読むのではなく、
+	// ヘッダー1つを読んでどの層のものか辿れるようにするためである。末尾スラッシュの正規化
 	// より上に登録するのは、その正規化が自身でリクエストに応答するためであり、ミドルウェアが
 	// 到達できるのはそれより下のミドルウェアが書いたレスポンスだけである。
 	r.Use(middleware.RedirectBy)
 
-	// Give every HTML response a private revalidation policy unless a more specific
-	// handler or middleware has already selected one. The routes below issue and
-	// embed visitor-specific CSRF tokens, so their responses may be kept by the
-	// browser but not a shared cache. It also wraps the slash redirect, while asset,
-	// sensitive, and 404 responses retain their own policies.
-	//
-	// [Ja] より具体的なハンドラーやミドルウェアが方針を選んでいない HTML レスポンスに、
-	// private な再検証ポリシーを与える。下のルートは訪問者固有の CSRF トークンを発行して
+	// より具体的なハンドラーやミドルウェアが方針を選んでいないHTMLレスポンスに、
+	// privateな再検証ポリシーを与える。下のルートは訪問者固有のCSRFトークンを発行して
 	// 埋め込むため、ブラウザには保存を許可しつつ共有キャッシュには保存させない。末尾
-	// スラッシュのリダイレクトも包み、アセット・機密・404 のレスポンスはそれぞれの方針を
+	// スラッシュのリダイレクトも包み、アセット・機密・404のレスポンスはそれぞれの方針を
 	// 維持する。
 	r.Use(middleware.HTMLCache)
 
-	// Send a URL carrying a trailing slash on to the same URL without one, so a
-	// page answers from a single address instead of two that hold the same
-	// content. It runs ahead of the middlewares below because a request that ends
-	// here never reaches a handler: resolving a locale or minting a CSRF token
-	// would be wasted, and the flash middleware would consume the one-off message
-	// the visitor is on their way to read.
-	//
-	// [Ja] 末尾スラッシュ付きの URL を、スラッシュ無しの同じ URL へ送る。ページが
-	// 同じ内容を持つ 2 つのアドレスではなく 1 つのアドレスから応答するようにするため
+	// 末尾スラッシュ付きのURLを、スラッシュ無しの同じURLへ送る。ページが
+	// 同じ内容を持つ2つのアドレスではなく1つのアドレスから応答するようにするため
 	// である。下のミドルウェアより前に走らせるのは、ここで終わるリクエストがハンドラーに
-	// 到達しないためである。ロケールの解決も CSRF トークンの発行も無駄になり、フラッシュの
+	// 到達しないためである。ロケールの解決もCSRFトークンの発行も無駄になり、フラッシュの
 	// ミドルウェアは訪問者がこれから読む一度きりのメッセージを消費してしまう。
 	r.Use(chimiddleware.RedirectSlashes)
 
-	// Bound and parse the body of the two POST routes that submit a post before
-	// anything else reads it. The CSRF check below reads the submitted token out
-	// of the form, and that read is where the body is parsed: reaching it first, a
-	// body that is too large or cannot be decoded is indistinguishable from a
-	// missing token, and the empty form the failed read leaves cached would be
-	// taken by the handler for a submission with nothing in it. Ahead of it, such
-	// a request is answered for what it is.
-	//
-	// It is registered here, above the middlewares below, for the reason the slash
-	// redirect above is: a request it turns away never reaches a handler, so the
-	// locale they resolve and the community they read to name the site would both
-	// be work done for a response that carries neither.
-	//
-	// [Ja] 投稿を送信する2つのPOSTルートのボディを、他の何かがそれを読む前に制限して
+	// 投稿を送信する2つのPOSTルートのボディを、他の何かがそれを読む前に制限して
 	// 解析する。下のCSRF検証は送信されたトークンをフォームから読み、その読み取りがボディを
 	// 解析する箇所である。そこに先に到達すると、大きすぎる・デコードできないボディはトークンが
 	// 無い状態と見分けられず、失敗した読み取りが残す空のフォームは、ハンドラーに中身の無い
@@ -429,185 +337,98 @@ func runServe() {
 	// サイトを名指すために読むコミュニティも、どちらも運ばない応答のための仕事になる。
 	r.Use(middleware.PostFormLimit)
 
-	// Resolve the request locale from Accept-Language and store it in the
-	// context so handlers and templates can render localized text.
-	//
-	// [Ja] Accept-Language からリクエストのロケールを解決して context に格納し、
+	// Accept-Languageからリクエストのロケールを解決してcontextに格納し、
 	// ハンドラーとテンプレートがローカライズされたテキストを描画できるようにする。
 	r.Use(i18n.Middleware)
 
-	// Store the request path in the context so the shared layout's navigation can
-	// mark a link that points at the page being rendered with aria-current="page".
-	// It wraps every route because the layout, which any page can render, reads
-	// the path from the context.
-	//
-	// [Ja] リクエストパスを context に格納し、共通レイアウトのナビゲーションが今描画して
-	// いるページを指すリンクに aria-current="page" を付けられるようにする。どのページも
-	// 描画しうるレイアウトが context からパスを読むため、全ルートに掛ける。
+	// リクエストパスをcontextに格納し、共通レイアウトのナビゲーションが今描画して
+	// いるページを指すリンクにaria-current="page" を付けられるようにする。どのページも
+	// 描画しうるレイアウトがcontextからパスを読むため、全ルートに掛ける。
 	r.Use(templates.CurrentPathMiddleware)
 
-	// Store the name of the community this instance hosts in the context so the
-	// title of the page being rendered can end with it. It wraps every route
-	// because the site is the same one whatever page is rendered, and the pages
-	// outside the community shell (the sign-in form, the 404) load no community of
-	// their own to name it from.
-	//
-	// [Ja] このインスタンスが運営するコミュニティの名前を context に格納し、今描画して
+	// このインスタンスが運営するコミュニティの名前をcontextに格納し、今描画して
 	// いるページのタイトルがそれで終われるようにする。どのページを描画してもサイトは同じ
-	// 1 つであり、コミュニティのシェルの外のページ (サインインフォーム・404) は名前を
+	// 1つであり、コミュニティのシェルの外のページ (サインインフォーム・404) は名前を
 	// 取り出せるコミュニティを自前では読み込まないため、全ルートに掛ける。
 	r.Use(siteName.Middleware)
 
-	// Issue and verify CSRF tokens for every route: safe requests mint the token
-	// for forms to embed, and unsafe requests (the sign-up POST and later forms)
-	// must echo it back.
-	//
-	// [Ja] 全ルートで CSRF トークンを発行・検証する。安全なリクエストはフォームが
-	// 埋め込むトークンを発行し、安全でないリクエスト (サインアップ POST や後続の
+	// 全ルートでCSRFトークンを発行・検証する。安全なリクエストはフォームが
+	// 埋め込むトークンを発行し、安全でないリクエスト (サインアップPOSTや後続の
 	// フォーム) は同じトークンを返す必要がある。
 	r.Use(csrf.Middleware)
 
-	// Rewrite a POST carrying _method=PATCH/PUT/DELETE to that method so HTML
-	// forms (which can only GET/POST) can drive the PATCH/DELETE routes (e.g. the
-	// password update form posts to PATCH /password). It runs after the CSRF
-	// check, which guards POST and PATCH alike, so the override does not weaken it.
-	//
-	// [Ja] _method=PATCH/PUT/DELETE を運ぶ POST をそのメソッドへ書き換え、(GET/POST しか
-	// 送れない) HTML フォームから PATCH/DELETE ルートを動かせるようにする (例: パスワード
-	// 更新フォームは PATCH /password へ POST する)。POST も PATCH も等しく守る CSRF 検証の
+	// _method=PATCH/PUT/DELETEを運ぶPOSTをそのメソッドへ書き換え、(GET/POSTしか
+	// 送れない) HTMLフォームからPATCH/DELETEルートを動かせるようにする (例: パスワード
+	// 更新フォームはPATCH /passwordへPOSTする)。POSTもPATCHも等しく守るCSRF検証の
 	// 後に走るため、オーバーライドが検証を弱めることはない。
 	r.Use(middleware.MethodOverride)
 
-	// Read any one-off flash message from its cookie into the request context and
-	// clear the cookie, so a handler's redirect target renders it exactly once
-	// (e.g. the sign-out success toast). It wraps every route because the shared
-	// layout, which any page can render, reads the flash from the context.
-	//
-	// [Ja] 一度きりのフラッシュメッセージを Cookie からリクエスト context へ読み込み、Cookie を
+	// 一度きりのフラッシュメッセージをCookieからリクエストcontextへ読み込み、Cookieを
 	// 消去する。これによりハンドラーのリダイレクト先で一度だけ描画される (例: サインアウト成功の
-	// toast)。フラッシュはどのページも描画しうる共通レイアウトが context から読むため、全ルートに掛ける。
+	// toast)。フラッシュはどのページも描画しうる共通レイアウトがcontextから読むため、全ルートに掛ける。
 	r.Use(flashMgr.Middleware)
 
-	// Answer a request matching no route with the shared 404 page instead of chi's
-	// default line of plain text. It is registered on the router rather than
-	// wrapped around it, so the middlewares above still run: the page needs the
-	// locale they resolve to render in the visitor's language.
-	//
-	// [Ja] どのルートにも一致しないリクエストには、chi の既定の平文 1 行ではなく共通の
-	// 404 ページで応答する。ルーターを包むのではなくルーターに登録するため、上のミドル
+	// どのルートにも一致しないリクエストには、chiの既定の平文1行ではなく共通の
+	// 404ページで応答する。ルーターを包むのではなくルーターに登録するため、上のミドル
 	// ウェアは変わらず走る。ページは訪問者の言語で描画するのに、それらが解決するロケールを
 	// 必要とする。
 	r.NotFound(errorRenderer.NotFound)
 
-	// Health check (no authentication required).
-	//
-	// [Ja] ヘルスチェック (認証不要)。
+	// ヘルスチェック (認証不要)。
 	r.Get("/health", healthHandler.Show)
 
-	// Serve the static assets (CSS / JS) from the copy embedded in the binary, so
-	// that the server finds them wherever it is started from rather than only
-	// alongside a ./static directory. AssetCache declares how long a browser may
-	// keep them; the URLs carry the asset version, so a deploy hands out new ones.
-	//
-	// [Ja] 静的アセット (CSS / JS) はバイナリに埋め込まれた複製から配信する。./static
+	// 静的アセット (CSS / JS) はバイナリに埋め込まれた複製から配信する。./static
 	// ディレクトリの隣でなくとも、どこで起動してもサーバーがアセットを見つけられるように
-	// するためである。AssetCache はブラウザが保持してよい期間を宣言する。URL は
-	// アセットバージョンを伴うため、デプロイのたびに新しい URL が配られる。
+	// するためである。AssetCacheはブラウザが保持してよい期間を宣言する。URLは
+	// アセットバージョンを伴うため、デプロイのたびに新しいURLが配られる。
 	fileServer := http.FileServer(http.FS(static.Assets()))
 	r.With(middleware.AssetCache(cfg)).Handle("/static/*", http.StripPrefix("/static", fileServer))
 
-	// Top page. SetUser resolves the current user from the session cookie so the
-	// handler can render by sign-in state (a signed-in visitor is redirected to
-	// /home). It is scoped to this route rather than applied globally: routes that
-	// never read the user (static assets, the health check) must not pay for a
-	// per-request session lookup, and RequireAuth-guarded routes resolve the user
-	// themselves.
-	//
-	// [Ja] トップページ。SetUser がセッション Cookie から現在のユーザーを解決し、ハンドラーが
-	// サインイン状態で描画を出し分けられるようにする (サインイン済みの訪問者は /home へ
+	// トップページ。SetUserがセッションCookieから現在のユーザーを解決し、ハンドラーが
+	// サインイン状態で描画を出し分けられるようにする (サインイン済みの訪問者は /homeへ
 	// リダイレクトされる)。グローバルではなくこのルートに限定して掛ける。ユーザーを読まない
 	// ルート (静的アセット・ヘルスチェック) はリクエストごとのセッション解決のコストを負う
-	// べきでなく、RequireAuth で守るルートは自身でユーザーを解決するためである。
+	// べきでなく、RequireAuthで守るルートは自身でユーザーを解決するためである。
 	r.With(authMiddleware.SetUser).Get("/", welcomeHandler.Show)
 
-	// Home: the signed-in landing page. RequireAuth redirects an anonymous
-	// visitor to /sign_in before the handler runs.
-	//
-	// [Ja] ホーム: サインイン済みの着地ページ。RequireAuth はハンドラーが走る前に
-	// 匿名の訪問者を /sign_in へリダイレクトする。
+	// ホーム: サインイン済みの着地ページ。RequireAuthはハンドラーが走る前に
+	// 匿名の訪問者を /sign_inへリダイレクトする。
 	r.With(authMiddleware.RequireAuth).Get("/home", homeHandler.Show)
 
-	// Category: the boards a category groups. It is readable while signed out, so
-	// SetUser resolves the visitor rather than RequireAuth demanding one: the
-	// community's pages are public, and the sidebar renders the account controls
-	// only when there is an account behind them. The route is scoped to SetUser for
-	// the same reason the top page is, rather than the middleware being applied
-	// globally.
-	//
-	// [Ja] カテゴリー: そのカテゴリーがまとめる掲示板。サインアウト状態でも読めるため、
-	// RequireAuth がサインインを要求するのではなく SetUser が訪問者を解決する。コミュニティの
+	// カテゴリー: そのカテゴリーがまとめる掲示板。サインアウト状態でも読めるため、
+	// RequireAuthがサインインを要求するのではなくSetUserが訪問者を解決する。コミュニティの
 	// ページは公開であり、サイドバーはその背後にアカウントがあるときだけアカウント操作を
 	// 描画する。ミドルウェアをグローバルに掛けずこのルートに限定するのは、トップページと
 	// 同じ理由である。
 	r.With(authMiddleware.SetUser).Get("/c/{slug}", categoryHandler.Show)
 
-	// Board: the threads posted in a board. It is readable while signed out for
-	// the same reason a category is, and is registered the same way.
-	//
-	// [Ja] 掲示板: その掲示板に立っているスレッド。カテゴリーと同じ理由でサインアウト
+	// 掲示板: その掲示板に立っているスレッド。カテゴリーと同じ理由でサインアウト
 	// 状態でも読め、同じように登録する。
 	r.With(authMiddleware.SetUser).Get("/b/{slug}", boardHandler.Show)
 
-	// Starting a thread: the form the board's new thread is written in. It is
-	// behind RequireAuth because only a signed-in visitor can write, and an
-	// anonymous one is sent to sign-in carrying this address so they come back to
-	// the form. The board is part of the address rather than a field, so the form
-	// posts to the board it was opened from.
-	//
-	// [Ja] スレッドを立てる: その掲示板の新しいスレッドを書くフォーム。書き込めるのは
-	// サインイン済みの訪問者だけであるため RequireAuth の背後に置き、匿名の訪問者は
+	// スレッドを立てる: その掲示板の新しいスレッドを書くフォーム。書き込めるのは
+	// サインイン済みの訪問者だけであるためRequireAuthの背後に置き、匿名の訪問者は
 	// このアドレスを載せてサインインへ送られ、フォームへ戻ってくる。掲示板はフィールドでは
 	// なくアドレスの一部であるため、フォームはそれが開かれた掲示板へ送信する。
 	r.With(authMiddleware.RequireAuth).Get("/b/{slug}/threads/new", threadHandler.New)
 
-	// The board's threads: the collection the form above posts a new thread to. It
-	// is behind RequireAuth for the reason the form is, and it is only ever
-	// written to — the threads of a board are read at /b/{slug}, and each thread
-	// at the address of its own id, so that moving one leaves the links to it
-	// intact.
-	//
-	// [Ja] 掲示板のスレッド: 上のフォームが新しいスレッドを送信する先のコレクション。
-	// フォームと同じ理由で RequireAuth の背後に置く。ここへは書き込むだけである。掲示板の
-	// スレッドは /b/{slug} で読み、各スレッドは自身の id のアドレスで読むため、スレッドを
+	// 掲示板のスレッド: 上のフォームが新しいスレッドを送信する先のコレクション。
+	// フォームと同じ理由でRequireAuthの背後に置く。ここへは書き込むだけである。掲示板の
+	// スレッドは /b/{slug} で読み、各スレッドは自身のidのアドレスで読むため、スレッドを
 	// 移してもそこへのリンクは保たれる。
 	r.With(authMiddleware.RequireAuth).Post("/b/{slug}/threads", threadHandler.Create)
 
-	// Thread: the posts written in a thread. It is readable while signed out for
-	// the same reason a board is, and is registered the same way.
-	//
-	// [Ja] スレッド: そのスレッドに書かれた投稿。掲示板と同じ理由でサインアウト状態でも
+	// スレッド: そのスレッドに書かれた投稿。掲示板と同じ理由でサインアウト状態でも
 	// 読め、同じように登録する。
 	r.With(authMiddleware.SetUser).Get("/t/{id}", threadHandler.Show)
 
-	// The thread's posts: the collection the reply form at the end of a thread
-	// posts to. It is behind RequireAuth because only a signed-in visitor can
-	// write, and it is only ever written to — the posts of a thread are read at
-	// /t/{id}, where each of them is addressed by its reply number (ADR 0009).
-	//
-	// [Ja] スレッドの投稿: スレッドの末尾の返信フォームが送信する先のコレクション。
-	// 書き込めるのはサインイン済みの訪問者だけであるため RequireAuth の背後に置く。
+	// スレッドの投稿: スレッドの末尾の返信フォームが送信する先のコレクション。
+	// 書き込めるのはサインイン済みの訪問者だけであるためRequireAuthの背後に置く。
 	// ここへは書き込むだけである。スレッドの投稿は /t/{id} で読み、そこでは各投稿が
 	// レス番号で名指される (ADR 0009)。
 	r.With(authMiddleware.RequireAuth).Post("/t/{id}/posts", postHandler.Create)
 
-	// The thread's lock: the confirmation page a thread is closed from, closing
-	// it, and lifting the lock again. All three are behind RequireAuth because
-	// only a signed-in visitor can hold a role, and whether the one signed in
-	// may act on this thread is settled by the UseCase. Placing and lifting
-	// share the address of the lock itself, and the lift is reached from the
-	// thread's page through the _method=DELETE override.
-	//
-	// [Ja] スレッドのロック: スレッドがそこから閉じられる確認ページ、閉じること、そして
+	// スレッドのロック: スレッドがそこから閉じられる確認ページ、閉じること、そして
 	// ロックを外すこと。3つともRequireAuthの背後に置く。ロールを持てるのはサインイン済みの
 	// 訪問者だけであり、そのサインインした人がこのスレッドに働きかけてよいかどうかを決めるのは
 	// UseCaseである。掛けることと外すことはロック自身のアドレスを共有し、外すほうはスレッドの
@@ -616,176 +437,103 @@ func runServe() {
 	r.With(authMiddleware.RequireAuth).Post("/t/{id}/lock", threadLockHandler.Create)
 	r.With(authMiddleware.RequireAuth).Delete("/t/{id}/lock", threadLockHandler.Delete)
 
-	// The thread's unpublication: the confirmation page a thread is taken out of
-	// the community's view from, and the mark itself. Both are behind RequireAuth
-	// for the reason the lock's routes are, and the pair is shaped like the lock's
-	// two writing routes: the mark has its own address, and the page that confirms
-	// it hangs below that address as /new.
-	//
-	// [Ja] スレッドの非公開: スレッドがそこからコミュニティの視界の外へ移される確認ページと、
+	// スレッドの非公開: スレッドがそこからコミュニティの視界の外へ移される確認ページと、
 	// 印そのもの。どちらもRequireAuthの背後に置くのはロックのルートと同じ理由である。この組は
 	// ロックの2つの書き込みルートと同じ形をしている。印が自身のアドレスを持ち、それを確認する
-	// ページがそのアドレスの下に /new として下がる。
+	// ページがそのアドレスの下に /newとして下がる。
 	r.With(authMiddleware.RequireAuth).Get("/t/{id}/unpublication/new", threadUnpublicationHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/t/{id}/unpublication", threadUnpublicationHandler.Create)
 
-	// One post's unpublication: the confirmation page a single post is taken out
-	// of view from, and the mark itself. The post is addressed under its thread's
-	// posts by its reply number, which is how it is named everywhere it is
-	// referred to (ADR 0009); it is the only route that reads a post out of an
-	// address, the thread's posts being read at /t/{id}.
-	//
-	// [Ja] 投稿1件の非公開: 投稿1件がそこから視界の外へ移される確認ページと、印そのもの。
+	// 投稿1件の非公開: 投稿1件がそこから視界の外へ移される確認ページと、印そのもの。
 	// 投稿はスレッドの投稿の下でレス番号によって名指される。それが、投稿が参照されるあらゆる
 	// 場所での名指し方であるためである (ADR 0009)。アドレスから投稿を読むルートはこれだけで
 	// ある。スレッドの投稿は /t/{id} で読まれるためである。
 	r.With(authMiddleware.RequireAuth).Get("/t/{id}/posts/{number}/unpublication/new", postUnpublicationHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/t/{id}/posts/{number}/unpublication", postUnpublicationHandler.Create)
 
-	// Sign-up: show the form and accept an email to issue a confirmation code.
-	//
-	// [Ja] サインアップ: フォームを表示し、確認コード発行のため email を受け付ける。
+	// サインアップ: フォームを表示し、確認コード発行のためemailを受け付ける。
 	r.Get("/sign_up", signUpHandler.New)
 	r.Post("/sign_up", signUpHandler.Create)
 
-	// Email confirmation: show the code-entry form and verify the code emailed
-	// during sign-up.
-	//
-	// [Ja] メール確認: コード入力フォームを表示し、サインアップ時にメールした
+	// メール確認: コード入力フォームを表示し、サインアップ時にメールした
 	// コードを検証する。
 	r.Get("/email_confirmation/new", emailConfirmationHandler.New)
 	r.Post("/email_confirmation", emailConfirmationHandler.Create)
 
-	// Account creation: show the password-setup form and create the account, then
-	// sign the user in.
-	//
-	// [Ja] アカウント作成: パスワード設定フォームを表示してアカウントを作成し、
+	// アカウント作成: パスワード設定フォームを表示してアカウントを作成し、
 	// ユーザーをサインインさせる。
 	r.Get("/account/new", accountHandler.New)
 	r.Post("/account", accountHandler.Create)
 
-	// Sign-in: show the form and authenticate an email and password, issuing a
-	// session on success.
-	//
-	// [Ja] サインイン: フォームを表示し、email とパスワードを認証して、成功時に
+	// サインイン: フォームを表示し、emailとパスワードを認証して、成功時に
 	// セッションを発行する。
 	r.Get("/sign_in", signInHandler.New)
 	r.Post("/sign_in", signInHandler.Create)
 
-	// Sign-in two-factor challenge: show the TOTP code-entry form and verify the
-	// code to finish signing in a 2FA-enabled account, issuing the session on
-	// success. These are public routes reached mid-sign-in; the pending user is
-	// resolved from the short-lived two-factor cookie set by the password step, not
-	// a session.
-	//
-	// [Ja] サインインの 2 段階認証チャレンジ: TOTP コード入力フォームを表示し、コードを検証して
-	// 2FA 有効なアカウントのサインインを完了させ、成功時にセッションを発行する。これらは
+	// サインインの2段階認証チャレンジ: TOTPコード入力フォームを表示し、コードを検証して
+	// 2FA有効なアカウントのサインインを完了させ、成功時にセッションを発行する。これらは
 	// サインインの途中で通る公開ルートで、保留中ユーザーはセッションではなくパスワードのステップが
-	// 設定した短命の 2 段階認証 Cookie から解決する。
+	// 設定した短命の2段階認証Cookieから解決する。
 	r.Get("/sign_in/two_factor/new", signInTwoFactorHandler.New)
 	r.Post("/sign_in/two_factor", signInTwoFactorHandler.Create)
 
-	// Sign-in two-factor recovery-code challenge: show the recovery-code entry form
-	// and verify a code to finish signing in when the authenticator app is
-	// unavailable, consuming the one-time code and issuing the session on success.
-	// Like the TOTP challenge, these are public routes reached mid-sign-in; the
-	// pending user is resolved from the short-lived two-factor cookie, not a session.
-	//
-	// [Ja] サインインの 2 段階認証リカバリーコードチャレンジ: 認証アプリを使えないときに
+	// サインインの2段階認証リカバリーコードチャレンジ: 認証アプリを使えないときに
 	// リカバリーコード入力フォームを表示し、コードを検証してサインインを完了させ、成功時に
-	// 1 回使い切りのコードを消費してセッションを発行する。TOTP チャレンジと同様、これらは
-	// サインインの途中で通る公開ルートで、保留中ユーザーはセッションではなく短命の 2 段階認証
-	// Cookie から解決する。
+	// 1回使い切りのコードを消費してセッションを発行する。TOTPチャレンジと同様、これらは
+	// サインインの途中で通る公開ルートで、保留中ユーザーはセッションではなく短命の2段階認証
+	// Cookieから解決する。
 	r.Get("/sign_in/two_factor/recovery/new", signInTwoFactorRecoveryHandler.New)
 	r.Post("/sign_in/two_factor/recovery", signInTwoFactorRecoveryHandler.Create)
 
-	// Sign-out: delete the current session and clear the session cookie.
-	//
-	// [Ja] サインアウト: 現在のセッションを削除しセッション Cookie を消去する。
+	// サインアウト: 現在のセッションを削除しセッションCookieを消去する。
 	r.Delete("/user_session", userSessionHandler.Delete)
 
-	// Password reset request: show the form and accept an email to issue a reset
-	// link, which is emailed to the account if one exists.
-	//
-	// [Ja] パスワードリセット申請: フォームを表示し、リセットリンク発行のため email を
+	// パスワードリセット申請: フォームを表示し、リセットリンク発行のためemailを
 	// 受け付ける。リンクはアカウントが存在すればそのアカウントへメールされる。
 	r.Get("/password_reset/new", passwordResetHandler.New)
 	r.Post("/password_reset", passwordResetHandler.Create)
 
-	// Password reset update: show the new-password form from the emailed link and
-	// set the new password, spending the reset token. The form drives PATCH via
-	// the _method override.
-	//
-	// [Ja] パスワードリセット更新: メールのリンクから新パスワードフォームを表示し、新しい
-	// パスワードを設定してリセットトークンを消費する。フォームは _method オーバーライドで
-	// PATCH を動かす。
+	// パスワードリセット更新: メールのリンクから新パスワードフォームを表示し、新しい
+	// パスワードを設定してリセットトークンを消費する。フォームは _methodオーバーライドで
+	// PATCHを動かす。
 	r.Get("/password/edit", passwordHandler.Edit)
 	r.Patch("/password", passwordHandler.Update)
 
-	// Settings hub: the landing page that links to the individual settings screens
-	// (email change for now). It is behind RequireAuth.
-	//
-	// [Ja] 設定ハブ: 各設定画面 (今はメールアドレス変更) へリンクする着地ページ。
-	// RequireAuth の背後に置く。
+	// 設定ハブ: 各設定画面 (今はメールアドレス変更) へリンクする着地ページ。
+	// RequireAuthの背後に置く。
 	r.With(authMiddleware.RequireAuth).Get("/settings", settingsHandler.Show)
 
-	// Settings — email change: show the change form (with the current address) and
-	// accept a new email plus the current password to issue a confirmation code.
-	// Both are behind RequireAuth; the form drives PATCH via the _method override.
-	//
-	// [Ja] 設定 — メールアドレス変更: 変更フォーム (現在のアドレス付き) を表示し、新しい
-	// email と現在のパスワードを受け付けて確認コードを発行する。どちらも RequireAuth の
-	// 背後に置き、フォームは _method オーバーライドで PATCH を動かす。
+	// 設定 — メールアドレス変更: 変更フォーム (現在のアドレス付き) を表示し、新しい
+	// emailと現在のパスワードを受け付けて確認コードを発行する。どちらもRequireAuthの
+	// 背後に置き、フォームは _methodオーバーライドでPATCHを動かす。
 	r.With(authMiddleware.RequireAuth).Get("/settings/email/edit", settingsEmailHandler.Edit)
 	r.With(authMiddleware.RequireAuth).Patch("/settings/email", settingsEmailHandler.Update)
 
-	// Settings — email change confirmation: show the code-entry form and verify the
-	// code emailed to the new address, which applies the change on success. Both are
-	// behind RequireAuth; the pending confirmation is resolved from the signed-in
-	// user, not a handoff cookie.
-	//
-	// [Ja] 設定 — メールアドレス変更の確認: コード入力フォームを表示し、新しいアドレスに
-	// メールしたコードを検証する。成功時に変更を適用する。どちらも RequireAuth の背後に置き、
-	// 保留中の確認は受け渡し Cookie ではなくサインイン済みユーザーから解決する。
+	// 設定 — メールアドレス変更の確認: コード入力フォームを表示し、新しいアドレスに
+	// メールしたコードを検証する。成功時に変更を適用する。どちらもRequireAuthの背後に置き、
+	// 保留中の確認は受け渡しCookieではなくサインイン済みユーザーから解決する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/email/confirmation/new", settingsEmailConfirmationHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/settings/email/confirmation", settingsEmailConfirmationHandler.Create)
 
-	// Settings — two-factor authentication: show the enrollment form (QR code and
-	// manual-entry key) and enable 2FA after the user confirms a TOTP code, which
-	// activates the setting and shows the one-time recovery codes. Both are behind
-	// RequireAuth; the setup (GET) shows the enrollment form when 2FA is off or the
-	// disable confirmation form when it is on, the enable (POST) is a plain POST (no
-	// method override), and the disable (DELETE) is reached from the disable form via
-	// the _method override.
-	//
-	// [Ja] 設定 — 2 段階認証: 2FA が無効なら登録フォーム (QR コードと手動入力キー) を、有効なら
-	// 無効化の確認フォームを表示し、ユーザーが TOTP コードを確認した後に 2FA を有効化する。
-	// 有効化は設定をアクティブにし、1 回使い切りのリカバリーコードを表示する。無効化は再認証
-	// (現在のパスワードか現在の TOTP コード) の後に設定を削除する。すべて RequireAuth の背後に
-	// 置き、設定 (GET) は登録 / 無効化フォームを、有効化 (POST) は素の POST、無効化 (DELETE) は
-	// 無効化フォームから _method オーバーライドで到達する。
+	// 設定 — 2段階認証: 2FAが無効なら登録フォーム (QRコードと手動入力キー) を、有効なら
+	// 無効化の確認フォームを表示し、ユーザーがTOTPコードを確認した後に2FAを有効化する。
+	// 有効化は設定をアクティブにし、1回使い切りのリカバリーコードを表示する。無効化は再認証
+	// (現在のパスワードか現在のTOTPコード) の後に設定を削除する。すべてRequireAuthの背後に
+	// 置き、設定 (GET) は登録 / 無効化フォームを、有効化 (POST) は素のPOST、無効化 (DELETE) は
+	// 無効化フォームから _methodオーバーライドで到達する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/two_factor_auth/new", settingsTwoFactorAuthHandler.New)
 	r.With(authMiddleware.RequireAuth).Post("/settings/two_factor_auth", settingsTwoFactorAuthHandler.Create)
 	r.With(authMiddleware.RequireAuth).Delete("/settings/two_factor_auth", settingsTwoFactorAuthHandler.Delete)
 
-	// Settings — account withdrawal: show the confirmation form (with the current-
-	// password field) and execute the withdrawal, which soft-deletes and anonymizes
-	// the account and deletes all of its sessions. Both are behind RequireAuth; the
-	// form drives DELETE via the _method override. The settings hub does not link
-	// here yet (added in a later task), so the page is reached only by direct URL.
-	//
-	// [Ja] 設定 — 退会: 確認フォーム (現在のパスワードフィールド付き) を表示し、退会を実行する。
+	// 設定 — 退会: 確認フォーム (現在のパスワードフィールド付き) を表示し、退会を実行する。
 	// 退会の実行はアカウントを論理削除・匿名化し、その全セッションを削除する。どちらも
-	// RequireAuth の背後に置き、フォームは _method オーバーライドで DELETE を動かす。設定ハブ
-	// からのリンクはまだ無い (後続タスクで追加) ため、このページは URL 直打ちでのみ到達する。
+	// RequireAuthの背後に置き、フォームは _methodオーバーライドでDELETEを動かす。設定ハブ
+	// からのリンクはまだ無い (後続タスクで追加) ため、このページはURL直打ちでのみ到達する。
 	r.With(authMiddleware.RequireAuth).Get("/settings/withdrawal/new", settingsWithdrawalHandler.New)
 	r.With(authMiddleware.RequireAuth).Delete("/settings/withdrawal", settingsWithdrawalHandler.Delete)
 
-	// Admin: the hub, the user list, and the role writes the listing submits. The
-	// routes and what each of them answers are described at registerAdminRoutes.
-	//
-	// [Ja] 管理: ハブ・利用者一覧・一覧が送信するロールの書き込み。ルートとそれぞれの
-	// 応答は registerAdminRoutes に記す。
+	// 管理: ハブ・利用者一覧・一覧が送信するロールの書き込み。ルートとそれぞれの
+	// 応答はregisterAdminRoutesに記す。
 	registerAdminRoutes(r, authMiddleware, adminHandler, adminUserHandler, adminUserRoleHandler)
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
@@ -800,10 +548,7 @@ func runServe() {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	// Graceful shutdown: on SIGINT / SIGTERM, stop accepting new connections and
-	// wait for in-flight requests to finish (up to the timeout).
-	//
-	// [Ja] グレースフルシャットダウン。SIGINT / SIGTERM を受けたら新規接続の
+	// グレースフルシャットダウン。SIGINT / SIGTERMを受けたら新規接続の
 	// 受け付けを止め、処理中のリクエストの完了を (タイムアウトまで) 待ちます。
 	shutdownDone := make(chan struct{})
 	go func() {
@@ -827,13 +572,9 @@ func runServe() {
 		os.Exit(1)
 	}
 
-	// Wait for the in-flight requests to be drained before exiting. Without this,
-	// main would return as soon as ListenAndServe reports ErrServerClosed, while
-	// srv.Shutdown is still draining connections in the goroutine.
-	//
-	// [Ja] 終了する前に処理中リクエストのドレイン完了を待つ。これが無いと、
-	// goroutine 内の srv.Shutdown がまだ接続をドレインしている最中でも、
-	// ListenAndServe が ErrServerClosed を返した時点で main が返ってしまう。
+	// 終了する前に処理中リクエストのドレイン完了を待つ。これが無いと、
+	// goroutine内のsrv.Shutdownがまだ接続をドレインしている最中でも、
+	// ListenAndServeがErrServerClosedを返した時点でmainが返ってしまう。
 	<-shutdownDone
 	slog.Info("the server has stopped")
 }

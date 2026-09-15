@@ -11,16 +11,10 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// TestPostCreateValidator_Validate covers the rules a reply body follows: a
-// body that says something and fits the limit is accepted, including at the
-// boundary and where emoji make the code-point count differ from the byte
-// count, while a body that is empty, has nothing visible in it, is over the
-// limit, or cannot be stored is refused with a field error on body.
-//
-// [Ja] TestPostCreateValidator_Validate は返信の本文が従う規則を網羅する。何かを述べて
+// TestPostCreateValidator_Validateは返信の本文が従う規則を網羅する。何かを述べて
 // おり上限に収まる本文は、境界のちょうどの長さや、絵文字によってコードポイント数と
 // バイト数が食い違う場合も含めて受け付けられ、空・見える文字が1つも無い・長さ超過・
-// 保存できない本文は body のフィールドエラーで拒否される。
+// 保存できない本文はbodyのフィールドエラーで拒否される。
 func TestPostCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -48,10 +42,7 @@ func TestPostCreateValidator_Validate(t *testing.T) {
 			body: "1行目\n\n3行目",
 		},
 		{
-			// The count is of the normalized body, so a body at the limit is not
-			// refused for the CR the browser added to each line ending.
-			//
-			// [Ja] 数えるのは正規化後の本文であるため、上限ちょうどの本文が、ブラウザが
+			// 数えるのは正規化後の本文であるため、上限ちょうどの本文が、ブラウザが
 			// 各行末に足したCRのせいで拒否されることはない。
 			name: "正常系: CRLFをLFに正規化した後の長さで数える",
 			body: strings.Repeat("あ\r\n", validator.PostBodyMaxLength/2),
@@ -67,10 +58,7 @@ func TestPostCreateValidator_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			// Characters that render as nothing survive trimming, so a body built out
-			// of them alone would otherwise be taken as one that says something.
-			//
-			// [Ja] 何も描かない文字は空白の除去を生き延びるため、それだけでできた本文は、
+			// 何も描かない文字は空白の除去を生き延びるため、それだけでできた本文は、
 			// そのままでは何かを述べているものとして受け取られてしまう。
 			name:    "異常系: 目に見えない文字だけ",
 			body:    "\u200b",
@@ -113,33 +101,29 @@ func TestPostCreateValidator_Validate(t *testing.T) {
 
 			if !tt.wantErr {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("予期しないエラー: %v", err)
 				}
 				if body == "" {
-					t.Error("expected the normalized body, got an empty string")
+					t.Error("正規化した本文を期待したが、空文字列だった")
 				}
 				return
 			}
 
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("expected a ValidationError, got %v", err)
+				t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 			}
 			if !ve.HasFieldError("body") {
-				t.Errorf("expected a field error on body, got %#v", ve.Fields)
+				t.Errorf("bodyフィールドのエラーが無い: %#v", ve.Fields)
 			}
 			if body != "" {
-				t.Errorf("expected no body on failure, got %q", body)
+				t.Errorf("失敗時のbody = %q、期待値は空文字列", body)
 			}
 		})
 	}
 }
 
-// TestPostCreateValidator_ValidateNormalizes verifies what a valid body is
-// stored as: line endings unified to LF, and the whitespace around it left
-// exactly as it was typed.
-//
-// [Ja] TestPostCreateValidator_ValidateNormalizes は、妥当な本文が何として保存されるか
+// TestPostCreateValidator_ValidateNormalizesは、妥当な本文が何として保存されるか
 // を検証する。改行はLFに統一され、その周りの空白は打たれたままに残る。
 func TestPostCreateValidator_ValidateNormalizes(t *testing.T) {
 	t.Parallel()
@@ -176,19 +160,16 @@ func TestPostCreateValidator_ValidateNormalizes(t *testing.T) {
 
 			body, err := v.Validate(ctx, validator.PostCreateValidatorInput{Body: tt.body})
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("予期しないエラー: %v", err)
 			}
 			if body != tt.want {
-				t.Errorf("body = %q, want %q", body, tt.want)
+				t.Errorf("body = %q、期待値 = %q", body, tt.want)
 			}
 		})
 	}
 }
 
-// TestPostCreateValidator_ValidateVisibleText rejects invisible-only bodies
-// while preserving characters that affect the rendering of visible text.
-//
-// [Ja] TestPostCreateValidator_ValidateVisibleText は非表示文字だけの本文を拒否し、
+// TestPostCreateValidator_ValidateVisibleTextは非表示文字だけの本文を拒否し、
 // 可視テキストの描画に関わる文字はそのまま保持することを検証する。
 func TestPostCreateValidator_ValidateVisibleText(t *testing.T) {
 	t.Parallel()
@@ -224,24 +205,24 @@ func TestPostCreateValidator_ValidateVisibleText(t *testing.T) {
 			body, err := v.Validate(ctx, validator.PostCreateValidatorInput{Body: tt.text})
 			if !tt.wantErr {
 				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
+					t.Fatalf("予期しないエラー: %v", err)
 				}
 				if body != tt.text {
-					t.Errorf("body = %q, want %q", body, tt.text)
+					t.Errorf("body = %q、期待値 = %q", body, tt.text)
 				}
 				return
 			}
 
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("expected a ValidationError, got %v", err)
+				t.Fatalf("エラー = %v、期待値 = ValidationError", err)
 			}
 			want := []string{i18n.T(ctx, "validation_required")}
 			if messages := ve.GetFieldErrors("body"); !slices.Equal(messages, want) {
-				t.Errorf("body errors = %q, want %q", messages, want)
+				t.Errorf("bodyのエラー = %q、期待値 = %q", messages, want)
 			}
 			if body != "" {
-				t.Errorf("expected no body on failure, got %q", body)
+				t.Errorf("失敗時のbody = %q、期待値は空文字列", body)
 			}
 		})
 	}

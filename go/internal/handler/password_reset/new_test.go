@@ -13,20 +13,14 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// getPasswordResetNew builds a GET /password_reset/new request with the locale
-// set in its context.
-//
-// [Ja] getPasswordResetNew は GET /password_reset/new リクエストを組み立て、context に
+// getPasswordResetNewはGET /password_reset/newリクエストを組み立て、contextに
 // ロケールを設定する。
 func getPasswordResetNew(locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/password_reset/new", nil)
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// TestNew verifies that GET /password_reset/new renders the request form (200)
-// with the email field, the CSRF hidden field, and the heading.
-//
-// [Ja] TestNew は、GET /password_reset/new が email フィールド・CSRF hidden
+// TestNewは、GET /password_reset/newがemailフィールド・CSRF hidden
 // フィールド・見出しを伴って申請フォームを描画 (200) することを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -39,10 +33,10 @@ func TestNew(t *testing.T) {
 	handler.New(rec, getPasswordResetNew(model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
-		t.Errorf("Content-Type = %q, want text/html", ct)
+		t.Errorf("Content-Type = %q、期待値 = text/html", ct)
 	}
 
 	body := rec.Body.String()
@@ -59,9 +53,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-// TestNew_English verifies the form localizes to English.
-//
-// [Ja] TestNew_English はフォームが英語にローカライズされることを検証する。
+// TestNew_Englishはフォームが英語にローカライズされることを検証する。
 func TestNew_English(t *testing.T) {
 	t.Parallel()
 
@@ -73,31 +65,22 @@ func TestNew_English(t *testing.T) {
 	handler.New(rec, getPasswordResetNew(model.LocaleEn))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	if !strings.Contains(rec.Body.String(), "Reset your password") {
 		t.Error("英語の見出しが描画されていない")
 	}
 }
 
-// TestNew_RendersTurnstileWidget verifies that when a Turnstile site key is
-// configured, GET /password_reset/new renders the widget — the cf-turnstile div
-// carrying the site key and the api.js script — confirming renderNew forwards
-// cfg.TurnstileSiteKey into the form. New does not verify tokens, so the UseCase
-// and verifier are left nil. The site key is Cloudflare's dummy testing key, kept
-// to fixtures.
-//
-// [Ja] TestNew_RendersTurnstileWidget は、Turnstile のサイトキーが設定されているとき
-// GET /password_reset/new がウィジェット (サイトキーを持つ cf-turnstile div と api.js
-// スクリプト) を描画することを検証し、renderNew が cfg.TurnstileSiteKey をフォームへ
-// 渡していることを確認する。New はトークンを検証しないため、UseCase と検証器は nil の
-// ままにする。サイトキーは Cloudflare のダミーテストキーで、フィクスチャに留める。
+// TestNew_RendersTurnstileWidgetは、Turnstileのサイトキーが設定されているとき
+// GET /password_reset/newがウィジェット (サイトキーを持つcf-turnstile divとapi.js
+// スクリプト) を描画することを検証し、renderNewがcfg.TurnstileSiteKeyをフォームへ
+// 渡していることを確認する。Newはトークンを検証しないため、UseCaseと検証器はnilの
+// ままにする。サイトキーはCloudflareのダミーテストキーで、フィクスチャに留める。
 func TestNew_RendersTurnstileWidget(t *testing.T) {
 	t.Parallel()
 
-	// Cloudflare's always-passing dummy site key, kept to test fixtures.
-	//
-	// [Ja] Cloudflare の「常に成功」ダミーサイトキー (テスト専用)。
+	// Cloudflareの「常に成功」ダミーサイトキー (テスト専用)。
 	const dummySiteKey = "1x00000000000000000000AA"
 
 	handler := password_reset.NewHandler(&config.Config{Env: "test", TurnstileSiteKey: dummySiteKey}, nil, nil)
@@ -106,7 +89,7 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 	handler.New(rec, getPasswordResetNew(model.LocaleJa))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
 	wants := []string{
@@ -116,7 +99,7 @@ func TestNew_RendersTurnstileWidget(t *testing.T) {
 	}
 	for _, want := range wants {
 		if !strings.Contains(body, want) {
-			t.Errorf("response body does not contain %q", want)
+			t.Errorf("レスポンスボディに %q が含まれていない", want)
 		}
 	}
 }

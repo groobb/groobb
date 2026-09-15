@@ -11,14 +11,8 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Sent renders the confirmation shown after a reset request is submitted. Its
-// message is deliberately non-committal ("if an account exists, a link was
-// sent"): it is shown for every submission regardless of whether the email
-// belongs to an account, so it must not imply that one does. It takes no data
-// for the same reason—nothing about the submitted address is echoed back.
-//
-// [Ja] Sent はリセット申請の送信後に表示する確認を描画します。メッセージは意図的に
-// 断定を避けます (「アカウントが存在すればリンクを送信した」)。email がアカウントに
+// Sentはリセット申請の送信後に表示する確認を描画します。メッセージは意図的に
+// 断定を避けます (「アカウントが存在すればリンクを送信した」)。emailがアカウントに
 // 属するかによらずすべての送信で表示するため、存在をほのめかしてはなりません。同じ理由で
 // データを取りません — 送信されたアドレスについて何もエコーバックしません。
 func Sent() templ.Component {
@@ -49,7 +43,7 @@ func Sent() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_reset_sent_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 19, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 13, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -62,7 +56,7 @@ func Sent() templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_reset_sent_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 20, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 14, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -75,7 +69,7 @@ func Sent() templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "password_reset_sent_back_to_sign_in"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 24, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/password_reset/sent.templ`, Line: 18, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {

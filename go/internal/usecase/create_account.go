@@ -12,29 +12,17 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// defaultUserTimeZone is the time zone assigned to a new account. Groobb has no
-// timezone source yet (no browser-based detection or settings screen), so a new
-// user gets this account-level default; a later task can let the user change it.
-// It matches the project's Japanese-first default (users.locale defaults to ja).
-//
-// [Ja] defaultUserTimeZone は新規アカウントに割り当てるタイムゾーンです。Groobb には
+// defaultUserTimeZoneは新規アカウントに割り当てるタイムゾーンです。Groobbには
 // まだタイムゾーンの供給元 (ブラウザ検出や設定画面) が無いため、新規ユーザーはこの
 // アカウントレベルの既定値を持ちます (後続タスクでユーザーが変更できるようにできる)。
-// プロジェクトの日本語優先の既定 (users.locale の既定が ja) に揃えています。
+// プロジェクトの日本語優先の既定 (users.localeの既定がja) に揃えています。
 const defaultUserTimeZone = "Asia/Tokyo"
 
-// CreateAccountUsecase orchestrates account creation: it reads the email from a
-// verified (succeeded) email confirmation, validates the chosen password, and
-// creates the user and its password credential in one transaction. The
-// confirmation proves the user controls the email, so the email is taken from it
-// rather than from the form. Issuing the session (signing the user in) is a
-// separate step the handler runs with CreateSessionUsecase.
-//
-// [Ja] CreateAccountUsecase はアカウント作成を統括します。検証済み (成功済み) のメール
-// 確認から email を読み、選んだパスワードを検証し、ユーザーとそのパスワード資格情報を
-// 1 トランザクションで作成します。確認はユーザーが email を管理していることを証明する
-// ため、email はフォームではなく確認から取ります。セッションの発行 (サインイン) は
-// ハンドラーが CreateSessionUsecase で行う別ステップです。
+// CreateAccountUsecaseはアカウント作成を統括します。検証済み (成功済み) のメール
+// 確認からemailを読み、選んだパスワードを検証し、ユーザーとそのパスワード資格情報を
+// 1トランザクションで作成します。確認はユーザーがemailを管理していることを証明する
+// ため、emailはフォームではなく確認から取ります。セッションの発行 (サインイン) は
+// ハンドラーがCreateSessionUsecaseで行う別ステップです。
 type CreateAccountUsecase struct {
 	writer                *sql.DB
 	accountValidator      *validator.AccountCreateValidator
@@ -43,11 +31,8 @@ type CreateAccountUsecase struct {
 	userPasswordRepo      *repository.UserPasswordRepository
 }
 
-// NewCreateAccountUsecase builds a CreateAccountUsecase from the write pool, the
-// validator, and the repositories it persists through.
-//
-// [Ja] NewCreateAccountUsecase は書き込み用プール・validator・永続化に使うリポジトリから
-// CreateAccountUsecase を構築します。
+// NewCreateAccountUsecaseは書き込み用プール・validator・永続化に使うリポジトリから
+// CreateAccountUsecaseを構築します。
 func NewCreateAccountUsecase(
 	writer *sql.DB,
 	accountValidator *validator.AccountCreateValidator,
@@ -64,14 +49,9 @@ func NewCreateAccountUsecase(
 	}
 }
 
-// CreateAccountInput is the input to Execute. EmailConfirmationID is the verified
-// confirmation's id (carried from the handoff cookie) whose email becomes the new
-// user's; Atname is the chosen @handle; Password / PasswordConfirmation are the
-// chosen credential; Locale is the request locale stored as the account default.
-//
-// [Ja] CreateAccountInput は Execute の入力です。EmailConfirmationID は検証済みの確認の
-// id (受け渡し Cookie から運ばれる) で、その email が新規ユーザーの email になります。
-// Atname は選んだ @ハンドル、Password / PasswordConfirmation は選んだ資格情報、Locale は
+// CreateAccountInputはExecuteの入力です。EmailConfirmationIDは検証済みの確認の
+// id (受け渡しCookieから運ばれる) で、そのemailが新規ユーザーのemailになります。
+// Atnameは選んだ @ハンドル、Password / PasswordConfirmationは選んだ資格情報、Localeは
 // アカウント既定として保存するリクエストのロケールです。
 type CreateAccountInput struct {
 	EmailConfirmationID  model.EmailConfirmationID
@@ -81,26 +61,16 @@ type CreateAccountInput struct {
 	Locale               model.Locale
 }
 
-// CreateAccountOutput carries the created user so the handler can issue a session
-// for it (sign the new user in).
-//
-// [Ja] CreateAccountOutput は作成されたユーザーを運び、ハンドラーがそのユーザーの
+// CreateAccountOutputは作成されたユーザーを運び、ハンドラーがそのユーザーの
 // セッションを発行 (新規ユーザーをサインイン) できるようにします。
 type CreateAccountOutput struct {
 	User *model.User
 }
 
-// Execute resolves the verified confirmation, validates the password, hashes it,
-// and creates the account. The confirmation is read first: without a usable
-// verified confirmation the flow is broken, so it returns an AppError (the
-// handler restarts sign-up) before any password validation. Password hashing
-// runs before the transaction so bcrypt's cost is not paid while holding a row
-// lock.
-//
-// [Ja] Execute は検証済みの確認を解決し、パスワードを検証し、ハッシュ化して、アカウントを
+// Executeは検証済みの確認を解決し、パスワードを検証し、ハッシュ化して、アカウントを
 // 作成します。確認を先に読みます。使える検証済み確認が無ければフローは破綻しているため、
-// パスワード検証より前に AppError を返します (ハンドラーがサインアップをやり直させる)。
-// パスワードのハッシュ化は、行ロックを保持したまま bcrypt のコストを払わないよう、
+// パスワード検証より前にAppErrorを返します (ハンドラーがサインアップをやり直させる)。
+// パスワードのハッシュ化は、SQLiteの書き込みロックを保持したままbcryptのコストを払わないよう、
 // トランザクションの前に実行します。
 func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccountInput) (*CreateAccountOutput, error) {
 	confirmation, err := uc.emailConfirmationRepo.FindSucceededByID(ctx, input.EmailConfirmationID)
@@ -108,14 +78,9 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 		return nil, fmt.Errorf("検証済みメール確認の取得に失敗: %w", err)
 	}
 	if confirmation == nil {
-		// No usable verified confirmation: the handoff is stale, already used, or
-		// the code was never verified. This is a known business-level failure, not
-		// a user-fixable form error, so return an AppError; the handler sends the
-		// user back to start sign-up over rather than re-rendering the form.
-		//
-		// [Ja] 使える検証済み確認が無い: 受け渡しが失効・使用済み、またはコードが未検証。
+		// 使える検証済み確認が無い: 受け渡しが失効・使用済み、またはコードが未検証。
 		// これはユーザーが修正できるフォームエラーではなく業務レベルの既知の失敗のため
-		// AppError を返す。ハンドラーはフォームを再描画する代わりにユーザーをサインアップの
+		// AppErrorを返す。ハンドラーはフォームを再描画する代わりにユーザーをサインアップの
 		// やり直しへ送る。
 		return nil, &model.AppError{
 			Code:     model.AppErrCodeResourceNotFound,
@@ -141,14 +106,9 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 	return uc.createAccount(ctx, confirmation.Email, input.Atname, input.Locale, passwordDigest)
 }
 
-// createAccount creates the user and its password credential in one transaction,
-// so an account never exists without its password (or vice versa). The
-// password digest is computed by Execute beforehand, keeping the transaction to
-// pure persistence.
-//
-// [Ja] createAccount はユーザーとそのパスワード資格情報を 1 トランザクションで作成し、
+// createAccountはユーザーとそのパスワード資格情報を1トランザクションで作成し、
 // パスワードの無いアカウント (またはその逆) が決して生じないようにします。パスワード
-// ダイジェストは事前に Execute が計算済みで、トランザクションを純粋な永続化に保ちます。
+// ダイジェストは事前にExecuteが計算済みで、トランザクションを純粋な永続化に保ちます。
 func (uc *CreateAccountUsecase) createAccount(ctx context.Context, email, atname string, locale model.Locale, passwordDigest string) (*CreateAccountOutput, error) {
 	tx, err := uc.writer.BeginTx(ctx, nil)
 	if err != nil {

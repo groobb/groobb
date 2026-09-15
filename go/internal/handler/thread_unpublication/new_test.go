@@ -28,23 +28,11 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// csrfToken is the token every submission in this package carries in both the
-// cookie and the body, which is what the CSRF check compares. Its value says
-// nothing; that the two sides agree is the whole of it.
-//
-// [Ja] csrfTokenは、本パッケージのどの送信もCookieとボディの両方で運ぶトークンで、CSRFの
+// csrfTokenは、本パッケージのどの送信もCookieとボディの両方で運ぶトークンで、CSRFの
 // 検証が突き合わせる相手です。値そのものに意味は無く、両者が一致していることがすべてです。
 const csrfToken = "test-csrf-token"
 
-// fixture is a test database with the unpublication handler wired over its
-// repositories, together with the board the thread stands in, the thread the
-// requests act on, and the administrator acting, so a test drives both routes
-// against rows that are really stored.
-//
-// The board is held because it is where the operation lands: the thread it was
-// performed on is no longer somewhere to send anyone.
-//
-// [Ja] fixtureは、そのリポジトリ上に非公開のハンドラーを組み立てたテスト用データベースと、
+// fixtureは、そのリポジトリ上に非公開のハンドラーを組み立てたテスト用データベースと、
 // スレッドが立っている掲示板、リクエストが働きかけるスレッド、そして操作する管理者です。
 // テストが、実際に保存された行に対して2つのルートを駆動できるようにするためです。
 //
@@ -60,10 +48,7 @@ type fixture struct {
 	plain   model.UserID
 }
 
-// newFixture builds the fixture for one test: a board with one thread in it, an
-// administrator, and an account holding no role at all.
-//
-// [Ja] newFixtureは1つのテストのためのfixtureを組み立てます。スレッドが1つ立っている
+// newFixtureは1つのテストのためのfixtureを組み立てます。スレッドが1つ立っている
 // 掲示板、管理者、そしてロールを1つも持たないアカウントです。
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
@@ -121,10 +106,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-// seedAdmin creates an account holding the built-in administrator role, which is
-// what admits every operation on a thread.
-//
-// [Ja] seedAdminは、組み込みの管理者ロールを持つアカウントを作ります。スレッドに対する
+// seedAdminは、組み込みの管理者ロールを持つアカウントを作ります。スレッドに対する
 // あらゆる操作を許すのがこれです。
 func seedAdmin(t *testing.T, db *database.DB) model.UserID {
 	t.Helper()
@@ -134,12 +116,7 @@ func seedAdmin(t *testing.T, db *database.DB) model.UserID {
 	return userID
 }
 
-// newRouter mounts the two routes the way serve.go does — behind the CSRF check
-// — with actor standing in for the account RequireAuth resolves from a session.
-// Going through a router is what lets a test submit as a form does, and what
-// makes the id in the address reach the handler.
-//
-// [Ja] newRouterは、serve.goと同じ形で、2つのルートをCSRFの検証の背後に置きます。actorは
+// newRouterは、serve.goと同じ形で、2つのルートをCSRFの検証の背後に置きます。actorは
 // RequireAuthがセッションから解決するアカウントの代わりです。ルーターを通すことで、テストは
 // フォームと同じ形で送信でき、アドレスが運ぶidがハンドラーへ届きます。
 func newRouter(f *fixture, actor model.UserID) http.Handler {
@@ -152,11 +129,7 @@ func newRouter(f *fixture, actor model.UserID) http.Handler {
 	return mount(f, signedIn)
 }
 
-// newAnonymousRouter mounts the same two routes behind the real RequireAuth over
-// a session manager reading this database, which is how a request carrying no
-// session is answered the way it is in production.
-//
-// [Ja] newAnonymousRouterは、同じ2つのルートを、このデータベースを読むセッションマネージャ
+// newAnonymousRouterは、同じ2つのルートを、このデータベースを読むセッションマネージャ
 // 上の本物のRequireAuthの背後に置きます。セッションを運ばないリクエストが、本番と同じ形で
 // 応答されるようにするためです。
 func newAnonymousRouter(f *fixture) http.Handler {
@@ -164,10 +137,7 @@ func newAnonymousRouter(f *fixture) http.Handler {
 	return mount(f, auth.RequireAuth)
 }
 
-// mount wires the router the two constructors above share, differing only in
-// what stands in for the sign-in check.
-//
-// [Ja] mountは、上の2つのコンストラクタが共有するルーターを組み立てます。違うのは、
+// mountは、上の2つのコンストラクタが共有するルーターを組み立てます。違うのは、
 // サインインの検査の位置に何が立つかだけです。
 func mount(f *fixture, auth func(http.Handler) http.Handler) http.Handler {
 	router := chi.NewRouter()
@@ -179,18 +149,12 @@ func mount(f *fixture, auth func(http.Handler) http.Handler) http.Handler {
 	return router
 }
 
-// unpublicationPath is the address of the thread's unpublication, which the
-// submission targets.
-//
-// [Ja] unpublicationPathはスレッドの非公開のアドレスで、送信の宛先です。
+// unpublicationPathはスレッドの非公開のアドレスで、送信の宛先です。
 func unpublicationPath(id model.ThreadID) string {
 	return templates.ThreadUnpublicationPath(viewmodel.ThreadID(id)).String()
 }
 
-// get reads a page through the chain, in Japanese, as a signed-in visitor's
-// browser does.
-//
-// [Ja] getは、サインイン済みの訪問者のブラウザと同じ形で、日本語でチェーン越しにページを
+// getは、サインイン済みの訪問者のブラウザと同じ形で、日本語でチェーン越しにページを
 // 読みます。
 func get(router http.Handler, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -201,11 +165,7 @@ func get(router http.Handler, path string) *httptest.ResponseRecorder {
 	return rec
 }
 
-// submit sends the confirmation page's form to path as a browser does: a POST
-// carrying the urlencoded body, with the CSRF cookie alongside it when
-// withCSRFCookie is set.
-//
-// [Ja] submitは、確認ページのフォームをブラウザと同じ形でpathへ送ります。すなわち
+// submitは、確認ページのフォームをブラウザと同じ形でpathへ送ります。すなわち
 // urlencodedのボディを運ぶPOSTで、withCSRFCookieのときはCSRF Cookieを添えます。
 func submit(router http.Handler, path string, reason string, withCSRFCookie bool) *httptest.ResponseRecorder {
 	form := url.Values{"csrf_token": {csrfToken}, "reason": {reason}}
@@ -222,16 +182,13 @@ func submit(router http.Handler, path string, reason string, withCSRFCookie bool
 	return rec
 }
 
-// findThread reads the thread back for an assertion about the state it was left
-// in.
-//
-// [Ja] findThreadは、どの状態で残されたかを問う検証のためにスレッドを読み戻します。
+// findThreadは、どの状態で残されたかを問う検証のためにスレッドを読み戻します。
 func findThread(t *testing.T, f *fixture, id model.ThreadID) *model.Thread {
 	t.Helper()
 
 	thread, err := repository.NewThreadRepository(f.db).FindByID(context.Background(), id)
 	if err != nil {
-		t.Fatalf("FindByID() error = %v", err)
+		t.Fatalf("FindByID()のエラー = %v", err)
 	}
 	if thread == nil {
 		t.Fatalf("スレッドを引けない: id=%s", id)
@@ -239,10 +196,7 @@ func findThread(t *testing.T, f *fixture, id model.ThreadID) *model.Thread {
 	return thread
 }
 
-// unpublish marks the fixture's thread unpublished, which is the state the
-// confirmation page refuses to name a target in.
-//
-// [Ja] unpublishはフィクスチャのスレッドに非公開の印を付けます。確認ページが対象を名指すのを
+// unpublishはフィクスチャのスレッドに非公開の印を付けます。確認ページが対象を名指すのを
 // 拒む状態です。
 func unpublish(t *testing.T, f *fixture) {
 	t.Helper()
@@ -252,10 +206,7 @@ func unpublish(t *testing.T, f *fixture) {
 	}
 }
 
-// decodeFlash reads the flash the response set, which is where an operation that
-// redirected says what it did.
-//
-// [Ja] decodeFlashは、レスポンスが設定したフラッシュを読みます。リダイレクトした操作が、
+// decodeFlashは、レスポンスが設定したフラッシュを読みます。リダイレクトした操作が、
 // 自身の行ったことを述べる場所がそこです。
 func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMessage {
 	t.Helper()
@@ -279,12 +230,7 @@ func decodeFlash(t *testing.T, rec *httptest.ResponseRecorder) *session.FlashMes
 	return nil
 }
 
-// TestNew verifies that an administrator opening the confirmation page is shown
-// what unpublishing does, which thread it is about, the note field, and a form
-// submitting to the thread's own unpublication, and that the page stays out of
-// search indexes.
-//
-// [Ja] TestNewは、確認ページを開いた管理者に、非公開が何をするのか、どのスレッドについての
+// TestNewは、確認ページを開いた管理者に、非公開が何をするのか、どのスレッドについての
 // ものか、注記の入力欄、そしてスレッド自身の非公開へ送信するフォームが示されること、そして
 // このページが検索インデックスの外に留まることを検証します。
 func TestNew(t *testing.T) {
@@ -295,7 +241,7 @@ func TestNew(t *testing.T) {
 	rec := get(newRouter(f, f.admin), unpublicationPath(f.thread.ID)+"/new")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
 	wants := []string{
@@ -317,11 +263,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-// TestNew_WithoutPermission verifies that an account admitted to none of the
-// operations on a thread is answered with the 403 page rather than being shown
-// the screen that leads to them.
-//
-// [Ja] TestNew_WithoutPermissionは、スレッドに対するどの操作も許されていないアカウントが、
+// TestNew_WithoutPermissionは、スレッドに対するどの操作も許されていないアカウントが、
 // そこへ至る画面を見せられるのではなく403ページで応答されることを検証します。
 func TestNew_WithoutPermission(t *testing.T) {
 	t.Parallel()
@@ -331,15 +273,11 @@ func TestNew_WithoutPermission(t *testing.T) {
 	rec := get(newRouter(f, f.plain), unpublicationPath(f.thread.ID)+"/new")
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 	}
 }
 
-// TestNew_UnpublishedThread verifies that the confirmation page for a thread the
-// community no longer shows is answered with 404 rather than naming as a target
-// something already out of view.
-//
-// [Ja] TestNew_UnpublishedThreadは、コミュニティがもう示していないスレッドの確認ページが、
+// TestNew_UnpublishedThreadは、コミュニティがもう示していないスレッドの確認ページが、
 // 既に視界の外にあるものを対象として名指すのではなく404で応答されることを検証します。
 func TestNew_UnpublishedThread(t *testing.T) {
 	t.Parallel()
@@ -350,15 +288,11 @@ func TestNew_UnpublishedThread(t *testing.T) {
 	rec := get(newRouter(f, f.admin), unpublicationPath(f.thread.ID)+"/new")
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 	}
 }
 
-// TestNew_UnknownThread verifies that an address naming no thread is answered
-// with the 404 page, and that an id that is not a number is too: neither names a
-// thread, and the answer does not tell them apart.
-//
-// [Ja] TestNew_UnknownThreadは、どのスレッドも名指していないアドレスが404ページで応答
+// TestNew_UnknownThreadは、どのスレッドも名指していないアドレスが404ページで応答
 // されること、そして数として読めないidも同様であることを検証します。どちらもスレッドを名指して
 // おらず、答えが両者を区別することはありません。
 func TestNew_UnknownThread(t *testing.T) {
@@ -373,16 +307,12 @@ func TestNew_UnknownThread(t *testing.T) {
 	}
 	for _, path := range paths {
 		if rec := get(router, path); rec.Code != http.StatusNotFound {
-			t.Errorf("%s の status code = %d, want %d", path, rec.Code, http.StatusNotFound)
+			t.Errorf("%s のステータスコード = %d、期待値 = %d", path, rec.Code, http.StatusNotFound)
 		}
 	}
 }
 
-// TestNew_SignedOut verifies that a visitor with no session is sent to the
-// sign-in form, carrying where they were headed, rather than being told whether
-// the thread is there.
-//
-// [Ja] TestNew_SignedOutは、セッションを持たない訪問者が、スレッドの有無を告げられるのでは
+// TestNew_SignedOutは、セッションを持たない訪問者が、スレッドの有無を告げられるのでは
 // なく、向かっていた先を運んでサインインフォームへ送られることを検証します。
 func TestNew_SignedOut(t *testing.T) {
 	t.Parallel()
@@ -393,10 +323,10 @@ func TestNew_SignedOut(t *testing.T) {
 	rec := get(newAnonymousRouter(f), path)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	want := templates.SignInPath().WithReturnTo(path).String()
 	if got := rec.Header().Get("Location"); got != want {
-		t.Errorf("Location = %q, want %q", got, want)
+		t.Errorf("Location = %q、期待値 = %q", got, want)
 	}
 }

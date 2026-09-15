@@ -11,27 +11,14 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Forbidden renders the body of the 403 page: that the visitor is not admitted
-// to what they asked for, and a link on to the top page so they are not left at
-// a dead end.
-//
-// It says that permission is missing rather than that the page does not exist,
-// because the addresses it answers for are not secret and the visitor may have
-// held the permission until a moment ago. Someone who has just been taken off a
-// role otherwise reads a 404 as the screen having been removed.
-//
-// The link points at the top page for the reason NotFound's does: the page is
-// rendered without resolving who is asking, and the top page hands a signed-in
-// visitor on to home by itself.
-//
-// [Ja] Forbidden は 403 ページの本文を描画します。訪問者が求めたものを許されていない
+// Forbiddenは403ページの本文を描画します。訪問者が求めたものを許されていない
 // ことを示し、行き止まりに残さないようトップページへのリンクを置きます。
 //
 // ページが存在しないことではなく権限が無いことを述べるのは、ここが応じるアドレスが秘密では
 // なく、訪問者がついさっきまでその権限を持っていたかもしれないためです。ロールを外された
-// ばかりの人にとって、404 はその画面が無くなったという意味に読めてしまいます。
+// ばかりの人にとって、404はその画面が無くなったという意味に読めてしまいます。
 //
-// リンク先をトップページにするのは NotFound と同じ理由です。このページは誰が尋ねているかを
+// リンク先をトップページにするのはNotFoundと同じ理由です。このページは誰が尋ねているかを
 // 解決せずに描画され、トップページはサインイン済みの訪問者を自分でホームへ引き渡します。
 func Forbidden() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -61,7 +48,7 @@ func Forbidden() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_forbidden_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 31, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 18, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -74,7 +61,7 @@ func Forbidden() templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_forbidden_message"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 32, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 19, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -87,7 +74,7 @@ func Forbidden() templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.RootPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 35, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 22, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -100,7 +87,7 @@ func Forbidden() templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_forbidden_back_to_home"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 36, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/forbidden.templ`, Line: 23, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

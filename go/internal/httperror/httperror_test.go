@@ -13,16 +13,10 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestNotFound verifies that the not-found response carries HTTP 404 with an
-// HTML body, and renders the localized heading, explanation, and the link on to
-// the top page for each supported locale. The status is asserted alongside the
-// body because a page that reads as "not found" while answering 200 is a soft
-// 404: the status is what crawlers and clients act on.
-//
-// [Ja] TestNotFound は not-found のレスポンスが HTTP 404 と HTML ボディを返し、
+// TestNotFoundはnot-foundのレスポンスがHTTP 404とHTMLボディを返し、
 // サポートする各ロケールについてローカライズされた見出し・説明文・トップページへの
 // リンクを描画することを検証します。ステータスをボディと併せて検証するのは、「見つから
-// ない」と読めるページが 200 で応答する状態がソフト 404 だからです。クローラーや
+// ない」と読めるページが200で応答する状態がソフト404だからです。クローラーや
 // クライアントが従うのはステータスのほうです。
 func TestNotFound(t *testing.T) {
 	t.Parallel()
@@ -37,14 +31,14 @@ func TestNotFound(t *testing.T) {
 		wantLink    string
 	}{
 		{
-			name:        "Japanese",
+			name:        "日本語",
 			locale:      model.LocaleJa,
 			wantHeading: "ページが見つかりません",
 			wantMessage: "お探しのページは見つかりませんでした。",
 			wantLink:    "トップページへ",
 		},
 		{
-			name:        "English",
+			name:        "英語",
 			locale:      model.LocaleEn,
 			wantHeading: "Page not found",
 			wantMessage: "The page you were looking for was not found.",
@@ -63,14 +57,14 @@ func TestNotFound(t *testing.T) {
 			renderer.NotFound(rec, req)
 
 			if rec.Code != http.StatusNotFound {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 			}
 
 			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-				t.Errorf("Content-Type = %q, want %q", got, "text/html; charset=utf-8")
+				t.Errorf("Content-Type = %q、期待値 = %q", got, "text/html; charset=utf-8")
 			}
 			if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-				t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 			}
 
 			body := rec.Body.String()
@@ -83,20 +77,16 @@ func TestNotFound(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestNotFoundFallsBackToPlainText verifies that a render failure still
-// returns a plain-text 404 response with the same cache policy. A canceled
-// request context makes the templ renderer fail before it writes the page.
-//
-// [Ja] TestNotFoundFallsBackToPlainText は、描画に失敗しても同じキャッシュ方針を持つ
-// 平文の 404 レスポンスを返すことを検証します。キャンセル済みのリクエスト context に
-// よって、templ の Renderer はページを書き込む前に失敗します。
+// TestNotFoundFallsBackToPlainTextは、描画に失敗しても同じキャッシュ方針を持つ
+// 平文の404レスポンスを返すことを検証します。キャンセル済みのリクエストcontextに
+// よって、templのRendererはページを書き込む前に失敗します。
 func TestNotFoundFallsBackToPlainText(t *testing.T) {
 	t.Parallel()
 
@@ -111,26 +101,21 @@ func TestNotFoundFallsBackToPlainText(t *testing.T) {
 	renderer.NotFound(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 	}
 	if got := rec.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want %q", got, "text/plain; charset=utf-8")
+		t.Errorf("Content-Type = %q、期待値 = %q", got, "text/plain; charset=utf-8")
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 	}
 	if got := rec.Body.String(); got != "Not Found\n" {
-		t.Errorf("response body = %q, want %q", got, "Not Found\n")
+		t.Errorf("レスポンスボディ = %q、期待値 = %q", got, "Not Found\n")
 	}
 }
 
-// TestNotFoundHasNoSignedInHeader verifies that the 404 page does not render the
-// signed-in header. The route it answers is reached by anyone, and the renderer
-// resolves no user, so the header — whose link leads to a page behind
-// authentication — must not appear on it.
-//
-// [Ja] TestNotFoundHasNoSignedInHeader は 404 ページがサインイン済みページ共通の
-// ヘッダーを描画しないことを検証します。ここが応じるルートには誰でも到達し、Renderer は
+// TestNotFoundHasNoSignedInHeaderは404ページがサインイン済みページ共通の
+// ヘッダーを描画しないことを検証します。ここが応じるルートには誰でも到達し、Rendererは
 // ユーザーを解決しないため、認証の背後のページへ導くリンクを持つヘッダーは出しては
 // なりません。
 func TestNotFoundHasNoSignedInHeader(t *testing.T) {
@@ -145,19 +130,13 @@ func TestNotFoundHasNoSignedInHeader(t *testing.T) {
 	renderer.NotFound(rec, req)
 
 	if got := rec.Body.String(); strings.Contains(got, `aria-label="グローバルナビゲーション"`) {
-		t.Error("response body contains the signed-in header navigation")
+		t.Error("レスポンスボディにサインイン済みのヘッダーナビゲーションが含まれている")
 	}
 }
 
-// TestForbidden verifies that the forbidden response carries HTTP 403 with an
-// HTML body, and renders the localized heading, explanation, and the link on to
-// the top page for each supported locale. It also asserts the noindex marker: the
-// address it answers for is a screen that exists, so without it a crawler would
-// have a page to record.
-//
-// [Ja] TestForbidden は forbidden のレスポンスが HTTP 403 と HTML ボディを返し、サポート
+// TestForbiddenはforbiddenのレスポンスがHTTP 403とHTMLボディを返し、サポート
 // する各ロケールについてローカライズされた見出し・説明文・トップページへのリンクを描画する
-// ことを検証します。あわせて noindex の印も検証します。ここが応じるアドレスは実在する画面の
+// ことを検証します。あわせてnoindexの印も検証します。ここが応じるアドレスは実在する画面の
 // ものであり、これが無ければクローラーに記録すべきページを与えてしまうためです。
 func TestForbidden(t *testing.T) {
 	t.Parallel()
@@ -172,14 +151,14 @@ func TestForbidden(t *testing.T) {
 		wantLink    string
 	}{
 		{
-			name:        "Japanese",
+			name:        "日本語",
 			locale:      model.LocaleJa,
 			wantHeading: "権限がありません",
 			wantMessage: "この操作を行う権限がありません。",
 			wantLink:    "トップページへ",
 		},
 		{
-			name:        "English",
+			name:        "英語",
 			locale:      model.LocaleEn,
 			wantHeading: "Access denied",
 			wantMessage: "You do not have permission to do this.",
@@ -198,14 +177,14 @@ func TestForbidden(t *testing.T) {
 			renderer.Forbidden(rec, req)
 
 			if rec.Code != http.StatusForbidden {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 			}
 
 			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-				t.Errorf("Content-Type = %q, want %q", got, "text/html; charset=utf-8")
+				t.Errorf("Content-Type = %q、期待値 = %q", got, "text/html; charset=utf-8")
 			}
 			if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-				t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 			}
 
 			body := rec.Body.String()
@@ -219,20 +198,16 @@ func TestForbidden(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestForbiddenFallsBackToPlainText verifies that a render failure still returns
-// a plain-text 403 response with the same cache policy. A canceled request
-// context makes the templ renderer fail before it writes the page.
-//
-// [Ja] TestForbiddenFallsBackToPlainText は、描画に失敗しても同じキャッシュ方針を持つ
-// 平文の 403 レスポンスを返すことを検証します。キャンセル済みのリクエスト context に
-// よって、templ の Renderer はページを書き込む前に失敗します。
+// TestForbiddenFallsBackToPlainTextは、描画に失敗しても同じキャッシュ方針を持つ
+// 平文の403レスポンスを返すことを検証します。キャンセル済みのリクエストcontextに
+// よって、templのRendererはページを書き込む前に失敗します。
 func TestForbiddenFallsBackToPlainText(t *testing.T) {
 	t.Parallel()
 
@@ -247,39 +222,28 @@ func TestForbiddenFallsBackToPlainText(t *testing.T) {
 	renderer.Forbidden(rec, req)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusForbidden)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusForbidden)
 	}
 	if got := rec.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want %q", got, "text/plain; charset=utf-8")
+		t.Errorf("Content-Type = %q、期待値 = %q", got, "text/plain; charset=utf-8")
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 	}
 	if got := rec.Body.String(); got != "Forbidden\n" {
-		t.Errorf("response body = %q, want %q", got, "Forbidden\n")
+		t.Errorf("レスポンスボディ = %q、期待値 = %q", got, "Forbidden\n")
 	}
 }
 
-// TestUnpublished verifies that the unpublished response carries HTTP 404 with
-// an HTML body, and renders the localized heading, explanation, and the link on
-// to the top page for each supported locale. It also asserts the noindex
-// marker: the address it answers for is one the community answered with a
-// thread, so without it a crawler would record this page in that thread's place.
-//
-// The status is asserted alongside the body for the reason TestNotFound gives,
-// and because it is where this page differs from the guesses that would be made
-// for it: a removed thread answers 404 rather than the 410 that would say the
-// address will never answer again.
-//
-// [Ja] TestUnpublished は、非公開のレスポンスが HTTP 404 と HTML ボディを返し、サポートする
+// TestUnpublishedは、非公開のレスポンスがHTTP 404とHTMLボディを返し、サポートする
 // 各ロケールについてローカライズされた見出し・説明文・トップページへのリンクを描画すること
-// を検証します。あわせて noindex の印も検証します。ここが応じるアドレスは、コミュニティが
+// を検証します。あわせてnoindexの印も検証します。ここが応じるアドレスは、コミュニティが
 // スレッドで応答していたものであり、これが無ければクローラーはそのスレッドの代わりにこの
 // ページを記録してしまいます。
 //
-// ステータスをボディと併せて検証するのは TestNotFound が述べる理由に加え、このページについて
-// なされうる推測との違いがそこにあるためです。取り除かれたスレッドは 404 で応答します。
-// そのアドレスが二度と応答しないことを述べる 410 ではありません。
+// ステータスをボディと併せて検証するのはTestNotFoundが述べる理由に加え、このページについて
+// なされうる推測との違いがそこにあるためです。取り除かれたスレッドは404で応答します。
+// そのアドレスが二度と応答しないことを述べる410ではありません。
 func TestUnpublished(t *testing.T) {
 	t.Parallel()
 
@@ -293,14 +257,14 @@ func TestUnpublished(t *testing.T) {
 		wantLink    string
 	}{
 		{
-			name:        "Japanese",
+			name:        "日本語",
 			locale:      model.LocaleJa,
 			wantHeading: "このページは公開されていません",
 			wantMessage: "このページは管理者により非公開にされました。",
 			wantLink:    "トップページへ",
 		},
 		{
-			name:        "English",
+			name:        "英語",
 			locale:      model.LocaleEn,
 			wantHeading: "This page is not published",
 			wantMessage: "This page was unpublished by an administrator.",
@@ -319,14 +283,14 @@ func TestUnpublished(t *testing.T) {
 			renderer.Unpublished(rec, req)
 
 			if rec.Code != http.StatusNotFound {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 			}
 
 			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-				t.Errorf("Content-Type = %q, want %q", got, "text/html; charset=utf-8")
+				t.Errorf("Content-Type = %q、期待値 = %q", got, "text/html; charset=utf-8")
 			}
 			if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-				t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+				t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 			}
 
 			body := rec.Body.String()
@@ -340,20 +304,16 @@ func TestUnpublished(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestUnpublishedFallsBackToPlainText verifies that a render failure still
-// returns a plain-text 404 response with the same cache policy. A canceled
-// request context makes the templ renderer fail before it writes the page.
-//
-// [Ja] TestUnpublishedFallsBackToPlainText は、描画に失敗しても同じキャッシュ方針を持つ
-// 平文の 404 レスポンスを返すことを検証します。キャンセル済みのリクエスト context に
-// よって、templ の Renderer はページを書き込む前に失敗します。
+// TestUnpublishedFallsBackToPlainTextは、描画に失敗しても同じキャッシュ方針を持つ
+// 平文の404レスポンスを返すことを検証します。キャンセル済みのリクエストcontextに
+// よって、templのRendererはページを書き込む前に失敗します。
 func TestUnpublishedFallsBackToPlainText(t *testing.T) {
 	t.Parallel()
 
@@ -368,15 +328,15 @@ func TestUnpublishedFallsBackToPlainText(t *testing.T) {
 	renderer.Unpublished(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusNotFound)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusNotFound)
 	}
 	if got := rec.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want %q", got, "text/plain; charset=utf-8")
+		t.Errorf("Content-Type = %q、期待値 = %q", got, "text/plain; charset=utf-8")
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
-		t.Errorf("Cache-Control = %q, want %q", got, "private, no-store")
+		t.Errorf("Cache-Control = %q、期待値 = %q", got, "private, no-store")
 	}
 	if got := rec.Body.String(); got != "Not Found\n" {
-		t.Errorf("response body = %q, want %q", got, "Not Found\n")
+		t.Errorf("レスポンスボディ = %q、期待値 = %q", got, "Not Found\n")
 	}
 }

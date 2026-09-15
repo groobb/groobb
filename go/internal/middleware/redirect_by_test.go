@@ -8,22 +8,12 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-// TestRedirectBy verifies that a response which sends the client elsewhere names
-// Groobb as the layer that sent it, and that a response which does not redirect
-// carries no such claim.
-//
-// The 301 is produced by the trailing-slash normalization and the 303 by the
-// shape RequireAuth uses, so the two redirects the application issues today are
-// both covered by a real issuer rather than a hand-written status. The 304 is a
-// 3xx that is not a redirect, and it is here because a status range alone would
-// mark it.
-//
-// [Ja] TestRedirectBy は、クライアントを別の場所へ送るレスポンスが、送った層として Groobb を
+// TestRedirectByは、クライアントを別の場所へ送るレスポンスが、送った層としてGroobbを
 // 示すこと、そして送らないレスポンスがその主張を伴わないことを検証します。
 //
-// 301 は末尾スラッシュの正規化が生み、303 は RequireAuth が使う形であるため、現時点で
-// アプリケーションが発行する 2 つのリダイレクトは、どちらも手書きのステータスではなく実際の
-// 発行元によって覆われています。304 はリダイレクトではない 3xx であり、ステータスの範囲だけ
+// 301は末尾スラッシュの正規化が生み、303はRequireAuthが使う形であるため、現時点で
+// アプリケーションが発行する2つのリダイレクトは、どちらも手書きのステータスではなく実際の
+// 発行元によって覆われています。304はリダイレクトではない3xxであり、ステータスの範囲だけ
 // では印を付けてしまうため、ここに置いています。
 func TestRedirectBy(t *testing.T) {
 	t.Parallel()
@@ -36,14 +26,14 @@ func TestRedirectBy(t *testing.T) {
 		wantRedirectBy string
 	}{
 		{
-			name:           "the trailing-slash normalization names its 301",
+			name:           "末尾スラッシュの正規化による301に名前を付ける",
 			handler:        chimiddleware.RedirectSlashes(http.NotFoundHandler()),
 			target:         "/settings/email/edit/",
 			wantStatus:     http.StatusMovedPermanently,
 			wantRedirectBy: "groobb",
 		},
 		{
-			name: "a redirect to the sign-in page names its 303",
+			name: "サインインページへの303に名前を付ける",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "/sign_in", http.StatusSeeOther)
 			}),
@@ -52,7 +42,7 @@ func TestRedirectBy(t *testing.T) {
 			wantRedirectBy: "groobb",
 		},
 		{
-			name: "a permanent redirect that keeps the method is named too",
+			name: "メソッドを保つ恒久リダイレクトにも名前を付ける",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "/home", http.StatusPermanentRedirect)
 			}),
@@ -61,7 +51,7 @@ func TestRedirectBy(t *testing.T) {
 			wantRedirectBy: "groobb",
 		},
 		{
-			name: "a page is not a redirect",
+			name: "ページはリダイレクトではない",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}),
@@ -69,23 +59,23 @@ func TestRedirectBy(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name: "a body written without a status is not a redirect",
+			name: "ステータスを指定せずに書いたボディはリダイレクトではない",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				if _, err := w.Write([]byte("<!doctype html>")); err != nil {
-					t.Errorf("failed to write the response body: %v", err)
+					t.Errorf("レスポンスボディの書き込みに失敗: %v", err)
 				}
 			}),
 			target:     "/home",
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "the error page is not a redirect",
+			name:       "エラーページはリダイレクトではない",
 			handler:    http.NotFoundHandler(),
 			target:     "/missing",
 			wantStatus: http.StatusNotFound,
 		},
 		{
-			name: "a 3xx without a destination is not a redirect",
+			name: "遷移先の無い3xxはリダイレクトではない",
 			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotModified)
 			}),
@@ -102,25 +92,19 @@ func TestRedirectBy(t *testing.T) {
 			RedirectBy(tt.handler).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.target, nil))
 
 			if rec.Code != tt.wantStatus {
-				t.Errorf("status code = %d, want %d", rec.Code, tt.wantStatus)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, tt.wantStatus)
 			}
 			if got := rec.Header().Get("Redirect-By"); got != tt.wantRedirectBy {
-				t.Errorf("Redirect-By = %q, want %q", got, tt.wantRedirectBy)
+				t.Errorf("Redirect-By = %q、期待値 = %q", got, tt.wantRedirectBy)
 			}
 		})
 	}
 }
 
-// TestRedirectByUnwrapsTheWriterUnderneath verifies that the writer this
-// middleware hands down still exposes the server's own writer, which is what
-// http.ResponseController needs to reach Flush and the other optional interfaces.
-// The wrapper covers every route, so a missing Unwrap would take those away site
-// wide.
-//
-// [Ja] TestRedirectByUnwrapsTheWriterUnderneath は、このミドルウェアが下へ渡す
-// ResponseWriter がサーバー自身の ResponseWriter を露出し続けることを検証します。それが
-// http.ResponseController が Flush や他の追加インターフェースへ到達するのに必要なものです。
-// このラッパーは全ルートを覆うため、Unwrap が無いとサイト全体でそれらが失われます。
+// TestRedirectByUnwrapsTheWriterUnderneathは、このミドルウェアが下へ渡す
+// ResponseWriterがサーバー自身のResponseWriterを露出し続けることを検証します。それが
+// http.ResponseControllerがFlushや他の追加インターフェースへ到達するのに必要なものです。
+// このラッパーは全ルートを覆うため、Unwrapが無いとサイト全体でそれらが失われます。
 func TestRedirectByUnwrapsTheWriterUnderneath(t *testing.T) {
 	t.Parallel()
 
@@ -129,7 +113,7 @@ func TestRedirectByUnwrapsTheWriterUnderneath(t *testing.T) {
 	var flushed bool
 	handler := RedirectBy(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if err := http.NewResponseController(w).Flush(); err != nil {
-			t.Errorf("failed to flush the response: %v", err)
+			t.Errorf("レスポンスのフラッシュに失敗: %v", err)
 			return
 		}
 		flushed = true
@@ -137,6 +121,6 @@ func TestRedirectByUnwrapsTheWriterUnderneath(t *testing.T) {
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/home", nil))
 
 	if !flushed {
-		t.Error("the handler could not reach the flusher underneath")
+		t.Error("ハンドラーが下層のFlusherに到達できなかった")
 	}
 }

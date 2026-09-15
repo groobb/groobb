@@ -1,54 +1,26 @@
 package model
 
-// ThreadLockReason names a condition under which a thread takes no further post.
-// Reading is never stopped by one: a locked thread is still read, quoted and
-// linked to.
-//
-// A reason belongs to the thread and holds for everyone at once. Whether someone
-// is signed in, may write here, or has waited out the interval between their own
-// posts decides a single submission, and a thread that refuses one person while
-// taking the next person's post is not locked.
-//
-// [Ja] ThreadLockReason は、スレッドがそれ以上の投稿を受け付けなくなる条件を名指します。
+// ThreadLockReasonは、スレッドがそれ以上の投稿を受け付けなくなる条件を名指します。
 // 閲覧が止まることはありません。ロックされたスレッドも、読まれ、引用され、リンクされます。
 //
 // 理由はスレッドに属し、全員に対して同時に成立します。サインインしているか、ここへ
-// 書いてよいか、自分の投稿と投稿の間隔を空け終えたかは、1 つの送信を決めるものです。
+// 書いてよいか、自分の投稿と投稿の間隔を空け終えたかは、1つの送信を決めるものです。
 // ある人の投稿を拒みながら次の人の投稿は受け付けるスレッドは、ロックされていません。
 type ThreadLockReason string
 
-// ThreadLockReasonPostLimitReached says the thread holds every post it can hold
-// (ADR 0009). It is the reason a thread reaches by being written to, with nobody
-// acting on it, and the cap it names is what lets a reply number be a permanent
-// address under a single unpaginated URL.
-//
-// [Ja] ThreadLockReasonPostLimitReached は、スレッドが持てる投稿をすべて持っている
+// ThreadLockReasonPostLimitReachedは、スレッドが持てる投稿をすべて持っている
 // ことを表します (ADR 0009)。誰かが操作した結果ではなく、書き込まれることによって
 // 到達する理由であり、これが名指す上限があるからこそ、レス番号はページ分割されない
-// 1 つの URL のもとで永久アドレスでいられます。
+// 1つのURLのもとで永久アドレスでいられます。
 const ThreadLockReasonPostLimitReached ThreadLockReason = "post_limit_reached"
 
-// ThreadLockReasonLockedByModerator says an administrator closed the thread.
-// Unlike the cap, it is a decision rather than a state the thread arrived at by
-// being written to, which is why a thread holding it is not offered the next
-// thread as a way on: starting one would be walking around the decision.
-//
-// [Ja] ThreadLockReasonLockedByModeratorは、管理者がスレッドを閉じたことを表します。
+// ThreadLockReasonLockedByModeratorは、管理者がスレッドを閉じたことを表します。
 // 上限と違い、書き込まれることで到達した状態ではなく判断であるため、これを持つ
 // スレッドには次のスレッドへの導線を差し出しません。新しいスレッドを立てることは、
 // その判断を迂回することになるためです。
 const ThreadLockReasonLockedByModerator ThreadLockReason = "locked_by_moderator"
 
-// ThreadLockReasons returns every reason a thread can be locked for. It is the
-// one place the set is written out, and it exists so that what a locked thread
-// says can be checked against it: the end of a locked thread carries neither the
-// reply form nor the way into an account, so a reason introduced without wording
-// of its own would leave a visitor with nothing standing there and nothing said.
-//
-// A fresh slice is returned per call so a caller cannot edit the set out from
-// under the others.
-//
-// [Ja] ThreadLockReasons は、スレッドがロックされうる理由をすべて返します。値域を
+// ThreadLockReasonsは、スレッドがロックされうる理由をすべて返します。値域を
 // 書き下す唯一の場所であり、ロック中のスレッドが述べることをこれと突き合わせられる
 // ようにするためにあります。ロック中のスレッドの末尾は返信フォームもアカウントへの
 // 導線も持たないため、自身の文言を伴わずに導入された理由は、訪問者にそこで何も立って
@@ -60,27 +32,7 @@ func ThreadLockReasons() []ThreadLockReason {
 	return []ThreadLockReason{ThreadLockReasonLockedByModerator, ThreadLockReasonPostLimitReached}
 }
 
-// LockReasons returns the lock reasons t currently carries, or an empty slice
-// if it is unlocked. It does not modify t. Callers deciding whether to accept a
-// post must call this method on a model re-read inside their write transaction.
-//
-// The moderator's lock comes first, because it is the one a visitor is answered
-// by: it is a decision about this thread, while the cap is a state the thread
-// arrived at on its own.
-//
-// The answer is a list because reasons hold alongside one another rather than
-// replace one another. Kept as a single value, the reason that arrived last
-// would hide the ones still holding, and clearing it would reopen a thread that
-// another reason still closes.
-//
-// Reaching the cap is derived from the count the thread already carries rather
-// than stored, which leaves no column to keep in step and nothing to run on a
-// schedule. The thread turns locked in the very commit that saves its last post,
-// and a submission that rolls back leaves behind no thread claiming to be full.
-// A count that has passed the cap reads as locked as well, since what the reason
-// says is that there is no room left, not that the number landed exactly on it.
-//
-// [Ja] LockReasonsは、tが現在持つロック理由を返し、ロックされていなければ空のスライスを
+// LockReasonsは、tが現在持つロック理由を返し、ロックされていなければ空のスライスを
 // 返します。tを変更しません。投稿の可否を判断する呼び出し元は、書き込みトランザクション内で
 // 読み直したモデルに対して、このメソッドを呼び出す必要があります。
 //

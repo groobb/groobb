@@ -9,11 +9,8 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// TestDeleteSessionUsecase_Execute_DeletesSession verifies that Execute deletes
-// the session row, so the token no longer resolves to a session afterward.
-//
-// [Ja] TestDeleteSessionUsecase_Execute_DeletesSession は、Execute がセッション行を削除し、
-// その後 token がセッションに解決しなくなることを検証します。
+// TestDeleteSessionUsecase_Execute_DeletesSessionは、Executeがセッション行を削除し、
+// その後tokenがセッションに解決しなくなることを検証します。
 func TestDeleteSessionUsecase_Execute_DeletesSession(t *testing.T) {
 	t.Parallel()
 
@@ -28,27 +25,24 @@ func TestDeleteSessionUsecase_Execute_DeletesSession(t *testing.T) {
 		IPAddress: "203.0.113.7",
 		UserAgent: "test-agent",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	uc := usecase.NewDeleteSessionUsecase(userSessionRepo)
 	if err := uc.Execute(context.Background(), token); err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 
 	session, err := userSessionRepo.FindByToken(context.Background(), token)
 	if err != nil {
-		t.Fatalf("FindByToken() error = %v", err)
+		t.Fatalf("FindByToken()のエラー = %v", err)
 	}
 	if session != nil {
 		t.Error("削除後もセッションが残っている")
 	}
 }
 
-// TestDeleteSessionUsecase_Execute_EmptyTokenIsNoop verifies that an empty token
-// is a no-op (no error), so signing out when not signed in is harmless.
-//
-// [Ja] TestDeleteSessionUsecase_Execute_EmptyTokenIsNoop は、空の token が no-op
+// TestDeleteSessionUsecase_Execute_EmptyTokenIsNoopは、空のtokenがno-op
 // (エラー無し) であり、未サインインでのサインアウトが無害であることを検証します。
 func TestDeleteSessionUsecase_Execute_EmptyTokenIsNoop(t *testing.T) {
 	t.Parallel()
@@ -58,6 +52,6 @@ func TestDeleteSessionUsecase_Execute_EmptyTokenIsNoop(t *testing.T) {
 
 	uc := usecase.NewDeleteSessionUsecase(userSessionRepo)
 	if err := uc.Execute(context.Background(), ""); err != nil {
-		t.Errorf("Execute(\"\") error = %v, want nil", err)
+		t.Errorf("Execute(\"\")のエラー = %v、期待値 = nil", err)
 	}
 }

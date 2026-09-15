@@ -15,20 +15,12 @@ import (
 	"github.com/groobb/groobb/go/internal/middleware"
 )
 
-// formContentType is the encoding an HTML form is submitted in, which the post
-// routes accept and the tests below send unless they are checking what happens
-// when something else arrives.
-//
-// [Ja] formContentType はHTMLフォームが送信されるエンコード方式であり、投稿の
+// formContentTypeはHTMLフォームが送信されるエンコード方式であり、投稿の
 // ルートが受け付けるものである。以下のテストは、別のものが届いたときにどうなるかを
 // 確かめる場合を除きこれを送る。
 const formContentType = "application/x-www-form-urlencoded"
 
-// bodyFormOfSize returns a form whose only field is a body field, encoded to
-// exactly size bytes, so a test can sit on either side of the limit by naming
-// the size it wants.
-//
-// [Ja] bodyFormOfSize は body フィールドだけを持つフォームを、ちょうど size バイトに
+// bodyFormOfSizeはbodyフィールドだけを持つフォームを、ちょうどsizeバイトに
 // なるよう組み立てて返す。テストが欲しい大きさを名指すだけで上限の両側に立てるように
 // するためである。
 func bodyFormOfSize(t *testing.T, size int) string {
@@ -36,22 +28,16 @@ func bodyFormOfSize(t *testing.T, size int) string {
 
 	const prefix = "body="
 	if size < len(prefix) {
-		t.Fatalf("size %d is smaller than the %d bytes a body field costs", size, len(prefix))
+		t.Fatalf("size %d がbodyフィールドに要する %d バイトより小さい", size, len(prefix))
 	}
 
 	return prefix + strings.Repeat("a", size-len(prefix))
 }
 
-// maxLengthEncodedForm returns the thread-creation form as a browser sends it
-// when every field holds the longest value it accepts: a title of 100 code
-// points and a body of 10,000, in emoji, which cost four bytes each in UTF-8
-// and three characters per byte once percent-encoded. It is the worst case
-// PostFormMaxBytes is sized for.
-//
-// [Ja] maxLengthEncodedForm は、どのフィールドも受け付ける最長の値を持つときに
+// maxLengthEncodedFormは、どのフィールドも受け付ける最長の値を持つときに
 // ブラウザが送るスレッド作成フォームを返す。100コードポイントのタイトルと10,000
 // コードポイントの本文を、UTF-8で1つ4バイト・パーセントエンコードで1バイトあたり3文字を
-// 要する絵文字で埋めたものであり、PostFormMaxBytes が賄うべき最悪の場合である。
+// 要する絵文字で埋めたものであり、PostFormMaxBytesが賄うべき最悪の場合である。
 func maxLengthEncodedForm() string {
 	return url.Values{
 		"title":      {strings.Repeat("😀", 100)},
@@ -61,14 +47,7 @@ func maxLengthEncodedForm() string {
 	}.Encode()
 }
 
-// TestPostFormLimit covers what reaches the routes that submit a post and what
-// is turned away before them: a form within the limit is parsed and handed on,
-// while one that is too large, is not a form, or cannot be decoded is answered
-// here with the status that names the problem. Requests to any other route, and
-// to these routes by any other method, pass through untouched, which is how the
-// forms already served elsewhere keep their current bounds.
-//
-// [Ja] TestPostFormLimit は、投稿を送信するルートへ何が到達し、その手前で何が追い返され
+// TestPostFormLimitは、投稿を送信するルートへ何が到達し、その手前で何が追い返され
 // るかを網羅する。上限に収まるフォームは解析されて渡され、大きすぎる・フォームではない・
 // デコードできないものは、問題を名指すステータスでここで応答される。他のルートへの
 // リクエストと、これらのルートへの他のメソッドのリクエストは手を加えずに素通しする。
@@ -78,17 +57,12 @@ func TestPostFormLimit(t *testing.T) {
 
 	tests := []struct {
 		name string
-		// method and path address the route; an empty method means POST.
-		//
-		// [Ja] method と path はルートを指す。method が空のときは POST。
+		// methodとpathはルートを指す。methodが空のときはPOST。
 		method      string
 		path        string
 		contentType string
 		body        string
-		// chunked sends the body without announcing its size, as a chunked
-		// request does.
-		//
-		// [Ja] chunked は chunked のリクエストと同じく、大きさを申告せずにボディを送る。
+		// chunkedはchunkedのリクエストと同じく、大きさを申告せずにボディを送る。
 		chunked    bool
 		wantStatus int
 		wantBody   string
@@ -246,12 +220,8 @@ func TestPostFormLimit(t *testing.T) {
 
 			var body io.Reader = strings.NewReader(tt.body)
 			if tt.chunked {
-				// httptest.NewRequest fills in ContentLength for a reader whose
-				// length it knows, so hide the reader behind one whose length it
-				// cannot see to send the body the way a chunked request does.
-				//
-				// [Ja] httptest.NewRequest は長さの分かるリーダーには ContentLength を
-				// 埋めるため、長さを見られないリーダーで包み、chunked のリクエストと
+				// httptest.NewRequestは長さの分かるリーダーにはContentLengthを
+				// 埋めるため、長さを見られないリーダーで包み、chunkedのリクエストと
 				// 同じようにボディを送る。
 				body = io.NopCloser(strings.NewReader(tt.body))
 			}
@@ -265,25 +235,22 @@ func TestPostFormLimit(t *testing.T) {
 			middleware.PostFormLimit(next).ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, tt.wantStatus)
 			}
 
 			wantNextCalled := tt.wantStatus == http.StatusOK
 			if nextCalled != wantNextCalled {
-				t.Errorf("next called = %t, want %t", nextCalled, wantNextCalled)
+				t.Errorf("nextの呼び出し = %t、期待値 = %t", nextCalled, wantNextCalled)
 			}
 
 			if gotBody != tt.wantBody {
-				t.Errorf("body field = %q (%d bytes), want %q (%d bytes)", truncate(gotBody), len(gotBody), truncate(tt.wantBody), len(tt.wantBody))
+				t.Errorf("bodyフィールド = %q (%d バイト)、期待値 = %q (%d バイト)", truncate(gotBody), len(gotBody), truncate(tt.wantBody), len(tt.wantBody))
 			}
 		})
 	}
 }
 
-// truncate shortens s for a failure message, so a mismatch on a field holding
-// the maximum length reports what it is rather than 128 KiB of it.
-//
-// [Ja] truncate は失敗メッセージのために s を短くする。最大長のフィールドの不一致が、
+// truncateは失敗メッセージのためにsを短くする。最大長のフィールドの不一致が、
 // その128KiBを並べるのではなく何であるかを報告するようにするためである。
 func truncate(s string) string {
 	const max = 32
@@ -294,15 +261,9 @@ func truncate(s string) string {
 	return s[:max] + "..."
 }
 
-// TestPostFormLimit_KeepsQueryOutOfPostForm verifies that the values parsed
-// here leave the query string where it is: a field of the same name in the URL
-// does not stand in for the submitted one. The handler reads the submission
-// from PostForm, and a reply whose body came from a link the poster followed
-// would be a post they never wrote.
-//
-// [Ja] TestPostFormLimit_KeepsQueryOutOfPostForm は、ここで解析した値がクエリ文字列を
+// TestPostFormLimit_KeepsQueryOutOfPostFormは、ここで解析した値がクエリ文字列を
 // そのままにしておくこと、すなわちURLにある同じ名前のフィールドが送信されたフィールドの
-// 代わりにならないことを検証する。ハンドラーは送信された内容を PostForm から読む。
+// 代わりにならないことを検証する。ハンドラーは送信された内容をPostFormから読む。
 // 投稿者が辿ったリンクから本文が来た返信は、その人が書いていない投稿になる。
 func TestPostFormLimit_KeepsQueryOutOfPostForm(t *testing.T) {
 	t.Parallel()
@@ -321,21 +282,15 @@ func TestPostFormLimit_KeepsQueryOutOfPostForm(t *testing.T) {
 	middleware.PostFormLimit(next).ServeHTTP(rec, req)
 
 	if gotPostForm != "送信された本文" {
-		t.Errorf("PostForm body = %q, want %q", gotPostForm, "送信された本文")
+		t.Errorf("PostFormのbody = %q、期待値 = %q", gotPostForm, "送信された本文")
 	}
 	if gotForm != "送信された本文" {
-		t.Errorf("Form body = %q, want %q", gotForm, "送信された本文")
+		t.Errorf("Formのbody = %q、期待値 = %q", gotForm, "送信された本文")
 	}
 }
 
-// TestPostFormLimit_BeforeCSRFAndMethodOverride verifies the order the three
-// middlewares are registered in: a submission within the limit still has its
-// CSRF token checked and its _method honored, an oversized one is answered as
-// too large rather than as a rejected token, and a submission with no token is
-// still refused after this middleware has read its body.
-//
-// [Ja] TestPostFormLimit_BeforeCSRFAndMethodOverride は3つのミドルウェアが登録される
-// 順序を検証する。上限に収まる送信は変わらずCSRFトークンを検証され _method も効き、
+// TestPostFormLimit_BeforeCSRFAndMethodOverrideは3つのミドルウェアが登録される
+// 順序を検証する。上限に収まる送信は変わらずCSRFトークンを検証され _methodも効き、
 // 大きすぎる送信は拒否されたトークンとしてではなく大きすぎるものとして応答され、
 // トークンの無い送信はこのミドルウェアがボディを読んだ後も拒否される。
 func TestPostFormLimit_BeforeCSRFAndMethodOverride(t *testing.T) {
@@ -398,23 +353,19 @@ func TestPostFormLimit_BeforeCSRFAndMethodOverride(t *testing.T) {
 			handler.ServeHTTP(rec, req)
 
 			if rec.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, tt.wantStatus)
 			}
 			if gotMethod != tt.wantMethod {
-				t.Errorf("method = %q, want %q", gotMethod, tt.wantMethod)
+				t.Errorf("method = %q、期待値 = %q", gotMethod, tt.wantMethod)
 			}
 			if gotBody != tt.wantBody {
-				t.Errorf("body field = %q, want %q", truncate(gotBody), tt.wantBody)
+				t.Errorf("bodyフィールド = %q、期待値 = %q", truncate(gotBody), tt.wantBody)
 			}
 		})
 	}
 }
 
-// TestPostFormLimit_RouterPaths keeps the middleware's path selection aligned
-// with chi: an encoded slash remains inside an identifier, so the request must
-// be bounded before CSRF reads the form even if that identifier names no resource.
-//
-// [Ja] TestPostFormLimit_RouterPaths はミドルウェアのパス選択がchiと一致することを
+// TestPostFormLimit_RouterPathsはミドルウェアのパス選択がchiと一致することを
 // 検証する。エンコードされたスラッシュは識別子の一部に留まるため、識別子がリソースを
 // 指さない場合でも、CSRFがフォームを読む前にリクエストを制限する必要がある。
 func TestPostFormLimit_RouterPaths(t *testing.T) {
@@ -507,14 +458,14 @@ func TestPostFormLimit_RouterPaths(t *testing.T) {
 					router.ServeHTTP(rec, req)
 
 					if rec.Code != tt.wantStatus {
-						t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+						t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, tt.wantStatus)
 					}
 					wantNextCalled := tt.wantStatus == http.StatusNoContent
 					if nextCalled != wantNextCalled {
-						t.Errorf("next called = %t, want %t", nextCalled, wantNextCalled)
+						t.Errorf("nextの呼び出し = %t、期待値 = %t", nextCalled, wantNextCalled)
 					}
 					if gotBody != tt.wantBody {
-						t.Errorf("body field = %q, want %q", truncate(gotBody), tt.wantBody)
+						t.Errorf("bodyフィールド = %q、期待値 = %q", truncate(gotBody), tt.wantBody)
 					}
 				})
 			}

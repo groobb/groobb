@@ -8,15 +8,7 @@ import (
 	"github.com/groobb/groobb/go/internal/repository"
 )
 
-// moderationLogEntry is what one moderation operation records about itself. The
-// actor is not among its fields: who performed the operation is read from the
-// Actor recordModerationLog is given, so a caller cannot record an operation as
-// having been performed by someone else.
-//
-// The three target fields are filled according to Action, as
-// repository.CreateModerationLogInput describes.
-//
-// [Ja] moderationLogEntryは、モデレーションの操作1件が自身について記録することです。
+// moderationLogEntryは、モデレーションの操作1件が自身について記録することです。
 // 操作者はそのフィールドに含まれません。誰が操作したかはrecordModerationLogに渡された
 // Actorから読むため、呼び出し元が、別の誰かが行ったものとして操作を記録することは
 // できません。
@@ -31,20 +23,7 @@ type moderationLogEntry struct {
 	Reason       string
 }
 
-// recordModerationLog writes one entry to the history for the operation actor
-// just performed.
-//
-// The repository must be enlisted in the caller's write transaction (WithTx):
-// every moderation UseCase records through this one function, so that the entry
-// saying an operation happened and the row the operation changed are committed
-// together or not at all.
-//
-// An operator acting through a groobb subcommand is recorded with no user id,
-// because no row in the database describes them. The history reads such an entry
-// as an operation whose author is not someone the community can name, which is
-// also what a purged account leaves behind, and it says the same thing of both.
-//
-// [Ja] recordModerationLogは、actorがいま行った操作について、履歴に1件を書き込みます。
+// recordModerationLogは、actorがいま行った操作について、履歴に1件を書き込みます。
 //
 // リポジトリは呼び出し元の書き込みトランザクションに参加していなければなりません
 // (WithTx)。モデレーションのUseCaseはいずれもこの1つの関数を通して記録するため、操作が

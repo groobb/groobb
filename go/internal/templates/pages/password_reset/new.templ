@@ -6,20 +6,12 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the password reset request form page. Email is
-// echoed back so a re-rendered form (after a validation error) keeps what the
-// user typed, and FormErrors carries the validation messages: per-field messages
-// (a missing or malformed email) shown beneath the input, and a form-wide message
-// shown at the top when the bot check failed. TurnstileSiteKey renders the
-// bot-protection widget; when it is empty (the disabled dev / test setup) the
-// widget is omitted entirely.
-//
-// [Ja] NewPageData はパスワードリセット申請フォームページのデータです。Email は再描画
-// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// NewPageDataはパスワードリセット申請フォームページのデータです。Emailは再描画
+// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrorsは
 // バリデーションメッセージを運びます。各入力欄の下に出すフィールド別のメッセージ
-// (email の未入力・不正) と、Bot 検証が失敗したときに上部に出すフォーム全体のメッセージ
-// です。TurnstileSiteKey は Bot 対策ウィジェットを描画します。空のとき (無効化された
-// dev / test 構成) はウィジェットを完全に省きます。
+// (emailの未入力・不正) と、Bot検証が失敗したときに上部に出すフォーム全体のメッセージ
+// です。TurnstileSiteKeyはBot対策ウィジェットを描画します。空のとき (無効化された
+// dev / test構成) はウィジェットを完全に省きます。
 type NewPageData struct {
 	CSRFToken        string
 	Email            string
@@ -27,13 +19,9 @@ type NewPageData struct {
 	TurnstileSiteKey string
 }
 
-// New renders the password reset request form: a single email field that, on
-// submit, requests a reset link. The CSRF token is embedded as a hidden field for
-// the double-submit-cookie check, and a link back to sign-in is offered.
-//
-// [Ja] New はパスワードリセット申請フォームを描画します。送信するとリセットリンクを
-// 要求する単一の email フィールドです。CSRF トークンは double-submit cookie 検証のため
-// hidden フィールドとして埋め込み、サインインへ戻るリンクを提供します。
+// Newはパスワードリセット申請フォームを描画します。送信するとリセットリンクを
+// 要求する単一のemailフィールドです。CSRFトークンはdouble-submit cookie検証のため
+// hiddenフィールドとして埋め込み、サインインへ戻るリンクを提供します。
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">
 		<div class="flex flex-col gap-2 text-center">

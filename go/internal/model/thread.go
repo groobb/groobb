@@ -2,97 +2,53 @@ package model
 
 import "time"
 
-// ThreadPostLimit is the number of posts a thread can hold (ADR 0009). The cap
-// is what lets the post list go unpaginated: a reply number stays a permanent
-// address only while the whole thread answers under one URL. A thread that has
-// reached it takes no further post and says so.
-//
-// [Ja] ThreadPostLimit はスレッドが持てる投稿の数です (ADR 0009)。投稿一覧をページ
+// ThreadPostLimitはスレッドが持てる投稿の数です (ADR 0009)。投稿一覧をページ
 // 分割せずに済ませているのはこの上限があるためで、レス番号が永久アドレスであり続けるのは、
-// スレッド全体が 1 つの URL で応答する限りです。上限に達したスレッドはそれ以上の投稿を
+// スレッド全体が1つのURLで応答する限りです。上限に達したスレッドはそれ以上の投稿を
 // 受け付けず、その旨を表示します。
 const ThreadPostLimit = 1000
 
-// Thread is a conversation inside a board: a container for posts that holds no
-// body of its own. It is addressed by id rather than a slug because its title
-// can be edited, and an address derived from the title would break the links
-// already shared.
-//
-// [Ja] Thread は掲示板の中の 1 つの会話で、投稿の入れ物であり自身は本文を持ちません。
-// slug ではなく id で指すのは、タイトルが編集されうるためで、タイトルから導いた
+// Threadは掲示板の中の1つの会話で、投稿の入れ物であり自身は本文を持ちません。
+// slugではなくidで指すのは、タイトルが編集されうるためで、タイトルから導いた
 // アドレスでは既に共有されたリンクが壊れます。
 type Thread struct {
 	ID ThreadID
 
-	// BoardID is the board this thread was posted in. A thread can be moved to
-	// another board, which is why /t/{id} names a thread without naming its
-	// board.
-	//
-	// [Ja] BoardID はこのスレッドが立った掲示板です。スレッドは別の掲示板へ移されうる
+	// BoardIDはこのスレッドが立った掲示板です。スレッドは別の掲示板へ移されうる
 	// ため、/t/{id} はスレッドをその掲示板を言わずに名指しします。
 	BoardID BoardID
 
-	// UserID is the account that started the thread. It remains set while the
-	// account is logically withdrawn and becomes nil only after the account row
-	// is physically deleted. Resolve the referenced user to distinguish an active
-	// author from a logically withdrawn one. The conversation stays either way,
-	// so everyone else's replies remain intact.
-	//
-	// [Ja] UserID はスレッドを立てたアカウントです。アカウントが論理退会している間も値を
-	// 保ち、その行が物理削除された後にだけ nil になります。有効な作者と論理退会済みの作者は、
+	// UserIDはスレッドを立てたアカウントです。アカウントが論理退会している間も値を
+	// 保ち、その行が物理削除された後にだけnilになります。有効な作者と論理退会済みの作者は、
 	// 参照先のユーザーを解決して区別します。いずれの場合も会話は残るため、他の全員の返信は
 	// 維持されます。
 	UserID *UserID
 
 	Title string
 
-	// Language is the language the thread is written in, chosen when it is
-	// started. It is an attribute of the thread rather than of each post: a reply
-	// in another language is accepted, so a post carries no language of its own
-	// and is never labelled with the thread's.
-	//
-	// [Ja] Language はスレッドが書かれている言語で、スレッドを立てるときに選ばれます。
+	// Languageはスレッドが書かれている言語で、スレッドを立てるときに選ばれます。
 	// 投稿ごとではなくスレッドの属性です。別の言語での返信も受け付けるため、投稿は自身の
 	// 言語を持たず、スレッドの言語を名乗ることもありません。
 	Language ThreadLanguage
 
-	// PostsCount, LastPostID and LastPostedAt are denormalized from the thread's
-	// posts. A row of a board's thread list needs all three, and deriving them
-	// per row would mean one aggregate per thread on every page view. They are
-	// written in the transaction that writes the post, so holding them costs no
-	// extra write transaction.
-	//
-	// LastPostedAt is never absent because a thread is created together with its
-	// first post; LastPostID is nil only once that post has been deleted.
-	//
-	// [Ja] PostsCount・LastPostID・LastPostedAt はスレッドの投稿からの非正規化です。
-	// 掲示板のスレッド一覧は 1 行を描くのにこの 3 つをいずれも必要とし、行ごとに導くと
-	// ページを開くたびにスレッド 1 件につき 1 回の集計が走ります。これらは投稿を書き込む
+	// PostsCount・LastPostID・LastPostedAtはスレッドの投稿からの非正規化です。
+	// 掲示板のスレッド一覧は1行を描くのにこの3つをいずれも必要とし、行ごとに導くと
+	// ページを開くたびにスレッド1件につき1回の集計が走ります。これらは投稿を書き込む
 	// トランザクションの中で書かれるため、保持しても書き込みトランザクションは増えません。
 	//
-	// LastPostedAt が欠けることが無いのは、スレッドが最初の投稿と同時に作られるためです。
-	// LastPostID が nil になるのは、その投稿が削除された場合だけです。
+	// LastPostedAtが欠けることが無いのは、スレッドが最初の投稿と同時に作られるためです。
+	// LastPostIDがnilになるのは、その投稿が削除された場合だけです。
 	PostsCount   int
 	LastPostID   *PostID
 	LastPostedAt time.Time
 
-	// LockedAt is when an administrator locked the thread, and nil while no
-	// administrator has. It is held apart from the post cap, which LockReasons
-	// derives from PostsCount rather than reading from a column, because the two
-	// conditions stand alongside each other: clearing this one leaves the cap to
-	// be derived from the count the thread still carries.
-	//
-	// [Ja] LockedAtは管理者がスレッドをロックした時刻で、管理者がロックしていない間は
+	// LockedAtは管理者がスレッドをロックした時刻で、管理者がロックしていない間は
 	// nilです。LockReasonsが列からではなくPostsCountから導く上限到達とは別に持ちます。
 	// 2つの条件は並び立つものであり、こちらを空にしても、上限到達はスレッドが持ち続ける
 	// 件数から導かれ続けるためです。
 	LockedAt *time.Time
 
-	// UnpublishedAt is when an administrator unpublished the thread, and nil
-	// while it is published. The thread keeps its title and its posts either
-	// way, so the mark is what hides it and taking the mark off brings it back.
-	//
-	// [Ja] UnpublishedAtは管理者がスレッドを非公開にした時刻で、公開されている間は
+	// UnpublishedAtは管理者がスレッドを非公開にした時刻で、公開されている間は
 	// nilです。いずれの場合もスレッドはタイトルと投稿を保つため、対象を隠すのは印であり、
 	// 印を外せば戻ります。
 	UnpublishedAt *time.Time

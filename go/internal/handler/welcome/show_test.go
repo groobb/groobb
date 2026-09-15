@@ -13,15 +13,9 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestShow verifies that the top page returns HTTP 200 with an HTML body that
-// renders the localized hero text, the sign-up and sign-in calls to action,
-// the request-locale lang attribute, the footer, and the versioned asset
-// references for each supported locale, and that it does not carry the shared
-// signed-in header, which belongs to the pages behind authentication.
-//
-// [Ja] TestShow はトップページが HTTP 200 と、サポートする各ロケールについて、
-// ローカライズされたヒーロー文言・サインアップ / サインインの CTA・リクエスト
-// ロケールの lang 属性・フッター・バージョン付きのアセット参照を描画した HTML
+// TestShowはトップページがHTTP 200と、サポートする各ロケールについて、
+// ローカライズされたヒーロー文言・サインアップ / サインインのCTA・リクエスト
+// ロケールのlang属性・フッター・バージョン付きのアセット参照を描画したHTML
 // ボディを返すこと、そして認証の背後のページに属するサインイン済みページ共通の
 // ヘッダーを持たないことを検証します。
 func TestShow(t *testing.T) {
@@ -37,8 +31,8 @@ func TestShow(t *testing.T) {
 		wantSignInLink string
 		noHeaderNav    string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン", noHeaderNav: "グローバルナビゲーション"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in", noHeaderNav: "Global navigation"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "あなたの掲示板を、つくろう。", wantSignUpLink: "アカウント登録", wantSignInLink: "ログイン", noHeaderNav: "グローバルナビゲーション"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Create your own bulletin board.", wantSignUpLink: "Sign up", wantSignInLink: "Sign in", noHeaderNav: "Global navigation"},
 	}
 
 	for _, tt := range tests {
@@ -52,11 +46,11 @@ func TestShow(t *testing.T) {
 			handler.Show(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -74,7 +68,7 @@ func TestShow(t *testing.T) {
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 
@@ -85,16 +79,10 @@ func TestShow(t *testing.T) {
 	}
 }
 
-// TestShow_SignedInRedirectsToHome verifies that a signed-in visitor to the top
-// page is redirected to /home instead of being shown the guest welcome, so a
-// user who is already signed in lands on their home page. The user is placed in
-// the context directly (as SetUser would), so the handler runs without the auth
-// middleware or a database.
-//
-// [Ja] TestShow_SignedInRedirectsToHome は、トップページに来たサインイン済みの訪問者が
-// ゲスト向けウェルカムではなく /home へリダイレクトされることを検証します。既にサインイン
-// 済みのユーザーが自分のホームページに着地するためです。ユーザーは (SetUser がするように)
-// context に直接載せ、認証ミドルウェアや DB なしでハンドラーを走らせます。
+// TestShow_SignedInRedirectsToHomeは、トップページに来たサインイン済みの訪問者が
+// ゲスト向けウェルカムではなく /homeへリダイレクトされることを検証します。既にサインイン
+// 済みのユーザーが自分のホームページに着地するためです。ユーザーは (SetUserがするように)
+// contextに直接載せ、認証ミドルウェアやDBなしでハンドラーを走らせます。
 func TestShow_SignedInRedirectsToHome(t *testing.T) {
 	t.Parallel()
 
@@ -109,9 +97,9 @@ func TestShow_SignedInRedirectsToHome(t *testing.T) {
 	handler.Show(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 	}
 	if loc := rec.Header().Get("Location"); loc != "/home" {
-		t.Errorf("Location = %q, want %q", loc, "/home")
+		t.Errorf("Location = %q、期待値 = %q", loc, "/home")
 	}
 }

@@ -9,12 +9,8 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// newUserPasswordRepo builds a UserPasswordRepository over the database the test
-// owns and creates a user to own the password, returning the user ID so each
-// test can attach its password to an existing owner.
-//
-// [Ja] newUserPasswordRepo はテストが所有するデータベース上に UserPasswordRepository を
-// 作り、パスワードの所有ユーザーを作成してその ID を返す。各テストが既存の所有者に
+// newUserPasswordRepoはテストが所有するデータベース上にUserPasswordRepositoryを
+// 作り、パスワードの所有ユーザーを作成してそのIDを返す。各テストが既存の所有者に
 // パスワードを紐付けられるようにするためである。
 func newUserPasswordRepo(t *testing.T) (*repository.UserPasswordRepository, model.UserID, context.Context) {
 	t.Helper()
@@ -34,23 +30,23 @@ func TestUserPasswordRepository_Create(t *testing.T) {
 		PasswordDigest: "$2a$04$digest.placeholder.value",
 	})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	if userPassword.ID == 0 {
-		t.Error("Create() userPassword.ID は DB 採番で空でないはず")
+		t.Error("Create() userPassword.IDはDB採番で空でないはず")
 	}
 	if userPassword.UserID != userID {
-		t.Errorf("userPassword.UserID = %v, want %v", userPassword.UserID, userID)
+		t.Errorf("userPassword.UserID = %v、期待値 = %v", userPassword.UserID, userID)
 	}
 	if userPassword.PasswordDigest != "$2a$04$digest.placeholder.value" {
-		t.Errorf("userPassword.PasswordDigest = %q, want %q", userPassword.PasswordDigest, "$2a$04$digest.placeholder.value")
+		t.Errorf("userPassword.PasswordDigest = %q、期待値 = %q", userPassword.PasswordDigest, "$2a$04$digest.placeholder.value")
 	}
 	if userPassword.CreatedAt.IsZero() {
-		t.Error("userPassword.CreatedAt は DB 既定値で設定されるはず")
+		t.Error("userPassword.CreatedAtはDB既定値で設定されるはず")
 	}
 	if userPassword.UpdatedAt.IsZero() {
-		t.Error("userPassword.UpdatedAt は DB 既定値で設定されるはず")
+		t.Error("userPassword.UpdatedAtはDB既定値で設定されるはず")
 	}
 }
 
@@ -63,42 +59,38 @@ func TestUserPasswordRepository_FindByUserID(t *testing.T) {
 		UserID:         userID,
 		PasswordDigest: "$2a$04$findable.digest.value",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
-	t.Run("ユーザー ID でパスワードを取得できる", func(t *testing.T) {
+	t.Run("ユーザーIDでパスワードを取得できる", func(t *testing.T) {
 		userPassword, err := repo.FindByUserID(ctx, userID)
 		if err != nil {
-			t.Fatalf("FindByUserID() error = %v", err)
+			t.Fatalf("FindByUserID()のエラー = %v", err)
 		}
 		if userPassword == nil {
-			t.Fatal("FindByUserID() = nil, want password")
+			t.Fatal("FindByUserID() = nil、期待値はパスワード")
 		}
 		if userPassword.UserID != userID {
-			t.Errorf("userPassword.UserID = %v, want %v", userPassword.UserID, userID)
+			t.Errorf("userPassword.UserID = %v、期待値 = %v", userPassword.UserID, userID)
 		}
 		if userPassword.PasswordDigest != "$2a$04$findable.digest.value" {
-			t.Errorf("userPassword.PasswordDigest = %q, want %q", userPassword.PasswordDigest, "$2a$04$findable.digest.value")
+			t.Errorf("userPassword.PasswordDigest = %q、期待値 = %q", userPassword.PasswordDigest, "$2a$04$findable.digest.value")
 		}
 	})
 
-	t.Run("パスワードを持たない user_id は (nil, nil) を返す", func(t *testing.T) {
+	t.Run("パスワードを持たないuser_idは (nil, nil) を返す", func(t *testing.T) {
 		userPassword, err := repo.FindByUserID(ctx, model.UserID(testutil.UnusedID))
 		if err != nil {
-			t.Fatalf("FindByUserID() error = %v, want nil", err)
+			t.Fatalf("FindByUserID()のエラー = %v、期待値 = nil", err)
 		}
 		if userPassword != nil {
-			t.Errorf("FindByUserID() = %v, want nil", userPassword)
+			t.Errorf("FindByUserID() = %v、期待値 = nil", userPassword)
 		}
 	})
 }
 
-// TestUserPasswordRepository_UpdatePasswordDigest verifies that
-// UpdatePasswordDigest replaces the stored digest for the user, so a later
-// FindByUserID returns the new value.
-//
-// [Ja] TestUserPasswordRepository_UpdatePasswordDigest は、UpdatePasswordDigest が
-// そのユーザーの保存ダイジェストを置き換え、後の FindByUserID が新しい値を返すことを
+// TestUserPasswordRepository_UpdatePasswordDigestは、UpdatePasswordDigestが
+// そのユーザーの保存ダイジェストを置き換え、後のFindByUserIDが新しい値を返すことを
 // 検証する。
 func TestUserPasswordRepository_UpdatePasswordDigest(t *testing.T) {
 	t.Parallel()
@@ -109,31 +101,27 @@ func TestUserPasswordRepository_UpdatePasswordDigest(t *testing.T) {
 		UserID:         userID,
 		PasswordDigest: "$2a$04$old.digest.value",
 	}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	if err := repo.UpdatePasswordDigest(ctx, userID, "$2a$04$new.digest.value"); err != nil {
-		t.Fatalf("UpdatePasswordDigest() error = %v", err)
+		t.Fatalf("UpdatePasswordDigest()のエラー = %v", err)
 	}
 
 	userPassword, err := repo.FindByUserID(ctx, userID)
 	if err != nil {
-		t.Fatalf("FindByUserID() error = %v", err)
+		t.Fatalf("FindByUserID()のエラー = %v", err)
 	}
 	if userPassword == nil {
-		t.Fatal("FindByUserID() = nil, want password")
+		t.Fatal("FindByUserID() = nil、期待値はパスワード")
 	}
 	if userPassword.PasswordDigest != "$2a$04$new.digest.value" {
-		t.Errorf("userPassword.PasswordDigest = %q, want %q", userPassword.PasswordDigest, "$2a$04$new.digest.value")
+		t.Errorf("userPassword.PasswordDigest = %q、期待値 = %q", userPassword.PasswordDigest, "$2a$04$new.digest.value")
 	}
 }
 
-// TestUserPasswordRepository_CreateRejectsSecondPassword verifies the
-// user_passwords.user_id UNIQUE constraint enforces at most one password per
-// user.
-//
-// [Ja] TestUserPasswordRepository_CreateRejectsSecondPassword は
-// user_passwords.user_id の UNIQUE 制約が、ユーザーあたり高々 1 つのパスワードを
+// TestUserPasswordRepository_CreateRejectsSecondPasswordは
+// user_passwords.user_idのUNIQUE制約が、ユーザーあたり高々1つのパスワードを
 // 強制することを確認する。
 func TestUserPasswordRepository_CreateRejectsSecondPassword(t *testing.T) {
 	t.Parallel()
@@ -144,7 +132,7 @@ func TestUserPasswordRepository_CreateRejectsSecondPassword(t *testing.T) {
 		UserID:         userID,
 		PasswordDigest: "$2a$04$first.digest.value",
 	}); err != nil {
-		t.Fatalf("1 回目の Create() error = %v", err)
+		t.Fatalf("1回目のCreate()のエラー = %v", err)
 	}
 
 	_, err := repo.Create(ctx, repository.CreateUserPasswordInput{
@@ -152,6 +140,6 @@ func TestUserPasswordRepository_CreateRejectsSecondPassword(t *testing.T) {
 		PasswordDigest: "$2a$04$second.digest.value",
 	})
 	if err == nil {
-		t.Error("同一ユーザーへの 2 つ目のパスワード Create() はエラーになるはず")
+		t.Error("同一ユーザーへの2つ目のパスワードCreate() はエラーになるはず")
 	}
 }

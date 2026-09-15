@@ -5,48 +5,22 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// New renders the form a thread is started from: the title naming the
-// conversation, the language it is to be written in, and the post it opens with.
-//
-// The board is not among the fields. It is named by the address the form posts
-// to, so the form can only start a thread in the board it was opened from, and
-// the page states which one that is instead of offering a choice that is already
-// made.
-//
-// Neither length limit is written as a maxlength. That attribute counts UTF-16
-// code units where the server counts code points, so it would stop text the
-// server accepts; the limits are stated in the hints beside the fields, which is
-// the count the submission is actually judged by.
-//
-// The interval between one person's posts is stated above the submit button,
-// where it is read before submitting rather than after a submission comes back
-// refused for arriving too soon.
-//
-// A leading newline inside the textarea is consumed by the HTML parser. Adding
-// one before the body preserves any blank lines the visitor actually entered.
-//
-// A submission that comes back refused opens with the caret where the visitor
-// has to act: on the first field with something to fix, or on the summary above
-// the form when what was refused is the submission as a whole. Without it the
-// caret would sit at the top of the document, and the reason the page came back
-// would be somewhere below it.
-//
-// [Ja] New はスレッドを立てるフォームを描画します。会話を名指すタイトル、それが書かれる
+// Newはスレッドを立てるフォームを描画します。会話を名指すタイトル、それが書かれる
 // 言語、そしてそれが始まる投稿です。
 //
 // 掲示板はフィールドに含めません。フォームの送信先のアドレスが名指すため、フォームは
 // それが開かれた掲示板にしかスレッドを立てられず、ページは既に決まっている選択を差し出す
 // のではなく、どの掲示板であるかを述べます。
 //
-// どちらの長さの上限も maxlength には書きません。この属性が数えるのは UTF-16 のコード
+// どちらの長さの上限もmaxlengthには書きません。この属性が数えるのはUTF-16のコード
 // 単位で、サーバーが数えるのはコードポイントであるため、サーバーが受け付けるテキストを
 // 止めてしまいます。上限は各フィールドの傍らのヒントで述べます。そちらが、送信が実際に
 // 判定される数です。
 //
-// 1 人の投稿と投稿の間隔は送信ボタンの上に述べます。送信が「早すぎる」として拒否されて
+// 1人の投稿と投稿の間隔は送信ボタンの上に述べます。送信が「早すぎる」として拒否されて
 // 返ってきた後ではなく、送信する前に読まれる位置です。
 //
-// textarea の先頭の改行は HTML パーサーが消費します。本文の前に改行を1つ足すことで、
+// textareaの先頭の改行はHTMLパーサーが消費します。本文の前に改行を1つ足すことで、
 // 訪問者が入力した先頭の空行を保ちます。
 //
 // 拒否されて戻ってきた送信は、訪問者が手を入れる場所にキャレットを置いて開きます。直す

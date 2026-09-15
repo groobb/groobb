@@ -11,16 +11,10 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Show renders the admin hub: a heading and a list of links to the community's
-// administration screens, of which the user list is the only one for now. It is
-// a link list for the reason the settings hub is one: a later plan adds a screen
-// as a sibling link without restructuring the page. There is no form, so no CSRF
-// token is needed.
-//
-// [Ja] Show は管理ハブを描画します。見出しと、コミュニティの管理画面へのリンクの一覧で、
+// Showは管理ハブを描画します。見出しと、コミュニティの管理画面へのリンクの一覧で、
 // 今のところ画面は利用者一覧だけです。リンクの一覧にする理由は設定ハブと同じで、後続の
 // 計画が画面を兄弟リンクとして足すときにページを組み直さずに済むためです。フォームが無い
-// ため CSRF トークンは不要です。
+// ためCSRFトークンは不要です。
 func Show() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -49,7 +43,7 @@ func Show() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_show_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 19, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 13, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -62,7 +56,7 @@ func Show() templ.Component {
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templates.AdminUsersPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 23, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 17, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -75,7 +69,7 @@ func Show() templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "admin_show_users_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 24, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/admin/show.templ`, Line: 18, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {

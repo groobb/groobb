@@ -9,12 +9,8 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// TestManager_ExpiredContinuationToken verifies that the server-side expiry is
-// enforced for both authentication flows even if a client keeps sending the
-// Cookie after its browser lifetime.
-//
-// [Ja] TestManager_ExpiredContinuationToken は、クライアントがブラウザー上の有効期間後も
-// Cookie を送信し続けた場合でも、両方の認証フローでサーバー側の期限が強制されることを
+// TestManager_ExpiredContinuationTokenは、クライアントがブラウザー上の有効期間後も
+// Cookieを送信し続けた場合でも、両方の認証フローでサーバー側の期限が強制されることを
 // 検証します。
 func TestManager_ExpiredContinuationToken(t *testing.T) {
 	t.Parallel()
@@ -29,7 +25,7 @@ func TestManager_ExpiredContinuationToken(t *testing.T) {
 		get        func(*http.Request) bool
 	}{
 		{
-			name:       "email confirmation",
+			name:       "メール確認",
 			cookieName: EmailConfirmationCookieName,
 			token:      signContinuationToken(testutil.TestContinuationTokenKey, emailConfirmationTokenPurpose, 123, expiredAt),
 			get: func(req *http.Request) bool {
@@ -38,7 +34,7 @@ func TestManager_ExpiredContinuationToken(t *testing.T) {
 			},
 		},
 		{
-			name:       "two-factor pending",
+			name:       "2段階認証の保留",
 			cookieName: TwoFactorPendingCookieName,
 			token:      signContinuationToken(testutil.TestContinuationTokenKey, twoFactorPendingTokenPurpose, 456, expiredAt),
 			get: func(req *http.Request) bool {
@@ -55,27 +51,24 @@ func TestManager_ExpiredContinuationToken(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.AddCookie(&http.Cookie{Name: tt.cookieName, Value: tt.token})
 			if tt.get(req) {
-				t.Error("expired continuation token was accepted")
+				t.Error("期限切れのcontinuation tokenが受理された")
 			}
 		})
 	}
 }
 
-// TestContinuationToken_FailsClosedWithShortKey verifies that bypassing
-// Config.Load with an invalid key cannot emit or accept continuation tokens.
-//
-// [Ja] TestContinuationToken_FailsClosedWithShortKey は、不正な鍵で Config.Load を迂回しても
-// continuation token を発行・受理できないことを検証します。
+// TestContinuationToken_FailsClosedWithShortKeyは、不正な鍵でConfig.Loadを迂回しても
+// continuation tokenを発行・受理できないことを検証します。
 func TestContinuationToken_FailsClosedWithShortKey(t *testing.T) {
 	t.Parallel()
 
 	expiresAt := time.Now().Add(time.Minute)
 	if token := signContinuationToken("short", emailConfirmationTokenPurpose, 123, expiresAt); token != "" {
-		t.Errorf("signContinuationToken() = %q, want empty", token)
+		t.Errorf("signContinuationToken() = %q、期待値は空文字列", token)
 	}
 
 	token := signContinuationToken(testutil.TestContinuationTokenKey, emailConfirmationTokenPurpose, 123, expiresAt)
 	if _, ok := verifyContinuationToken("short", emailConfirmationTokenPurpose, token, time.Now()); ok {
-		t.Error("verifyContinuationToken() ok = true with short key, want false")
+		t.Error("短い鍵でのverifyContinuationToken()のok = true、期待値 = false")
 	}
 }

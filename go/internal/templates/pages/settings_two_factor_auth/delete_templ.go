@@ -13,18 +13,10 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// DeletePageData is the data for the two-factor authentication disable confirmation
-// page. It carries only the CSRF token and the validation messages; there is nothing
-// to echo back, since the inputs are the current password (re-rendering a password
-// field with its value is a credential-leak risk) and a single-use TOTP code, so the
-// user re-enters whichever one they used. FormErrors surfaces a missing or incorrect
-// re-authentication as a form-wide message (the "enter one of the two" constraint is
-// not tied to a single field).
-//
-// [Ja] DeletePageData は 2 段階認証の無効化確認ページのデータです。運ぶのは CSRF トークンと
+// DeletePageDataは2段階認証の無効化確認ページのデータです。運ぶのはCSRFトークンと
 // バリデーションメッセージだけです。エコーバックするものはありません。入力は現在のパスワード
-// (値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスク) と 1 回使い切りの
-// TOTP コードのため、ユーザーは使った方をもう一度入力します。FormErrors は再認証の未入力・
+// (値付きでパスワードフィールドを再描画するのは資格情報の漏えいリスク) と1回使い切りの
+// TOTPコードのため、ユーザーは使った方をもう一度入力します。FormErrorsは再認証の未入力・
 // 誤りをフォーム全体のメッセージとして出します (「どちらか一方を入力」の制約は単一フィールドに
 // 紐づかないため)。
 type DeletePageData struct {
@@ -32,27 +24,15 @@ type DeletePageData struct {
 	FormErrors *model.ValidationError
 }
 
-// Delete renders the two-factor authentication disable confirmation form: an
-// explanation that disabling removes the second factor and requires
-// re-authentication, a fieldset that groups a current-password field and a TOTP-code
-// field under a legend (either one suffices), and a destructive submit button. The
-// form posts to /settings/two_factor_auth with a hidden _method=DELETE so the HTML
-// form drives the DELETE route, and the CSRF token is embedded as a hidden field. An
-// onsubmit confirm() dialog guards against an accidental click; it is only a
-// supplement, since the re-authentication is the real gate. The two credentials share
-// a fieldset so assistive tech announces them as one "enter one of the two" group;
-// neither field is marked required because exactly one of the two is needed, and which
-// one is validated on the server.
-//
-// [Ja] Delete は 2 段階認証の無効化確認フォームを描画します。無効化で第 2 要素が外れ再認証が
-// 必要なことの説明、現在のパスワードフィールドと TOTP コードフィールドを legend の下にまとめた
-// fieldset (どちらか一方でよい)、そして destructive な送信ボタンです。フォームは hidden な
-// _method=DELETE を付けて /settings/two_factor_auth へ POST し、HTML フォームから DELETE ルートを
-// 動かします。CSRF トークンは hidden フィールドとして埋め込みます。onsubmit の confirm()
-// ダイアログが誤クリックを防ぎますが、それは補助にすぎず、再認証が本質的なゲートです。2 つの
-// 資格情報を 1 つの fieldset にまとめることで、支援技術に「どちらか一方を入力する」1 つの
+// Deleteは2段階認証の無効化確認フォームを描画します。無効化で第2要素が外れ再認証が
+// 必要なことの説明、現在のパスワードフィールドとTOTPコードフィールドをlegendの下にまとめた
+// fieldset (どちらか一方でよい)、そしてdestructiveな送信ボタンです。フォームはhiddenな
+// _method=DELETEを付けて /settings/two_factor_authへPOSTし、HTMLフォームからDELETEルートを
+// 動かします。CSRFトークンはhiddenフィールドとして埋め込みます。onsubmitのconfirm()
+// ダイアログが誤クリックを防ぎますが、それは補助にすぎず、再認証が本質的なゲートです。2つの
+// 資格情報を1つのfieldsetにまとめることで、支援技術に「どちらか一方を入力する」1つの
 // グループとして読み上げさせます。どちらか一方だけが必要でどちらを使うかはサーバーで検証する
-// ため、いずれのフィールドにも required は付けません。
+// ため、いずれのフィールドにもrequiredは付けません。
 func Delete(data DeletePageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -81,7 +61,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 53, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 33, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -94,7 +74,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 56, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 36, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -115,7 +95,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsTwoFactorAuthPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 61, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 41, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -128,7 +108,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templates.T(ctx, "settings_two_factor_auth_delete_confirm"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 63, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 43, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -141,7 +121,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 68, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 48, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -154,7 +134,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_reauth_legend"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 71, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 51, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -167,7 +147,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_reauth_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 74, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 54, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -180,7 +160,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_current_password_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 78, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 58, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -193,7 +173,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_code_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 90, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 70, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -206,7 +186,7 @@ func Delete(data DeletePageData) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_delete_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 105, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/delete.templ`, Line: 85, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {

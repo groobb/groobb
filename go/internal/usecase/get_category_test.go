@@ -10,11 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newGetCategoryUsecase builds the UseCase over a database the test owns,
-// returning the repository alongside it so the test can arrange the rows it is
-// about to read back.
-//
-// [Ja] newGetCategoryUsecase はテストが所有するデータベース上に UseCase を構築し、
+// newGetCategoryUsecaseはテストが所有するデータベース上にUseCaseを構築し、
 // これから読み戻す行をテストが用意できるよう、リポジトリも併せて返します。
 func newGetCategoryUsecase(t *testing.T) (*usecase.GetCategoryUsecase, *repository.CategoryRepository) {
 	t.Helper()
@@ -25,14 +21,9 @@ func newGetCategoryUsecase(t *testing.T) (*usecase.GetCategoryUsecase, *reposito
 	return usecase.NewGetCategoryUsecase(categoryRepo), categoryRepo
 }
 
-// TestGetCategoryUsecase_Execute verifies that Execute resolves the slug to the
-// category stored under it, and to that one only. A second category is created
-// alongside so the assertion reads the slug's resolution rather than whichever
-// row happens to come first.
-//
-// [Ja] TestGetCategoryUsecase_Execute は、Execute が slug をその下に保存された
-// カテゴリーへ、そしてそれだけへ解決することを検証します。2 つ目のカテゴリーも併せて
-// 作るのは、検証が「たまたま最初に来る行」ではなく slug の解決を読んでいることを示す
+// TestGetCategoryUsecase_Executeは、Executeがslugをその下に保存された
+// カテゴリーへ、そしてそれだけへ解決することを検証します。2つ目のカテゴリーも併せて
+// 作るのは、検証が「たまたま最初に来る行」ではなくslugの解決を読んでいることを示す
 // ためです。
 func TestGetCategoryUsecase_Execute(t *testing.T) {
 	t.Parallel()
@@ -41,33 +32,28 @@ func TestGetCategoryUsecase_Execute(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := categoryRepo.Create(ctx, repository.CreateCategoryInput{Slug: "music", Name: "音楽", Position: 1}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if _, err := categoryRepo.Create(ctx, repository.CreateCategoryInput{Slug: "hobby", Name: "趣味", Position: 2}); err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 
 	output, err := uc.Execute(ctx, usecase.GetCategoryInput{Slug: "music"})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 
 	if output.Category.Name != "音楽" {
-		t.Errorf("output.Category.Name = %q, want %q", output.Category.Name, "音楽")
+		t.Errorf("output.Category.Name = %q、期待値 = %q", output.Category.Name, "音楽")
 	}
 	if output.Category.Slug != "music" {
-		t.Errorf("output.Category.Slug = %q, want %q", output.Category.Slug, "music")
+		t.Errorf("output.Category.Slug = %q、期待値 = %q", output.Category.Slug, "music")
 	}
 }
 
-// TestGetCategoryUsecase_Execute_UnknownSlug verifies that a slug naming no
-// category is reported as an AppError carrying AppErrCodeResourceNotFound, which
-// is what lets the handler answer 404 instead of rendering an empty page or a
-// 500.
-//
-// [Ja] TestGetCategoryUsecase_Execute_UnknownSlug は、どのカテゴリーも指さない slug が
-// AppErrCodeResourceNotFound を持つ AppError として報告されることを検証します。これに
-// より、ハンドラーは空のページや 500 ではなく 404 で応答できます。
+// TestGetCategoryUsecase_Execute_UnknownSlugは、どのカテゴリーも指さないslugが
+// AppErrCodeResourceNotFoundを持つAppErrorとして報告されることを検証します。これに
+// より、ハンドラーは空のページや500ではなく404で応答できます。
 func TestGetCategoryUsecase_Execute_UnknownSlug(t *testing.T) {
 	t.Parallel()
 
@@ -75,14 +61,14 @@ func TestGetCategoryUsecase_Execute_UnknownSlug(t *testing.T) {
 
 	output, err := uc.Execute(context.Background(), usecase.GetCategoryInput{Slug: "no-such-category"})
 	if output != nil {
-		t.Errorf("output = %+v, want nil", output)
+		t.Errorf("output = %+v、期待値 = nil", output)
 	}
 
 	ae := model.AsAppError(err)
 	if ae == nil {
-		t.Fatalf("Execute() error = %v, want *model.AppError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.AppError", err)
 	}
 	if ae.Code != model.AppErrCodeResourceNotFound {
-		t.Errorf("ae.Code = %d, want %d (AppErrCodeResourceNotFound)", ae.Code, model.AppErrCodeResourceNotFound)
+		t.Errorf("ae.Code = %d、期待値 = %d (AppErrCodeResourceNotFound)", ae.Code, model.AppErrCodeResourceNotFound)
 	}
 }

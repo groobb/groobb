@@ -15,11 +15,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignInTwoFactorValidator builds a SignInTwoFactorCreateValidator over the
-// test's own database so its 2FA lookup reads the rows the test seeded there.
-//
-// [Ja] newSignInTwoFactorValidator はテスト専用のデータベース上に
-// SignInTwoFactorCreateValidator を組み立て、その 2FA ルックアップがそこへ仕込んだ行を
+// newSignInTwoFactorValidatorはテスト専用のデータベース上に
+// SignInTwoFactorCreateValidatorを組み立て、その2FAルックアップがそこへ仕込んだ行を
 // 読むようにする。
 func newSignInTwoFactorValidator(t *testing.T, db *database.DB) *validator.SignInTwoFactorCreateValidator {
 	t.Helper()
@@ -27,11 +24,8 @@ func newSignInTwoFactorValidator(t *testing.T, db *database.DB) *validator.SignI
 	return validator.NewSignInTwoFactorCreateValidator(repo)
 }
 
-// TestSignInTwoFactorCreateValidator_Validate_Success verifies that a correct TOTP
-// code for a user with enabled 2FA passes with no error.
-//
-// [Ja] TestSignInTwoFactorCreateValidator_Validate_Success は、2FA が有効なユーザーの
-// 正しい TOTP コードがエラーなしで通ることを検証する。
+// TestSignInTwoFactorCreateValidator_Validate_Successは、2FAが有効なユーザーの
+// 正しいTOTPコードがエラーなしで通ることを検証する。
 func TestSignInTwoFactorCreateValidator_Validate_Success(t *testing.T) {
 	t.Parallel()
 
@@ -43,21 +37,17 @@ func TestSignInTwoFactorCreateValidator_Validate_Success(t *testing.T) {
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
-		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
+		t.Fatalf("テスト用TOTPコードの生成に失敗: %v", err)
 	}
 
 	v := newSignInTwoFactorValidator(t, db)
 	if err := v.Validate(ctx, validator.SignInTwoFactorCreateValidatorInput{UserID: userID, Code: code}); err != nil {
-		t.Fatalf("Validate() error = %v, want nil", err)
+		t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 	}
 }
 
-// TestSignInTwoFactorCreateValidator_Validate_FieldErrors verifies that missing,
-// malformed, and incorrect codes each surface as a code-field ValidationError,
-// leaving the challenge unpassed.
-//
-// [Ja] TestSignInTwoFactorCreateValidator_Validate_FieldErrors は、コードの未入力・
-// 形式不正・不一致がそれぞれ code フィールドの ValidationError として表れ、チャレンジが
+// TestSignInTwoFactorCreateValidator_Validate_FieldErrorsは、コードの未入力・
+// 形式不正・不一致がそれぞれcodeフィールドのValidationErrorとして表れ、チャレンジが
 // 通らないことを検証する。
 func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 	t.Parallel()
@@ -70,11 +60,9 @@ func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 
 	validCode, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
-		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
+		t.Fatalf("テスト用TOTPコードの生成に失敗: %v", err)
 	}
-	// A well-formed code deliberately not equal to the current one.
-	//
-	// [Ja] 整った形式で、意図的に現在のコードと等しくない値。
+	// 整った形式で、意図的に現在のコードと等しくない値。
 	wrongCode := "000000"
 	if wrongCode == validCode {
 		wrongCode = "111111"
@@ -97,48 +85,41 @@ func TestSignInTwoFactorCreateValidator_Validate_FieldErrors(t *testing.T) {
 			err := v.Validate(ctx, validator.SignInTwoFactorCreateValidatorInput{UserID: userID, Code: tt.code})
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("Validate() error = %v, want *model.ValidationError", err)
+				t.Fatalf("Validate()のエラー = %v、期待値 = *model.ValidationError", err)
 			}
 			if !ve.HasFieldError("code") {
-				t.Error("code フィールドのエラーが無い")
+				t.Error("codeフィールドのエラーが無い")
 			}
 		})
 	}
 }
 
-// TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor verifies that a
-// pending user with no enabled 2FA (an enrolling-only row, or none at all) fails
-// with a form-wide error, so a stale or forged cookie cannot pass the challenge.
-//
-// [Ja] TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor は、有効な 2FA を
+// TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactorは、有効な2FAを
 // 持たない保留中ユーザー (登録中のみの行、または全く無い) がフォーム全体のエラーで失敗し、
-// 失効・偽造した Cookie がチャレンジを通せないことを検証する。
+// 失効・偽造したCookieがチャレンジを通せないことを検証する。
 func TestSignInTwoFactorCreateValidator_Validate_NoEnabledTwoFactor(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupDB(t)
 	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
-	// A user whose 2FA is only enrolling (not enabled) counts as no enabled 2FA, so
-	// the still-well-formed code cannot be accepted.
-	//
-	// [Ja] 2FA が登録中 (未有効化) のみのユーザーは有効な 2FA 無しと数えるため、形式の
+	// 2FAが登録中 (未有効化) のみのユーザーは有効な2FA無しと数えるため、形式の
 	// 整ったコードでも受理できない。
 	userID := testutil.NewUserBuilder(t, db).WithEmail("2fa-v-none@example.com").Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db).WithUserID(userID).Build()
 
 	code, err := totp.GenerateCode(testutil.DefaultBuilderTOTPSecret, time.Now())
 	if err != nil {
-		t.Fatalf("テスト用 TOTP コードの生成に失敗: %v", err)
+		t.Fatalf("テスト用TOTPコードの生成に失敗: %v", err)
 	}
 
 	v := newSignInTwoFactorValidator(t, db)
 	err = v.Validate(ctx, validator.SignInTwoFactorCreateValidatorInput{UserID: userID, Code: code})
 	ve := model.AsValidationError(err)
 	if ve == nil {
-		t.Fatalf("Validate() error = %v, want *model.ValidationError", err)
+		t.Fatalf("Validate()のエラー = %v、期待値 = *model.ValidationError", err)
 	}
 	if !ve.HasGlobalError() {
-		t.Error("フォーム全体のエラーが無い (有効な 2FA が無いチャレンジはフォーム全体で失敗すべき)")
+		t.Error("フォーム全体のエラーが無い (有効な2FAが無いチャレンジはフォーム全体で失敗すべき)")
 	}
 }

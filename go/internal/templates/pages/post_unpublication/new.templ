@@ -7,21 +7,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// New renders the page a post's unpublication is confirmed on: what
-// unpublishing does, the post it is about to be done to, an optional note, and
-// the button that does it.
-//
-// The lead says what is left behind, because that is what separates this from
-// removing the post: the reply number stays where it is, so the replies quoting
-// it still lead to the place they were written about, and what they meet there
-// is a line saying the post was taken out of view.
-//
-// The post is shown as the thread shows it — the number, the author, the body —
-// but nothing in it is a link. A confirmation page is read to decide, not to be
-// followed out of, and the body's own notation would lead to a thread this page
-// is not.
-//
-// [Ja] Newは、投稿の非公開を確認するページを描画します。非公開が何をするのか、これからそれが
+// Newは、投稿の非公開を確認するページを描画します。非公開が何をするのか、これからそれが
 // 行われる投稿、任意の注記、そしてそれを行うボタンです。
 //
 // 説明文が、後に残るものを述べるのは、それがこの操作を投稿の削除から分けるものだからです。

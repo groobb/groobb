@@ -11,24 +11,14 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// RequiredFieldLabel renders the <label> of a required control: the field's own
-// label text, followed by a marker stating that the field is required. The
-// marker is both visual (smaller, muted) and textual, so the requirement reaches
-// sighted users and screen-reader users alike rather than relying on the
-// required attribute alone. label is the already-translated text; only the
-// marker's wording belongs to this component.
-//
-// field is the control's id, matching the field name used by FieldErrors, so a
-// control's label, errors, and name all key off the same string.
-//
-// [Ja] RequiredFieldLabel は必須の入力欄の <label> を描画します。そのフィールド自身の
+// RequiredFieldLabelは必須の入力欄の <label> を描画します。そのフィールド自身の
 // ラベル文言に続けて、必須であることを示すマーカーを置きます。マーカーは視覚的 (小さく
-// 抑えた色) とテキストの両方であり、required 属性だけに頼らず、目で見る利用者にも
-// スクリーンリーダーの利用者にも必須であることが届きます。label は翻訳済みのテキストで、
+// 抑えた色) とテキストの両方であり、required属性だけに頼らず、目で見る利用者にも
+// スクリーンリーダーの利用者にも必須であることが届きます。labelは翻訳済みのテキストで、
 // 本コンポーネントが持つのはマーカーの文言だけです。
 //
-// field は入力欄の id で、FieldErrors が使うフィールド名と一致します。ラベル・エラー・
-// name のすべてが同じ文字列を鍵にします。
+// fieldは入力欄のidで、FieldErrorsが使うフィールド名と一致します。ラベル・エラー・
+// nameのすべてが同じ文字列を鍵にします。
 func RequiredFieldLabel(field string, label string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -57,7 +47,7 @@ func RequiredFieldLabel(field string, label string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(field)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 24, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 14, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -70,7 +60,7 @@ func RequiredFieldLabel(field string, label string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 25, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 15, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +73,7 @@ func RequiredFieldLabel(field string, label string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "field_required"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 26, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/required_field_label.templ`, Line: 16, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {

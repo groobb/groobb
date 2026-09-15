@@ -10,14 +10,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// TestGetThreadSummaryUsecase_Execute verifies that the thread is read back as
-// the row says it, and that the posts written in it are not: a page naming a
-// thread without showing the conversation is what this read exists for.
-//
-// The count the thread carries comes back with it, since that is what the lock
-// standing at the end of the page is derived from.
-//
-// [Ja] TestGetThreadSummaryUsecase_Execute は、スレッドが行の述べるとおりに読み戻され、
+// TestGetThreadSummaryUsecase_Executeは、スレッドが行の述べるとおりに読み戻され、
 // そこに書かれた投稿は読み戻されないことを検証します。会話を見せずにスレッドを名指す
 // ページのために、この読み取りはあります。
 //
@@ -35,7 +28,7 @@ func TestGetThreadSummaryUsecase_Execute(t *testing.T) {
 
 	jazz, err := boardRepo.Create(ctx, repository.CreateBoardInput{Slug: "jazz", Name: "ジャズ"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{
 		BoardID:  jazz.ID,
@@ -43,46 +36,42 @@ func TestGetThreadSummaryUsecase_Execute(t *testing.T) {
 		Language: model.LocaleJa.ThreadLanguage(),
 	})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	post, err := postRepo.Create(ctx, repository.CreatePostInput{ThreadID: thread.ID, Number: 1, Body: "好きな演奏は?"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if err := threadRepo.UpdateLastPost(ctx, thread.ID, repository.UpdateThreadLastPostInput{
 		PostsCount:   1,
 		LastPostID:   post.ID,
 		LastPostedAt: post.CreatedAt,
 	}); err != nil {
-		t.Fatalf("UpdateLastPost() error = %v", err)
+		t.Fatalf("UpdateLastPost()のエラー = %v", err)
 	}
 
 	uc := usecase.NewGetThreadSummaryUsecase(threadRepo)
 
 	output, err := uc.Execute(ctx, usecase.GetThreadSummaryInput{ID: thread.ID})
 	if err != nil {
-		t.Fatalf("Execute() error = %v", err)
+		t.Fatalf("Execute()のエラー = %v", err)
 	}
 	if output.Thread.ID != thread.ID {
-		t.Errorf("読み戻したスレッド = %v, want %v", output.Thread.ID, thread.ID)
+		t.Errorf("読み戻したスレッド = %v、期待値 = %v", output.Thread.ID, thread.ID)
 	}
 	if output.Thread.Title != "枯葉の名演" {
-		t.Errorf("読み戻したタイトル = %q, want %q", output.Thread.Title, "枯葉の名演")
+		t.Errorf("読み戻したタイトル = %q、期待値 = %q", output.Thread.Title, "枯葉の名演")
 	}
 	if want := model.LocaleJa.ThreadLanguage(); output.Thread.Language != want {
-		t.Errorf("読み戻した主言語 = %q, want %q", output.Thread.Language, want)
+		t.Errorf("読み戻した主言語 = %q、期待値 = %q", output.Thread.Language, want)
 	}
 	if output.Thread.PostsCount != 1 {
-		t.Errorf("読み戻した投稿数 = %d, want 1", output.Thread.PostsCount)
+		t.Errorf("読み戻した投稿数 = %d、期待値 = 1", output.Thread.PostsCount)
 	}
 }
 
-// TestGetThreadSummaryUsecase_Execute_NotFound verifies that an id naming no
-// thread comes back as the application error a handler answers 404 with, rather
-// than as an empty result the caller would have to notice.
-//
-// [Ja] TestGetThreadSummaryUsecase_Execute_NotFound は、どのスレッドも名指さない id が、
-// 呼び出し側が気付かなければならない空の結果ではなく、ハンドラーが 404 で応答する
+// TestGetThreadSummaryUsecase_Execute_NotFoundは、どのスレッドも名指さないidが、
+// 呼び出し側が気付かなければならない空の結果ではなく、ハンドラーが404で応答する
 // アプリケーションエラーとして返ることを検証します。
 func TestGetThreadSummaryUsecase_Execute_NotFound(t *testing.T) {
 	t.Parallel()
@@ -94,25 +83,19 @@ func TestGetThreadSummaryUsecase_Execute_NotFound(t *testing.T) {
 
 	output, err := uc.Execute(ctx, usecase.GetThreadSummaryInput{ID: model.ThreadID(999)})
 	if output != nil {
-		t.Errorf("出力 = %v, want nil", output)
+		t.Errorf("出力 = %v、期待値 = nil", output)
 	}
 
 	ae := model.AsAppError(err)
 	if ae == nil {
-		t.Fatalf("Execute() error = %v, want *model.AppError", err)
+		t.Fatalf("Execute()のエラー = %v、期待値 = *model.AppError", err)
 	}
 	if ae.Code != model.AppErrCodeResourceNotFound {
-		t.Errorf("エラーコード = %v, want %v", ae.Code, model.AppErrCodeResourceNotFound)
+		t.Errorf("エラーコード = %v、期待値 = %v", ae.Code, model.AppErrCodeResourceNotFound)
 	}
 }
 
-// TestGetThreadSummaryUsecase_Execute_Unpublished verifies that a thread an
-// administrator took out of view comes back as the unpublished AppError, the
-// way GetThreadUsecase reports it. The page this read serves is the one a
-// refused reply comes back on, and a thread that shows nothing is not a page to
-// write on.
-//
-// [Ja] TestGetThreadSummaryUsecase_Execute_Unpublished は、管理者が見えない場所へ移した
+// TestGetThreadSummaryUsecase_Execute_Unpublishedは、管理者が見えない場所へ移した
 // スレッドが、GetThreadUsecaseが報告するのと同じく非公開のAppErrorとして返ることを検証
 // します。この読み取りが配信するのは拒否された返信が戻ってくるページであり、何も示さなく
 // なったスレッドは書き込む先のページではありません。
@@ -124,7 +107,7 @@ func TestGetThreadSummaryUsecase_Execute_Unpublished(t *testing.T) {
 
 	board, err := repository.NewBoardRepository(db).Create(ctx, repository.CreateBoardInput{Slug: "jazz", Name: "ジャズ"})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	threadRepo := repository.NewThreadRepository(db)
 	thread, err := threadRepo.Create(ctx, repository.CreateThreadInput{
@@ -133,15 +116,15 @@ func TestGetThreadSummaryUsecase_Execute_Unpublished(t *testing.T) {
 		Language: model.LocaleJa.ThreadLanguage(),
 	})
 	if err != nil {
-		t.Fatalf("Create() error = %v", err)
+		t.Fatalf("Create()のエラー = %v", err)
 	}
 	if err := threadRepo.Unpublish(ctx, thread.ID); err != nil {
-		t.Fatalf("Unpublish() error = %v", err)
+		t.Fatalf("Unpublish()のエラー = %v", err)
 	}
 
 	output, err := usecase.NewGetThreadSummaryUsecase(threadRepo).Execute(ctx, usecase.GetThreadSummaryInput{ID: thread.ID})
 	if output != nil {
-		t.Errorf("出力 = %v, want nil", output)
+		t.Errorf("出力 = %v、期待値 = nil", output)
 	}
 	assertAppErrCode(t, err, model.AppErrCodeResourceUnpublished)
 }

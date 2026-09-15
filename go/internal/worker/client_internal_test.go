@@ -7,12 +7,8 @@ import (
 	"github.com/groobb/groobb/go/internal/email"
 )
 
-// TestNewEmailSenderSelectsConfiguredTransport verifies the configuration
-// selects the concrete sender used at runtime, including the compatibility
-// default for an unset provider.
-//
-// [Ja] TestNewEmailSenderSelectsConfiguredTransport は、設定により実行時に使われる
-// Sender の具象型が選択されることを検証する。プロバイダー未設定時の互換性のための
+// TestNewEmailSenderSelectsConfiguredTransportは、設定により実行時に使われる
+// Senderの具象型が選択されることを検証する。プロバイダー未設定時の互換性のための
 // デフォルトも含む。
 func TestNewEmailSenderSelectsConfiguredTransport(t *testing.T) {
 	t.Parallel()
@@ -24,11 +20,11 @@ func TestNewEmailSenderSelectsConfiguredTransport(t *testing.T) {
 			EmailProvider: config.EmailProviderSMTP,
 		})
 		if err != nil {
-			t.Fatalf("newEmailSender() returned an unexpected error: %v", err)
+			t.Fatalf("newEmailSender()が想定外のエラーを返した: %v", err)
 		}
 
 		if _, ok := sender.(*email.SMTPSender); !ok {
-			t.Errorf("newEmailSender() returned %T, want *email.SMTPSender", sender)
+			t.Errorf("newEmailSender()の戻り値の型 = %T、期待値 = *email.SMTPSender", sender)
 		}
 	})
 
@@ -39,24 +35,24 @@ func TestNewEmailSenderSelectsConfiguredTransport(t *testing.T) {
 			EmailProvider: config.EmailProviderResend,
 		})
 		if err != nil {
-			t.Fatalf("newEmailSender() returned an unexpected error: %v", err)
+			t.Fatalf("newEmailSender()が想定外のエラーを返した: %v", err)
 		}
 
 		if _, ok := sender.(*email.ResendSender); !ok {
-			t.Errorf("newEmailSender() returned %T, want *email.ResendSender", sender)
+			t.Errorf("newEmailSender()の戻り値の型 = %T、期待値 = *email.ResendSender", sender)
 		}
 	})
 
-	t.Run("unset defaults to Resend", func(t *testing.T) {
+	t.Run("未設定ならResendになる", func(t *testing.T) {
 		t.Parallel()
 
 		sender, err := newEmailSender(&config.Config{})
 		if err != nil {
-			t.Fatalf("newEmailSender() returned an unexpected error: %v", err)
+			t.Fatalf("newEmailSender()が想定外のエラーを返した: %v", err)
 		}
 
 		if _, ok := sender.(*email.ResendSender); !ok {
-			t.Errorf("newEmailSender() returned %T, want *email.ResendSender", sender)
+			t.Errorf("newEmailSender()の戻り値の型 = %T、期待値 = *email.ResendSender", sender)
 		}
 	})
 }

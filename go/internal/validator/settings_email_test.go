@@ -11,15 +11,8 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// TestSettingsEmailUpdateValidator_Validate covers the format checks (new email
-// required and well-formed, current password required) that need no database, and
-// the state checks that do: a valid new address with the correct current password
-// passes, while an unchanged address, an address taken by another account, a wrong
-// current password, and an account without a password credential each fail with
-// the field error naming the offending input.
-//
-// [Ja] TestSettingsEmailUpdateValidator_Validate は DB 不要の形式チェック (新しい email の
-// 必須・形式、現在のパスワードの必須) と、DB を要する状態チェックを網羅します。有効な新しい
+// TestSettingsEmailUpdateValidator_ValidateはDB不要の形式チェック (新しいemailの
+// 必須・形式、現在のパスワードの必須) と、DBを要する状態チェックを網羅します。有効な新しい
 // アドレスと正しい現在のパスワードは通り、未変更のアドレス・別アカウントに使われている
 // アドレス・誤った現在のパスワード・パスワード資格情報の無いアカウントは、いずれも該当する
 // 入力を指すフィールドエラーで失敗することを確かめます。
@@ -32,20 +25,14 @@ func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 	v := validator.NewSettingsEmailUpdateValidator(userRepo, userPasswordRepo)
 	ctx := i18n.SetLocale(context.Background(), model.LocaleJa)
 
-	// The requesting account: a current email and a matching password.
-	//
-	// [Ja] 申請アカウント: 現在の email と一致するパスワードを持つ。
+	// 申請アカウント: 現在のemailと一致するパスワードを持つ。
 	userID := testutil.NewUserBuilder(t, db).WithEmail("member@example.com").Build()
 	testutil.NewUserPasswordBuilder(t, db).WithUserID(userID).WithPassword("password123").Build()
 
-	// Another account whose email the requester must not be able to switch to.
-	//
-	// [Ja] 申請者が切り替えられてはならない email を持つ別アカウント。
+	// 申請者が切り替えられてはならないemailを持つ別アカウント。
 	testutil.NewUserBuilder(t, db).WithEmail("taken@example.com").Build()
 
-	// An account with no password credential (e.g. an SSO-only user).
-	//
-	// [Ja] パスワード資格情報の無いアカウント (例: SSO のみのユーザー)。
+	// パスワード資格情報の無いアカウント (例: SSOのみのユーザー)。
 	noPassUserID := testutil.NewUserBuilder(t, db).WithEmail("nopass@example.com").Build()
 
 	t.Run("正常系: 有効な新メールと正しい現在パスワードは通る", func(t *testing.T) {
@@ -55,7 +42,7 @@ func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 			CurrentPassword: "password123",
 		})
 		if err != nil {
-			t.Fatalf("Validate() error = %v, want nil", err)
+			t.Fatalf("Validate()のエラー = %v、期待値 = nil", err)
 		}
 	})
 
@@ -80,7 +67,7 @@ func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 			wantField: "current_password",
 		},
 		{
-			name:      "異常系: 現在のアドレスと同じ (大文字違いも NOCASE 照合で同一)",
+			name:      "異常系: 現在のアドレスと同じ (大文字違いもNOCASE照合で同一)",
 			input:     validator.SettingsEmailUpdateValidatorInput{UserID: userID, NewEmail: "MEMBER@example.com", CurrentPassword: "password123"},
 			wantField: "email",
 		},
@@ -105,7 +92,7 @@ func TestSettingsEmailUpdateValidator_Validate(t *testing.T) {
 			err := v.Validate(ctx, tt.input)
 			ve := model.AsValidationError(err)
 			if ve == nil {
-				t.Fatalf("Validate() error = %v, want *model.ValidationError", err)
+				t.Fatalf("Validate()のエラー = %v、期待値 = *model.ValidationError", err)
 			}
 			if !ve.HasFieldError(tt.wantField) {
 				t.Errorf("フィールド %q のエラーが無い: %+v", tt.wantField, ve.Fields)

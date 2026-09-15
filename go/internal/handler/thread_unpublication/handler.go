@@ -1,16 +1,4 @@
-// Package thread_unpublication provides the handlers for taking a thread out of
-// the community's view: the confirmation page
-// (GET /t/{id}/unpublication/new) and the unpublication itself
-// (POST /t/{id}/unpublication). Both are behind RequireAuth, and whether a
-// signed-in visitor may carry it out is settled by the UseCase each of them
-// calls.
-//
-// There is no route for putting the thread back. The mark is what hides the
-// thread and nothing under it is destroyed, so taking the mark off would bring
-// it back whole; this instance simply offers no screen that does so, and the
-// confirmation page says as much before the button is pressed.
-//
-// [Ja] thread_unpublicationパッケージは、スレッドをコミュニティの視界から外すためのハンドラー
+// thread_unpublicationパッケージは、スレッドをコミュニティの視界から外すためのハンドラー
 // を提供します。確認ページ (GET /t/{id}/unpublication/new) と、非公開そのもの
 // (POST /t/{id}/unpublication) です。どちらもRequireAuthの背後にあり、サインイン済みの
 // 訪問者がそれを行ってよいかどうかは、それぞれが呼ぶUseCaseが決めます。
@@ -31,14 +19,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// Handler is the HTTP handler for a thread's unpublication. It holds the shared
-// error renderer because both routes answer the same three refusals with a page
-// rather than with the thread: a visitor who may not moderate, an address naming
-// no thread, and a thread the community has already taken out of view. The flash
-// manager carries what happened across the redirect, since the thread the
-// operation was performed on is no longer somewhere to land.
-//
-// [Ja] HandlerはスレッドのHTTPハンドラーで、その非公開を扱います。共通のエラーRendererを
+// HandlerはスレッドのHTTPハンドラーで、その非公開を扱います。共通のエラーRendererを
 // 保持するのは、2つのルートがいずれも同じ3種類の拒否に、スレッドではなくページで応答する
 // ためです。モデレーションを許されていない訪問者、どのスレッドも名指していないアドレス、そして
 // コミュニティが既に視界の外へ移したスレッドです。フラッシュManagerは、何が起きたのかを
@@ -51,9 +32,7 @@ type Handler struct {
 	unpublishThreadUC *usecase.UnpublishThreadUsecase
 }
 
-// NewHandler creates a new thread_unpublication Handler.
-//
-// [Ja] NewHandlerは新しいthread_unpublication Handlerを作成します。
+// NewHandlerは新しいthread_unpublication Handlerを作成します。
 func NewHandler(
 	cfg *config.Config,
 	errorRenderer *httperror.Renderer,
@@ -70,17 +49,7 @@ func NewHandler(
 	}
 }
 
-// refused answers a request the UseCase did not carry out, turning what it
-// refused for into the response the visitor gets.
-//
-// The three known refusals are answered with a page, because none of them is
-// something the unpublication screen can say anything about: the visitor may not
-// be here, the address names no thread, or the thread is already out of view. It
-// reports whether it answered, so a caller with a refusal of its own to handle —
-// a note that is too long, which comes back on the form — asks this first and
-// draws the form when the answer was not settled here.
-//
-// [Ja] refusedは、UseCaseが実行しなかった要求に応答し、拒否の理由を訪問者が受け取る応答へ
+// refusedは、UseCaseが実行しなかった要求に応答し、拒否の理由を訪問者が受け取る応答へ
 // 変えます。
 //
 // 既知の3つの拒否にはページで応答します。どれも非公開の画面が何かを述べられるものではない

@@ -2,14 +2,8 @@ package password_reset
 
 import "github.com/groobb/groobb/go/internal/templates"
 
-// Sent renders the confirmation shown after a reset request is submitted. Its
-// message is deliberately non-committal ("if an account exists, a link was
-// sent"): it is shown for every submission regardless of whether the email
-// belongs to an account, so it must not imply that one does. It takes no data
-// for the same reason—nothing about the submitted address is echoed back.
-//
-// [Ja] Sent はリセット申請の送信後に表示する確認を描画します。メッセージは意図的に
-// 断定を避けます (「アカウントが存在すればリンクを送信した」)。email がアカウントに
+// Sentはリセット申請の送信後に表示する確認を描画します。メッセージは意図的に
+// 断定を避けます (「アカウントが存在すればリンクを送信した」)。emailがアカウントに
 // 属するかによらずすべての送信で表示するため、存在をほのめかしてはなりません。同じ理由で
 // データを取りません — 送信されたアドレスについて何もエコーバックしません。
 templ Sent() {

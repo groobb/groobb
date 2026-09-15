@@ -7,11 +7,8 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestPasswordResetToken_IsUsed verifies that IsUsed reports true exactly when
-// used_at is stamped (a spent token) and false when it is nil (an unused token).
-//
-// [Ja] TestPasswordResetToken_IsUsed は、IsUsed が used_at が打刻されているとき
-// (消費済みトークン) にちょうど true を、nil のとき (未使用トークン) に false を返すことを
+// TestPasswordResetToken_IsUsedは、IsUsedがused_atが打刻されているとき
+// (消費済みトークン) にちょうどtrueを、nilのとき (未使用トークン) にfalseを返すことを
 // 検証します。
 func TestPasswordResetToken_IsUsed(t *testing.T) {
 	t.Parallel()
@@ -22,8 +19,8 @@ func TestPasswordResetToken_IsUsed(t *testing.T) {
 		usedAt *time.Time
 		want   bool
 	}{
-		{name: "未使用 (used_at が nil)", usedAt: nil, want: false},
-		{name: "使用済み (used_at が打刻済み)", usedAt: &usedAt, want: true},
+		{name: "未使用 (used_atがnil)", usedAt: nil, want: false},
+		{name: "使用済み (used_atが打刻済み)", usedAt: &usedAt, want: true},
 	}
 
 	for _, tt := range tests {
@@ -32,17 +29,14 @@ func TestPasswordResetToken_IsUsed(t *testing.T) {
 
 			token := &model.PasswordResetToken{UsedAt: tt.usedAt}
 			if got := token.IsUsed(); got != tt.want {
-				t.Errorf("IsUsed() = %v, want %v", got, tt.want)
+				t.Errorf("IsUsed() = %v、期待値 = %v", got, tt.want)
 			}
 		})
 	}
 }
 
-// TestPasswordResetToken_IsExpired verifies that IsExpired reports true when
-// expires_at is in the past and false when it is in the future.
-//
-// [Ja] TestPasswordResetToken_IsExpired は、IsExpired が expires_at が過去のとき true を、
-// 未来のとき false を返すことを検証します。
+// TestPasswordResetToken_IsExpiredは、IsExpiredがexpires_atが過去のときtrueを、
+// 未来のときfalseを返すことを検証します。
 func TestPasswordResetToken_IsExpired(t *testing.T) {
 	t.Parallel()
 
@@ -61,7 +55,7 @@ func TestPasswordResetToken_IsExpired(t *testing.T) {
 
 			token := &model.PasswordResetToken{ExpiresAt: tt.expiresAt}
 			if got := token.IsExpired(); got != tt.want {
-				t.Errorf("IsExpired() = %v, want %v", got, tt.want)
+				t.Errorf("IsExpired() = %v、期待値 = %v", got, tt.want)
 			}
 		})
 	}

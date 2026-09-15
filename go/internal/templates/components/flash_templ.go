@@ -12,24 +12,14 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// Flash renders a one-off flash message as a Basecoat toast, or nothing when
-// there is no message. The window.basecoat runtime initializes the server-
-// rendered toast on load, animating it in and auto-dismissing it (a dismiss
-// button is also provided).
-//
-// role is "alert" for errors so screen readers announce them assertively, and
-// "status" otherwise for polite announcement. data-category drives Basecoat's
-// per-category styling, matching FlashType to its success / error / warning /
-// info values.
-//
-// [Ja] Flash は一度きりのフラッシュメッセージを Basecoat の toast として描画します。
-// メッセージが無いときは何も描画しません。サーバー描画された toast は window.basecoat
+// Flashは一度きりのフラッシュメッセージをBasecoatのtoastとして描画します。
+// メッセージが無いときは何も描画しません。サーバー描画されたtoastはwindow.basecoat
 // ランタイムが読み込み時に初期化し、アニメーション表示して自動で閉じます (閉じるボタンも
 // 用意します)。
 //
-// role はエラーのとき "alert" とし、スクリーンリーダーが assertive に読み上げるように
-// します。それ以外は polite な "status" とします。data-category は Basecoat の種別ごとの
-// スタイルを駆動し、FlashType を success / error / warning / info の値に対応させます。
+// roleはエラーのとき "alert" とし、スクリーンリーダーがassertiveに読み上げるように
+// します。それ以外はpoliteな "status" とします。data-categoryはBasecoatの種別ごとの
+// スタイルを駆動し、FlashTypeをsuccess / error / warning / infoの値に対応させます。
 func Flash(flash *session.FlashMessage) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -74,7 +64,7 @@ func Flash(flash *session.FlashMessage) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(flashCategory(flash.Type))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 38, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 28, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -87,7 +77,7 @@ func Flash(flash *session.FlashMessage) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(flash.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 42, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 32, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -100,7 +90,7 @@ func Flash(flash *session.FlashMessage) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "flash_dismiss"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 45, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/flash.templ`, Line: 35, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

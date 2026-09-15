@@ -14,21 +14,7 @@ import (
 	"github.com/groobb/groobb/go/internal/viewmodel"
 )
 
-// Delete DELETE /t/{id}/lock - lifts the lock the administrators placed on the
-// thread the address names and answers with the thread itself. The route is
-// reached from the thread's page through the _method=DELETE override, and is
-// registered behind RequireAuth like the two beside it.
-//
-// It has no confirmation page and takes no note. Lifting restores what the
-// thread was before, so there is nothing to weigh beforehand, and a thread that
-// carries no administrator's lock is answered as success: what the request
-// asked for is that the lock not hold, and it does not.
-//
-// Whether the thread then takes replies is a separate question. One that
-// reached its post cap stays closed for that reason, and the thread the visitor
-// lands on says so.
-//
-// [Ja] Delete DELETE /t/{id}/lock - アドレスが名指すスレッドに管理者が掛けたロックを外し、
+// Delete DELETE /t/{id}/lock - アドレスが名指すスレッドに管理者が掛けたロックを外し、
 // そのスレッド自身で応答します。ルートはスレッドのページから_method=DELETEのオーバーライドで
 // 到達し、隣の2つと同じくRequireAuthの背後に登録されます。
 //

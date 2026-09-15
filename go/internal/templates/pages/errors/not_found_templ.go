@@ -11,15 +11,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// NotFound renders the body of the 404 page: what happened, in plain words, and
-// a link on to the top page so the visitor is not left at a dead end.
-//
-// The link points at the top page rather than at home, because the page answers
-// requests from anyone: the top page hands a signed-in visitor on to home,
-// while a link straight to home would send an anonymous one to the sign-in form
-// instead of anywhere they asked for.
-//
-// [Ja] NotFound は 404 ページの本文を描画します。何が起きたのかを平易な言葉で示し、
+// NotFoundは404ページの本文を描画します。何が起きたのかを平易な言葉で示し、
 // 訪問者を行き止まりに残さないようトップページへのリンクを置きます。
 //
 // リンク先をホームではなくトップページにするのは、このページが誰からのリクエストにも
@@ -53,7 +45,7 @@ func NotFound() templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_not_found_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 23, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 15, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -66,7 +58,7 @@ func NotFound() templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_not_found_message"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 24, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 16, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -79,7 +71,7 @@ func NotFound() templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.RootPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 27, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 19, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -92,7 +84,7 @@ func NotFound() templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "error_not_found_back_to_home"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 28, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/errors/not_found.templ`, Line: 20, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

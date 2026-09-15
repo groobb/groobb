@@ -15,10 +15,7 @@ import (
 	"github.com/groobb/groobb/go/internal/usecase"
 )
 
-// newGetAdminUsersUsecase builds the UseCase over a database the test owns, and
-// returns both so the test can place the accounts it expects to read back.
-//
-// [Ja] newGetAdminUsersUsecase は、テストが所有するデータベース上に UseCase を作り、
+// newGetAdminUsersUsecaseは、テストが所有するデータベース上にUseCaseを作り、
 // テストが読み戻すつもりのアカウントを置けるよう両方を返す。
 func newGetAdminUsersUsecase(t *testing.T) (*usecase.GetAdminUsersUsecase, *database.DB, context.Context) {
 	t.Helper()
@@ -31,11 +28,7 @@ func newGetAdminUsersUsecase(t *testing.T) (*usecase.GetAdminUsersUsecase, *data
 	return uc, db, i18n.SetLocale(context.Background(), model.LocaleJa)
 }
 
-// newAdministrator creates an account holding the built-in admin role and
-// returns the actor for it, which is who most of these tests read the listing
-// as.
-//
-// [Ja] newAdministrator は組み込みの admin ロールを持つアカウントを作り、その操作者を
+// newAdministratorは組み込みのadminロールを持つアカウントを作り、その操作者を
 // 返す。以下のテストの多くが一覧を読むのはこの人としてである。
 func newAdministrator(t *testing.T, db *database.DB) usecase.Actor {
 	t.Helper()
@@ -45,9 +38,7 @@ func newAdministrator(t *testing.T, db *database.DB) usecase.Actor {
 	return usecase.UserActor(userID)
 }
 
-// listedAtnames returns the atnames of the listing's rows in order.
-//
-// [Ja] listedAtnames は、一覧の各行の atname を順序のまま返す。
+// listedAtnamesは、一覧の各行のatnameを順序のまま返す。
 func listedAtnames(users []usecase.AdminUser) []string {
 	atnames := make([]string, len(users))
 	for i, row := range users {
@@ -61,14 +52,12 @@ func TestGetAdminUsersUsecase_Execute_Permission(t *testing.T) {
 
 	tests := []struct {
 		name string
-		// seed places the actor's roles in the database and returns the actor.
-		//
-		// [Ja] seed は操作者のロールをデータベースへ置き、その操作者を返す。
+		// seedは操作者のロールをデータベースへ置き、その操作者を返す。
 		seed          func(t *testing.T, db *database.DB) usecase.Actor
 		wantForbidden bool
 	}{
 		{
-			name: "admin ロールを持つ利用者は一覧を読める",
+			name: "adminロールを持つ利用者は一覧を読める",
 			seed: func(t *testing.T, db *database.DB) usecase.Actor {
 				t.Helper()
 				return newAdministrator(t, db)
@@ -98,11 +87,7 @@ func TestGetAdminUsersUsecase_Execute_Permission(t *testing.T) {
 			},
 		},
 		{
-			// The role carries the scope that grants the admin screens but not
-			// the one this screen asks for, so admission to the hub is not
-			// admission to the listing.
-			//
-			// [Ja] このロールは管理画面を許すスコープを持つが、この画面が求めるスコープは
+			// このロールは管理画面を許すスコープを持つが、この画面が求めるスコープは
 			// 持たない。ハブを許されることは一覧を許されることではない。
 			name: "ロールを書き換えるスコープだけでは一覧を読めない",
 			seed: func(t *testing.T, db *database.DB) usecase.Actor {
@@ -143,15 +128,15 @@ func TestGetAdminUsersUsecase_Execute_Permission(t *testing.T) {
 
 			if !tt.wantForbidden {
 				if err != nil {
-					t.Fatalf("Execute() error = %v, want nil", err)
+					t.Fatalf("Execute()のエラー = %v、期待値 = nil", err)
 				}
 				if output == nil {
-					t.Fatal("Execute() output = nil, want the listing")
+					t.Fatal("Execute()のoutput = nil、期待値 = 一覧")
 				}
 				return
 			}
 			if output != nil {
-				t.Errorf("Execute() output = %v, want nil", output)
+				t.Errorf("Execute()のoutput = %v、期待値 = nil", output)
 			}
 			assertAppErrCode(t, err, model.AppErrCodeForbidden)
 		})
@@ -172,15 +157,15 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 
 		output, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: 1})
 		if err != nil {
-			t.Fatalf("Execute() error = %v", err)
+			t.Fatalf("Execute()のエラー = %v", err)
 		}
 
 		want := []string{"later", "earlier", "administrator"}
 		if got := listedAtnames(output.Users); !equalStrings(got, want) {
-			t.Errorf("一覧の atname = %v, want %v", got, want)
+			t.Errorf("一覧のatname = %v、期待値 = %v", got, want)
 		}
 		if output.TotalCount != 3 {
-			t.Errorf("TotalCount = %d, want 3", output.TotalCount)
+			t.Errorf("TotalCount = %d、期待値 = 3", output.TotalCount)
 		}
 	})
 
@@ -193,27 +178,27 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 
 		output, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: 1})
 		if err != nil {
-			t.Fatalf("Execute() error = %v", err)
+			t.Fatalf("Execute()のエラー = %v", err)
 		}
 		if len(output.Users) != 2 {
-			t.Fatalf("len(Users) = %d, want 2", len(output.Users))
+			t.Fatalf("len(Users) = %d、期待値 = 2", len(output.Users))
 		}
 
 		for _, row := range output.Users {
 			switch row.User.Atname {
 			case "administrator":
 				if len(row.Roles) != 1 || row.Roles[0].Name != model.RoleNameAdmin {
-					t.Errorf("管理者の Roles = %v, want [%q]", row.Roles, model.RoleNameAdmin)
+					t.Errorf("管理者のRoles = %v、期待値 = [%q]", row.Roles, model.RoleNameAdmin)
 				}
 			case "plain":
 				if len(row.Roles) != 0 {
-					t.Errorf("ロールを持たない利用者の Roles = %v, want empty", row.Roles)
+					t.Errorf("ロールを持たない利用者のRoles = %v、期待値 = 空", row.Roles)
 				}
 			}
 		}
 	})
 
-	t.Run("atname の前方一致で絞り込み、大文字小文字を区別しない", func(t *testing.T) {
+	t.Run("atnameの前方一致で絞り込み、大文字小文字を区別しない", func(t *testing.T) {
 		t.Parallel()
 
 		uc, db, ctx := newGetAdminUsersUsecase(t)
@@ -228,25 +213,21 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 			Page:         1,
 		})
 		if err != nil {
-			t.Fatalf("Execute() error = %v", err)
+			t.Fatalf("Execute()のエラー = %v", err)
 		}
 
 		want := []string{"alberta", "Alice"}
 		if got := listedAtnames(output.Users); !equalStrings(got, want) {
-			t.Errorf("一覧の atname = %v, want %v", got, want)
+			t.Errorf("一覧のatname = %v、期待値 = %v", got, want)
 		}
 		if output.TotalCount != 2 {
-			t.Errorf("TotalCount = %d, want 2", output.TotalCount)
+			t.Errorf("TotalCount = %d、期待値 = 2", output.TotalCount)
 		}
 	})
 
-	// A value no account can hold matches nothing, so the listing is empty
-	// rather than an error: what arrived is a search that found no one, not a
-	// request the screen cannot answer.
-	//
-	// [Ja] どのアカウントも持てない値は何にも一致しないため、一覧はエラーではなく空になる。
+	// どのアカウントも持てない値は何にも一致しないため、一覧はエラーではなく空になる。
 	// 届いたのは誰も見つからなかった検索であって、画面が答えられない要求ではない。
-	t.Run("atname の文字集合の外にある絞り込みは空の一覧になる", func(t *testing.T) {
+	t.Run("atnameの文字集合の外にある絞り込みは空の一覧になる", func(t *testing.T) {
 		t.Parallel()
 
 		uc, db, ctx := newGetAdminUsersUsecase(t)
@@ -259,18 +240,18 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 				Page:         1,
 			})
 			if err != nil {
-				t.Fatalf("Execute(prefix=%q) error = %v", prefix, err)
+				t.Fatalf("Execute(prefix=%q)のエラー = %v", prefix, err)
 			}
 			if len(output.Users) != 0 {
-				t.Errorf("Execute(prefix=%q) の一覧 = %v, want empty", prefix, listedAtnames(output.Users))
+				t.Errorf("Execute(prefix=%q) の一覧 = %v、期待値 = 空", prefix, listedAtnames(output.Users))
 			}
 			if output.TotalCount != 0 {
-				t.Errorf("Execute(prefix=%q) の TotalCount = %d, want 0", prefix, output.TotalCount)
+				t.Errorf("Execute(prefix=%q) のTotalCount = %d、期待値 = 0", prefix, output.TotalCount)
 			}
 		}
 	})
 
-	t.Run("1 ページ分ずつ返し、最後のページまで送れる", func(t *testing.T) {
+	t.Run("1ページ分ずつ返し、最後のページまで送れる", func(t *testing.T) {
 		t.Parallel()
 
 		uc, db, ctx := newGetAdminUsersUsecase(t)
@@ -281,22 +262,22 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 
 		first, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: 1})
 		if err != nil {
-			t.Fatalf("Execute(page=1) error = %v", err)
+			t.Fatalf("Execute(page=1)のエラー = %v", err)
 		}
 		if len(first.Users) != model.AdminUsersPerPage {
-			t.Errorf("1 ページ目の件数 = %d, want %d", len(first.Users), model.AdminUsersPerPage)
+			t.Errorf("1ページ目の件数 = %d、期待値 = %d", len(first.Users), model.AdminUsersPerPage)
 		}
 		if first.TotalCount != model.AdminUsersPerPage+1 {
-			t.Errorf("TotalCount = %d, want %d", first.TotalCount, model.AdminUsersPerPage+1)
+			t.Errorf("TotalCount = %d、期待値 = %d", first.TotalCount, model.AdminUsersPerPage+1)
 		}
 
 		second, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: 2})
 		if err != nil {
-			t.Fatalf("Execute(page=2) error = %v", err)
+			t.Fatalf("Execute(page=2)のエラー = %v", err)
 		}
 		want := []string{"administrator"}
 		if got := listedAtnames(second.Users); !equalStrings(got, want) {
-			t.Errorf("2 ページ目の atname = %v, want %v", got, want)
+			t.Errorf("2ページ目のatname = %v、期待値 = %v", got, want)
 		}
 	})
 
@@ -308,20 +289,17 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 
 		output, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: 2})
 		if err != nil {
-			t.Fatalf("Execute() error = %v", err)
+			t.Fatalf("Execute()のエラー = %v", err)
 		}
 		if len(output.Users) != 0 {
-			t.Errorf("一覧 = %v, want empty", listedAtnames(output.Users))
+			t.Errorf("一覧 = %v、期待値 = 空", listedAtnames(output.Users))
 		}
 		if output.TotalCount != 1 {
-			t.Errorf("TotalCount = %d, want 1", output.TotalCount)
+			t.Errorf("TotalCount = %d、期待値 = 1", output.TotalCount)
 		}
 	})
 
-	// The page number is part of the address, and one the listing is never
-	// numbered by names no page at all.
-	//
-	// [Ja] ページ番号はアドレスの一部であり、一覧が決して振らない番号はどのページも
+	// ページ番号はアドレスの一部であり、一覧が決して振らない番号はどのページも
 	// 名指していない。
 	t.Run("最初のページより前の番号は不存在として拒む", func(t *testing.T) {
 		t.Parallel()
@@ -332,16 +310,13 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 		for _, page := range []int{0, -1} {
 			output, err := uc.Execute(ctx, usecase.GetAdminUsersInput{Actor: actor, Page: page})
 			if output != nil {
-				t.Errorf("Execute(page=%d) output = %v, want nil", page, output)
+				t.Errorf("Execute(page=%d)のoutput = %v、期待値 = nil", page, output)
 			}
 			assertAppErrCode(t, err, model.AppErrCodeResourceNotFound)
 		}
 	})
 
-	// Permission is answered before the page number, so an actor who may not
-	// read the listing learns nothing about which of its pages exist.
-	//
-	// [Ja] 権限はページ番号より先に答えるため、一覧を読めない操作者は、そのどのページが
+	// 権限はページ番号より先に答えるため、一覧を読めない操作者は、そのどのページが
 	// 存在するかについて何も知らない。
 	t.Run("権限が無ければページ番号より先に拒む", func(t *testing.T) {
 		t.Parallel()
@@ -355,10 +330,7 @@ func TestGetAdminUsersUsecase_Execute(t *testing.T) {
 	})
 }
 
-// equalStrings reports whether the two slices hold the same strings in the same
-// order.
-//
-// [Ja] equalStrings は、2 つのスライスが同じ文字列を同じ順序で持つかどうかを返す。
+// equalStringsは、2つのスライスが同じ文字列を同じ順序で持つかどうかを返す。
 func equalStrings(got, want []string) bool {
 	if len(got) != len(want) {
 		return false

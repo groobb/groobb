@@ -10,47 +10,29 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/emails/password_reset"
 )
 
-// PasswordResetSender renders and sends the password reset mail. Like
-// ConfirmationSender it owns the per-mail concerns (subject translation and
-// template selection) so its caller (the send UseCase) passes only primitive
-// values and never imports templates or i18n.
-//
-// [Ja] PasswordResetSender はパスワードリセットメールを描画して送信します。
-// ConfirmationSender と同様にメール種別固有の関心 (件名の翻訳・テンプレート選択) を本型が
-// 持つため、呼び出し側 (送信 UseCase) はプリミティブ値だけを渡し、templates や i18n を
-// import せずに済みます。
+// PasswordResetSenderはパスワードリセットメールを描画して送信します。
+// ConfirmationSenderと同様にメール種別固有の関心 (件名の翻訳・テンプレート選択) を本型が
+// 持つため、呼び出し側 (送信UseCase) はプリミティブ値だけを渡し、templatesやi18nを
+// importせずに済みます。
 type PasswordResetSender struct {
 	sender Sender
 }
 
-// NewPasswordResetSender builds a PasswordResetSender that delivers through the
-// given base Sender.
-//
-// [Ja] NewPasswordResetSender は与えられた基盤 Sender 経由で配信する
-// PasswordResetSender を構築します。
+// NewPasswordResetSenderは与えられた基盤Sender経由で配信する
+// PasswordResetSenderを構築します。
 func NewPasswordResetSender(sender Sender) *PasswordResetSender {
 	return &PasswordResetSender{sender: sender}
 }
 
-// Send renders the password reset mail for the given locale and sends it to,
-// presenting resetURL as the link to follow. The locale drives both the i18n
-// subject and the body templates. model.Locale only holds display languages, so
-// the default branch is English, the one locale besides Japanese, rather than a
-// fallback for an unknown value.
-//
-// [Ja] Send は指定ロケールでパスワードリセットメールを描画し、たどるべきリンクとして
-// resetURL を提示して to へ送信します。ロケールは i18n の件名と本文テンプレートの双方を
-// 切り替えます。model.Locale は表示言語しか持たないため、default 節は未知の値への
+// Sendは指定ロケールでパスワードリセットメールを描画し、たどるべきリンクとして
+// resetURLを提示してtoへ送信します。ロケールはi18nの件名と本文テンプレートの双方を
+// 切り替えます。model.Localeは表示言語しか持たないため、default節は未知の値への
 // フォールバックではなく、日本語以外の唯一のロケールである英語を表します。
 func (s *PasswordResetSender) Send(ctx context.Context, to, resetURL string, locale model.Locale) error {
 	ctx = i18n.SetLocale(ctx, locale)
 	subject := i18n.T(ctx, "password_reset_email_subject")
 
-	// The validity window comes from the domain constant (converted to whole
-	// hours here) rather than being hard-coded in the templates, so the wording in
-	// the mail always matches the real token expiry.
-	//
-	// [Ja] 有効期間はテンプレートにハードコードせず、ドメイン定数 (ここで時間数に変換) から
+	// 有効期間はテンプレートにハードコードせず、ドメイン定数 (ここで時間数に変換) から
 	// 取る。これによりメール本文の文言が実際のトークンの有効期限と常に一致する。
 	data := password_reset.Data{
 		Email:          to,

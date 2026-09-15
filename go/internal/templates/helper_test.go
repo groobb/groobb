@@ -9,10 +9,7 @@ import (
 	"github.com/groobb/groobb/go/internal/templates"
 )
 
-// TestT verifies that the templ helper delegates to i18n.T and translates using
-// the locale stored in the context.
-//
-// [Ja] TestT は templ ヘルパーが i18n.T に委譲し、context のロケールで翻訳する
+// TestTはtemplヘルパーがi18n.Tに委譲し、contextのロケールで翻訳する
 // ことを検証する。
 func TestT(t *testing.T) {
 	t.Parallel()
@@ -23,8 +20,8 @@ func TestT(t *testing.T) {
 		messageID string
 		want      string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, messageID: "default_description", want: "Groobb は掲示板サービスです。"},
-		{name: "English", locale: model.LocaleEn, messageID: "default_description", want: "Groobb is a bulletin board service."},
+		{name: "日本語", locale: model.LocaleJa, messageID: "default_description", want: "Groobbは掲示板サービスです。"},
+		{name: "英語", locale: model.LocaleEn, messageID: "default_description", want: "Groobb is a bulletin board service."},
 	}
 
 	for _, tt := range tests {
@@ -34,7 +31,7 @@ func TestT(t *testing.T) {
 			ctx := i18n.SetLocale(context.Background(), tt.locale)
 
 			if got := templates.T(ctx, tt.messageID); got != tt.want {
-				t.Errorf("T(%q) = %q, want %q", tt.messageID, got, tt.want)
+				t.Errorf("T(%q) = %q、期待値 = %q", tt.messageID, got, tt.want)
 			}
 		})
 	}
@@ -48,8 +45,8 @@ func TestLocale(t *testing.T) {
 		setup func(ctx context.Context) context.Context
 		want  string
 	}{
-		{name: "English is set", setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleEn) }, want: string(model.LocaleEn)},
-		{name: "nothing is set falls back to the default", setup: func(ctx context.Context) context.Context { return ctx }, want: string(model.DefaultLocale)},
+		{name: "英語が設定されている", setup: func(ctx context.Context) context.Context { return i18n.SetLocale(ctx, model.LocaleEn) }, want: string(model.LocaleEn)},
+		{name: "何も設定されていなければ既定値にフォールバックする", setup: func(ctx context.Context) context.Context { return ctx }, want: string(model.DefaultLocale)},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +55,7 @@ func TestLocale(t *testing.T) {
 
 			ctx := tt.setup(context.Background())
 			if got := templates.Locale(ctx); got != tt.want {
-				t.Errorf("Locale() = %q, want %q", got, tt.want)
+				t.Errorf("Locale() = %q、期待値 = %q", got, tt.want)
 			}
 		})
 	}

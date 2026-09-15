@@ -13,21 +13,11 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// EditPageData is the data for the email-change form page. CurrentEmail is the
-// account's current address, shown read-only so the user sees what they are
-// changing from. NewEmail is echoed back so a re-rendered form (after a validation
-// error) keeps what the user typed. FormErrors carries the messages: per-field
-// messages (a missing, malformed, unchanged, or already-taken email; a missing or
-// incorrect current password) beneath each field, and a form-wide message shown at
-// the top when the request itself failed, e.g. the confirmation mail could not be
-// enqueued. The current password is deliberately not echoed back, since
-// re-rendering a password field with its value is a credential-leak risk.
-//
-// [Ja] EditPageData はメールアドレス変更フォームページのデータです。CurrentEmail は
+// EditPageDataはメールアドレス変更フォームページのデータです。CurrentEmailは
 // アカウントの現在のアドレスで、何から変更するのかが分かるよう読み取り専用で表示します。
-// NewEmail は再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックします。
-// FormErrors はメッセージを運びます。各フィールドの下に出すフィールド別のメッセージ
-// (email の未入力・不正・未変更・使用済み、現在のパスワードの未入力・不一致) と、申請自体が
+// NewEmailは再描画 (バリデーションエラー後) でユーザーの入力を保つためにエコーバックします。
+// FormErrorsはメッセージを運びます。各フィールドの下に出すフィールド別のメッセージ
+// (emailの未入力・不正・未変更・使用済み、現在のパスワードの未入力・不一致) と、申請自体が
 // 失敗したとき (例: 確認メールを投入できなかった) に上部に出すフォーム全体のメッセージです。
 // 現在のパスワードは意図的にエコーバックしません。値付きでパスワードフィールドを再描画するのは
 // 資格情報の漏えいリスクのためです。
@@ -38,16 +28,10 @@ type EditPageData struct {
 	FormErrors   *model.ValidationError
 }
 
-// Edit renders the email-change form: the current address shown read-only, then a
-// new-email field and a current-password field that, on submit, request a
-// confirmation code for the new address. The form posts to /settings/email with a
-// hidden _method=PATCH so the HTML form drives the PATCH route, and the CSRF token
-// is embedded as a hidden field.
-//
-// [Ja] Edit はメールアドレス変更フォームを描画します。読み取り専用で表示する現在のアドレス、
-// 続いて送信すると新しいアドレス宛に確認コードを要求する新しい email フィールドと現在の
-// パスワードフィールドです。フォームは hidden な _method=PATCH を付けて /settings/email へ
-// POST し、HTML フォームから PATCH ルートを動かします。CSRF トークンは hidden フィールドとして
+// Editはメールアドレス変更フォームを描画します。読み取り専用で表示する現在のアドレス、
+// 続いて送信すると新しいアドレス宛に確認コードを要求する新しいemailフィールドと現在の
+// パスワードフィールドです。フォームはhiddenな _method=PATCHを付けて /settings/emailへ
+// POSTし、HTMLフォームからPATCHルートを動かします。CSRFトークンはhiddenフィールドとして
 // 埋め込みます。
 func Edit(data EditPageData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -77,7 +61,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_email_edit_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 49, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 33, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -90,7 +74,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_email_edit_lead"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 52, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 36, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +95,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var4 templ.SafeURL
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templates.SettingsEmailPath().SafeURL())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 56, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 40, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +108,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 58, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 42, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -137,7 +121,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_email_edit_current_email_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 61, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 45, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -150,7 +134,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.CurrentEmail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 63, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 47, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -181,7 +165,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.NewEmail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 77, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 61, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -199,7 +183,7 @@ func Edit(data EditPageData) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("email", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 83, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 67, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -248,7 +232,7 @@ func Edit(data EditPageData) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(components.FieldErrorsDescribedBy("current_password", data.FormErrors))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 105, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 89, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -274,7 +258,7 @@ func Edit(data EditPageData) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_email_edit_submit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 111, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_email/edit.templ`, Line: 95, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {

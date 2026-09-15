@@ -19,13 +19,9 @@ import (
 	"github.com/groobb/groobb/go/internal/validator"
 )
 
-// newSignInTwoFactorHandler wires a sign_in_two_factor Handler over the test
-// database's repositories, so a handler test exercises the full request path
-// (pending cookie, validator, UseCase, session cookie) against a real database.
-//
-// [Ja] newSignInTwoFactorHandler はテスト用データベースのリポジトリで
-// sign_in_two_factor Handler を組み立てる。ハンドラーテストがリクエスト経路全体
-// (pending Cookie・バリデーター・UseCase・セッション Cookie) を実 DB に対して通せるように
+// newSignInTwoFactorHandlerはテスト用データベースのリポジトリで
+// sign_in_two_factor Handlerを組み立てる。ハンドラーテストがリクエスト経路全体
+// (pending Cookie・バリデーター・UseCase・セッションCookie) を実DBに対して通せるように
 // するためである。
 func newSignInTwoFactorHandler(t *testing.T, db *database.DB) *sign_in_two_factor.Handler {
 	t.Helper()
@@ -41,11 +37,8 @@ func newSignInTwoFactorHandler(t *testing.T, db *database.DB) *sign_in_two_facto
 	return sign_in_two_factor.NewHandler(cfg, sessionMgr, createSignInTwoFactorUC, createSessionUC)
 }
 
-// twoFactorPendingToken issues the same signed handoff token as the password
-// sign-in step, so handler tests do not bypass the continuation-token boundary.
-//
-// [Ja] twoFactorPendingToken はパスワードサインインのステップと同じ署名付き受け渡し token を
-// 発行し、ハンドラーテストが continuation token の境界を迂回しないようにする。
+// twoFactorPendingTokenはパスワードサインインのステップと同じ署名付き受け渡しtokenを
+// 発行し、ハンドラーテストがcontinuation tokenの境界を迂回しないようにする。
 func twoFactorPendingToken(t *testing.T, id model.UserID) string {
 	t.Helper()
 
@@ -57,17 +50,13 @@ func twoFactorPendingToken(t *testing.T, id model.UserID) string {
 			return cookie.Value
 		}
 	}
-	t.Fatalf("2 段階認証 pending Cookie %q の署名 token が発行されていない", session.TwoFactorPendingCookieName)
+	t.Fatalf("2段階認証pending Cookie %q の署名tokenが発行されていない", session.TwoFactorPendingCookieName)
 	return ""
 }
 
-// seedUserWithEnabledTwoFactor creates a committed user with an enabled 2FA setting
-// keyed to the default TOTP secret, returning the user id so a handler test can put
-// it in the pending cookie and generate matching codes.
-//
-// [Ja] seedUserWithEnabledTwoFactor は既定の TOTP secret に紐づく有効な 2FA 設定を持つ
-// ユーザーをコミットして作成し、ハンドラーテストがその id を pending Cookie に入れ、一致する
-// コードを生成できるよう user id を返す。
+// seedUserWithEnabledTwoFactorは既定のTOTP secretに紐づく有効な2FA設定を持つ
+// ユーザーをコミットして作成し、ハンドラーテストがそのidをpending Cookieに入れ、一致する
+// コードを生成できるようuser idを返す。
 func seedUserWithEnabledTwoFactor(t *testing.T, db *database.DB) model.UserID {
 	t.Helper()
 
@@ -88,38 +77,30 @@ func seedUserWithEnabledTwoFactor(t *testing.T, db *database.DB) model.UserID {
 		UserID: user.ID,
 		Secret: testutil.DefaultBuilderTOTPSecret,
 	}); err != nil {
-		t.Fatalf("2 段階認証設定の作成に失敗: %v", err)
+		t.Fatalf("2段階認証設定の作成に失敗: %v", err)
 	}
 	enabled, err := twoFactorRepo.Enable(ctx, user.ID, []string{"recoverycode1"})
 	if err != nil {
-		t.Fatalf("2 段階認証の有効化に失敗: %v", err)
+		t.Fatalf("2段階認証の有効化に失敗: %v", err)
 	}
 	if !enabled {
-		t.Fatal("2 段階認証を有効化できなかった (未有効化の行が見つからない)")
+		t.Fatal("2段階認証を有効化できなかった (未有効化の行が見つからない)")
 	}
 	return user.ID
 }
 
-// getNew builds a GET /sign_in/two_factor/new request carrying pendingUserID in
-// the pending cookie, with the locale set in its context.
-//
-// [Ja] getNew は pendingUserID を pending Cookie に載せた GET /sign_in/two_factor/new
-// リクエストを組み立て、context にロケールを設定する。
+// getNewはpendingUserIDをpending Cookieに載せたGET /sign_in/two_factor/new
+// リクエストを組み立て、contextにロケールを設定する。
 func getNew(pendingUserID string, locale model.Locale) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/sign_in/two_factor/new", nil)
 	req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: pendingUserID})
 	return req.WithContext(i18n.SetLocale(req.Context(), locale))
 }
 
-// TestNew verifies that GET /sign_in/two_factor/new returns HTTP 200 with the
-// code-entry form (code field and CSRF hidden field) and the localized heading for
-// each supported locale, when the pending cookie carries a valid signed
-// continuation token.
-//
-// [Ja] TestNew は、pending Cookie がある場合に GET /sign_in/two_factor/new が HTTP 200 と、
-// コード入力フォーム (code フィールド・CSRF hidden フィールド) を、サポートする各ロケールの
-// ローカライズ済み見出しとともに返すことを検証する。Cookie は有効な署名付き
-// continuation token を運ぶ。
+// TestNewは、pending Cookieがある場合にGET /sign_in/two_factor/newがHTTP 200と、
+// コード入力フォーム (codeフィールド・CSRF hiddenフィールド) を、サポートする各ロケールの
+// ローカライズ済み見出しとともに返すことを検証する。Cookieは有効な署名付き
+// continuation tokenを運ぶ。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -132,8 +113,8 @@ func TestNew(t *testing.T) {
 		locale      model.Locale
 		wantHeading string
 	}{
-		{name: "Japanese", locale: model.LocaleJa, wantHeading: "2 段階認証"},
-		{name: "English", locale: model.LocaleEn, wantHeading: "Two-factor authentication"},
+		{name: "日本語", locale: model.LocaleJa, wantHeading: "2段階認証"},
+		{name: "英語", locale: model.LocaleEn, wantHeading: "Two-factor authentication"},
 	}
 
 	for _, tt := range tests {
@@ -144,10 +125,10 @@ func TestNew(t *testing.T) {
 			handler.New(rec, getNew(twoFactorPendingToken(t, model.UserID(testutil.UnusedID)), tt.locale))
 
 			if rec.Code != http.StatusOK {
-				t.Errorf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
-				t.Errorf("Content-Type = %q, want prefix %q", got, "text/html")
+				t.Errorf("Content-Type = %q、期待値の接頭辞 = %q", got, "text/html")
 			}
 
 			body := rec.Body.String()
@@ -158,27 +139,20 @@ func TestNew(t *testing.T) {
 				`name="csrf_token"`,
 				`name="code"`,
 				`<label for="code"`,
-				// A transient, non-public auth interstitial is kept out of search results.
-				//
-				// [Ja] 一時的で非公開の認証中間ページは検索結果に出さない。
+				// 一時的で非公開の認証中間ページは検索結果に出さない。
 				`name="robots" content="noindex"`,
 			}
 			for _, want := range wants {
 				if !strings.Contains(body, want) {
-					t.Errorf("response body does not contain %q", want)
+					t.Errorf("レスポンスボディに %q が含まれていない", want)
 				}
 			}
 		})
 	}
 }
 
-// TestNew_NoCookieRedirectsToSignIn verifies that GET /sign_in/two_factor/new
-// without the pending cookie redirects to sign-in, since there is no pending
-// challenge to complete, and that the redirect keeps the destination when the
-// request carried one.
-//
-// [Ja] TestNew_NoCookieRedirectsToSignIn は、pending Cookie の無い
-// GET /sign_in/two_factor/new がサインインへリダイレクトすること (完了すべき保留中の
+// TestNew_NoCookieRedirectsToSignInは、pending Cookieの無い
+// GET /sign_in/two_factor/newがサインインへリダイレクトすること (完了すべき保留中の
 // チャレンジが無いため)、そしてリクエストが遷移先を運んでいたときはリダイレクトがそれを
 // 保つことを検証する。
 func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
@@ -198,10 +172,7 @@ func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 			target:       "/sign_in/two_factor/new",
 			wantLocation: "/sign_in",
 		},
-		// The visitor's destination has not changed just because the challenge was
-		// lost, so the restart carries it instead of dropping them on the home page.
-		//
-		// [Ja] チャレンジが失われても訪問者の目的の画面は変わらないため、やり直しでも遷移先を
+		// チャレンジが失われても訪問者の目的の画面は変わらないため、やり直しでも遷移先を
 		// 運び、ホームに着地させない。
 		{
 			name:         "遷移先あり",
@@ -221,23 +192,17 @@ func TestNew_NoCookieRedirectsToSignIn(t *testing.T) {
 			handler.New(rec, req)
 
 			if rec.Code != http.StatusSeeOther {
-				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusSeeOther)
+				t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusSeeOther)
 			}
 			if loc := rec.Header().Get("Location"); loc != tt.wantLocation {
-				t.Errorf("Location = %q, want %q", loc, tt.wantLocation)
+				t.Errorf("Location = %q、期待値 = %q", loc, tt.wantLocation)
 			}
 		})
 	}
 }
 
-// TestNew_ReturnTo verifies that the TOTP challenge page keeps the destination the
-// password step handed over: it rides along in the form's hidden field and in the
-// link to the recovery-code challenge, so switching to recovery codes does not lose
-// where the visitor was headed. A destination naming another origin is dropped from
-// both, so neither can hand an open redirect on to the step that issues the session.
-//
-// [Ja] TestNew_ReturnTo は、TOTP チャレンジページがパスワードのステップから引き渡された
-// 遷移先を保つことを検証する。遷移先はフォームの hidden フィールドと、リカバリーコード
+// TestNew_ReturnToは、TOTPチャレンジページがパスワードのステップから引き渡された
+// 遷移先を保つことを検証する。遷移先はフォームのhiddenフィールドと、リカバリーコード
 // チャレンジへのリンクの両方に載るため、リカバリーコードへ切り替えても訪問者の向かっていた
 // 先を失わない。別オリジンを指す遷移先は両方から落ちるため、どちらもセッションを発行する
 // ステップへオープンリダイレクトを引き渡せない。
@@ -284,17 +249,17 @@ func TestNew_ReturnTo(t *testing.T) {
 			handler.New(rec, req)
 
 			if rec.Code != http.StatusOK {
-				t.Fatalf("status code = %d, want %d", rec.Code, http.StatusOK)
+				t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 			}
 			body := rec.Body.String()
 			if got := strings.Contains(body, `name="return_to"`); got != tt.wantHidden {
-				t.Errorf("return_to の hidden フィールドの有無 = %v, want %v", got, tt.wantHidden)
+				t.Errorf("return_toのhiddenフィールドの有無 = %v、期待値 = %v", got, tt.wantHidden)
 			}
 			if tt.wantHidden && !strings.Contains(body, `value="/settings"`) {
-				t.Error(`body does not contain value="/settings"`)
+				t.Error(`ボディにvalue="/settings" が含まれていない`)
 			}
 			if !strings.Contains(body, tt.wantLink) {
-				t.Errorf("body does not contain %q", tt.wantLink)
+				t.Errorf("ボディに %q が含まれていない", tt.wantLink)
 			}
 		})
 	}

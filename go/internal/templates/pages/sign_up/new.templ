@@ -6,20 +6,12 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/components"
 )
 
-// NewPageData is the data for the sign-up form page. Email is echoed back so a
-// re-rendered form (after a validation error) keeps what the user typed, and
-// FormErrors carries the validation messages: per-field messages (a missing or
-// malformed email) shown beneath the input, and a form-wide message shown at the
-// top when the request itself failed, e.g. the confirmation mail could not be
-// enqueued. TurnstileSiteKey renders the bot-protection widget; when it is empty
-// (the disabled dev / test setup) the widget is omitted entirely.
-//
-// [Ja] NewPageData はサインアップフォームページのデータです。Email は再描画
-// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrors は
+// NewPageDataはサインアップフォームページのデータです。Emailは再描画
+// (バリデーションエラー後) でユーザーの入力を保つためにエコーバックし、FormErrorsは
 // バリデーションメッセージを運びます。各入力欄の下に出すフィールド別のメッセージ
-// (email の未入力・不正) と、申請自体が失敗したとき (例: 確認メールを投入できなかった)
-// に上部に出すフォーム全体のメッセージです。TurnstileSiteKey は Bot 対策ウィジェットを
-// 描画します。空のとき (無効化された dev / test 構成) はウィジェットを完全に省きます。
+// (emailの未入力・不正) と、申請自体が失敗したとき (例: 確認メールを投入できなかった)
+// に上部に出すフォーム全体のメッセージです。TurnstileSiteKeyはBot対策ウィジェットを
+// 描画します。空のとき (無効化されたdev / test構成) はウィジェットを完全に省きます。
 type NewPageData struct {
 	CSRFToken        string
 	Email            string
@@ -27,12 +19,8 @@ type NewPageData struct {
 	TurnstileSiteKey string
 }
 
-// New renders the sign-up form: a single email field that, on submit, requests a
-// confirmation code. The CSRF token is embedded as a hidden field for the
-// double-submit-cookie check.
-//
-// [Ja] New はサインアップフォームを描画します。送信すると確認コードを要求する単一の
-// email フィールドです。CSRF トークンは double-submit cookie 検証のため hidden
+// Newはサインアップフォームを描画します。送信すると確認コードを要求する単一の
+// emailフィールドです。CSRFトークンはdouble-submit cookie検証のためhidden
 // フィールドとして埋め込みます。
 templ New(data NewPageData) {
 	<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">

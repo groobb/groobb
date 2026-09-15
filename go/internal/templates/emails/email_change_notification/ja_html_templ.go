@@ -11,25 +11,16 @@ import (
 	"github.com/groobb/groobb/go/internal/templates/emails/layouts"
 )
 
-// Data holds the value rendered into the email-change notification templates: the
-// address the account was changed to. The mail is delivered to the previous
-// (old) address, so the recipient is implicit and only the new address is shown,
-// letting them see where their account email went. It is shared by the per-locale
-// HTML and text templates in this package.
-//
-// [Ja] Data はメールアドレス変更通知テンプレートに描画する値を保持します。アカウントの
+// Dataはメールアドレス変更通知テンプレートに描画する値を保持します。アカウントの
 // 変更先アドレスです。メールは以前の (旧) アドレスへ配信されるため宛先は暗黙で、変更先の
 // アドレスのみを示し、アカウントのメールがどこへ移ったかを受信者が確認できるようにします。
-// 本パッケージのロケール別 HTML / テキストテンプレートで共有します。
+// 本パッケージのロケール別HTML / テキストテンプレートで共有します。
 type Data struct {
 	NewEmail string
 }
 
-// JaHTML renders the Japanese HTML body, wrapping the content in the shared email
-// layout (which supplies the document scaffold and Groobb footer).
-//
-// [Ja] JaHTML は日本語の HTML 本文を描画し、共有メールレイアウト (ドキュメントの外枠と
-// Groobb フッターを供給する) で内容を包みます。
+// JaHTMLは日本語のHTML本文を描画し、共有メールレイアウト (ドキュメントの外枠と
+// Groobbフッターを供給する) で内容を包みます。
 func JaHTML(data Data) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -70,7 +61,7 @@ func JaHTML(data Data) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.NewEmail)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_change_notification/ja_html.templ`, Line: 26, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/emails/email_change_notification/ja_html.templ`, Line: 17, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

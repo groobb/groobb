@@ -13,10 +13,7 @@ import (
 	"github.com/groobb/groobb/go/internal/testutil"
 )
 
-// findCookie returns the cookie with the given name from a recorded response, or
-// nil when it is absent.
-//
-// [Ja] findCookie は記録されたレスポンスから指定名の Cookie を返す。無ければ nil。
+// findCookieは記録されたレスポンスから指定名のCookieを返す。無ければnil。
 func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == name {
@@ -26,11 +23,8 @@ func findCookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
-// continuationManagerConfig returns a test Config with the shared signing key
-// and the requested environment for Cookie attribute assertions.
-//
-// [Ja] continuationManagerConfig は共有の署名鍵と、Cookie 属性の検証で指定された実行環境を
-// 持つテスト用 Config を返します。
+// continuationManagerConfigは共有の署名鍵と、Cookie属性の検証で指定された実行環境を
+// 持つテスト用Configを返します。
 func continuationManagerConfig(t *testing.T, env string) *config.Config {
 	t.Helper()
 
@@ -39,10 +33,7 @@ func continuationManagerConfig(t *testing.T, env string) *config.Config {
 	return cfg
 }
 
-// emailConfirmationCookie asks the Manager to issue a real signed continuation
-// Cookie for id.
-//
-// [Ja] emailConfirmationCookie は Manager に id 用の実際の署名付き continuation Cookie を
+// emailConfirmationCookieはManagerにid用の実際の署名付きcontinuation Cookieを
 // 発行させます。
 func emailConfirmationCookie(t *testing.T, mgr *session.Manager, id model.EmailConfirmationID) *http.Cookie {
 	t.Helper()
@@ -51,15 +42,12 @@ func emailConfirmationCookie(t *testing.T, mgr *session.Manager, id model.EmailC
 	mgr.SetEmailConfirmationID(rec, id)
 	cookie := findCookie(rec, session.EmailConfirmationCookieName)
 	if cookie == nil {
-		t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
+		t.Fatalf("メール確認Cookie %q が設定されていない", session.EmailConfirmationCookieName)
 	}
 	return cookie
 }
 
-// twoFactorPendingCookie asks the Manager to issue a real signed continuation
-// Cookie for id.
-//
-// [Ja] twoFactorPendingCookie は Manager に id 用の実際の署名付き continuation Cookie を
+// twoFactorPendingCookieはManagerにid用の実際の署名付きcontinuation Cookieを
 // 発行させます。
 func twoFactorPendingCookie(t *testing.T, mgr *session.Manager, id model.UserID) *http.Cookie {
 	t.Helper()
@@ -68,14 +56,12 @@ func twoFactorPendingCookie(t *testing.T, mgr *session.Manager, id model.UserID)
 	mgr.SetTwoFactorPendingUserID(rec, id)
 	cookie := findCookie(rec, session.TwoFactorPendingCookieName)
 	if cookie == nil {
-		t.Fatalf("2 段階認証 pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
+		t.Fatalf("2段階認証pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
 	}
 	return cookie
 }
 
-// tamperToken changes a significant byte of the encoded signature.
-//
-// [Ja] tamperToken はエンコード済み署名の有効な 1 バイトを変更します。
+// tamperTokenはエンコード済み署名の有効な1バイトを変更します。
 func tamperToken(token string) string {
 	signatureStart := strings.LastIndexByte(token, '.') + 1
 	replacement := byte('A')
@@ -99,31 +85,31 @@ func TestManager_GetCurrentUser(t *testing.T) {
 		WithToken("valid-token").
 		Build()
 
-	t.Run("有効なセッション Cookie から現在のユーザーを解決できる", func(t *testing.T) {
+	t.Run("有効なセッションCookieから現在のユーザーを解決できる", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "valid-token"})
 
 		user, err := mgr.GetCurrentUser(req.Context(), req)
 		if err != nil {
-			t.Fatalf("GetCurrentUser() error = %v", err)
+			t.Fatalf("GetCurrentUser()のエラー = %v", err)
 		}
 		if user == nil {
-			t.Fatal("GetCurrentUser() = nil, want user")
+			t.Fatal("GetCurrentUser() = nil、期待値はユーザー")
 		}
 		if user.ID != userID {
-			t.Errorf("user.ID = %v, want %v", user.ID, userID)
+			t.Errorf("user.ID = %v、期待値 = %v", user.ID, userID)
 		}
 	})
 
-	t.Run("Cookie が無い場合は (nil, nil) を返す", func(t *testing.T) {
+	t.Run("Cookieが無い場合は (nil, nil) を返す", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 		user, err := mgr.GetCurrentUser(req.Context(), req)
 		if err != nil {
-			t.Fatalf("GetCurrentUser() error = %v", err)
+			t.Fatalf("GetCurrentUser()のエラー = %v", err)
 		}
 		if user != nil {
-			t.Errorf("GetCurrentUser() = %v, want nil", user)
+			t.Errorf("GetCurrentUser() = %v、期待値 = nil", user)
 		}
 	})
 
@@ -133,10 +119,10 @@ func TestManager_GetCurrentUser(t *testing.T) {
 
 		user, err := mgr.GetCurrentUser(req.Context(), req)
 		if err != nil {
-			t.Fatalf("GetCurrentUser() error = %v", err)
+			t.Fatalf("GetCurrentUser()のエラー = %v", err)
 		}
 		if user != nil {
-			t.Errorf("GetCurrentUser() = %v, want nil", user)
+			t.Errorf("GetCurrentUser() = %v、期待値 = nil", user)
 		}
 	})
 }
@@ -149,8 +135,8 @@ func TestManager_SetSessionCookie(t *testing.T) {
 		env        string
 		wantSecure bool
 	}{
-		{name: "本番では Secure を立てる", env: "prod", wantSecure: true},
-		{name: "開発では Secure を立てない (平文 HTTP のため)", env: "dev", wantSecure: false},
+		{name: "本番ではSecureを立てる", env: "prod", wantSecure: true},
+		{name: "開発ではSecureを立てない (平文HTTPのため)", env: "dev", wantSecure: false},
 	}
 
 	for _, tt := range tests {
@@ -164,22 +150,22 @@ func TestManager_SetSessionCookie(t *testing.T) {
 
 			cookie := findCookie(rec, session.CookieName)
 			if cookie == nil {
-				t.Fatalf("セッション Cookie %q が設定されていない", session.CookieName)
+				t.Fatalf("セッションCookie %q が設定されていない", session.CookieName)
 			}
 			if cookie.Value != "the-token" {
-				t.Errorf("cookie.Value = %q, want %q", cookie.Value, "the-token")
+				t.Errorf("cookie.Value = %q、期待値 = %q", cookie.Value, "the-token")
 			}
 			if !cookie.HttpOnly {
-				t.Error("セッション Cookie は HttpOnly であるべき")
+				t.Error("セッションCookieはHttpOnlyであるべき")
 			}
 			if cookie.SameSite != http.SameSiteLaxMode {
-				t.Errorf("cookie.SameSite = %v, want %v", cookie.SameSite, http.SameSiteLaxMode)
+				t.Errorf("cookie.SameSite = %v、期待値 = %v", cookie.SameSite, http.SameSiteLaxMode)
 			}
 			if cookie.MaxAge <= 0 {
-				t.Errorf("cookie.MaxAge = %d, want 正の値", cookie.MaxAge)
+				t.Errorf("cookie.MaxAge = %d、期待値は正の値", cookie.MaxAge)
 			}
 			if cookie.Secure != tt.wantSecure {
-				t.Errorf("cookie.Secure = %v, want %v", cookie.Secure, tt.wantSecure)
+				t.Errorf("cookie.Secure = %v、期待値 = %v", cookie.Secure, tt.wantSecure)
 			}
 		})
 	}
@@ -195,13 +181,13 @@ func TestManager_DeleteSessionCookie(t *testing.T) {
 
 	cookie := findCookie(rec, session.CookieName)
 	if cookie == nil {
-		t.Fatalf("セッション Cookie %q が設定されていない", session.CookieName)
+		t.Fatalf("セッションCookie %q が設定されていない", session.CookieName)
 	}
 	if cookie.Value != "" {
-		t.Errorf("cookie.Value = %q, want 空文字列", cookie.Value)
+		t.Errorf("cookie.Value = %q、期待値は空文字列", cookie.Value)
 	}
 	if cookie.MaxAge >= 0 {
-		t.Errorf("cookie.MaxAge = %d, want 負の値 (削除指示)", cookie.MaxAge)
+		t.Errorf("cookie.MaxAge = %d、期待値は負の値 (削除指示)", cookie.MaxAge)
 	}
 }
 
@@ -213,8 +199,8 @@ func TestManager_SetEmailConfirmationID(t *testing.T) {
 		env        string
 		wantSecure bool
 	}{
-		{name: "本番では Secure を立てる", env: "prod", wantSecure: true},
-		{name: "開発では Secure を立てない (平文 HTTP のため)", env: "dev", wantSecure: false},
+		{name: "本番ではSecureを立てる", env: "prod", wantSecure: true},
+		{name: "開発ではSecureを立てない (平文HTTPのため)", env: "dev", wantSecure: false},
 	}
 
 	for _, tt := range tests {
@@ -229,22 +215,22 @@ func TestManager_SetEmailConfirmationID(t *testing.T) {
 
 			cookie := findCookie(rec, session.EmailConfirmationCookieName)
 			if cookie == nil {
-				t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
+				t.Fatalf("メール確認Cookie %q が設定されていない", session.EmailConfirmationCookieName)
 			}
 			if cookie.Value == "" || cookie.Value == id.String() {
-				t.Errorf("cookie.Value = %q, want non-empty signed token instead of raw id", cookie.Value)
+				t.Errorf("cookie.Value = %q、期待値は生のidではなく空でない署名付きトークン", cookie.Value)
 			}
 			if !cookie.HttpOnly {
-				t.Error("メール確認 Cookie は HttpOnly であるべき")
+				t.Error("メール確認CookieはHttpOnlyであるべき")
 			}
 			if cookie.SameSite != http.SameSiteLaxMode {
-				t.Errorf("cookie.SameSite = %v, want %v", cookie.SameSite, http.SameSiteLaxMode)
+				t.Errorf("cookie.SameSite = %v、期待値 = %v", cookie.SameSite, http.SameSiteLaxMode)
 			}
 			if cookie.MaxAge <= 0 {
-				t.Errorf("cookie.MaxAge = %d, want 正の値", cookie.MaxAge)
+				t.Errorf("cookie.MaxAge = %d、期待値は正の値", cookie.MaxAge)
 			}
 			if cookie.Secure != tt.wantSecure {
-				t.Errorf("cookie.Secure = %v, want %v", cookie.Secure, tt.wantSecure)
+				t.Errorf("cookie.Secure = %v、期待値 = %v", cookie.Secure, tt.wantSecure)
 			}
 		})
 	}
@@ -255,7 +241,7 @@ func TestManager_GetEmailConfirmationID(t *testing.T) {
 
 	mgr := session.NewManager(nil, testutil.NewTestConfig(t))
 
-	t.Run("有効な署名付き token から確認 id を取り出せる", func(t *testing.T) {
+	t.Run("有効な署名付きtokenから確認idを取り出せる", func(t *testing.T) {
 		t.Parallel()
 
 		id := model.EmailConfirmationID(testutil.UnusedID)
@@ -264,35 +250,35 @@ func TestManager_GetEmailConfirmationID(t *testing.T) {
 
 		got, ok := mgr.GetEmailConfirmationID(req)
 		if !ok {
-			t.Fatal("GetEmailConfirmationID() ok = false, want true")
+			t.Fatal("GetEmailConfirmationID()のok = false、期待値 = true")
 		}
 		if got != id {
-			t.Errorf("GetEmailConfirmationID() = %v, want %v", got, id)
+			t.Errorf("GetEmailConfirmationID() = %v、期待値 = %v", got, id)
 		}
 	})
 
-	t.Run("Cookie が無い場合は ok=false を返す", func(t *testing.T) {
+	t.Run("Cookieが無い場合はok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 		if _, ok := mgr.GetEmailConfirmationID(req); ok {
-			t.Error("GetEmailConfirmationID() ok = true, want false")
+			t.Error("GetEmailConfirmationID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("未署名の整数 ID は ok=false を返す", func(t *testing.T) {
+	t.Run("未署名の整数IDはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.AddCookie(&http.Cookie{Name: session.EmailConfirmationCookieName, Value: model.EmailConfirmationID(testutil.UnusedID).String()})
 
 		if _, ok := mgr.GetEmailConfirmationID(req); ok {
-			t.Error("GetEmailConfirmationID() ok = true, want false")
+			t.Error("GetEmailConfirmationID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("署名を改ざんした token は ok=false を返す", func(t *testing.T) {
+	t.Run("署名を改ざんしたtokenはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		cookie := emailConfirmationCookie(t, mgr, model.EmailConfirmationID(testutil.UnusedID))
@@ -301,11 +287,11 @@ func TestManager_GetEmailConfirmationID(t *testing.T) {
 		req.AddCookie(cookie)
 
 		if _, ok := mgr.GetEmailConfirmationID(req); ok {
-			t.Error("GetEmailConfirmationID() ok = true, want false")
+			t.Error("GetEmailConfirmationID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("2 段階認証用 token は ok=false を返す", func(t *testing.T) {
+	t.Run("2段階認証用tokenはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		cookie := twoFactorPendingCookie(t, mgr, model.UserID(testutil.UnusedID))
@@ -316,7 +302,7 @@ func TestManager_GetEmailConfirmationID(t *testing.T) {
 		})
 
 		if _, ok := mgr.GetEmailConfirmationID(req); ok {
-			t.Error("GetEmailConfirmationID() ok = true, want false")
+			t.Error("GetEmailConfirmationID()のok = true、期待値 = false")
 		}
 	})
 }
@@ -331,13 +317,13 @@ func TestManager_DeleteEmailConfirmationID(t *testing.T) {
 
 	cookie := findCookie(rec, session.EmailConfirmationCookieName)
 	if cookie == nil {
-		t.Fatalf("メール確認 Cookie %q が設定されていない", session.EmailConfirmationCookieName)
+		t.Fatalf("メール確認Cookie %q が設定されていない", session.EmailConfirmationCookieName)
 	}
 	if cookie.Value != "" {
-		t.Errorf("cookie.Value = %q, want 空文字列", cookie.Value)
+		t.Errorf("cookie.Value = %q、期待値は空文字列", cookie.Value)
 	}
 	if cookie.MaxAge >= 0 {
-		t.Errorf("cookie.MaxAge = %d, want 負の値 (削除指示)", cookie.MaxAge)
+		t.Errorf("cookie.MaxAge = %d、期待値は負の値 (削除指示)", cookie.MaxAge)
 	}
 }
 
@@ -349,8 +335,8 @@ func TestManager_SetTwoFactorPendingUserID(t *testing.T) {
 		env        string
 		wantSecure bool
 	}{
-		{name: "本番では Secure を立てる", env: "prod", wantSecure: true},
-		{name: "開発では Secure を立てない (平文 HTTP のため)", env: "dev", wantSecure: false},
+		{name: "本番ではSecureを立てる", env: "prod", wantSecure: true},
+		{name: "開発ではSecureを立てない (平文HTTPのため)", env: "dev", wantSecure: false},
 	}
 
 	for _, tt := range tests {
@@ -365,22 +351,22 @@ func TestManager_SetTwoFactorPendingUserID(t *testing.T) {
 
 			cookie := findCookie(rec, session.TwoFactorPendingCookieName)
 			if cookie == nil {
-				t.Fatalf("2 段階認証 pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
+				t.Fatalf("2段階認証pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
 			}
 			if cookie.Value == "" || cookie.Value == id.String() {
-				t.Errorf("cookie.Value = %q, want non-empty signed token instead of raw id", cookie.Value)
+				t.Errorf("cookie.Value = %q、期待値は生のidではなく空でない署名付きトークン", cookie.Value)
 			}
 			if !cookie.HttpOnly {
-				t.Error("2 段階認証 pending Cookie は HttpOnly であるべき")
+				t.Error("2段階認証pending CookieはHttpOnlyであるべき")
 			}
 			if cookie.SameSite != http.SameSiteLaxMode {
-				t.Errorf("cookie.SameSite = %v, want %v", cookie.SameSite, http.SameSiteLaxMode)
+				t.Errorf("cookie.SameSite = %v、期待値 = %v", cookie.SameSite, http.SameSiteLaxMode)
 			}
 			if cookie.MaxAge <= 0 {
-				t.Errorf("cookie.MaxAge = %d, want 正の値", cookie.MaxAge)
+				t.Errorf("cookie.MaxAge = %d、期待値は正の値", cookie.MaxAge)
 			}
 			if cookie.Secure != tt.wantSecure {
-				t.Errorf("cookie.Secure = %v, want %v", cookie.Secure, tt.wantSecure)
+				t.Errorf("cookie.Secure = %v、期待値 = %v", cookie.Secure, tt.wantSecure)
 			}
 		})
 	}
@@ -391,7 +377,7 @@ func TestManager_GetTwoFactorPendingUserID(t *testing.T) {
 
 	mgr := session.NewManager(nil, testutil.NewTestConfig(t))
 
-	t.Run("有効な署名付き token から保留中のユーザー id を取り出せる", func(t *testing.T) {
+	t.Run("有効な署名付きtokenから保留中のユーザーidを取り出せる", func(t *testing.T) {
 		t.Parallel()
 
 		id := model.UserID(testutil.UnusedID)
@@ -400,35 +386,35 @@ func TestManager_GetTwoFactorPendingUserID(t *testing.T) {
 
 		got, ok := mgr.GetTwoFactorPendingUserID(req)
 		if !ok {
-			t.Fatal("GetTwoFactorPendingUserID() ok = false, want true")
+			t.Fatal("GetTwoFactorPendingUserID()のok = false、期待値 = true")
 		}
 		if got != id {
-			t.Errorf("GetTwoFactorPendingUserID() = %v, want %v", got, id)
+			t.Errorf("GetTwoFactorPendingUserID() = %v、期待値 = %v", got, id)
 		}
 	})
 
-	t.Run("Cookie が無い場合は ok=false を返す", func(t *testing.T) {
+	t.Run("Cookieが無い場合はok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 		if _, ok := mgr.GetTwoFactorPendingUserID(req); ok {
-			t.Error("GetTwoFactorPendingUserID() ok = true, want false")
+			t.Error("GetTwoFactorPendingUserID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("未署名の整数 ID は ok=false を返す", func(t *testing.T) {
+	t.Run("未署名の整数IDはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.AddCookie(&http.Cookie{Name: session.TwoFactorPendingCookieName, Value: model.UserID(testutil.UnusedID).String()})
 
 		if _, ok := mgr.GetTwoFactorPendingUserID(req); ok {
-			t.Error("GetTwoFactorPendingUserID() ok = true, want false")
+			t.Error("GetTwoFactorPendingUserID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("署名を改ざんした token は ok=false を返す", func(t *testing.T) {
+	t.Run("署名を改ざんしたtokenはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		cookie := twoFactorPendingCookie(t, mgr, model.UserID(testutil.UnusedID))
@@ -437,11 +423,11 @@ func TestManager_GetTwoFactorPendingUserID(t *testing.T) {
 		req.AddCookie(cookie)
 
 		if _, ok := mgr.GetTwoFactorPendingUserID(req); ok {
-			t.Error("GetTwoFactorPendingUserID() ok = true, want false")
+			t.Error("GetTwoFactorPendingUserID()のok = true、期待値 = false")
 		}
 	})
 
-	t.Run("メール確認用 token は ok=false を返す", func(t *testing.T) {
+	t.Run("メール確認用tokenはok=falseを返す", func(t *testing.T) {
 		t.Parallel()
 
 		cookie := emailConfirmationCookie(t, mgr, model.EmailConfirmationID(testutil.UnusedID))
@@ -452,7 +438,7 @@ func TestManager_GetTwoFactorPendingUserID(t *testing.T) {
 		})
 
 		if _, ok := mgr.GetTwoFactorPendingUserID(req); ok {
-			t.Error("GetTwoFactorPendingUserID() ok = true, want false")
+			t.Error("GetTwoFactorPendingUserID()のok = true、期待値 = false")
 		}
 	})
 }
@@ -467,12 +453,12 @@ func TestManager_DeleteTwoFactorPendingUserID(t *testing.T) {
 
 	cookie := findCookie(rec, session.TwoFactorPendingCookieName)
 	if cookie == nil {
-		t.Fatalf("2 段階認証 pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
+		t.Fatalf("2段階認証pending Cookie %q が設定されていない", session.TwoFactorPendingCookieName)
 	}
 	if cookie.Value != "" {
-		t.Errorf("cookie.Value = %q, want 空文字列", cookie.Value)
+		t.Errorf("cookie.Value = %q、期待値は空文字列", cookie.Value)
 	}
 	if cookie.MaxAge >= 0 {
-		t.Errorf("cookie.MaxAge = %d, want 負の値 (削除指示)", cookie.MaxAge)
+		t.Errorf("cookie.MaxAge = %d、期待値は負の値 (削除指示)", cookie.MaxAge)
 	}
 }

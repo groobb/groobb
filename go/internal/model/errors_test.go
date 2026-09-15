@@ -9,57 +9,47 @@ import (
 	"github.com/groobb/groobb/go/internal/model"
 )
 
-// TestValidationError covers accumulating field and global messages and the
-// accessors a handler / template uses to render them.
-//
-// [Ja] TestValidationError はフィールド・グローバルメッセージの蓄積と、ハンドラーや
+// TestValidationErrorはフィールド・グローバルメッセージの蓄積と、ハンドラーや
 // テンプレートが描画に使うアクセサを検証します。
 func TestValidationError(t *testing.T) {
 	t.Parallel()
 
 	ve := model.NewValidationError()
 	if ve.HasErrors() {
-		t.Fatal("a freshly created ValidationError should have no errors")
+		t.Fatal("作成直後のValidationErrorがエラーを持っている")
 	}
 	if ve.HasFieldErrors() {
-		t.Error("HasFieldErrors() = true, want false before any field error is added")
+		t.Error("フィールドエラーを追加する前のHasFieldErrors() = true、期待値 = false")
 	}
 
 	ve.AddField("email", "is required")
 	ve.AddGlobal("the form has errors")
 
 	if !ve.HasErrors() {
-		t.Error("HasErrors() = false, want true after adding errors")
+		t.Error("エラーを追加した後のHasErrors() = false、期待値 = true")
 	}
 	if !ve.HasFieldErrors() {
-		t.Error("HasFieldErrors() = false, want true after adding a field error")
+		t.Error("フィールドエラーを追加した後のHasFieldErrors() = false、期待値 = true")
 	}
 	if !ve.HasFieldError("email") {
-		t.Error("HasFieldError(email) = false, want true")
+		t.Error("HasFieldError(email) = false、期待値 = true")
 	}
 	if got := ve.GetFieldErrors("email"); len(got) != 1 || got[0] != "is required" {
-		t.Errorf("GetFieldErrors(email) = %v, want [is required]", got)
+		t.Errorf("GetFieldErrors(email) = %v、期待値 = [is required]", got)
 	}
 	if got := ve.FieldErrors(); len(got) != 1 || got[0].Field != "email" {
-		t.Errorf("FieldErrors() = %v, want a single entry for email", got)
+		t.Errorf("FieldErrors() = %v、期待値はemailの1件だけ", got)
 	}
 	if ve.Error() != "validation failed" {
-		t.Errorf("Error() = %q, want %q", ve.Error(), "validation failed")
+		t.Errorf("Error() = %q、期待値 = %q", ve.Error(), "validation failed")
 	}
 }
 
-// TestValidationError_NilReceiver verifies that the accessors answer for a nil
-// *ValidationError as they do for an empty one.
-//
-// A page carries no errors until a submission is refused, so a template reaches
-// these on nil on every first render. They have to hold on their own rather than
-// through the order the caller happens to ask them in.
-//
-// [Ja] TestValidationError_NilReceiver は、各アクセサが nil の *ValidationError に対して
+// TestValidationError_NilReceiverは、各アクセサがnilの *ValidationErrorに対して
 // 空のものと同じ答えを返すことを検証します。
 //
 // ページは送信が拒否されるまでエラーを持たないため、テンプレートは初回描画のたびにこれらを
-// nil に対して呼びます。呼び出し側がたまたま尋ねる順序ではなく、それ自体で成り立つ必要が
+// nilに対して呼びます。呼び出し側がたまたま尋ねる順序ではなく、それ自体で成り立つ必要が
 // あります。
 func TestValidationError_NilReceiver(t *testing.T) {
 	t.Parallel()
@@ -67,32 +57,29 @@ func TestValidationError_NilReceiver(t *testing.T) {
 	var ve *model.ValidationError
 
 	if ve.HasErrors() {
-		t.Error("HasErrors() = true, want false for a nil ValidationError")
+		t.Error("nilのValidationErrorに対するHasErrors() = true、期待値 = false")
 	}
 	if ve.HasGlobalError() {
-		t.Error("HasGlobalError() = true, want false for a nil ValidationError")
+		t.Error("nilのValidationErrorに対するHasGlobalError() = true、期待値 = false")
 	}
 	if ve.HasFieldErrors() {
-		t.Error("HasFieldErrors() = true, want false for a nil ValidationError")
+		t.Error("nilのValidationErrorに対するHasFieldErrors() = true、期待値 = false")
 	}
 	if ve.HasFieldError("email") {
-		t.Error("HasFieldError(email) = true, want false for a nil ValidationError")
+		t.Error("nilのValidationErrorに対するHasFieldError(email) = true、期待値 = false")
 	}
 	if got := ve.GetGlobalErrors(); got != nil {
-		t.Errorf("GetGlobalErrors() = %v, want nil for a nil ValidationError", got)
+		t.Errorf("nilのValidationErrorに対するGetGlobalErrors() = %v、期待値 = nil", got)
 	}
 	if got := ve.GetFieldErrors("email"); got != nil {
-		t.Errorf("GetFieldErrors(email) = %v, want nil for a nil ValidationError", got)
+		t.Errorf("nilのValidationErrorに対するGetFieldErrors(email) = %v、期待値 = nil", got)
 	}
 	if got := ve.FieldErrors(); got != nil {
-		t.Errorf("FieldErrors() = %v, want nil for a nil ValidationError", got)
+		t.Errorf("nilのValidationErrorに対するFieldErrors() = %v、期待値 = nil", got)
 	}
 }
 
-// TestAsValidationError verifies that a wrapped *ValidationError is recovered
-// and that an unrelated error is not mistaken for one.
-//
-// [Ja] TestAsValidationError はラップされた *ValidationError が取り出せること、
+// TestAsValidationErrorはラップされた *ValidationErrorが取り出せること、
 // および無関係なエラーがそれと誤認されないことを検証します。
 func TestAsValidationError(t *testing.T) {
 	t.Parallel()
@@ -102,19 +89,15 @@ func TestAsValidationError(t *testing.T) {
 	wrapped := fmt.Errorf("wrapped: %w", ve)
 
 	if got := model.AsValidationError(wrapped); got == nil {
-		t.Error("AsValidationError() should recover a wrapped *ValidationError")
+		t.Error("AsValidationError()がラップされた *ValidationErrorを取り出せなかった")
 	}
 	if got := model.AsValidationError(errors.New("plain")); got != nil {
-		t.Error("AsValidationError() should return nil for a non-ValidationError")
+		t.Error("ValidationErrorでないエラーに対するAsValidationError()がnilを返さなかった")
 	}
 }
 
-// TestAppError verifies the SafeError behaviour: Error() exposes only the
-// user-safe message, while the internal cause stays reachable through Unwrap and
-// LogString.
-//
-// [Ja] TestAppError は SafeError の挙動を検証します。Error() はユーザー安全な
-// メッセージのみを公開し、内部原因は Unwrap と LogString からは参照できます。
+// TestAppErrorはSafeErrorの挙動を検証します。Error() はユーザー安全な
+// メッセージのみを公開し、内部原因はUnwrapとLogStringからは参照できます。
 func TestAppError(t *testing.T) {
 	t.Parallel()
 
@@ -127,18 +110,18 @@ func TestAppError(t *testing.T) {
 	}
 
 	if ae.Error() != "not found" {
-		t.Errorf("Error() = %q, want only the user-safe message", ae.Error())
+		t.Errorf("Error() = %q、期待値はユーザー安全なメッセージのみ", ae.Error())
 	}
 	if strings.Contains(ae.Error(), "connection reset") {
-		t.Error("Error() leaked the internal cause to the user-facing message")
+		t.Error("Error()がユーザー向けメッセージに内部原因を漏らした")
 	}
 	if !errors.Is(ae, internal) {
-		t.Error("Unwrap() should expose the internal error to errors.Is")
+		t.Error("Unwrap()が内部エラーをerrors.Isに公開していない")
 	}
 	if !strings.Contains(ae.LogString(), "connection reset") {
-		t.Errorf("LogString() = %q, want it to include the internal cause", ae.LogString())
+		t.Errorf("LogString() = %q、内部原因を含むことを期待", ae.LogString())
 	}
 	if got := model.AsAppError(fmt.Errorf("wrapped: %w", ae)); got == nil {
-		t.Error("AsAppError() should recover a wrapped *AppError")
+		t.Error("AsAppError()がラップされた *AppErrorを取り出せなかった")
 	}
 }
