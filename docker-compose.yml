@@ -7,6 +7,8 @@ services:
       - caddy
     volumes:
       - .:/workspace
+      - op-config:/home/developer/.config/op
+      - wikino-cli-config:/home/developer/.config/wikino
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/go/.cache/go-build
     ports:
@@ -28,3 +30,5 @@ services:
 volumes:
   go-build-cache:
   go-mod-cache:
+  op-config:
+  wikino-cli-config:

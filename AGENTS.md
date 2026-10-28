@@ -20,8 +20,8 @@ Groobbは掲示板サービスです。
 /workspace/
 ├── go/                  # Goで実装されたサービス
 ├── caddy/               # リバースプロキシ設定
-├── docs/                # ドキュメント (ADR・作業計画書など。別リポジトリからのマウントでgitignore対象)
-├── .claude/             # コーディングエージェント設定 (ルール・スキル。別リポジトリからのマウントでgitignore対象)
+├── docs/                # ドキュメントガイドなど (ADRと作業計画書はWikinoで管理)
+├── .claude/             # コーディングエージェント設定 (ルール・スキル。gitignore対象)
 ├── .github/             # CI/CD設定
 ├── Dockerfile.dev       # 開発コンテナのDockerfile
 ├── docker-compose.yml   # Docker Compose設定
